@@ -4,3 +4,6 @@
 [submodule "ext/cardano-rest.git"]
 	path = ext/cardano-rest.git
 	url = git@github.com:input-output-hk/cardano-rest.git
+[submodule "ext/cardano-db-sync.git"]
+	path = ext/cardano-db-sync.git
+	url = git@github.com:input-output-hk/cardano-db-sync.git
