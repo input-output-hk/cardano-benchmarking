@@ -2,9 +2,9 @@ resolver: https://raw.githubusercontent.com/input-output-hk/cardano-prelude/2440
 compiler: ghc-8.6.5
 
 packages:
-  - cardano-tx-generator
   - ext/cardano-node.git/cardano-node
   - ext/cardano-node.git/cardano-config
+  - ext/cardano-node.git/cardano-tx-generator
   - ext/cardano-db-sync.git/cardano-db
   - ext/cardano-db-sync.git/cardano-db-sync
 
@@ -112,7 +112,7 @@ extra-deps:
         - Win32-network
 
   - git: https://github.com/input-output-hk/iohk-monitoring-framework
-    commit: d6f760591bc6f54e8c333986cf6cf7fb737747df
+    commit: 06a20515f1b48d2c3ddc7e4485dd2a54341be41f
     subdirs:
       - contra-tracer
       - iohk-monitoring
