@@ -32,7 +32,7 @@ setupScribes:
 # if not indicated otherwise, then log output is directed to this:
 defaultScribes:
   - - FileSK
-    - "node-0.log"
+    - "node-0.json"
 
 # more options which can be passed as key-value pairs:
 options:
@@ -108,7 +108,7 @@ LastKnownBlockVersion-Alt: 0
 # MinimalVerbosity: Minimal level of the rendering of captured items
 # MaximalVerbosity: Maximal level of the rendering of captured items
 # NormalVerbosity: the default level of the rendering of captured items
-TracingVerbosity: MaximalVerbosity
+TracingVerbosity: NormalVerbosity
 
 # Trace BlockFetch client.
 TraceBlockFetchClient: False
