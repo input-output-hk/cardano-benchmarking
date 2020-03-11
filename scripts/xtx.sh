@@ -1,18 +1,23 @@
 #!/bin/sh
 
-sed -ne '/"cardano","cli","generate-txs","submit"],.*,"msg":"Send ConnectionId/{s/"at":"/\n&/;s/tx:/\n&/g;p;}' $*  | sed -ne ' 
-  s/^"at":"\([^"]\+\).*$/\1/
-  t keep 
-  b cont 
-  : keep 
-  h; n
-  : cont 
-  s/^tx: Tx \([a-f0-9]\{8\}\)[a-f0-9]*.*$/\1/
-  t good 
-  d
-  :good
-  G
-  s/\n/;/g
-  p
-  '
+# Given a JSON log from a Tx generator with configuration, where:
+#
+#   minSeverity: Debug
+#   TracingVerbosity: MaximalVerbosity
+#
+# ..extract the list of submitted transactions,
+# as soon as we see them being requested by the remote peer:
+#
+#   | TraceBenchTxSubServReq [txid]
+#   -- ^ Request for @tx@ recieved from `TxSubmit.TxSubmission` protocol
+#   --   peer.
 
+jq '
+  select (.data.kind == "TraceBenchTxSubServReq")
+| .at as $at        # bind timestamp
+| .data.txIds   # narrow to the txid list
+| map ( .[11:]         # cut the "txid: txid: " prefix
+      | "\(.);\($at)") # produce the resulting string
+| .[]               # merge string lists over all messages
+' $1 |
+tr -d '"'
