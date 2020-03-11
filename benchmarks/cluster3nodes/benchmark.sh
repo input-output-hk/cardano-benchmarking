@@ -4,9 +4,9 @@
 
 # process
 create_new_genesis=1
-clean_explorer_db=0
+clean_explorer_db=1
 run_cluster_nodes=1
-run_explorer=0
+run_explorer=1
 run_tx_generator=1
 
 
@@ -45,12 +45,12 @@ fi
 
 
 # 2) prepare SQL database
-# (assuming user 'cexplorer' has been defined in the database system)
+# (assuming db user has been defined in the database system)
 
 if [ $clean_explorer_db -eq 1 ]; then
   { . configuration/psql-settings.sh
-    psql -d postgres -c "DROP DATABASE cexplorer;" || echo "DB missing"
-    psql -d postgres -c "CREATE DATABASE cexplorer OWNER=cexplorer;" || echo "ignored"
+    psql -d postgres -c "DROP DATABASE ${PGDATABASE};" || echo "DB missing"
+    psql -d postgres -c "CREATE DATABASE ${PGDATABASE} OWNER=${PGUSER};" || echo "ignored"
     read -p "Continue? (y|n)" answ
     case $answ in
       [Nn]) exit 1;;
