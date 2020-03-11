@@ -7,7 +7,7 @@ sed -ne '/"cardano","cli","generate-txs","submit"],.*,"msg":"Send ConnectionId/{
   : keep 
   h; n
   : cont 
-  s/^tx: Tx \([a-f0-9]\+\).*$/\1/
+  s/^tx: Tx \([a-f0-9]\{8\}\)[a-f0-9]*.*$/\1/
   t good 
   d
   :good
