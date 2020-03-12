@@ -1,4 +1,17 @@
 bin/
 .stack-work/
+dist-newstyle/
+dist/
 stack.yaml.lock
 
+.ghc.environment.*
+
+*~
+\#*
+\.#*
+*.swp
+.dir-locals.el
+
+tags
+
+latest-genesis
