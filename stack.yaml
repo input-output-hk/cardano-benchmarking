@@ -2,6 +2,7 @@ resolver: https://raw.githubusercontent.com/input-output-hk/cardano-prelude/fe76
 compiler: ghc-8.6.5
 
 packages:
+  - cardano-rt-view
   - ext/cardano-node.git/cardano-node
   - ext/cardano-node.git/cardano-config
   - ext/cardano-node.git/cardano-tx-generator
@@ -119,6 +120,7 @@ extra-deps:
       - plugins/backend-aggregation
       - plugins/backend-ekg
       - plugins/backend-monitoring
+      - plugins/backend-trace-acceptor
       - plugins/scribe-systemd
       - tracer-transformers
 
