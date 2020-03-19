@@ -7,9 +7,6 @@ module Cardano.Benchmarking.RTView.Acceptor
 
 
 import           Cardano.Prelude
-import           Prelude
-                   ( String )
-import qualified Data.Text as T
 import           Control.Concurrent
                    ( threadDelay )
 import           Control.Monad
@@ -21,8 +18,6 @@ import           Cardano.BM.Configuration
                    ( Configuration
                    , getAcceptAt, setup
                    )
-import           Cardano.BM.Data.Configuration
-                   ( RemoteAddr (..) )
 import           Cardano.BM.Plugin
                    ( loadPlugin )
 import qualified Cardano.BM.Setup as Setup
@@ -41,18 +36,14 @@ import           Cardano.Benchmarking.RTView.CLI
 launchMetricsAcceptor :: RTViewParams -> IO ()
 launchMetricsAcceptor (RTViewParams pathToConfig) = do
   config <- readConfig pathToConfig
-  -- TODO: currently there's only one |TraceAcceptor| in the configuration.
-  -- We should support N |TraceAcceptor|s to receive metrics from N cardano nodes.
   getAcceptAt config >>= \case
-    Just (RemoteSocket host port) -> do
+    Just _ -> do
       (tr :: Trace IO Text, switchBoard) <- Setup.setupTrace_ config "cardano-rt-view"
-      let accTr   = appendName "acceptor" tr
-          finalTr = appendName (mkAcceptorId host port) accTr
-      TraceAcceptor.plugin config finalTr switchBoard >>= loadPlugin switchBoard
-      -- Now all |LogObject|s received by this |TraceAcceptor| will be send to 'finalTr'.
+      let accTr = appendName "acceptor" tr
+      TraceAcceptor.plugin config accTr switchBoard >>= loadPlugin switchBoard
+      -- Now |LogObject|s received by particular |TraceAcceptor| will be send to the tracer
+      -- based on 'accTr' with corresponding 'nodeName' taken from configuration.
       forever $ threadDelay 1000000
-    Just (RemotePipe _) ->
-      Ex.die $ "Only trace acceptor based on RemoteSocket is supported in config: " <> pathToConfig
     Nothing ->
       Ex.die $ "Trace acceptor isn't enabled in config: " <> pathToConfig
 
@@ -63,10 +54,3 @@ readConfig pathToConfig = setup pathToConfig `catch` exceptHandler
   exceptHandler e = do
     putStrLn $ "Exception while reading configuration from: " <> pathToConfig
     throwIO e
-
--- | We want to identify each |TraceAcceptor| based on its socket.
-mkAcceptorId :: String -> String -> Text
-mkAcceptorId host port = anId
- where
-  anId = T.replace "." "_" raw -- "127.0.0.1" -> "127_0_0_1"
-  raw  = T.pack $ host <> "_" <> port
