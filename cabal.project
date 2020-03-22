@@ -2,7 +2,7 @@ index-state: 2020-01-31T00:00:00Z
 
 packages:
     cardano-rt-view
-    --cardano-tx-generator
+    cardano-tx-generator
     ext/cardano-node.git/cardano-node
     ext/cardano-node.git/cardano-config
     ext/cardano-node.git/cardano-tx-generator
