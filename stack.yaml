@@ -3,9 +3,9 @@ compiler: ghc-8.6.5
 
 packages:
   - cardano-rt-view
+  - cardano-tx-generator
   - ext/cardano-node.git/cardano-node
   - ext/cardano-node.git/cardano-config
-  - ext/cardano-node.git/cardano-tx-generator
   - ext/cardano-db-sync.git/cardano-db
   - ext/cardano-db-sync.git/cardano-db-sync
 
@@ -76,13 +76,13 @@ extra-deps:
       - cardano-shell
 
   - git: https://github.com/input-output-hk/cardano-ledger
-    commit: 1368966fd6d806d8eb65cd1ba193548c402355f6
+    commit: 2f6a649662aa93fc8427dcf6706ee63167f4205d
     subdirs:
       - cardano-ledger
       - crypto
 
   - git: https://github.com/input-output-hk/cardano-ledger-specs
-    commit: 647cd71e3c4630488e71596f5e9c26fee598b541
+    commit: afacc7969445e4db5427936489f5a49a8a3a8f99
     subdirs:
       # small-steps
       - byron/semantics/executable-spec
@@ -113,7 +113,7 @@ extra-deps:
         - Win32-network
 
   - git: https://github.com/input-output-hk/iohk-monitoring-framework
-    commit: d18b69c5733520c2735426888f93d395ec11ddb2
+    commit: 10877fbae54aa7a4c04ae3b5d87c825a4019e9e9
     subdirs:
       - contra-tracer
       - iohk-monitoring
