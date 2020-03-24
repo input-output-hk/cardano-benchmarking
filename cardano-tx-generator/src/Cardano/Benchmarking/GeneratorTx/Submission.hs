@@ -89,12 +89,8 @@ import           Ouroboros.Network.Protocol.TxSubmission.Type (BlockingReplyList
 import           Ouroboros.Network.NodeToClient ( AssociateWithIOCP
                                                 , NetworkConnectTracers (..))
 import qualified Ouroboros.Network.NodeToClient as NodeToClient
-import           Ouroboros.Network.Snocket (socketSnocket)
 
 import           Cardano.Config.Types (SocketPath(..))
-
-import           System.Directory (createDirectoryIfMissing)
-import           System.FilePath (takeDirectory)
 
 -- | Bulk submisson of transactions.
 --
@@ -538,23 +534,15 @@ submitTx :: ( RunNode blk
          -> GenTx blk
          -> Tracer IO TraceLowLevelSubmit
          -> IO ()
-submitTx iocp targetSocketFp cfg tx tracer = do
-    targetSocketFp' <- localSocketPath targetSocketFp
+submitTx iocp (SocketFile path) cfg tx tracer =
     NodeToClient.connectTo
-      (socketSnocket iocp)
+      (NodeToClient.localSnocket iocp path)
       NetworkConnectTracers {
           nctMuxTracer       = nullTracer,
           nctHandshakeTracer = nullTracer
         }
       (localInitiatorNetworkApplication tracer cfg tx)
-      targetSocketFp'
-
--- | Provide an filepath intended for a socket situated in 'socketDir'.
--- When 'mkdir' is 'MkdirIfMissing', the directory is created.
-localSocketPath :: SocketPath -> IO FilePath
-localSocketPath (SocketFile fp) = do
-  createDirectoryIfMissing True $ takeDirectory fp
-  return fp
+      path
 
 localInitiatorNetworkApplication
   :: forall blk m peer.
@@ -577,23 +565,28 @@ localInitiatorNetworkApplication tracer cfg tx =
       (NodeToClient.DictVersion NodeToClient.nodeToClientCodecCBORTerm) $ \_peerid ->
 
     NodeToClient.nodeToClientProtocols
-      (InitiatorProtocolOnly $
-         MuxPeer
-           nullTracer
-           (localChainSyncCodec @blk cfg)
-           (chainSyncClientPeer NodeToClient.chainSyncClientNull))
-      (InitiatorProtocolOnly $
-         MuxPeerRaw $ \channel -> do
-            traceWith tracer TraceLowLevelSubmitting
-            result <- runPeer
-                        nullTracer -- (contramap show tracer)
-                        localTxSubmissionCodec
-                        channel
-                        (LocalTxSub.localTxSubmissionClientPeer
-                           (txSubmissionClientSingle tx))
-            case result of
-              Nothing  -> traceWith tracer TraceLowLevelAccepted
-              Just msg -> traceWith tracer (TraceLowLevelRejected $ show msg))
+      NodeToClient.NodeToClientProtocols {
+        NodeToClient.localChainSyncProtocol =
+          InitiatorProtocolOnly $
+            MuxPeer
+              nullTracer
+              (localChainSyncCodec @blk cfg)
+              (chainSyncClientPeer NodeToClient.chainSyncClientNull)
+
+      , NodeToClient.localTxSubmissionProtocol =
+          InitiatorProtocolOnly $
+            MuxPeerRaw $ \channel -> do
+              traceWith tracer TraceLowLevelSubmitting
+              result <- runPeer
+                          nullTracer -- (contramap show tracer)
+                          localTxSubmissionCodec
+                          channel
+                          (LocalTxSub.localTxSubmissionClientPeer
+                             (txSubmissionClientSingle tx))
+              case result of
+                Nothing  -> traceWith tracer TraceLowLevelAccepted
+                Just msg -> traceWith tracer (TraceLowLevelRejected $ show msg)
+      }
 
 -- | A 'LocalTxSubmissionClient' that submits exactly one transaction, and then
 -- disconnects, returning the confirmation or rejection.

@@ -229,22 +229,24 @@ benchmarkConnectTxSubmit iocp trs cfg localAddr remoteAddr myTxSubClient = do
       NtN.NodeToNodeV_1
       (NtN.NodeToNodeVersionData { NtN.networkMagic = nodeNetworkMagic (Proxy @blk) cfg})
       (NtN.DictVersion NtN.nodeToNodeCodecCBORTerm) $ \_ ->
-      NtN.nodeToNodeProtocols
-          (InitiatorProtocolOnly $
-             MuxPeer
-               nullTracer
-               (pcChainSyncCodec myCodecs)
-               (chainSyncClientPeer chainSyncClientNull))
-          (InitiatorProtocolOnly $
-             MuxPeer
-               nullTracer
-               (pcBlockFetchCodec myCodecs)
-               (blockFetchClientPeer blockFetchClientNull))
-          (InitiatorProtocolOnly $
-              MuxPeer
-                (trSendRecvTxSubmission trs)
-                (pcTxSubmissionCodec myCodecs)
-                (txSubmissionClientPeer myTxSubClient))
+      NtN.nodeToNodeProtocols NtN.defaultMiniProtocolParameters $
+        NtN.NodeToNodeProtocols
+          { NtN.chainSyncProtocol = InitiatorProtocolOnly $
+                                      MuxPeer
+                                        nullTracer
+                                        (pcChainSyncCodec myCodecs)
+                                        (chainSyncClientPeer chainSyncClientNull)
+          , NtN.blockFetchProtocol = InitiatorProtocolOnly $
+                                       MuxPeer
+                                         nullTracer
+                                         (pcBlockFetchCodec myCodecs)
+                                         (blockFetchClientPeer blockFetchClientNull)
+          , NtN.txSubmissionProtocol = InitiatorProtocolOnly $
+                                         MuxPeer
+                                           (trSendRecvTxSubmission trs)
+                                           (pcTxSubmissionCodec myCodecs)
+                                           (txSubmissionClientPeer myTxSubClient)
+          }
 
 -- the null block fetch client
 blockFetchClientNull
