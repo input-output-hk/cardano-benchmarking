@@ -18,6 +18,9 @@ library
   exposed-modules:     Cardano.Benchmarking.RTView
                        Cardano.Benchmarking.RTView.Acceptor
                        Cardano.Benchmarking.RTView.CLI
+                       Cardano.Benchmarking.RTView.GUI.Body
+                       Cardano.Benchmarking.RTView.GUI.NodeStateElements
+                       Cardano.Benchmarking.RTView.NodeState
                        Cardano.Benchmarking.RTView.Server
 
   other-modules:       Paths_cardano_rt_view
@@ -28,13 +31,18 @@ library
                      , bytestring
                      , cardano-config
                      , cardano-prelude
+                     , containers
                      , contra-tracer
+                     , formatting
                      , iohk-monitoring
                      , lobemo-backend-trace-acceptor
+                     , network
                      , optparse-applicative
-                     , snap-core
-                     , snap-server
+                     , random
                      , text
+                     , time
+                     , threepenny-gui
+                     , websockets
 
   default-language:    Haskell2010
   default-extensions:  NoImplicitPrelude

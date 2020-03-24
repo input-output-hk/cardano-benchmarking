@@ -1,0 +1,69 @@
+﻿body {
+    font-size: 17px;
+}
+
+.main-container {
+    padding-top: 100px;
+}
+
+.main-container-inner {
+    margin-top: 25px;
+    margin-bottom: 25px;
+    margin-left: 6px;
+    margin-right: 6px;
+}
+
+.release-name {
+    font-weight: bold;
+}
+
+.iohk-logo {
+    max-width: 135px;
+}
+
+.cardano-name {
+    font-weight: bold;
+}
+
+.top-title {
+    padding-top: 10px;
+    padding-bottom: 10px;
+}
+
+.max-value-unit {
+    color: #666;
+}
+
+.release-name {
+}
+
+.commit-link {
+    color: blue;
+}
+
+.h-spacer {
+    padding-left: 10px;
+}
+
+.title-v-spacer {
+    padding-top: 15px;
+}
+
+.node-info-v-spacer {
+    padding-top: 15px;
+}
+
+.node-metrics-v-spacer {
+    padding-top: 15px;
+}
+
+.node-info-values {
+    font-weight: bold;
+}
+
+.node-name {
+}
+
+.node-port {
+    padding-left: 10px;
+}

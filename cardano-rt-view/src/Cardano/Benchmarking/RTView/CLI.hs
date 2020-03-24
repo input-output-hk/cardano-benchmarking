@@ -3,32 +3,61 @@ module Cardano.Benchmarking.RTView.CLI
     , parseRTViewParams
     ) where
 
-import           Cardano.Prelude
+import           Cardano.Prelude hiding ( option )
 import           Prelude
                    ( String )
 import           Options.Applicative
                    ( Parser
-                   , bashCompleter, completer, help
-                   , long, metavar, strOption
+                   , auto, bashCompleter, completer, help
+                   , long, metavar, option, strOption
                    )
+import           Network.Socket
+                   ( PortNumber )
 
--- | Type for all CLI parameters required for the service.
+-- | Type for CLI parameters required for the service.
 data RTViewParams =
-  RTViewParams FilePath
+  RTViewParams
+    FilePath
+    FilePath
+    PortNumber
 
 parseRTViewParams :: Parser RTViewParams
 parseRTViewParams =
   RTViewParams
     <$> parseFilePath
           "config"
+          "file"
           "Configuration file for real-time view service"
+    <*> parseFilePath
+          "static"
+          "directory"
+          "Directory with static content"
+    <*> parsePort
+          "port"
+          "The port number"
 
 -- Aux parsers
 
-parseFilePath :: String -> String -> Parser FilePath
-parseFilePath optname desc =
+parseFilePath
+  :: String
+  -> String
+  -> String
+  -> Parser FilePath
+parseFilePath optname completion desc =
   strOption
     $ long optname
         <> metavar "FILEPATH"
         <> help desc
-        <> completer (bashCompleter "file")
+        <> completer (bashCompleter completion)
+
+parsePort
+  :: String
+  -> String
+  -> Parser PortNumber
+parsePort optname desc =
+    option ((fromIntegral :: Int -> PortNumber) <$> auto) (
+          long optname
+       <> metavar "PORT"
+       <> help desc
+    )
+
