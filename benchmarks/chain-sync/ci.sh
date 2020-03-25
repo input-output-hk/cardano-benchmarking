@@ -13,6 +13,9 @@ set -euo pipefail
 
 BASEDIR="$(realpath $(dirname $0))"
 
+# >> cpu time limit in seconds
+TIME_LIMIT=$((60*60))
+
 CLUSTER="$1"
 
 [[ $CLUSTER == $MAINNET ]] \
@@ -45,21 +48,11 @@ echo "Using explorer at $EXPLORER_URL to retrieve last block height"
 LAST_BLOCK_HEIGHT=$(curl --silent $EXPLORER_URL/api/blocks/pages | jq -r '.[][1][0].cbeBlkHeight')
 echo "Last block height as reported by cardano-explorer is $LAST_BLOCK_HEIGHT"
 
-../launch_node &
-NODE_PID=$!
+RTS="+RTS -T -I0 -N2 -A16m -RTS"
+RTS=""
+timeout ${TIME_LIMIT} ../launch_node ${RTS} || true
 
-SYNCED_BLOCKS=0
-
-while [ $SYNCED_BLOCKS -lt $LAST_BLOCK_HEIGHT ]
-do
-  REMAINING_BLOCKS=$(($LAST_BLOCK_HEIGHT - $SYNCED_BLOCKS))
-  echo "$SYNCED_BLOCKS blocks synced, $REMAINING_BLOCKS to go."
-  sleep 5
-  SYNCED_BLOCKS=$(curl --silent 127.0.0.1:13789/metrics | grep cardano_node_ChainDB_metrics_blockNum_int  | cut -d ' ' -f 2)
-done
-
-kill $NODE_PID
-sleep 5
+sleep 1
 
 cd ..
 $BASEDIR/analyse-logs.sh $CLUSTER | tee benchmark-results.log
