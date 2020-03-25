@@ -136,7 +136,7 @@ parseFeePerTx :: String -> String -> Parser FeePerTx
 parseFeePerTx opt desc = FeePerTx <$> parseIntegral opt desc
 
 parseTPSRate :: String -> String -> Parser TPSRate
-parseTPSRate opt desc = TPSRate <$> parseIntegral opt desc
+parseTPSRate opt desc = TPSRate <$> parseFloat opt desc
 
 parseTxAdditionalSize :: String -> String -> Parser TxAdditionalSize
 parseTxAdditionalSize opt desc = TxAdditionalSize <$> parseIntegral opt desc
@@ -155,6 +155,10 @@ parseSigningKeysFiles opt desc = some $ SigningKeyFile <$> parseFilePath opt des
 parseIntegral :: Integral a => String -> String -> Parser a
 parseIntegral optname desc = option (fromInteger <$> auto)
   $ long optname <> metavar "INT" <> help desc
+
+parseFloat :: String -> String -> Parser Float
+parseFloat optname desc = option (auto)
+  $ long optname <> metavar "FLOAT" <> help desc
 
 parseUrl :: String -> String -> Parser String
 parseUrl optname desc =
