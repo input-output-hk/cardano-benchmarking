@@ -2,6 +2,8 @@
 , crossSystem ? null
 , config ? {}
 , sourcesOverride ? {}
+# override scripts with custom configuration
+, customConfig ? {}
 }:
 let
   sources = import ./sources.nix { inherit pkgs; }
@@ -35,6 +37,10 @@ let
           // { inherit overlays sources; };
 
         svcLib = import ./svclib.nix { inherit pkgs; };
+
+        cardanoNode = import sources.cardano-node {
+          inherit customConfig system crossSystem config sourcesOverride;
+        };
       })
       # And, of course, our haskell-nix-ified cabal project:
       (import ./pkgs.nix)
