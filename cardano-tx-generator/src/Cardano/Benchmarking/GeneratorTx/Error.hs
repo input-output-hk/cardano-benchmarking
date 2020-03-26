@@ -11,6 +11,8 @@ data TxGenError =
   -- ^ Error occurred while creating the target node address.
   | NeedMinimumThreeSigningKeyFiles ![FilePath]
   -- ^ Need at least 3 signing key files.
+  | TooSmallTPSRate !Float
+  -- ^ TPS is less than lower limit.
   | SecretKeyDeserialiseError !Text
   | SecretKeyReadError !Text
   deriving Show

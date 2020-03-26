@@ -114,7 +114,7 @@ newtype FeePerTx =
   deriving (Eq, Ord, Show)
 
 newtype TPSRate =
-  TPSRate Int
+  TPSRate Float
   deriving (Eq, Ord, Show)
 
 -- | This parameter specifies additional size (in bytes) of transaction.
@@ -168,12 +168,16 @@ genesisBenchmarkRunner loggingLayer
                        numOfInsPerTx
                        numOfOutsPerTx
                        txFee
-                       tpsRate
+                       tpsRate@(TPSRate tps)
                        txAdditionalSize
                        explorerAPIEndpoint
                        signingKeyFiles = do
   when (length signingKeyFiles < 3) $
     left $ NeedMinimumThreeSigningKeyFiles signingKeyFiles
+
+  -- Since currently slot is 20 sec, we want to check lower limit 1/20 (minimum one tx per block).
+  when (tps < 0.05) $
+    left $ TooSmallTPSRate tps
 
   let (benchTracer, connectTracer, submitTracer, lowLevelSubmitTracer) = createTracers loggingLayer
 
@@ -802,13 +806,16 @@ submitTxsToExplorer
   -> [CC.UTxO.ATxAux ByteString]
   -> TPSRate
   -> IO ()
-submitTxsToExplorer benchTracer initialRequest allTxs (TPSRate rate) =
+submitTxsToExplorer benchTracer initialRequest allTxs (TPSRate tps) =
   forM_ allTxs $ \txAux -> do
     postTx benchTracer initialRequest $ toCborTxAux txAux
     threadDelay delayBetweenSubmits
  where
-  delayBetweenSubmits = oneSecond `div` rate
-  oneSecond = 1000000 :: Int
+  -- Since tps cannot be less than 0.05, delayBetweenSubmits
+  -- will definitely be integer number after round.
+  delayBetweenSubmits :: Int
+  delayBetweenSubmits = round $ oneSecond / tps
+  oneSecond = 1000000 :: Float
 
 postTx
   :: Tracer IO (TraceBenchTxSubmit (Mempool.GenTxId ByronBlock))
@@ -981,8 +988,10 @@ createMoreFundCoins benchTracer
 minimalTPSRate :: TPSRate -> DiffTime
 minimalTPSRate (TPSRate tps) = picosecondsToDiffTime timeInPicoSecs
  where
-  timeInPicoSecs = picosecondsIn1Sec `div` fromIntegral tps
-  picosecondsIn1Sec = 1000000000000 :: Integer
+  -- Since tps cannot be less than 0.05, timeInPicoSecs
+  -- will definitely be integer number after round.
+  timeInPicoSecs = round $ picosecondsIn1Sec / tps
+  picosecondsIn1Sec = 1000000000000 :: Float
 
 txGenerator
   :: Tracer IO (TraceBenchTxSubmit (Mempool.GenTxId ByronBlock))
