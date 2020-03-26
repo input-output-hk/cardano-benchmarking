@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # >> cpu time limit in seconds
-CPU_TIME_LIMIT=$((1*60*60))
+TIME_LIMIT=$((60*60))
 
 BASEPATH=$(realpath $(dirname $0))
 
@@ -19,8 +19,6 @@ rm node-0*
 
 #set -euo pipefail
 
-ulimit -t $CPU_TIME_LIMIT
-
 date --iso-8601=seconds > STARTTIME
 
 if [[ $1 == 'stack' ]]; then
@@ -34,10 +32,8 @@ else
   NODE="${BASEPATH}/../../bin/cardano-node "
 fi
 
-exec ${NODE} \
+timeout ${TIME_LIMIT} ${NODE} \
   run \
-  --genesis-file ${BASEPATH}/configuration/mainnet-genesis.json \
-  --genesis-hash "5f20df933584822601f9e3f8c024eb5eb252fe8cefb24d1317dc3d432e940ebb" \
   --config ${BASEPATH}/configuration/log-configuration.yaml \
   --database-path ./db-mainnet \
   --socket-path /tmp/socket-bm-chain-sync \
@@ -47,6 +43,11 @@ exec ${NODE} \
    \
   $@
 
+#  --genesis-file ${BASEPATH}/configuration/mainnet-genesis.json \
+#  --genesis-hash "5f20df933584822601f9e3f8c024eb5eb252fe8cefb24d1317dc3d432e940ebb" \
 #  --topology ${BASEPATH}/configuration/topology-local.yaml \
+# "+RTS -T -I0 -N2 -A16m -RTS"
 
-../analyse-logs.sh
+cd ..
+${BASEPATH}/analyse-logs.sh
+

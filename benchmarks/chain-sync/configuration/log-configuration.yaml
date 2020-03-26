@@ -85,7 +85,7 @@ options:
 
 NodeId:
 Protocol: RealPBFT
-GenesisFile: ./configuration/mainnet-genesis.json
+GenesisFile: ../configuration/mainnet-genesis.json
 NumCoreNodes: 1
 RequiresNetworkMagic: RequiresNoMagic
 PBftSignatureThreshold:
