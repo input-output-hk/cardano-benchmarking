@@ -1,4 +1,4 @@
-resolver: https://raw.githubusercontent.com/input-output-hk/cardano-prelude/fe76ec64f6b45259cc407a6d840dad79ee6063b6/snapshot.yaml
+resolver: https://raw.githubusercontent.com/input-output-hk/cardano-prelude/3ac22a2fda11ca7131a011a9ea48fcbfdc26d6b3/snapshot.yaml
 compiler: ghc-8.6.5
 
 packages:
@@ -54,13 +54,13 @@ extra-deps:
   - word-wrap-0.4.1
 
   - git: https://github.com/input-output-hk/cardano-prelude
-    commit: fe76ec64f6b45259cc407a6d840dad79ee6063b6
+    commit: 3ac22a2fda11ca7131a011a9ea48fcbfdc26d6b3
     subdirs:
       - .
       - test
 
   - git: https://github.com/input-output-hk/cardano-base
-    commit: f869bee9b08ba1044b1476737c9d65083e1c6c7f
+    commit: 1222078176fe74d5ce17f2a8343c6588233a49a3
     subdirs:
       - binary
       - binary/test
@@ -76,13 +76,13 @@ extra-deps:
       - cardano-shell
 
   - git: https://github.com/input-output-hk/cardano-ledger
-    commit: 2f6a649662aa93fc8427dcf6706ee63167f4205d
+    commit: 22e89a5f7cc2b02192b1eb420d74530eb2d6cb82
     subdirs:
       - cardano-ledger
       - crypto
 
   - git: https://github.com/input-output-hk/cardano-ledger-specs
-    commit: afacc7969445e4db5427936489f5a49a8a3a8f99
+    commit: 28b4381461252b523473972c85b003301a5deadc
     subdirs:
       # small-steps
       - byron/semantics/executable-spec
@@ -90,13 +90,15 @@ extra-deps:
       - byron/ledger/executable-spec
       # cs-blockchain
       - byron/chain/executable-spec
+      - shelley/chain-and-ledger/dependencies/non-integer
+      - shelley/chain-and-ledger/executable-spec
 
     # Needed for `cardano-ledger-specs`
   - git: https://github.com/input-output-hk/goblins
     commit: 26d35ad52fe9ade3391532dbfeb2f416f07650bc
 
   - git: https://github.com/input-output-hk/ouroboros-network
-    commit: a85bd4751ca5c81c0507482848358980814e9ca3
+    commit: 690e825b13560e64d970474214891d34e65a62a5
     subdirs:
         - io-sim
         - io-sim-classes
@@ -104,8 +106,9 @@ extra-deps:
         - ouroboros-network
         - ouroboros-consensus
         - ouroboros-consensus-byron
-        - ouroboros-consensus/ouroboros-consensus-mock
         - ouroboros-consensus-cardano
+        - ouroboros-consensus/ouroboros-consensus-mock
+        - ouroboros-consensus-shelley
         - typed-protocols
         - typed-protocols-examples
         - ouroboros-network-testing
@@ -136,6 +139,7 @@ extra-deps:
         - cborg
 
 nix:
+#  shell-file: nix/stack-shell.nix
   pure: true
   packages: [ zlib.dev, zlib.out
             , openssl.dev, openssl.out
