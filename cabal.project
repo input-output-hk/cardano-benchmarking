@@ -261,6 +261,13 @@ source-repository-package
   location: https://github.com/input-output-hk/ouroboros-network
   tag: 690e825b13560e64d970474214891d34e65a62a5
   --sha256: 0bn01flk8vypjd2mjrflx3mk0gxh7a1xxd393b4kjyx3cdi7yqsk
+  subdir: ouroboros-consensus-shelley
+
+source-repository-package
+  type: git
+  location: https://github.com/input-output-hk/ouroboros-network
+  tag: 690e825b13560e64d970474214891d34e65a62a5
+  --sha256: 0bn01flk8vypjd2mjrflx3mk0gxh7a1xxd393b4kjyx3cdi7yqsk
   subdir: typed-protocols
 
 source-repository-package
@@ -321,6 +328,9 @@ constraints:
 allow-newer: katip:Win32
 
 package ouroboros-consensus-byron
+  tests: False
+
+package ouroboros-consensus-shelley
   tests: False
 
 package ouroboros-consensus-mock
