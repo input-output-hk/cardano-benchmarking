@@ -8,19 +8,13 @@ module Cardano.Benchmarking.RTView
 import           Cardano.Prelude
 
 import           Control.Concurrent.Async
-                   ( async, waitBoth )
+                   ( async, waitAnyCancel )
 import           Control.Concurrent.MVar
                    ( MVar
                    , newMVar
                    )
-import           Data.Time.Clock
-                   ( getCurrentTime )
 import qualified System.Exit as Ex
 
-import           Cardano.BM.Backend.LogBuffer
-                   ( LogBuffer )
-import           Cardano.BM.Backend.Switchboard
-                   ( realize )
 import           Cardano.BM.Configuration
                    ( Configuration
                    , getAcceptAt, setup
@@ -34,14 +28,15 @@ import           Cardano.BM.Tracing
 import           Cardano.Benchmarking.RTView.CLI
                    ( RTViewParams (..) )
 import           Cardano.Benchmarking.RTView.Acceptor
-                   ( {-launchMetricsAcceptor,-} launchFakeAcceptor )
-import           Cardano.Benchmarking.RTView.NodeState
-                   ( NodeState (..)
-                   , defaultNodeState
+                   ( launchMetricsAcceptor )
+import           Cardano.Benchmarking.RTView.NodeState.Types
+                   ( NodesState
+                   , defaultNodesState
                    )
+import           Cardano.Benchmarking.RTView.NodeState.Updater
+                   ( launchNodeStateUpdater )
 import           Cardano.Benchmarking.RTView.Server
                    ( launchServer )
-
 
 -- | Run the service.
 runCardanoRTView :: RTViewParams -> IO ()
@@ -49,27 +44,24 @@ runCardanoRTView (RTViewParams pathToConfig pathToStatic port) = do
   config <- readConfig pathToConfig
   checkIfTraceAcceptorIsDefined config pathToConfig
 
-  (tr :: Trace IO Text, _switchBoard) <- Setup.setupTrace_ config "cardano-rt-view"
-  let _accTr = appendName "acceptor" tr
+  (tr :: Trace IO Text, switchBoard) <- Setup.setupTrace_ config "cardano-rt-view"
+  let accTr = appendName "acceptor" tr
 
-  -- All |LogObject|s received by |TraceAcceptor|s will be redirected to |LogBuffer|.
-  logBufferBE :: LogBuffer Text <- realize config
-
-  now <- getCurrentTime
-  -- This MVar contains node state (info, metrics).
-  nodeStateMVar :: MVar NodeState <- newMVar (defaultNodeState now)
+  initStateOfNodes <- defaultNodesState config
+  -- This MVar contains state (info, metrics) for all nodes we receive metrics from.
+  nodesStateMVar :: MVar NodesState <- newMVar initStateOfNodes
 
   -- Launch 3 threads:
-  --   1. acceptor plugin (it runs |TraceAcceptor| plugin),
-  --   2. node state updater (it get metrics from |LogBuffer| and store them in nodeStateMVar),
-  --   3. server (it serves requests from user's browser and shows these metrics in real time).
+  --   1. acceptor plugin (it launches |TraceAcceptor| plugin),
+  --   2. node state updater (it gets metrics from |LogBuffer| and updates NodeState),
+  --   3. server (it serves requests from user's browser and shows nodes' metrics in the real time).
+  acceptorThr <- async $ launchMetricsAcceptor config accTr switchBoard
+  updaterThr  <- async $ launchNodeStateUpdater switchBoard nodesStateMVar
+  serverThr   <- async $ launchServer nodesStateMVar pathToStatic port
 
-  -- acceptorThr <- async $ launchMetricsAcceptor config accTr be switchBoard
-  acceptorThr <- async $ launchFakeAcceptor logBufferBE nodeStateMVar
-  serverThr <- async $ launchServer nodeStateMVar pathToStatic port
+  void $ waitAnyCancel [acceptorThr, updaterThr, serverThr]
 
-  void $ waitBoth acceptorThr serverThr
-
+-- | Reads the service' configuration file (path is passed via '--config' CLI option).
 readConfig :: FilePath -> IO Configuration
 readConfig pathToConfig = setup pathToConfig `catch` exceptHandler
  where

@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module Cardano.Benchmarking.RTView.GUI.Body
+module Cardano.Benchmarking.RTView.GUI.Markup
     ( mkPageBody
     ) where
 
@@ -22,7 +22,7 @@ import           Graphics.UI.Threepenny.Core
                    , element, set, string
                    )
 
-import           Cardano.Benchmarking.RTView.GUI.NodeStateElements
+import           Cardano.Benchmarking.RTView.GUI.Elements
                    ( ElementName (..)
                    , NodeStateElements
                    )
@@ -37,39 +37,77 @@ mkPageBody window = do
   -- Create |Element|s containing node state (info, metrics).
   -- These elements will be part of the complete page,
   -- later they will be updated by acceptor thread.
-  elUptime            <- string "00:00:00"
-  elEpoch             <- string "0"
-  elSlot              <- string "0"
-  elBlocksNumber      <- string "0"
-  elChainDensity      <- string "0"
-  elTxsProcessed      <- string "0"
-  elPort              <- string "0"
-  elPeersNumber       <- string "0"
-  elMempoolKBMax      <- string "0"
-  elMempoolKBPercent  <- string "10"
-  elMempoolTxsMax     <- string "0"
-  elMempoolTxsPercent <- string "10"
-  elMemoryMax         <- string "0"
-  elMemoryPercent     <- string "10"
-  elCPUMax            <- string "0"
-  elCPUPercent        <- string "10"
-  elDiskReadMax       <- string "0"
-  elDiskReadPercent   <- string "10"
-  elDiskWriteMax      <- string "0"
-  elDiskWritePercent  <- string "10"
-  elNetworkInMax      <- string "0"
-  elNetworkInPercent  <- string "10"
-  elNetworkOutMax     <- string "0"
-  elNetworkOutPercent <- string "10"
+  elUptime             <- string "00:00:00"
+  elEpoch              <- string "0"
+  elSlot               <- string "0"
+  elBlocksNumber       <- string "0"
+  elChainDensity       <- string "0"
+  elTxsProcessed       <- string "0"
+  elTraceAcceptorHost  <- string "0"
+  elTraceAcceptorPort  <- string "0"
+  elMempoolKBMax       <- string "0"
+  elMempoolKB          <- string "0"
+  elMempoolKBPercent   <- string "0"
+  elMempoolTxsCapacity <- string "0"
+  elMempoolTxsNumber   <- string "0"
+  elMempoolTxsPercent  <- string "0"
+  elMemoryMax          <- string "0"
+  elMemoryPercent      <- string "0"
+  elCPUMax             <- string "0"
+  elCPUPercent         <- string "0"
+  elDiskReadMax        <- string "0"
+  elDiskReadPercent    <- string "0"
+  elDiskWriteMax       <- string "0"
+  elDiskWritePercent   <- string "0"
+  elNetworkInMax       <- string "0"
+  elNetworkInPercent   <- string "0"
+  elNetworkOutMax      <- string "0"
+  elNetworkOutPercent  <- string "0"
 
-  elMempoolKBProgress  <- UI.div #. "w3-teal" #+ [UI.span #. "h-spacer" #+ [], element elMempoolKBPercent]
-  elMempoolTxsProgress <- UI.div #. "w3-teal" #+ [UI.span #. "h-spacer" #+ [], element elMempoolTxsPercent]
-  elMemoryProgress     <- UI.div #. "w3-teal" #+ [UI.span #. "h-spacer" #+ [], element elMemoryPercent,     string "MB"]
-  elCPUProgress        <- UI.div #. "w3-teal" #+ [UI.span #. "h-spacer" #+ [], element elCPUPercent,        string "%"]
-  elDiskReadProgress   <- UI.div #. "w3-teal" #+ [UI.span #. "h-spacer" #+ [], element elDiskReadPercent,   string "KB/s"]
-  elDiskWriteProgress  <- UI.div #. "w3-teal" #+ [UI.span #. "h-spacer" #+ [], element elDiskWritePercent,  string "KB/s"]
-  elNetworkInProgress  <- UI.div #. "w3-teal" #+ [UI.span #. "h-spacer" #+ [], element elNetworkInPercent,  string "KB/s"]
-  elNetworkOutProgress <- UI.div #. "w3-teal" #+ [UI.span #. "h-spacer" #+ [], element elNetworkOutPercent, string "KB/s"]
+  elMempoolKBProgress  <- UI.div #. "w3-teal" #+
+                            [ UI.span #. "h-spacer" #+ []
+                            , element elMempoolKB
+                            , UI.span #. "percents-slash-h-spacer" #+ [string "/"]
+                            , element elMempoolKBPercent
+                            , string "%"
+                            ]
+  elMempoolTxsProgress <- UI.div #. "w3-teal" #+
+                            [ UI.span #. "h-spacer" #+ []
+                            , element elMempoolTxsNumber
+                            , UI.span #. "percents-slash-h-spacer" #+ [string "/"]
+                            , element elMempoolTxsPercent
+                            , string "%"
+                            ]
+  elMemoryProgress     <- UI.div #. "w3-teal" #+
+                            [ UI.span #. "h-spacer" #+ []
+                            , element elMemoryPercent
+                            , UI.span #. "bar-value-unit" #+ [string "MB"]
+                            ]
+  elCPUProgress        <- UI.div #. "w3-teal" #+
+                            [ UI.span #. "h-spacer" #+ []
+                            , element elCPUPercent
+                            , string "%"
+                            ]
+  elDiskReadProgress   <- UI.div #. "w3-teal" #+
+                            [ UI.span #. "h-spacer" #+ []
+                            , element elDiskReadPercent
+                            , UI.span #. "bar-value-unit" #+ [string "KB/s"]
+                            ]
+  elDiskWriteProgress  <- UI.div #. "w3-teal" #+
+                            [ UI.span #. "h-spacer" #+ []
+                            , element elDiskWritePercent
+                            , UI.span #. "bar-value-unit" #+ [string "KB/s"]
+                            ]
+  elNetworkInProgress  <- UI.div #. "w3-teal" #+
+                            [ UI.span #. "h-spacer" #+ []
+                            , element elNetworkInPercent
+                            , UI.span #. "bar-value-unit" #+ [string "KB/s"]
+                            ]
+  elNetworkOutProgress <- UI.div #. "w3-teal" #+
+                            [ UI.span #. "h-spacer" #+ []
+                            , element elNetworkOutPercent
+                            , UI.span #. "bar-value-unit" #+ [string "KB/s"]
+                            ]
 
   body <- UI.getBody window #+
     [ topNavigation
@@ -77,19 +115,19 @@ mkPageBody window = do
         [ UI.div #. "w3-row main-container-inner" #+
             [ UI.div #. "w3-twothird w3-theme" #+
                 [ twoElementsInRow
-                    (progressBar "Mempool (KB):"  "" elMempoolKBMax  elMempoolKBProgress)
-                    (progressBar "Mempool (TXs):" "" elMempoolTxsMax elMempoolTxsProgress)
+                    (progressBar "Mempool (KB):"  "" elMempoolKBMax elMempoolKBProgress)
+                    (progressBar "Mempool (TXs):" "" elMempoolTxsCapacity elMempoolTxsProgress)
                 , vSpacer "node-metrics-v-spacer"
                 , progressBar "Memory usage:" " MB" elMemoryMax elMemoryProgress
                 , vSpacer "node-metrics-v-spacer"
                 , progressBar "CPU usage:" "%" elCPUMax elCPUProgress
                 , vSpacer "node-metrics-v-spacer"
                 , twoElementsInRow
-                    (progressBar "Disk (RD):" " KB/s" elDiskReadMax  elDiskReadProgress)
+                    (progressBar "Disk (RD):" " KB/s" elDiskReadMax elDiskReadProgress)
                     (progressBar "Disk (WR):" " KB/s" elDiskWriteMax elDiskWriteProgress)
                 , vSpacer "node-metrics-v-spacer"
                 , twoElementsInRow
-                    (progressBar "Network (IN):"  " KB/s" elNetworkInMax  elNetworkInProgress)
+                    (progressBar "Network (IN):"  " KB/s" elNetworkInMax elNetworkInProgress)
                     (progressBar "Network (OUT):" " KB/s" elNetworkOutMax elNetworkOutProgress)
                 ]
             , UI.div #. "w3-third w3-container w3-theme" #+
@@ -106,8 +144,8 @@ mkPageBody window = do
                             , vSpacer "node-info-v-spacer"
                             , UI.div #. "" #+ [string "TXs processed:"]
                             , vSpacer "node-info-v-spacer"
-                            , UI.div #. "" #+ [string "port:"]
-                            , UI.div #. "" #+ [string "peers:"]
+                            , UI.div #. "" #+ [string "trace acceptor host:"]
+                            , UI.div #. "" #+ [string "trace acceptor port:"]
                             ]
                         ]
                     , UI.div #. "w3-third w3-container w3-theme" #+
@@ -127,12 +165,15 @@ mkPageBody window = do
                                 , element elSlot
                                 ]
                             , UI.div #. "" #+ [element elBlocksNumber]
-                            , UI.div #. "" #+ [element elChainDensity]
+                            , UI.div #. "" #+
+                                [ element elChainDensity
+                                , UI.span #. "density-percent" #+ [string "%"]
+                                ]
                             , vSpacer "node-info-v-spacer"
                             , UI.div #. "" #+ [element elTxsProcessed]
                             , vSpacer "node-info-v-spacer"
-                            , UI.div #. "" #+ [element elPort]
-                            , UI.div #. "" #+ [element elPeersNumber]
+                            , UI.div #. "" #+ [element elTraceAcceptorHost]
+                            , UI.div #. "" #+ [element elTraceAcceptorPort]
                             ]
                         ]
                     ]
@@ -141,7 +182,7 @@ mkPageBody window = do
         ]
     ]
 
-  -- Store these elements, they will be updated by another thread later.
+  -- Return these elements, they will be updated by another thread later.
   let nodeStateElems =
         Map.fromList
           [ (ElUptime,             elUptime)
@@ -150,11 +191,13 @@ mkPageBody window = do
           , (ElBlocksNumber,       elBlocksNumber)
           , (ElChainDensity,       elChainDensity)
           , (ElTxsProcessed,       elTxsProcessed)
-          , (ElPort,               elPort)
-          , (ElPeersNumber,        elPeersNumber)
+          , (ElTraceAcceptorHost,  elTraceAcceptorHost)
+          , (ElTraceAcceptorPort,  elTraceAcceptorPort)
           , (ElMempoolKBMax,       elMempoolKBMax)
+          , (ElMempoolKB,          elMempoolKB)
           , (ElMempoolKBPercent,   elMempoolKBPercent)
-          , (ElMempoolTxsMax,      elMempoolTxsMax)
+          , (ElMempoolTxsCapacity, elMempoolTxsCapacity)
+          , (ElMempoolTxsNumber,   elMempoolTxsNumber)
           , (ElMempoolTxsPercent,  elMempoolTxsPercent)
           , (ElMemoryMax,          elMemoryMax)
           , (ElMemoryPercent,      elMemoryPercent)
@@ -184,15 +227,15 @@ mainContainer :: [UI Element] -> UI Element
 mainContainer elements =
   UI.div #. "w3-row main-container" #+
     [ horizontalSpacer
-    , UI.div #. "w3-half w3-container w3-theme w3-border" #+ elements
+    , UI.div #. "w3-col w3-container w3-border" # set UI.style [("width", "60%")] #+ elements
     , horizontalSpacer
     ]
  where
-  horizontalSpacer = UI.div #. "w3-quarter w3-container" #+ [string " "]
+  horizontalSpacer = UI.div #. "w3-col w3-container" # set UI.style [("width", "20%")] #+ [string " "]
 
 topNavigation :: UI Element
 topNavigation =
-  UI.div #. "w3-bar w3-large w3-indigo" #+
+  UI.div #. "w3-bar w3-xlarge w3-indigo" #+
     [ UI.anchor #. "w3-bar-item" # set UI.href "https://iohk.io/" #+
         [ UI.img #. "iohk-logo" # set UI.src "/static/images/iohk-logo.png" #+ []
         ]
@@ -227,10 +270,10 @@ progressBar label maxValueUnit maxValue bar = do
         [ UI.div #. "w3-half w3-theme" #+ [string label]
         , UI.div #. "w3-half w3-theme w3-right-align" #+
             [ element maxValue
-            , UI.span #. "max-value-unit" #+ [string maxValueUnit]
+            , UI.span #. "value-unit" #+ [string maxValueUnit]
             ]
         ]
-    , UI.div #. "w3-border w3-light-green" #+ [element bar]
+    , UI.div #. "w3-light-green" #+ [element bar]
     ]
 
 vSpacer :: String -> UI Element

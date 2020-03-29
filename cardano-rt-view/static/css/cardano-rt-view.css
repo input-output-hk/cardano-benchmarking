@@ -1,5 +1,6 @@
 ﻿body {
-    font-size: 17px;
+    font-size: 19px;
+    background-color: whitesmoke;
 }
 
 .main-container {
@@ -8,7 +9,7 @@
 
 .main-container-inner {
     margin-top: 25px;
-    margin-bottom: 25px;
+    margin-bottom: 35px;
     margin-left: 6px;
     margin-right: 6px;
 }
@@ -30,19 +31,41 @@
     padding-bottom: 10px;
 }
 
-.max-value-unit {
+.density-percent {
+    font-weight: normal;
+}
+
+.value-unit {
     color: #666;
+}
+
+.bar-value-unit {
+    color: whitesmoke;
+    padding-left: 5px;
 }
 
 .release-name {
 }
 
+a:link:hover {
+    color: indigo;
+}
+
+a:visited:hover {
+    color: indigo;
+}
+
 .commit-link {
-    color: blue;
+    color: indigo;
 }
 
 .h-spacer {
     padding-left: 10px;
+}
+
+.percents-slash-h-spacer {
+    padding-left: 9px;
+    padding-right: 9px;
 }
 
 .title-v-spacer {
@@ -50,11 +73,11 @@
 }
 
 .node-info-v-spacer {
-    padding-top: 15px;
+    padding-top: 18px;
 }
 
 .node-metrics-v-spacer {
-    padding-top: 15px;
+    padding-top: 18px;
 }
 
 .node-info-values {

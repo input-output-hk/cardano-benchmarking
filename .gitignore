@@ -13,6 +13,7 @@ stack.yaml.lock
 .dir-locals.el
 
 tags
+logs/
 
 latest-genesis
 

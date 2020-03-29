@@ -16,11 +16,17 @@ library
   hs-source-dirs:      src
 
   exposed-modules:     Cardano.Benchmarking.RTView
-                       Cardano.Benchmarking.RTView.Acceptor
                        Cardano.Benchmarking.RTView.CLI
-                       Cardano.Benchmarking.RTView.GUI.Body
-                       Cardano.Benchmarking.RTView.GUI.NodeStateElements
-                       Cardano.Benchmarking.RTView.NodeState
+
+                       Cardano.Benchmarking.RTView.Acceptor
+
+                       Cardano.Benchmarking.RTView.GUI.Elements
+                       Cardano.Benchmarking.RTView.GUI.Markup
+                       Cardano.Benchmarking.RTView.GUI.Updater
+
+                       Cardano.Benchmarking.RTView.NodeState.Types
+                       Cardano.Benchmarking.RTView.NodeState.Updater
+
                        Cardano.Benchmarking.RTView.Server
 
   other-modules:       Paths_cardano_rt_view
@@ -42,7 +48,6 @@ library
                      , text
                      , time
                      , threepenny-gui
-                     , websockets
 
   default-language:    Haskell2010
   default-extensions:  NoImplicitPrelude
