@@ -40,29 +40,30 @@ data NodeInfo = NodeInfo
   , niBlocksNumber      :: !Int
   , niChainDensity      :: !Double
   , niTxsProcessed      :: !Int
+  , niPeersNumber       :: !Int
   , niTraceAcceptorHost :: !String
   , niTraceAcceptorPort :: !Int
   }
 
 data NodeMetrics = NodeMetrics
-  { nmMempoolKBMax       :: !Double
-  , nmMempoolKB          :: !Double
-  , nmMempoolKBPercent   :: !Double
-  , nmMempoolTxsCapacity :: !Int
-  , nmMempoolTxsNumber   :: !Int
-  , nmMempoolTxsPercent  :: !Double
-  , nmMemoryMax          :: !Double
-  , nmMemoryPercent      :: !Double
-  , nmCPUMax             :: !Double
-  , nmCPUPercent         :: !Double
-  , nmDiskReadMax        :: !Double
-  , nmDiskReadPercent    :: !Double
-  , nmDiskWriteMax       :: !Double
-  , nmDiskWritePercent   :: !Double
-  , nmNetworkInMax       :: !Double
-  , nmNetworkInPercent   :: !Double
-  , nmNetworkOutMax      :: !Double
-  , nmNetworkOutPercent  :: !Double
+  { nmMempoolTxsNumber     :: !Word64
+  , nmMempoolTxsPercent    :: !Double
+  , nmMempoolBytes         :: !Word64
+  , nmMempoolBytesPercent  :: !Double
+  , nmMempoolCapacity      :: !Word64
+  , nmMempoolCapacityBytes :: !Word64
+  , nmMemory               :: !Double
+  , nmMemoryMax            :: !Double
+  , nmCPUMax               :: !Double
+  , nmCPUPercent           :: !Double
+  , nmDiskReadMax          :: !Double
+  , nmDiskReadPercent      :: !Double
+  , nmDiskWriteMax         :: !Double
+  , nmDiskWritePercent     :: !Double
+  , nmNetworkInMax         :: !Double
+  , nmNetworkInPercent     :: !Double
+  , nmNetworkOutMax        :: !Double
+  , nmNetworkOutPercent    :: !Double
   }
 
 defaultNodesState
@@ -108,28 +109,31 @@ defaultNodeInfo now host port = NodeInfo
   , niBlocksNumber      = 0
   , niChainDensity      = 0.0
   , niTxsProcessed      = 0
+  , niPeersNumber       = 0
   , niTraceAcceptorHost = host
   , niTraceAcceptorPort = read port :: Int
   }
 
 defaultNodeMetrics :: NodeMetrics
 defaultNodeMetrics = NodeMetrics
-  { nmMempoolKBMax       = 0.0
-  , nmMempoolKB          = 0.0
-  , nmMempoolKBPercent   = 0.0
-  , nmMempoolTxsCapacity = 0
-  , nmMempoolTxsNumber   = 0
-  , nmMempoolTxsPercent  = 0.0
-  , nmMemoryMax          = 0.0
-  , nmMemoryPercent      = 0.0
-  , nmCPUMax             = 0.0
-  , nmCPUPercent         = 0.0
-  , nmDiskReadMax        = 0.0
-  , nmDiskReadPercent    = 0.0
-  , nmDiskWriteMax       = 0.0
-  , nmDiskWritePercent   = 0.0
-  , nmNetworkInMax       = 0.0
-  , nmNetworkInPercent   = 0.0
-  , nmNetworkOutMax      = 0.0
-  , nmNetworkOutPercent  = 0.0
+  { nmMempoolTxsNumber     = 0
+  , nmMempoolTxsPercent    = 0.0
+  , nmMempoolBytes         = 0
+  , nmMempoolBytesPercent  = 0.0
+  , nmMempoolCapacity      = 200
+  , nmMempoolCapacityBytes = 200 * maxBytesPerTx
+  , nmMemory               = 0.0
+  , nmMemoryMax            = 0.0
+  , nmCPUMax               = 0.0
+  , nmCPUPercent           = 0.0
+  , nmDiskReadMax          = 0.0
+  , nmDiskReadPercent      = 0.0
+  , nmDiskWriteMax         = 0.0
+  , nmDiskWritePercent     = 0.0
+  , nmNetworkInMax         = 0.0
+  , nmNetworkInPercent     = 0.0
+  , nmNetworkOutMax        = 0.0
+  , nmNetworkOutPercent    = 0.0
   }
+ where
+  maxBytesPerTx = 4096 :: Word64
