@@ -21,7 +21,9 @@ import           Cardano.BM.Configuration
                    )
 import qualified Cardano.BM.Setup as Setup
 import           Cardano.BM.Trace
-                   ( Trace )
+                   ( Trace
+                   , logNotice
+                   )
 import           Cardano.BM.Tracing
                    ( appendName )
 
@@ -47,6 +49,8 @@ runCardanoRTView (RTViewParams pathToConfig pathToStatic port) = do
   (tr :: Trace IO Text, switchBoard) <- Setup.setupTrace_ config "cardano-rt-view"
   let accTr = appendName "acceptor" tr
 
+  logNotice tr "Starting service; hit CTRL-C to terminate..."
+
   initStateOfNodes <- defaultNodesState config
   -- This MVar contains state (info, metrics) for all nodes we receive metrics from.
   nodesStateMVar :: MVar NodesState <- newMVar initStateOfNodes
@@ -56,7 +60,7 @@ runCardanoRTView (RTViewParams pathToConfig pathToStatic port) = do
   --   2. node state updater (it gets metrics from |LogBuffer| and updates NodeState),
   --   3. server (it serves requests from user's browser and shows nodes' metrics in the real time).
   acceptorThr <- async $ launchMetricsAcceptor config accTr switchBoard
-  updaterThr  <- async $ launchNodeStateUpdater switchBoard nodesStateMVar
+  updaterThr  <- async $ launchNodeStateUpdater tr switchBoard nodesStateMVar
   serverThr   <- async $ launchServer nodesStateMVar pathToStatic port
 
   void $ waitAnyCancel [acceptorThr, updaterThr, serverThr]

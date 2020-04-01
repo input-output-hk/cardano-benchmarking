@@ -27,16 +27,17 @@ data ElementName
   | ElBlocksNumber
   | ElChainDensity
   | ElTxsProcessed
+  | ElPeersNumber
   | ElTraceAcceptorHost
   | ElTraceAcceptorPort
-  | ElMempoolKBMax
-  | ElMempoolKB
-  | ElMempoolKBPercent
-  | ElMempoolTxsCapacity
   | ElMempoolTxsNumber
   | ElMempoolTxsPercent
+  | ElMempoolBytes
+  | ElMempoolBytesPercent
+  | ElMempoolCapacity
+  | ElMempoolCapacityBytes
+  | ElMemory
   | ElMemoryMax
-  | ElMemoryPercent
   | ElCPUMax
   | ElCPUPercent
   | ElDiskReadMax
@@ -47,7 +48,7 @@ data ElementName
   | ElNetworkInPercent
   | ElNetworkOutMax
   | ElNetworkOutPercent
-  | ElMempoolKBProgress
+  | ElMempoolBytesProgress
   | ElMempoolTxsProgress
   | ElMemoryProgress
   | ElCPUProgress
@@ -58,6 +59,8 @@ data ElementName
   deriving (Eq, Ord)
 
 data ElementValue
-  = ElementInt    Int
-  | ElementDouble Double
-  | ElementString String
+  = ElementInt     Int
+  | ElementInteger Integer
+  | ElementWord64  Word64
+  | ElementDouble  Double
+  | ElementString  String

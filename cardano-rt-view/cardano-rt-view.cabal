@@ -44,7 +44,6 @@ library
                      , lobemo-backend-trace-acceptor
                      , network
                      , optparse-applicative
-                     , random
                      , text
                      , time
                      , threepenny-gui
