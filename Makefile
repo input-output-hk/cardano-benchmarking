@@ -1,3 +1,4 @@
+# choose the build system:
 MODE ?= stack
 
 all: help
