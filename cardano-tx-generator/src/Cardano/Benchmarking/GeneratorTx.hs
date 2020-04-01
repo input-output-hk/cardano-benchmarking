@@ -438,7 +438,7 @@ prepareInitialFunds benchTracer
       genesisTxGeneral = normalByronTxToGenTx genesisTx
 
   case explorerAPIEndpoint of
-    Nothing -> do
+    Nothing ->
       -- There's no Explorer's API endpoint specified, submit genesis
       -- transaction to the target nodes via 'ouroboros-network'.
       submitTx iocp socketFp pInfoConfig genesisTxGeneral llTracer
