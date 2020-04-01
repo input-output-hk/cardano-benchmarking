@@ -1,0 +1,11 @@
+steps:
+  - label: 'Chain-sync benchmark Mainnet'
+    command:
+      - nix-shell -A devops --run "niv update cardano-node"
+      - ./benchmarks/chain-sync/ci-full-sync.sh mainnet
+    timeout_in_minutes: 300
+    artifact_paths:
+      - "benchmark-results.log"
+    agents:
+      system: x86_64-linux
+      queue: benchmark
