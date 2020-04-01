@@ -349,3 +349,15 @@ package ouroboros-consensus-shelley
 
 package ouroboros-consensus-mock
   tests: False
+
+package cardano-node
+  tests: False
+
+package cardano-config
+  tests: False
+
+package cardano-db
+  tests: False
+
+package cardano-db-sync
+  tests: False
