@@ -38,16 +38,24 @@ data ElementName
   | ElMempoolCapacityBytes
   | ElMemory
   | ElMemoryMax
-  | ElCPUMax
+  | ElMemoryMaxTotal
+  | ElMemoryPercent
   | ElCPUPercent
-  | ElDiskReadMax
-  | ElDiskReadPercent
-  | ElDiskWriteMax
-  | ElDiskWritePercent
-  | ElNetworkInMax
-  | ElNetworkInPercent
-  | ElNetworkOutMax
-  | ElNetworkOutPercent
+  | ElCPULast
+  | ElCPUNs
+  | ElDiskUsageR
+  | ElDiskUsageRMax
+  | ElDiskUsageRMaxTotal
+  | ElDiskUsageRPercent
+  | ElDiskUsageW
+  | ElDiskUsageWMax
+  | ElDiskUsageWMaxTotal
+  | ElDiskUsageWPercent
+  | ElNetworkUsageIn
+  | ElNetworkUsageInMaxTotal
+  | ElNetworkUsageOut
+  | ElNetworkUsageOutMaxTotal
+  -- Progress bars.
   | ElMempoolBytesProgress
   | ElMempoolTxsProgress
   | ElMemoryProgress
