@@ -3,7 +3,7 @@ steps:
     command:
       - nix-shell -A devops --run "niv update cardano-node"
       - ./benchmarks/chain-sync/ci-full-sync.sh mainnet
-      - nix-shell -p niv --run "niv show cardano-node"
+      - nix-shell -A devops --run "niv show cardano-node | tee -a benchmark-results.log"
     timeout_in_minutes: 300
     artifact_paths:
       - "benchmark-results.log"
