@@ -21,7 +21,9 @@ import           Cardano.BM.Backend.Switchboard
 import           Cardano.BM.Data.Aggregated
                    ( Measurable (..) )
 import           Cardano.BM.Data.LogItem
-                   ( LOContent (..), LogObject (..) )
+                   ( LOContent (..), LOMeta (..), LogObject (..)
+                   , utc2ns
+                   )
 import           Cardano.BM.Trace
                    ( Trace
                    , logDebug
@@ -57,7 +59,7 @@ updateNodesState
   -> Text
   -> LogObject a
   -> IO ()
-updateNodesState nsMVar loggerName (LogObject aName _ aContent) = do
+updateNodesState nsMVar loggerName (LogObject aName aMeta aContent) = do
   -- Check the name of the node this logObject came from.
   -- It is assumed that configuration contains correct names of remote nodes and
   -- loggers for them, for example:
@@ -82,15 +84,15 @@ updateNodesState nsMVar loggerName (LogObject aName _ aContent) = do
               LogValue "Mem.resident" (PureI pages) ->
                 nodesStateWith $ updateMemoryUsage ns pages
               LogValue "IO.rchar" (Bytes bytesWereRead) ->
-                nodesStateWith $ updateDiskRead ns bytesWereRead
+                nodesStateWith $ updateDiskRead ns bytesWereRead aMeta
               LogValue "IO.wchar" (Bytes bytesWereWritten) ->
-                nodesStateWith $ updateDiskWrite ns bytesWereWritten
+                nodesStateWith $ updateDiskWrite ns bytesWereWritten aMeta
               LogValue "Stat.utime" (PureI ticks) ->
-                nodesStateWith $ updateCPUUsage ns ticks
+                nodesStateWith $ updateCPUUsage ns ticks aMeta
               LogValue "Net.IpExt:InOctets" (Bytes inBytes) ->
-                nodesStateWith $ updateNetworkIn ns inBytes
+                nodesStateWith $ updateNetworkIn ns inBytes aMeta
               LogValue "Net.IpExt:OutOctets" (Bytes outBytes) ->
-                nodesStateWith $ updateNetworkOut ns outBytes
+                nodesStateWith $ updateNetworkOut ns outBytes aMeta
               LogValue "txsInMempool" (PureI txsInMempool) ->
                 nodesStateWith $ updateMempoolTxs ns txsInMempool
               LogValue "mempoolBytes" (PureI mempoolBytes) ->
@@ -121,29 +123,120 @@ updateNodesState nsMVar loggerName (LogObject aName _ aContent) = do
 updateMemoryUsage :: NodeState -> Integer -> NodeState
 updateMemoryUsage ns pages = ns { nsMetrics = newNm }
  where
-  newNm = currentNm
-            { nmMemory    = mBytes
-            , nmMemoryMax = maxMemory
-            }
-  mBytes    = fromIntegral (pages * pageSize) / 1024 / 1024 :: Double
-  pageSize  = 4096 :: Integer
-  maxMemory = max (nmMemoryMax currentNm) mBytes
+  newNm =
+    currentNm
+      { nmMemory         = mBytes
+      , nmMemoryMax      = newMax
+      , nmMemoryMaxTotal = newMaxTotal
+      , nmMemoryPercent  = mBytes / newMaxTotal * 100.0
+      }
+  currentNm   = nsMetrics ns
+  prevMax     = nmMemoryMax currentNm
+  newMax      = max prevMax mBytes
+  newMaxTotal = max newMax 200.0
+  mBytes      = fromIntegral (pages * pageSize) / 1024 / 1024 :: Double
+  pageSize    = 4096 :: Integer
+
+updateDiskRead :: NodeState -> Word64 -> LOMeta -> NodeState
+updateDiskRead ns bytesWereRead meta = ns { nsMetrics = newNm }
+ where
+  newNm =
+    currentNm
+      { nmDiskUsageR         = currentDiskRate
+      , nmDiskUsageRPercent  = diskUsageRPercent
+      , nmDiskUsageRLast     = bytesWereRead
+      , nmDiskUsageRNs       = currentTimeInNs
+      , nmDiskUsageRMax      = maxDiskRate
+      , nmDiskUsageRMaxTotal = max maxDiskRate 1.0
+      }
+  currentNm         = nsMetrics ns
+  currentTimeInNs   = utc2ns (tstamp meta)
+  timeDiff          = fromIntegral (currentTimeInNs - nmDiskUsageRNs currentNm) :: Double
+  timeDiffInSecs    = timeDiff / 1000000000
+  bytesDiff         = fromIntegral (bytesWereRead - nmDiskUsageRLast currentNm) :: Double
+  bytesDiffInKB     = bytesDiff / 1024
+  currentDiskRate   = bytesDiffInKB / timeDiffInSecs
+  maxDiskRate       = max currentDiskRate $ nmDiskUsageRMax currentNm
+  diskUsageRPercent = currentDiskRate / (maxDiskRate / 100.0)
+
+updateDiskWrite :: NodeState -> Word64 -> LOMeta -> NodeState
+updateDiskWrite ns bytesWereWritten meta = ns { nsMetrics = newNm }
+ where
+  newNm =
+    currentNm
+      { nmDiskUsageW         = currentDiskRate
+      , nmDiskUsageWPercent  = diskUsageWPercent
+      , nmDiskUsageWLast     = bytesWereWritten
+      , nmDiskUsageWNs       = currentTimeInNs
+      , nmDiskUsageWMax      = maxDiskRate
+      , nmDiskUsageWMaxTotal = max maxDiskRate 1.0
+      }
+  currentNm         = nsMetrics ns
+  currentTimeInNs   = utc2ns (tstamp meta)
+  timeDiff          = fromIntegral (currentTimeInNs - nmDiskUsageWNs currentNm) :: Double
+  timeDiffInSecs    = timeDiff / 1000000000
+  bytesDiff         = fromIntegral (bytesWereWritten - nmDiskUsageWLast currentNm) :: Double
+  bytesDiffInKB     = bytesDiff / 1024
+  currentDiskRate   = bytesDiffInKB / timeDiffInSecs
+  maxDiskRate       = max currentDiskRate $ nmDiskUsageWMax currentNm
+  diskUsageWPercent = currentDiskRate / (maxDiskRate / 100.0)
+
+updateCPUUsage :: NodeState -> Integer -> LOMeta -> NodeState
+updateCPUUsage ns ticks meta = ns { nsMetrics = newNm }
+ where
+  newNm =
+    currentNm
+      { nmCPUPercent = cpuperc * 100.0
+      , nmCPULast    = ticks
+      , nmCPUNs      = tns
+      }
   currentNm = nsMetrics ns
+  tns       = utc2ns $ tstamp meta
+  tdiff     = min 1 $ (fromIntegral (tns - nmCPUNs currentNm)) / 1000000000 :: Double
+  cpuperc   = (fromIntegral (ticks - nmCPULast currentNm)) / (fromIntegral clktck) / tdiff
+  clktck    = 100 :: Integer
 
-updateDiskRead :: NodeState -> Word64 -> NodeState
-updateDiskRead ns _bytesWereRead = ns
+updateNetworkIn :: NodeState -> Word64 -> LOMeta -> NodeState
+updateNetworkIn ns inBytes meta = ns { nsMetrics = newNm }
+ where
+  newNm =
+    currentNm
+      { nmNetworkUsageIn         = currentNetRate
+      , nmNetworkUsageInPercent  = currentNetRate / (maxNetRate / 100.0)
+      , nmNetworkUsageInLast     = inBytes
+      , nmNetworkUsageInNs       = currentTimeInNs
+      , nmNetworkUsageInMax      = maxNetRate
+      , nmNetworkUsageInMaxTotal = max maxNetRate 1.0
+      }
+  currentNm       = nsMetrics ns
+  currentTimeInNs = utc2ns (tstamp meta)
+  timeDiff        = fromIntegral (currentTimeInNs - nmNetworkUsageInNs currentNm) :: Double
+  timeDiffInSecs  = timeDiff / 1000000000
+  bytesDiff       = fromIntegral (inBytes - nmNetworkUsageInLast currentNm) :: Double
+  bytesDiffInKB   = bytesDiff / 1024
+  currentNetRate  = bytesDiffInKB / timeDiffInSecs
+  maxNetRate      = max currentNetRate $ nmNetworkUsageInMax currentNm
 
-updateDiskWrite :: NodeState -> Word64 -> NodeState
-updateDiskWrite ns _bytesWereWritten = ns
-
-updateCPUUsage :: NodeState -> Integer -> NodeState
-updateCPUUsage ns _ticks = ns
-
-updateNetworkIn :: NodeState -> Word64 -> NodeState
-updateNetworkIn ns _inBytes = ns
-
-updateNetworkOut :: NodeState -> Word64 -> NodeState
-updateNetworkOut ns _outBytes = ns
+updateNetworkOut :: NodeState -> Word64 -> LOMeta -> NodeState
+updateNetworkOut ns outBytes meta = ns { nsMetrics = newNm }
+ where
+  newNm =
+    currentNm
+      { nmNetworkUsageOut         = currentNetRate
+      , nmNetworkUsageOutPercent  = currentNetRate / (maxNetRate / 100.0)
+      , nmNetworkUsageOutLast     = outBytes
+      , nmNetworkUsageOutNs       = currentTimeInNs
+      , nmNetworkUsageOutMax      = maxNetRate
+      , nmNetworkUsageOutMaxTotal = max maxNetRate 1.0
+      }
+  currentNm       = nsMetrics ns
+  currentTimeInNs = utc2ns (tstamp meta)
+  timeDiff        = fromIntegral (currentTimeInNs - nmNetworkUsageOutNs currentNm) :: Double
+  timeDiffInSecs  = timeDiff / 1000000000
+  bytesDiff       = fromIntegral (outBytes - nmNetworkUsageOutLast currentNm) :: Double
+  bytesDiffInKB   = bytesDiff / 1024
+  currentNetRate  = bytesDiffInKB / timeDiffInSecs
+  maxNetRate      = max currentNetRate $ nmNetworkUsageOutMax currentNm
 
 updateMempoolTxs :: NodeState -> Integer -> NodeState
 updateMempoolTxs ns txsInMempool = ns { nsMetrics = newNm }

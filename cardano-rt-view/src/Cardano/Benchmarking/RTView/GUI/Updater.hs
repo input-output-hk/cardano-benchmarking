@@ -54,47 +54,44 @@ updateGUI nodesState elements = do
   let diffBetweenNowAndStart = diffUTCTime now (niStartTime ni)
       upTimeHMS = formatTime defaultTimeLocale "%X" $
                     addUTCTime diffBetweenNowAndStart (UTCTime (ModifiedJulianDay 0) 0)
-      --mempoolTxsCapacity' :: Double
-      --mempoolTxsCapacity' = fromIntegral $ nmMempoolTxsCapacity nm
 
-  void $ updateElementValue (ElementString upTimeHMS)                 $ elements ! ElUptime
-  void $ updateElementValue (ElementInt    $ niEpoch ni)              $ elements ! ElEpoch
-  void $ updateElementValue (ElementInt    $ niSlot ni)               $ elements ! ElSlot
-  void $ updateElementValue (ElementInt    $ niBlocksNumber ni)       $ elements ! ElBlocksNumber
-  void $ updateElementValue (ElementDouble $ niChainDensity ni)       $ elements ! ElChainDensity
-  void $ updateElementValue (ElementInt    $ niTxsProcessed ni)       $ elements ! ElTxsProcessed
-  void $ updateElementValue (ElementString $ niTraceAcceptorHost ni)  $ elements ! ElTraceAcceptorHost
-  void $ updateElementValue (ElementInt    $ niTraceAcceptorPort ni)  $ elements ! ElTraceAcceptorPort
-  void $ updateElementValue (ElementWord64 $ nmMempoolTxsNumber nm)     $ elements ! ElMempoolTxsNumber
-  void $ updateElementValue (ElementDouble $ nmMempoolTxsPercent nm)    $ elements ! ElMempoolTxsPercent
-  void $ updateElementValue (ElementWord64 $ nmMempoolBytes nm)         $ elements ! ElMempoolBytes
-  void $ updateElementValue (ElementDouble $ nmMempoolBytesPercent nm)  $ elements ! ElMempoolBytesPercent
-  void $ updateElementValue (ElementWord64 $ nmMempoolCapacity nm)      $ elements ! ElMempoolCapacity
-  void $ updateElementValue (ElementWord64 $ nmMempoolCapacityBytes nm) $ elements ! ElMempoolCapacityBytes
-  void $ updateElementValue (ElementDouble $ nmMemory nm)             $ elements ! ElMemory
-  void $ updateElementValue (ElementDouble $ nmMemoryMax nm)          $ elements ! ElMemoryMax
-  void $ updateElementValue (ElementDouble $ nmCPUMax nm)             $ elements ! ElCPUMax
-  void $ updateElementValue (ElementDouble $ nmCPUPercent nm)         $ elements ! ElCPUPercent
-  void $ updateElementValue (ElementDouble $ nmDiskReadMax nm)        $ elements ! ElDiskReadMax
-  void $ updateElementValue (ElementDouble $ nmDiskReadPercent nm)    $ elements ! ElDiskReadPercent
-  void $ updateElementValue (ElementDouble $ nmDiskWriteMax nm)       $ elements ! ElDiskWriteMax
-  void $ updateElementValue (ElementDouble $ nmDiskWritePercent nm)   $ elements ! ElDiskWritePercent
-  void $ updateElementValue (ElementDouble $ nmNetworkInMax nm)       $ elements ! ElNetworkInMax
-  void $ updateElementValue (ElementDouble $ nmNetworkInPercent nm)   $ elements ! ElNetworkInPercent
-  void $ updateElementValue (ElementDouble $ nmNetworkOutMax nm)      $ elements ! ElNetworkOutMax
-  void $ updateElementValue (ElementDouble $ nmNetworkOutPercent nm)  $ elements ! ElNetworkOutPercent
-  void $ updateElementValue (ElementDouble $ nmNetworkOutPercent nm)  $ elements ! ElNetworkOutPercent
+  void $ updateElementValue (ElementString upTimeHMS)                      $ elements ! ElUptime
+  void $ updateElementValue (ElementInt    $ niEpoch ni)                   $ elements ! ElEpoch
+  void $ updateElementValue (ElementInt    $ niSlot ni)                    $ elements ! ElSlot
+  void $ updateElementValue (ElementInt    $ niBlocksNumber ni)            $ elements ! ElBlocksNumber
+  void $ updateElementValue (ElementDouble $ niChainDensity ni)            $ elements ! ElChainDensity
+  void $ updateElementValue (ElementInt    $ niTxsProcessed ni)            $ elements ! ElTxsProcessed
+  void $ updateElementValue (ElementInt    $ niPeersNumber ni)             $ elements ! ElPeersNumber
+  void $ updateElementValue (ElementString $ niTraceAcceptorHost ni)       $ elements ! ElTraceAcceptorHost
+  void $ updateElementValue (ElementInt    $ niTraceAcceptorPort ni)       $ elements ! ElTraceAcceptorPort
+  void $ updateElementValue (ElementWord64 $ nmMempoolTxsNumber nm)        $ elements ! ElMempoolTxsNumber
+  void $ updateElementValue (ElementDouble $ nmMempoolTxsPercent nm)       $ elements ! ElMempoolTxsPercent
+  void $ updateElementValue (ElementWord64 $ nmMempoolBytes nm)            $ elements ! ElMempoolBytes
+  void $ updateElementValue (ElementDouble $ nmMempoolBytesPercent nm)     $ elements ! ElMempoolBytesPercent
+  void $ updateElementValue (ElementWord64 $ nmMempoolCapacity nm)         $ elements ! ElMempoolCapacity
+  void $ updateElementValue (ElementWord64 $ nmMempoolCapacityBytes nm)    $ elements ! ElMempoolCapacityBytes
+  void $ updateElementValue (ElementDouble $ nmMemory nm)                  $ elements ! ElMemory
+  void $ updateElementValue (ElementDouble $ nmMemoryMax nm)               $ elements ! ElMemoryMax
+  void $ updateElementValue (ElementDouble $ nmMemoryMaxTotal nm)          $ elements ! ElMemoryMaxTotal
+  void $ updateElementValue (ElementDouble $ nmMemoryPercent nm)           $ elements ! ElMemoryPercent
+  void $ updateElementValue (ElementDouble $ nmCPUPercent nm)              $ elements ! ElCPUPercent
+  void $ updateElementValue (ElementDouble $ nmDiskUsageR nm)              $ elements ! ElDiskUsageR
+  void $ updateElementValue (ElementDouble $ nmDiskUsageRMaxTotal nm)      $ elements ! ElDiskUsageRMaxTotal
+  void $ updateElementValue (ElementDouble $ nmDiskUsageW nm)              $ elements ! ElDiskUsageW
+  void $ updateElementValue (ElementDouble $ nmDiskUsageWMaxTotal nm)      $ elements ! ElDiskUsageWMaxTotal
+  void $ updateElementValue (ElementDouble $ nmNetworkUsageIn nm)          $ elements ! ElNetworkUsageIn
+  void $ updateElementValue (ElementDouble $ nmNetworkUsageInMaxTotal nm)  $ elements ! ElNetworkUsageInMaxTotal
+  void $ updateElementValue (ElementDouble $ nmNetworkUsageOut nm)         $ elements ! ElNetworkUsageOut
+  void $ updateElementValue (ElementDouble $ nmNetworkUsageOutMaxTotal nm) $ elements ! ElNetworkUsageOutMaxTotal
 
-  void $ updateProgressBar' (nmMempoolBytesPercent nm) $ elements ! ElMempoolBytesProgress
-  void $ updateProgressBar' (nmMempoolTxsPercent nm)   $ elements ! ElMempoolTxsProgress
-  -- void $ updateProgressBar (nmMempoolKBPercent nm)  (nmMempoolKBMax nm)   $ elements ! ElMempoolKBProgress
-  -- void $ updateProgressBar (nmMempoolTxsPercent nm) (mempoolTxsCapacity') $ elements ! ElMempoolTxsProgress
-  void $ updateProgressBar (nmMemory nm)            (nmMemoryMax nm)      $ elements ! ElMemoryProgress
-  void $ updateProgressBar (nmCPUPercent nm)        (nmCPUMax nm)         $ elements ! ElCPUProgress
-  void $ updateProgressBar (nmDiskReadPercent nm)   (nmDiskReadMax nm)    $ elements ! ElDiskReadProgress
-  void $ updateProgressBar (nmDiskWritePercent nm)  (nmDiskWriteMax nm)   $ elements ! ElDiskWriteProgress
-  void $ updateProgressBar (nmNetworkInPercent nm)  (nmNetworkInMax nm)   $ elements ! ElNetworkInProgress
-  void $ updateProgressBar (nmNetworkOutPercent nm) (nmNetworkOutMax nm)  $ elements ! ElNetworkOutProgress
+  void $ updateProgressBar (nmMempoolBytesPercent nm)    $ elements ! ElMempoolBytesProgress
+  void $ updateProgressBar (nmMempoolTxsPercent nm)      $ elements ! ElMempoolTxsProgress
+  void $ updateProgressBar (nmMemoryPercent nm)          $ elements ! ElMemoryProgress
+  void $ updateProgressBar (nmCPUPercent nm)             $ elements ! ElCPUProgress
+  void $ updateProgressBar (nmDiskUsageRPercent nm)      $ elements ! ElDiskReadProgress
+  void $ updateProgressBar (nmDiskUsageWPercent nm)      $ elements ! ElDiskWriteProgress
+  void $ updateProgressBar (nmNetworkUsageInPercent nm)  $ elements ! ElNetworkInProgress
+  void $ updateProgressBar (nmNetworkUsageOutPercent nm) $ elements ! ElNetworkOutProgress
 
 updateElementValue
   :: ElementValue
@@ -108,19 +105,9 @@ updateElementValue (ElementString  s) el = element el # set text s
 
 updateProgressBar
   :: Double
-  -> Double
   -> Element
   -> UI Element
-updateProgressBar value maxValue bar = do
-  let onePercent     = maxValue / 100.0
-      percents       = value / onePercent
-  element bar # set style [("width", showDoubleWith1DecPlace percents <> "%")]
-
-updateProgressBar'
-  :: Double
-  -> Element
-  -> UI Element
-updateProgressBar' percents bar = do
+updateProgressBar percents bar = do
   element bar # set style [("width", showDoubleWith1DecPlace percents <> "%")]
 
 showDoubleWith1DecPlace :: Double -> String
