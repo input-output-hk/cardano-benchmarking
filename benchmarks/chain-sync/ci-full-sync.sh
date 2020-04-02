@@ -54,7 +54,7 @@ while [ $SYNCED_BLOCKS -lt $LAST_BLOCK_HEIGHT ]
 do
   REMAINING_BLOCKS=$(($LAST_BLOCK_HEIGHT - $SYNCED_BLOCKS))
   echo "$SYNCED_BLOCKS blocks synced, $REMAINING_BLOCKS to go."
-  sleep 5
+  sleep 15
   SYNCED_BLOCKS=$(curl --silent 127.0.0.1:13789/metrics | grep cardano_node_ChainDB_metrics_blockNum_int  | cut -d ' ' -f 2)
 done
 
