@@ -1,3 +1,4 @@
+{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Cardano.Benchmarking.RTView.NodeState.Updater
@@ -40,15 +41,14 @@ import           Cardano.Benchmarking.RTView.NodeState.Types
 --   in the |NodesState|.
 launchNodeStateUpdater
   :: Trace IO Text
-  -> Switchboard a
+  -> Switchboard Text
   -> MVar NodesState
   -> IO ()
 launchNodeStateUpdater tr switchBoard nsMVar = forever $ do
   logDebug tr "Try to update nodes' state..."
   -- Take current |LogObject|s from the |LogBuffer|.
   currentLogObjects <- readLogBuffer switchBoard
-  forM_ currentLogObjects $ \(loggerName, logObject) -> do
-    -- logDebug tr $ "UPDATE STATE, loggerName: " <> loggerName <> ", logObject: " <> (T.pack $ show logObject) 
+  forM_ currentLogObjects $ \(loggerName, logObject) ->
     updateNodesState nsMVar loggerName logObject
   -- Check for updates in the |LogBuffer| every second.
   threadDelay 1000000
@@ -57,7 +57,7 @@ launchNodeStateUpdater tr switchBoard nsMVar = forever $ do
 updateNodesState
   :: MVar NodesState
   -> Text
-  -> LogObject a
+  -> LogObject Text
   -> IO ()
 updateNodesState nsMVar loggerName (LogObject aName aMeta aContent) = do
   -- Check the name of the node this logObject came from.
@@ -78,8 +78,7 @@ updateNodesState nsMVar loggerName (LogObject aName aMeta aContent) = do
 
     case currentNodesState !? nameOfNode of
       Just ns ->
-        if "cardano.node.metrics" `T.isInfixOf` aName
-          then
+        if | "cardano.node.metrics" `T.isInfixOf` aName ->
             case aContent of
               LogValue "Mem.resident" (PureI pages) ->
                 nodesStateWith $ updateMemoryUsage ns pages
@@ -100,25 +99,62 @@ updateNodesState nsMVar loggerName (LogObject aName aMeta aContent) = do
               LogValue "txsProcessed" (PureI txsProcessed) ->
                 nodesStateWith $ updateTxsProcessed ns txsProcessed
               _ -> return currentNodesState
-          else
-            case aContent of
-              LogValue "density" (PureD density) ->
-                nodesStateWith $ updateChainDensity ns density
-              LogValue "connectedPeers" (PureI peersNum) ->
-                nodesStateWith $ updatePeersNumber ns peersNum
-              LogValue "blockNum" (PureI blockNum) ->
-                nodesStateWith $ updateBlocksNumber ns blockNum
-              LogValue "slotInEpoch" (PureI slotNum) ->
-                nodesStateWith $ updateSlotInEpoch ns slotNum
-              LogValue "epoch" (PureI epoch) ->
-                nodesStateWith $ updateEpoch ns epoch
-              _ -> return currentNodesState
+           | "cardano.node.release" `T.isInfixOf` aName ->
+              case aContent of
+                LogMessage release ->
+                  nodesStateWith $ updateNodeRelease ns release
+                _ -> return currentNodesState
+           | "cardano.node.version" `T.isInfixOf` aName ->
+              case aContent of
+                LogMessage version ->
+                  nodesStateWith $ updateNodeVersion ns version
+                _ -> return currentNodesState
+           | "cardano.node.commit" `T.isInfixOf` aName ->
+              case aContent of
+                LogMessage commit ->
+                  nodesStateWith $ updateNodeCommit ns commit
+                _ -> return currentNodesState
+           | otherwise ->
+              case aContent of
+                LogValue "density" (PureD density) ->
+                  nodesStateWith $ updateChainDensity ns density
+                LogValue "connectedPeers" (PureI peersNum) ->
+                  nodesStateWith $ updatePeersNumber ns peersNum
+                LogValue "blockNum" (PureI blockNum) ->
+                  nodesStateWith $ updateBlocksNumber ns blockNum
+                LogValue "slotInEpoch" (PureI slotNum) ->
+                  nodesStateWith $ updateSlotInEpoch ns slotNum
+                LogValue "epoch" (PureI epoch) ->
+                  nodesStateWith $ updateEpoch ns epoch
+                _ -> return currentNodesState
       Nothing ->
         -- This is a problem, because it means that configuration is unexpected one:
         -- name of node in getAcceptAt doesn't correspond to the name of loggerName.
         return currentNodesState
 
 -- Updaters for particular node state's fields.
+
+updateNodeRelease :: NodeState -> Text -> NodeState
+updateNodeRelease ns release = ns { nsInfo = newNi }
+ where
+  newNi = currentNi { niNodeRelease = T.unpack release }
+  currentNi = nsInfo ns
+
+updateNodeVersion :: NodeState -> Text -> NodeState
+updateNodeVersion ns version = ns { nsInfo = newNi }
+ where
+  newNi = currentNi { niNodeVersion = T.unpack version }
+  currentNi = nsInfo ns
+
+updateNodeCommit :: NodeState -> Text -> NodeState
+updateNodeCommit ns commit = ns { nsInfo = newNi }
+ where
+  newNi =
+    currentNi
+      { niNodeCommit      = T.unpack commit
+      , niNodeShortCommit = take 7 $ T.unpack commit
+      }
+  currentNi = nsInfo ns
 
 updateMemoryUsage :: NodeState -> Integer -> NodeState
 updateMemoryUsage ns pages = ns { nsMetrics = newNm }

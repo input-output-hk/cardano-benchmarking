@@ -8,12 +8,7 @@ module Cardano.Benchmarking.RTView.GUI.Markup
 import           Cardano.Prelude
 import           Prelude
                    ( String )
-import           Data.Text
-                   ( unpack )
 import qualified Data.Map.Strict as Map
-
-import           Cardano.Config.GitRev
-                   ( gitRev )
 
 import qualified Graphics.UI.Threepenny as UI
 import           Graphics.UI.Threepenny.Core
@@ -31,12 +26,13 @@ mkPageBody
   :: UI.Window
   -> UI (Element, NodeStateElements)
 mkPageBody window = do
-  let cardanoNodeCommit = unpack gitRev
-      shortCommit       = take 7 cardanoNodeCommit
-
   -- Create |Element|s containing node state (info, metrics).
   -- These elements will be part of the complete page,
   -- later they will be updated by acceptor thread.
+  elNodeRelease             <- string ""
+  elNodeVersion             <- string ""
+  elNodeCommit              <- string ""
+  elNodeShortCommit         <- string ""
   elUptime                  <- string "00:00:00"
   elEpoch                   <- string "0"
   elSlot                    <- string "0"
@@ -115,8 +111,14 @@ mkPageBody window = do
                                  , UI.span #. "bar-value-unit" #+ [string "KB/s"]
                                  ]
 
+  -- TODO: Currently there's no real cardano-node commit as a string.
+  -- It will be taken from MVar NodesState later, when connected nodes selector
+  -- will be implemented.
+  let fullCommit :: String
+      fullCommit = "#"
+
   body <- UI.getBody window #+
-    [ topNavigation
+    [ topNavigation elNodeRelease
     , mainContainer
         [ UI.div #. "w3-row main-container-inner" #+
             [ UI.div #. "w3-twothird w3-theme" #+
@@ -220,7 +222,8 @@ mkPageBody window = do
                 [ UI.div #. "w3-row" #+
                     [ UI.div #. "w3-twothird w3-container w3-theme" #+
                         [ UI.div #. "" #+
-                            [ UI.div #. "" #+ [string "Node commit:"]
+                            [ UI.div #. "" #+ [string "Node version:"]
+                            , UI.div #. "" #+ [string "Node commit:"]
                             , vSpacer "node-info-v-spacer"
                             , UI.div #. "" #+ [string "Uptime:"]
                             , vSpacer "node-info-v-spacer"
@@ -238,11 +241,12 @@ mkPageBody window = do
                         ]
                     , UI.div #. "w3-third w3-container w3-theme" #+
                         [ UI.div #. "node-info-values" #+
-                            [ UI.div #. "commit-link" #+
-                                [ UI.anchor # set UI.href (cardanoNodeCommitUrl cardanoNodeCommit)
+                            [ UI.div #. "" #+ [element elNodeVersion]
+                            , UI.div #. "commit-link" #+
+                                [ UI.anchor # set UI.href (cardanoNodeCommitUrl fullCommit)
                                             # set UI.target "_blank"
                                             # set UI.title__ "Browse cardano-node repository on this commit"
-                                            #+ [string shortCommit]
+                                            #+ [element elNodeShortCommit]
                                 ]
                             , vSpacer "node-info-v-spacer"
                             , UI.div #. "" #+ [element elUptime]
@@ -275,7 +279,11 @@ mkPageBody window = do
   -- Return these elements, they will be updated by another thread later.
   let nodeStateElems =
         Map.fromList
-          [ (ElUptime,                  elUptime)
+          [ (ElNodeRelease,             elNodeRelease)
+          , (ElNodeVersion,             elNodeVersion)
+          , (ElNodeCommit,              elNodeCommit)
+          , (ElNodeShortCommit,         elNodeShortCommit)
+          , (ElUptime,                  elUptime)
           , (ElEpoch,                   elEpoch)
           , (ElSlot,                    elSlot)
           , (ElBlocksNumber,            elBlocksNumber)
@@ -326,8 +334,8 @@ mainContainer elements =
  where
   horizontalSpacer = UI.div #. "w3-col w3-container" # set UI.style [("width", "20%")] #+ [string " "]
 
-topNavigation :: UI Element
-topNavigation =
+topNavigation :: Element -> UI Element
+topNavigation nodeRelease =
   UI.div #. "w3-bar w3-xlarge w3-indigo" #+
     [ UI.anchor #. "w3-bar-item" # set UI.href "https://iohk.io/" #+
         [ UI.img #. "iohk-logo" # set UI.src "/static/images/iohk-logo.png" #+ []
@@ -342,7 +350,7 @@ topNavigation =
         ]
     , UI.anchor #. "w3-bar-item w3-button w3-right" # set UI.href "#" #+
         [ string "Release: "
-        , UI.span #. "release-name" #+ [string "Byron"]
+        , UI.span #. "release-name" #+ [element nodeRelease]
         ]
     , UI.anchor #. "w3-bar-item w3-button w3-right" # set UI.href "#" #+
         [ string "Cardano Real-time View"
