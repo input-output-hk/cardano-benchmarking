@@ -16,7 +16,7 @@ BASEDIR="$(realpath $(dirname $0))"
 CLUSTER="$1"
 
 [[ $CLUSTER == $MAINNET ]] \
-  && EXPLORER_URL="https://cardanoexplorer.com" \
+  && EXPLORER_URL="http://explorer.mainnet.cardano.org" \
   || EXPLORER_URL="https://explorer.cardano-testnet.iohkdev.io"
 
 LOG_CONFIG="$(yj < $BASEDIR/configuration/log-config-ci.yaml)"
@@ -44,6 +44,9 @@ echo
 echo "Using explorer at $EXPLORER_URL to retrieve last block height"
 LAST_BLOCK_HEIGHT=$(curl --silent $EXPLORER_URL/api/blocks/pages | jq -r '.[][1][0].cbeBlkHeight')
 echo "Last block height as reported by cardano-explorer is $LAST_BLOCK_HEIGHT"
+if [ -z "$LAST_BLOCK_HEIGHT" ]; then
+  LAST_BLOCK_HEIGHT=3500000
+fi
 
 ../launch_node &
 NODE_PID=$!
