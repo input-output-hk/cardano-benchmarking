@@ -301,7 +301,7 @@ updateMempoolBytes ns mempoolBytes = ns { nsMetrics = newNm }
 updateTxsProcessed :: NodeState -> Integer -> NodeState
 updateTxsProcessed ns txsProcessed = ns { nsInfo = newNi }
  where
-  newNi = currentNi { niTxsProcessed = niTxsProcessed currentNi + fromIntegral txsProcessed }
+  newNi = currentNi { niTxsProcessed = niTxsProcessed currentNi + txsProcessed }
   currentNi = nsInfo ns
 
 updateChainDensity :: NodeState -> Double -> NodeState
@@ -313,19 +313,19 @@ updateChainDensity ns density = ns { nsInfo = newNi }
 updatePeersNumber :: NodeState -> Integer -> NodeState
 updatePeersNumber ns peersNum = ns { nsInfo = newNi }
  where
-  newNi = (nsInfo ns) { niPeersNumber = fromIntegral peersNum }
+  newNi = (nsInfo ns) { niPeersNumber = peersNum }
 
 updateBlocksNumber :: NodeState -> Integer -> NodeState
 updateBlocksNumber ns blockNum = ns { nsInfo = newNi }
  where
-  newNi = (nsInfo ns) { niBlocksNumber = fromIntegral blockNum }
+  newNi = (nsInfo ns) { niBlocksNumber = blockNum }
 
 updateSlotInEpoch :: NodeState -> Integer -> NodeState
 updateSlotInEpoch ns slotNum = ns { nsInfo = newNi }
  where
-  newNi = (nsInfo ns) { niSlot = fromIntegral slotNum }
+  newNi = (nsInfo ns) { niSlot = slotNum }
 
 updateEpoch :: NodeState -> Integer -> NodeState
 updateEpoch ns epoch = ns { nsInfo = newNi }
  where
-  newNi = (nsInfo ns) { niEpoch = fromIntegral epoch }
+  newNi = (nsInfo ns) { niEpoch = epoch }

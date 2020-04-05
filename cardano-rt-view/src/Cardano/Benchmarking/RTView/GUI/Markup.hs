@@ -9,6 +9,7 @@ import           Cardano.Prelude
 import           Prelude
                    ( String )
 import qualified Data.Map.Strict as Map
+import qualified Data.Text as T
 
 import qualified Graphics.UI.Threepenny as UI
 import           Graphics.UI.Threepenny.Core
@@ -17,6 +18,8 @@ import           Graphics.UI.Threepenny.Core
                    , element, set, string
                    )
 
+import           Cardano.BM.Data.Configuration
+                   ( RemoteAddrNamed (..) )
 import           Cardano.Benchmarking.RTView.GUI.Elements
                    ( ElementName (..)
                    , NodeStateElements
@@ -24,8 +27,10 @@ import           Cardano.Benchmarking.RTView.GUI.Elements
 
 mkPageBody
   :: UI.Window
+  -> MVar Text
+  -> [RemoteAddrNamed]
   -> UI (Element, NodeStateElements)
-mkPageBody window = do
+mkPageBody window activeNodeMVar acceptors = do
   -- Create |Element|s containing node state (info, metrics).
   -- These elements will be part of the complete page,
   -- later they will be updated by acceptor thread.
@@ -33,6 +38,7 @@ mkPageBody window = do
   elNodeVersion             <- string ""
   elNodeCommit              <- string ""
   elNodeShortCommit         <- string ""
+  elActiveNode              <- string "-"
   elUptime                  <- string "00:00:00"
   elEpoch                   <- string "0"
   elSlot                    <- string "0"
@@ -111,6 +117,12 @@ mkPageBody window = do
                                  , UI.span #. "bar-value-unit" #+ [string "KB/s"]
                                  ]
 
+  nodesButtons <- forM acceptors $ \(RemoteAddrNamed nameOfNode _) -> do
+    nodeButton <- UI.anchor #. "w3-bar-item w3-button" # set UI.href "#" #+ [UI.string $ T.unpack nameOfNode]
+    void $ UI.onEvent (UI.click nodeButton) $ \_ ->
+      liftIO $ modifyMVar_ activeNodeMVar $ \_ -> return nameOfNode
+    return $ element nodeButton
+
   -- TODO: Currently there's no real cardano-node commit as a string.
   -- It will be taken from MVar NodesState later, when connected nodes selector
   -- will be implemented.
@@ -118,9 +130,10 @@ mkPageBody window = do
       fullCommit = "#"
 
   body <- UI.getBody window #+
-    [ topNavigation elNodeRelease
+    [ topNavigation elNodeRelease elActiveNode nodesButtons
     , mainContainer
-        [ UI.div #. "w3-row main-container-inner" #+
+        [ UI.span #. "active-node-mark" #+ [element elActiveNode]
+        , UI.div #. "w3-row main-container-inner" #+
             [ UI.div #. "w3-twothird w3-theme" #+
                 [ twoElementsInRow
                     (UI.div #. "w3-container" #+
@@ -283,6 +296,7 @@ mkPageBody window = do
           , (ElNodeVersion,             elNodeVersion)
           , (ElNodeCommit,              elNodeCommit)
           , (ElNodeShortCommit,         elNodeShortCommit)
+          , (ElActiveNode,              elActiveNode)
           , (ElUptime,                  elUptime)
           , (ElEpoch,                   elEpoch)
           , (ElSlot,                    elSlot)
@@ -334,19 +348,19 @@ mainContainer elements =
  where
   horizontalSpacer = UI.div #. "w3-col w3-container" # set UI.style [("width", "20%")] #+ [string " "]
 
-topNavigation :: Element -> UI Element
-topNavigation nodeRelease =
+topNavigation
+  :: Element
+  -> Element
+  -> [UI Element]
+  -> UI Element
+topNavigation nodeRelease _activeNode nodesButtons = do
   UI.div #. "w3-bar w3-xlarge w3-indigo" #+
     [ UI.anchor #. "w3-bar-item" # set UI.href "https://iohk.io/" #+
         [ UI.img #. "iohk-logo" # set UI.src "/static/images/iohk-logo.png" #+ []
         ]
     , UI.div #. "w3-dropdown-hover" #+
-        [ UI.button #. "w3-button" #+ [string "Node: a"]
-        , UI.div #. "w3-dropdown-content w3-bar-block w3-card-4" #+
-            [ UI.anchor #. "w3-bar-item w3-button" # set UI.href "#" #+ [string "a"]
-            , UI.anchor #. "w3-bar-item w3-button" # set UI.href "#" #+ [string "b"]
-            , UI.anchor #. "w3-bar-item w3-button" # set UI.href "#" #+ [string "c"]
-            ]
+        [ UI.button #. "w3-button" #+ [string "Select node..."]
+        , UI.div #. "w3-dropdown-content w3-bar-block w3-card-4" #+ nodesButtons
         ]
     , UI.anchor #. "w3-bar-item w3-button w3-right" # set UI.href "#" #+
         [ string "Release: "
