@@ -20,5 +20,5 @@ latest-genesis
 result*
 
 launch_node
-state*
+state-*
 benchmark-results.log
