@@ -61,7 +61,10 @@ let
   } // (mkRequiredJob (
       collectTests jobs.native.checks ++
       collectTests jobs.native.benchmarks ++ [
-
+        jobs.native.cardano-tx-generator.x86_64-darwin
+        jobs.native.cardano-tx-generator.x86_64-linux
+        jobs.native.cardano-rt-view-service.x86_64-darwin
+        jobs.native.cardano-rt-view-service.x86_64-linux
     ]));
 
 in jobs
