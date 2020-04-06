@@ -11,7 +11,7 @@ module Cardano.Benchmarking.RTView.NodeState.Types
 
 import           Cardano.Prelude
 import           Prelude
-                   ( String, read )
+                   ( String )
 import qualified Data.Map.Strict as Map
 import           Data.Map.Strict
                    ( Map )
@@ -24,7 +24,7 @@ import           Cardano.BM.Configuration
                    ( Configuration )
 import qualified Cardano.BM.Configuration.Model as CM
 import           Cardano.BM.Data.Configuration
-                   ( RemoteAddrNamed (..), RemoteAddr (..) )
+                   ( RemoteAddrNamed (..) )
 
 type NodesState = Map Text NodeState
 
@@ -39,14 +39,14 @@ data NodeInfo = NodeInfo
   , niNodeCommit        :: !String
   , niNodeShortCommit   :: !String
   , niStartTime         :: !UTCTime
-  , niEpoch             :: !Int
-  , niSlot              :: !Int
-  , niBlocksNumber      :: !Int
+  , niEpoch             :: !Integer
+  , niSlot              :: !Integer
+  , niBlocksNumber      :: !Integer
   , niChainDensity      :: !Double
-  , niTxsProcessed      :: !Int
-  , niPeersNumber       :: !Int
+  , niTxsProcessed      :: !Integer
+  , niPeersNumber       :: !Integer
   , niTraceAcceptorHost :: !String
-  , niTraceAcceptorPort :: !Int
+  , niTraceAcceptorPort :: !String
   }
 
 data NodeMetrics = NodeMetrics
@@ -96,40 +96,28 @@ defaultNodesState config =
   CM.getAcceptAt config >>= \case
     Just remoteAddresses -> do
       now <- getCurrentTime
-      defaultStates <-
-        forM remoteAddresses $ \(RemoteAddrNamed name addr) ->
-          case addr of
-            RemoteSocket host port ->
-              return (name, defaultNodeState now host port)
-            RemotePipe _ ->
-              return (name, defaultNodeState now "none" "3000")
-      return $ Map.fromList defaultStates
+      return $ Map.fromList [(name, defaultNodeState now) | (RemoteAddrNamed name _) <- remoteAddresses]
     Nothing ->
-      -- Actually it's impossible, because at this point
-      -- we already know that at least one |TraceAcceptor|
-      -- is defined in the config.
+      -- Actually it's impossible, because at this point we already know
+      -- that at least one |TraceAcceptor| is defined in the config.
       return Map.empty
 
 defaultNodeState
   :: UTCTime
-  -> String
-  -> String
   -> NodeState
-defaultNodeState now host port = NodeState
-  { nsInfo    = defaultNodeInfo now host port
+defaultNodeState now = NodeState
+  { nsInfo    = defaultNodeInfo now
   , nsMetrics = defaultNodeMetrics
   }
 
 defaultNodeInfo
   :: UTCTime
-  -> String
-  -> String
   -> NodeInfo
-defaultNodeInfo now host port = NodeInfo
-  { niNodeRelease       = ""
-  , niNodeVersion       = ""
-  , niNodeCommit        = ""
-  , niNodeShortCommit   = ""
+defaultNodeInfo now = NodeInfo
+  { niNodeRelease       = "-"
+  , niNodeVersion       = "-"
+  , niNodeCommit        = "-"
+  , niNodeShortCommit   = "-"
   , niStartTime         = now
   , niEpoch             = 0
   , niSlot              = 0
@@ -137,8 +125,8 @@ defaultNodeInfo now host port = NodeInfo
   , niChainDensity      = 0.0
   , niTxsProcessed      = 0
   , niPeersNumber       = 0
-  , niTraceAcceptorHost = host
-  , niTraceAcceptorPort = read port :: Int
+  , niTraceAcceptorHost = "-"
+  , niTraceAcceptorPort = "-"
   }
 
 defaultNodeMetrics :: NodeMetrics

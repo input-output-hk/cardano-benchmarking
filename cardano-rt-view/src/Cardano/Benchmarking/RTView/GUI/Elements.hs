@@ -25,6 +25,7 @@ data ElementName
   | ElNodeVersion
   | ElNodeCommit
   | ElNodeShortCommit
+  | ElActiveNode
   | ElUptime
   | ElEpoch
   | ElSlot
@@ -71,8 +72,7 @@ data ElementName
   deriving (Eq, Ord)
 
 data ElementValue
-  = ElementInt     Int
-  | ElementInteger Integer
+  = ElementInteger Integer
   | ElementWord64  Word64
   | ElementDouble  Double
   | ElementString  String
