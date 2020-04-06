@@ -9,8 +9,6 @@ if [ $# -lt 1 ]; then
   exit 1
 fi
 
-set -euo pipefail
-
 BASEDIR="$(realpath $(dirname $0))"
 
 CLUSTER="$1"
@@ -18,6 +16,14 @@ CLUSTER="$1"
 [[ $CLUSTER == $MAINNET ]] \
   && EXPLORER_URL="http://explorer.mainnet.cardano.org" \
   || EXPLORER_URL="https://explorer.cardano-testnet.iohkdev.io"
+echo "Using explorer at $EXPLORER_URL to retrieve last block height"
+LAST_BLOCK_HEIGHT=$(curl --silent $EXPLORER_URL/api/blocks/pages | jq -r '.[][1][0].cbeBlkHeight')
+echo "Last block height as reported by cardano-explorer is $LAST_BLOCK_HEIGHT"
+if [ -z "$LAST_BLOCK_HEIGHT" ]; then
+  LAST_BLOCK_HEIGHT=3500000
+fi
+
+set -euo pipefail
 
 LOG_CONFIG="$(yj < $BASEDIR/configuration/log-config-ci.yaml)"
 
@@ -40,13 +46,6 @@ TOPOLOGY=`cat ../launch_node | sed -ne 's/.* --topology \([^ ]\+\) .*/\1/p;' | t
 cat "${TOPOLOGY}"
 echo
 echo
-
-echo "Using explorer at $EXPLORER_URL to retrieve last block height"
-LAST_BLOCK_HEIGHT=$(curl --silent $EXPLORER_URL/api/blocks/pages | jq -r '.[][1][0].cbeBlkHeight')
-echo "Last block height as reported by cardano-explorer is $LAST_BLOCK_HEIGHT"
-if [ -z "$LAST_BLOCK_HEIGHT" ]; then
-  LAST_BLOCK_HEIGHT=3500000
-fi
 
 ../launch_node &
 NODE_PID=$!
