@@ -34,7 +34,11 @@ data NodeState = NodeState
   }
 
 data NodeInfo = NodeInfo
-  { niStartTime         :: !UTCTime
+  { niNodeRelease       :: !String
+  , niNodeVersion       :: !String
+  , niNodeCommit        :: !String
+  , niNodeShortCommit   :: !String
+  , niStartTime         :: !UTCTime
   , niEpoch             :: !Int
   , niSlot              :: !Int
   , niBlocksNumber      :: !Int
@@ -122,7 +126,11 @@ defaultNodeInfo
   -> String
   -> NodeInfo
 defaultNodeInfo now host port = NodeInfo
-  { niStartTime         = now
+  { niNodeRelease       = ""
+  , niNodeVersion       = ""
+  , niNodeCommit        = ""
+  , niNodeShortCommit   = ""
+  , niStartTime         = now
   , niEpoch             = 0
   , niSlot              = 0
   , niBlocksNumber      = 0

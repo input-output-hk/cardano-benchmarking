@@ -21,7 +21,11 @@ import           Graphics.UI.Threepenny.Core
 type NodeStateElements = Map ElementName Element
 
 data ElementName
-  = ElUptime
+  = ElNodeRelease
+  | ElNodeVersion
+  | ElNodeCommit
+  | ElNodeShortCommit
+  | ElUptime
   | ElEpoch
   | ElSlot
   | ElBlocksNumber

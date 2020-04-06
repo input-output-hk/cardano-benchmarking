@@ -55,6 +55,10 @@ updateGUI nodesState elements = do
       upTimeHMS = formatTime defaultTimeLocale "%X" $
                     addUTCTime diffBetweenNowAndStart (UTCTime (ModifiedJulianDay 0) 0)
 
+  void $ updateElementValue (ElementString $ niNodeRelease ni)             $ elements ! ElNodeRelease
+  void $ updateElementValue (ElementString $ niNodeVersion ni)             $ elements ! ElNodeVersion
+  void $ updateElementValue (ElementString $ niNodeCommit ni)              $ elements ! ElNodeCommit
+  void $ updateElementValue (ElementString $ niNodeShortCommit ni)         $ elements ! ElNodeShortCommit
   void $ updateElementValue (ElementString upTimeHMS)                      $ elements ! ElUptime
   void $ updateElementValue (ElementInt    $ niEpoch ni)                   $ elements ! ElEpoch
   void $ updateElementValue (ElementInt    $ niSlot ni)                    $ elements ! ElSlot
