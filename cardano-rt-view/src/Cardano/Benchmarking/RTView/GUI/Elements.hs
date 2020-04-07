@@ -1,7 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Cardano.Benchmarking.RTView.GUI.Elements
-    ( NodeStateElements
+    ( NodesStateElements
+    , NodeStateElements
     , ElementName (..)
     , ElementValue (..)
     ) where
@@ -19,6 +20,9 @@ import           Graphics.UI.Threepenny.Core
 --   These elements are continuously updating using |LogObject|s
 --   received by |TraceAcceptor|s.
 type NodeStateElements = Map ElementName Element
+
+-- | GUI elements for all nodes, pairs from nodeName and its elements.
+type NodesStateElements = [(Text, NodeStateElements)]
 
 data ElementName
   = ElNodeRelease

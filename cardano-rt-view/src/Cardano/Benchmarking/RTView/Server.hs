@@ -29,14 +29,13 @@ import           Cardano.Benchmarking.RTView.GUI.Updater
 
 -- | Launch web server.
 launchServer
-  :: MVar Text
-  -> MVar NodesState
+  :: MVar NodesState
   -> FilePath
   -> PortNumber
   -> [RemoteAddrNamed]
   -> IO ()
-launchServer activeNodeMVar nsMVar pathToStatic port acceptors =
-  UI.startGUI config $ mainPage activeNodeMVar nsMVar acceptors
+launchServer nsMVar pathToStatic port acceptors =
+  UI.startGUI config $ mainPage nsMVar acceptors
  where
   config = UI.defaultConfig
     { UI.jsStatic = Just pathToStatic
@@ -44,12 +43,11 @@ launchServer activeNodeMVar nsMVar pathToStatic port acceptors =
     }
 
 mainPage
-  :: MVar Text
-  -> MVar NodesState
+  :: MVar NodesState
   -> [RemoteAddrNamed]
   -> UI.Window
   -> UI ()
-mainPage activeNodeMVar nsMVar acceptors window = do
+mainPage nsMVar acceptors window = do
   void $ return window # set UI.title "Cardano Node RTView"
 
   -- It is assumed that CSS files are available at 'pathToStatic/css/'.
@@ -57,15 +55,14 @@ mainPage activeNodeMVar nsMVar acceptors window = do
   UI.addStyleSheet window "cardano-rt-view.css"
 
   -- Make page's body (HTML markup).
-  (pageBody, nodeStateElems) <- mkPageBody window activeNodeMVar acceptors
+  (pageBody, nodesStateElems) <- mkPageBody window acceptors
 
   -- Start the timer for GUI update. Every second it will
   -- call a function which updates node state elements on the page.
-  guiUpdateTimer <- timer # set interval 800 -- Every 0.8 s.
+  guiUpdateTimer <- timer # set interval 600 -- Every 0.6 s.
   void $ onEvent (tick guiUpdateTimer) $ \_ -> do
     newState <- liftIO $ readMVar nsMVar
-    activeNode <- liftIO $ readMVar activeNodeMVar
-    updateGUI newState activeNode acceptors nodeStateElems
+    updateGUI newState acceptors nodesStateElems
   start guiUpdateTimer
 
   void $ UI.element pageBody

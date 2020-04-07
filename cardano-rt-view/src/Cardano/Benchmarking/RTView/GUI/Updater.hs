@@ -32,7 +32,7 @@ import           Cardano.BM.Data.Configuration
                    ( RemoteAddrNamed (..), RemoteAddr (..) )
 import           Cardano.Benchmarking.RTView.GUI.Elements
                    ( ElementName (..), ElementValue (..)
-                   , NodeStateElements
+                   , NodesStateElements
                    )
 import           Cardano.Benchmarking.RTView.NodeState.Types
                    ( NodeInfo (..), NodeMetrics (..)
@@ -43,65 +43,65 @@ import           Cardano.Benchmarking.RTView.NodeState.Types
 --   on the page automatically, because threepenny-gui is based on websockets.
 updateGUI
   :: NodesState
-  -> Text
   -> [RemoteAddrNamed]
-  -> NodeStateElements
+  -> NodesStateElements
   -> UI ()
-updateGUI nodesState activeNode acceptors elements = do
-  let nodeState = nodesState ! activeNode
-      (acceptorHost, acceptorPort) = findTraceAcceptorNetInfo activeNode acceptors
+updateGUI nodesState acceptors nodesStateElems =
+  forM_ nodesStateElems $ \(nameOfNode, elements) -> do
+    let nodeState = nodesState ! nameOfNode
+        (acceptorHost, acceptorPort) = findTraceAcceptorNetInfo nameOfNode acceptors
 
-  let ni = nsInfo nodeState
-      nm = nsMetrics nodeState
-    
-  now <- liftIO getCurrentTime
-  let diffBetweenNowAndStart = diffUTCTime now (niStartTime ni)
-      upTimeHMS = formatTime defaultTimeLocale "%X" $
-                    addUTCTime diffBetweenNowAndStart (UTCTime (ModifiedJulianDay 0) 0)
-      activeNodeMark = "Node: " <> unpack activeNode
+    let ni = nsInfo nodeState
+        nm = nsMetrics nodeState
 
-  void $ updateElementValue (ElementString  $ niNodeRelease ni)             $ elements ! ElNodeRelease
-  void $ updateElementValue (ElementString  $ niNodeVersion ni)             $ elements ! ElNodeVersion
-  void $ updateElementValue (ElementString  $ niNodeCommit ni)              $ elements ! ElNodeCommit
-  void $ updateElementValue (ElementString  $ niNodeShortCommit ni)         $ elements ! ElNodeShortCommit
-  void $ updateElementValue (ElementString activeNodeMark)                  $ elements ! ElActiveNode
-  void $ updateElementValue (ElementString upTimeHMS)                       $ elements ! ElUptime
-  void $ updateElementValue (ElementInteger $ niEpoch ni)                   $ elements ! ElEpoch
-  void $ updateElementValue (ElementInteger $ niSlot ni)                    $ elements ! ElSlot
-  void $ updateElementValue (ElementInteger $ niBlocksNumber ni)            $ elements ! ElBlocksNumber
-  void $ updateElementValue (ElementDouble  $ niChainDensity ni)            $ elements ! ElChainDensity
-  void $ updateElementValue (ElementInteger $ niTxsProcessed ni)            $ elements ! ElTxsProcessed
-  void $ updateElementValue (ElementInteger $ niPeersNumber ni)             $ elements ! ElPeersNumber
-  void $ updateElementValue (ElementString  acceptorHost)                   $ elements ! ElTraceAcceptorHost
-  void $ updateElementValue (ElementString  acceptorPort)                   $ elements ! ElTraceAcceptorPort
-  void $ updateElementValue (ElementWord64  $ nmMempoolTxsNumber nm)        $ elements ! ElMempoolTxsNumber
-  void $ updateElementValue (ElementDouble  $ nmMempoolTxsPercent nm)       $ elements ! ElMempoolTxsPercent
-  void $ updateElementValue (ElementWord64  $ nmMempoolBytes nm)            $ elements ! ElMempoolBytes
-  void $ updateElementValue (ElementDouble  $ nmMempoolBytesPercent nm)     $ elements ! ElMempoolBytesPercent
-  void $ updateElementValue (ElementWord64  $ nmMempoolCapacity nm)         $ elements ! ElMempoolCapacity
-  void $ updateElementValue (ElementWord64  $ nmMempoolCapacityBytes nm)    $ elements ! ElMempoolCapacityBytes
-  void $ updateElementValue (ElementDouble  $ nmMemory nm)                  $ elements ! ElMemory
-  void $ updateElementValue (ElementDouble  $ nmMemoryMax nm)               $ elements ! ElMemoryMax
-  void $ updateElementValue (ElementDouble  $ nmMemoryMaxTotal nm)          $ elements ! ElMemoryMaxTotal
-  void $ updateElementValue (ElementDouble  $ nmMemoryPercent nm)           $ elements ! ElMemoryPercent
-  void $ updateElementValue (ElementDouble  $ nmCPUPercent nm)              $ elements ! ElCPUPercent
-  void $ updateElementValue (ElementDouble  $ nmDiskUsageR nm)              $ elements ! ElDiskUsageR
-  void $ updateElementValue (ElementDouble  $ nmDiskUsageRMaxTotal nm)      $ elements ! ElDiskUsageRMaxTotal
-  void $ updateElementValue (ElementDouble  $ nmDiskUsageW nm)              $ elements ! ElDiskUsageW
-  void $ updateElementValue (ElementDouble  $ nmDiskUsageWMaxTotal nm)      $ elements ! ElDiskUsageWMaxTotal
-  void $ updateElementValue (ElementDouble  $ nmNetworkUsageIn nm)          $ elements ! ElNetworkUsageIn
-  void $ updateElementValue (ElementDouble  $ nmNetworkUsageInMaxTotal nm)  $ elements ! ElNetworkUsageInMaxTotal
-  void $ updateElementValue (ElementDouble  $ nmNetworkUsageOut nm)         $ elements ! ElNetworkUsageOut
-  void $ updateElementValue (ElementDouble  $ nmNetworkUsageOutMaxTotal nm) $ elements ! ElNetworkUsageOutMaxTotal
+    now <- liftIO getCurrentTime
+    let diffBetweenNowAndStart = diffUTCTime now (niStartTime ni)
+        upTimeHMS = formatTime defaultTimeLocale "%X" $
+                      addUTCTime diffBetweenNowAndStart (UTCTime (ModifiedJulianDay 0) 0)
+        activeNodeMark = unpack nameOfNode
 
-  void $ updateProgressBar (nmMempoolBytesPercent nm)    $ elements ! ElMempoolBytesProgress
-  void $ updateProgressBar (nmMempoolTxsPercent nm)      $ elements ! ElMempoolTxsProgress
-  void $ updateProgressBar (nmMemoryPercent nm)          $ elements ! ElMemoryProgress
-  void $ updateProgressBar (nmCPUPercent nm)             $ elements ! ElCPUProgress
-  void $ updateProgressBar (nmDiskUsageRPercent nm)      $ elements ! ElDiskReadProgress
-  void $ updateProgressBar (nmDiskUsageWPercent nm)      $ elements ! ElDiskWriteProgress
-  void $ updateProgressBar (nmNetworkUsageInPercent nm)  $ elements ! ElNetworkInProgress
-  void $ updateProgressBar (nmNetworkUsageOutPercent nm) $ elements ! ElNetworkOutProgress
+    void $ updateElementValue (ElementString  $ niNodeRelease ni)             $ elements ! ElNodeRelease
+    void $ updateElementValue (ElementString  $ niNodeVersion ni)             $ elements ! ElNodeVersion
+    void $ updateElementValue (ElementString  $ niNodeCommit ni)              $ elements ! ElNodeCommit
+    void $ updateElementValue (ElementString  $ niNodeShortCommit ni)         $ elements ! ElNodeShortCommit
+    void $ updateElementValue (ElementString activeNodeMark)                  $ elements ! ElActiveNode
+    void $ updateElementValue (ElementString upTimeHMS)                       $ elements ! ElUptime
+    void $ updateElementValue (ElementInteger $ niEpoch ni)                   $ elements ! ElEpoch
+    void $ updateElementValue (ElementInteger $ niSlot ni)                    $ elements ! ElSlot
+    void $ updateElementValue (ElementInteger $ niBlocksNumber ni)            $ elements ! ElBlocksNumber
+    void $ updateElementValue (ElementDouble  $ niChainDensity ni)            $ elements ! ElChainDensity
+    void $ updateElementValue (ElementInteger $ niTxsProcessed ni)            $ elements ! ElTxsProcessed
+    void $ updateElementValue (ElementInteger $ niPeersNumber ni)             $ elements ! ElPeersNumber
+    void $ updateElementValue (ElementString  acceptorHost)                   $ elements ! ElTraceAcceptorHost
+    void $ updateElementValue (ElementString  acceptorPort)                   $ elements ! ElTraceAcceptorPort
+    void $ updateElementValue (ElementWord64  $ nmMempoolTxsNumber nm)        $ elements ! ElMempoolTxsNumber
+    void $ updateElementValue (ElementDouble  $ nmMempoolTxsPercent nm)       $ elements ! ElMempoolTxsPercent
+    void $ updateElementValue (ElementWord64  $ nmMempoolBytes nm)            $ elements ! ElMempoolBytes
+    void $ updateElementValue (ElementDouble  $ nmMempoolBytesPercent nm)     $ elements ! ElMempoolBytesPercent
+    void $ updateElementValue (ElementWord64  $ nmMempoolCapacity nm)         $ elements ! ElMempoolCapacity
+    void $ updateElementValue (ElementWord64  $ nmMempoolCapacityBytes nm)    $ elements ! ElMempoolCapacityBytes
+    void $ updateElementValue (ElementDouble  $ nmMemory nm)                  $ elements ! ElMemory
+    void $ updateElementValue (ElementDouble  $ nmMemoryMax nm)               $ elements ! ElMemoryMax
+    void $ updateElementValue (ElementDouble  $ nmMemoryMaxTotal nm)          $ elements ! ElMemoryMaxTotal
+    void $ updateElementValue (ElementDouble  $ nmMemoryPercent nm)           $ elements ! ElMemoryPercent
+    void $ updateElementValue (ElementDouble  $ nmCPUPercent nm)              $ elements ! ElCPUPercent
+    void $ updateElementValue (ElementDouble  $ nmDiskUsageR nm)              $ elements ! ElDiskUsageR
+    void $ updateElementValue (ElementDouble  $ nmDiskUsageRMaxTotal nm)      $ elements ! ElDiskUsageRMaxTotal
+    void $ updateElementValue (ElementDouble  $ nmDiskUsageW nm)              $ elements ! ElDiskUsageW
+    void $ updateElementValue (ElementDouble  $ nmDiskUsageWMaxTotal nm)      $ elements ! ElDiskUsageWMaxTotal
+    void $ updateElementValue (ElementDouble  $ nmNetworkUsageIn nm)          $ elements ! ElNetworkUsageIn
+    void $ updateElementValue (ElementDouble  $ nmNetworkUsageInMaxTotal nm)  $ elements ! ElNetworkUsageInMaxTotal
+    void $ updateElementValue (ElementDouble  $ nmNetworkUsageOut nm)         $ elements ! ElNetworkUsageOut
+    void $ updateElementValue (ElementDouble  $ nmNetworkUsageOutMaxTotal nm) $ elements ! ElNetworkUsageOutMaxTotal
+
+    void $ updateProgressBar (nmMempoolBytesPercent nm)    $ elements ! ElMempoolBytesProgress
+    void $ updateProgressBar (nmMempoolTxsPercent nm)      $ elements ! ElMempoolTxsProgress
+    void $ updateProgressBar (nmMemoryPercent nm)          $ elements ! ElMemoryProgress
+    void $ updateProgressBar (nmCPUPercent nm)             $ elements ! ElCPUProgress
+    void $ updateProgressBar (nmDiskUsageRPercent nm)      $ elements ! ElDiskReadProgress
+    void $ updateProgressBar (nmDiskUsageWPercent nm)      $ elements ! ElDiskWriteProgress
+    void $ updateProgressBar (nmNetworkUsageInPercent nm)  $ elements ! ElNetworkInProgress
+    void $ updateProgressBar (nmNetworkUsageOutPercent nm) $ elements ! ElNetworkOutProgress
 
 updateElementValue
   :: ElementValue
@@ -132,10 +132,10 @@ findTraceAcceptorNetInfo
   :: Text
   -> [RemoteAddrNamed]
   -> (String, String)
-findTraceAcceptorNetInfo activeNode acceptors =
+findTraceAcceptorNetInfo nameOfNode acceptors =
   case maybeActiveNode of
     Just (RemoteAddrNamed _ (RemoteSocket host port)) -> (host, port)
     Just (RemoteAddrNamed _ (RemotePipe _)) -> ("-", "-")
     Nothing -> ("-", "-")
  where
-  maybeActiveNode = flip L.find acceptors $ \(RemoteAddrNamed name _) -> name == activeNode
+  maybeActiveNode = flip L.find acceptors $ \(RemoteAddrNamed name _) -> name == nameOfNode
