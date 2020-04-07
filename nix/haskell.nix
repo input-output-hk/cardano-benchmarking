@@ -27,8 +27,21 @@ let
 
         # split data output for ekg to reduce closure size
         packages.ekg.components.library.enableSeparateDataOutput = true;
-        packages.cardano-tx-generator.configureFlags = [ "--ghc-option=-Werror" ];
+        # TODO: Enable -Werror:
+        packages.cardano-tx-generator.configureFlags = [
+          "--ghc-option=-Wall"
+          #"--ghc-option=-Werror"
+        ];
+        packages.cardano-rt-view.configureFlags = [
+          "--ghc-option=-Wall"
+          #"--ghc-option=-Werror"
+        ];
         enableLibraryProfiling = profiling;
+
+        packages.cardano-node.doCheck = false;
+        packages.cardano-config.doCheck = false;
+        packages.cardano-db.doCheck = false;
+        packages.cardano-db-sync.doCheck = false;
       }
     ];
   };
