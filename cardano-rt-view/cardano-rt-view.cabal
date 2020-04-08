@@ -22,6 +22,7 @@ library
 
                        Cardano.Benchmarking.RTView.GUI.Elements
                        Cardano.Benchmarking.RTView.GUI.Markup
+                       Cardano.Benchmarking.RTView.GUI.NodeWidget
                        Cardano.Benchmarking.RTView.GUI.Updater
 
                        Cardano.Benchmarking.RTView.NodeState.Types

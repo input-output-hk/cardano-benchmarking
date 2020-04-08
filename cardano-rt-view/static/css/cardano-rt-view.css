@@ -14,6 +14,23 @@
     margin-right: 6px;
 }
 
+.node-name {
+    font-weight: bold;
+    font-size: 110%;
+    padding-top: 10px;
+    padding-bottom: 10px;
+    color: #3f51b5;
+}
+
+.tab-container {
+    padding-top: 16px;
+}
+
+.node-container {
+    min-height: 420px;
+    background-color: #eee;
+}
+
 .active-node-mark {
     padding-left: 21px;
     font-weight: bold;
@@ -94,14 +111,11 @@ a:visited:hover {
 }
 
 .node-metrics-v-spacer {
-    padding-top: 18px;
+    padding-top: 15px;
 }
 
 .node-info-values {
     font-weight: bold;
-}
-
-.node-name {
 }
 
 .node-port {
