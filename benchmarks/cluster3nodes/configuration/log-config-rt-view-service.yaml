@@ -1,0 +1,80 @@
+# global filter; messages must have at least this severity to pass:
+minSeverity: Debug
+
+# global file rotation settings:
+rotation:
+  rpLogLimitBytes: 5000000
+  rpKeepFilesNum:  10
+  rpMaxAgeHours:   24
+
+# these backends are initialized:
+setupBackends:
+  - KatipBK
+  - LogBufferBK
+  - TraceAcceptorBK
+
+# if not indicated otherwise, then messages are passed to these backends:
+defaultBackends:
+  - KatipBK
+
+# here we set up outputs of logging in 'katip':
+setupScribes:
+  - scKind: StdoutSK
+    scName: stdout
+    scFormat: ScText
+    scRotation: null
+  - scKind: FileSK
+    scFormat: ScJson
+    scName: "logs/acceptor.json"
+    scRotation:
+      rpLogLimitBytes: 25000000
+      rpKeepFilesNum:  3
+      rpMaxAgeHours:   24
+
+# if not indicated otherwise, then log output is directed to this:
+defaultScribes:
+  - - StdoutSK
+    - stdout
+  - - FileSK
+    - "logs/acceptor.json"
+
+# more options which can be passed as key-value pairs:
+options:
+  mapBackends:
+    cardano-rt-view.acceptor:
+      - LogBufferBK
+      - KatipBK
+
+traceAcceptAt:
+  - nodeName: "a"
+    remoteAddr:
+      tag: RemoteSocket
+      contents:
+        - "127.0.0.1"
+        - "2997"
+  - nodeName: "b"
+    remoteAddr:
+      tag: RemoteSocket
+      contents:
+        - "127.0.0.1"
+        - "2998"
+  - nodeName: "c"
+    remoteAddr:
+      tag: RemoteSocket
+      contents:
+        - "127.0.0.1"
+        - "2999"
+
+# NodeId: 4
+# Protocol: RealPBFT
+# NumCoreNodes: 1
+# RequiresNetworkMagic: RequiresNoMagic
+# PBftSignatureThreshold: 0.5
+# TurnOnLogging: True
+# ViewMode: SimpleView
+# TurnOnLogMetrics: False
+# ApplicationName: cardano-sl
+# ApplicationVersion: 1
+# LastKnownBlockVersion-Major: 0
+# LastKnownBlockVersion-Minor: 2
+# LastKnownBlockVersion-Alt: 0
