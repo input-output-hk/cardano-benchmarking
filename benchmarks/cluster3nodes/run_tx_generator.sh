@@ -19,10 +19,9 @@ echo "$TARGETNODES"
 
 #RUNNER=${RUNNER:-cabal v2-run -v0}
 #GENERATOR="${RUNNER} cardano-cli --"
-GENERATOR="${BASEDIR}/../../bin/cardano-cli"
+GENERATOR="${BASEDIR}/../../bin/cardano-tx-generator"
 
 exec ${GENERATOR} \
-  generate-txs \
   --config ${CONFIGFILE} \
   --signing-key ${CONFIGDIR}/latest-genesis/delegate-keys.000.key \
   --delegation-certificate ${CONFIGDIR}/latest-genesis/delegation-cert.000.json \
