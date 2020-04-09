@@ -59,6 +59,8 @@ options:
       subtrace: NoTrace
     cardano.node-metrics:
       subtrace: Neutral
+  mapSeverity:
+    cardano.node.BlockFetchDecision: Notice
   mapBackends:
     cardano.epoch-validation.benchmark:
       - AggregationBK
