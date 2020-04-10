@@ -64,6 +64,13 @@ data ElementName
   | ElNetworkUsageInMaxTotal
   | ElNetworkUsageOut
   | ElNetworkUsageOutMaxTotal
+  | ElRTSMemoryAllocated
+  | ElRTSMemoryUsed
+  | ElRTSMemoryUsedPercent
+  | ElRTSGcCpu
+  | ElRTSGcElapsed
+  | ElRTSGcNum
+  | ElRTSGcMajorNum
   -- Progress bars.
   | ElMempoolBytesProgress
   | ElMempoolTxsProgress
@@ -73,6 +80,7 @@ data ElementName
   | ElDiskWriteProgress
   | ElNetworkInProgress
   | ElNetworkOutProgress
+  | ElRTSMemoryProgress
   deriving (Eq, Ord)
 
 data ElementValue

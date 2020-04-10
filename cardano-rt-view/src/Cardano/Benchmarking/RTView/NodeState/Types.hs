@@ -78,15 +78,22 @@ data NodeMetrics = NodeMetrics
   , nmNetworkUsageIn          :: !Double
   , nmNetworkUsageInPercent   :: !Double
   , nmNetworkUsageInMax       :: !Double
-  , nmNetworkUsageInMaxTotal  :: !Double 
+  , nmNetworkUsageInMaxTotal  :: !Double
   , nmNetworkUsageInLast      :: !Word64
   , nmNetworkUsageInNs        :: !Word64
   , nmNetworkUsageOut         :: !Double
   , nmNetworkUsageOutPercent  :: !Double
   , nmNetworkUsageOutMax      :: !Double
-  , nmNetworkUsageOutMaxTotal :: !Double 
+  , nmNetworkUsageOutMaxTotal :: !Double
   , nmNetworkUsageOutLast     :: !Word64
   , nmNetworkUsageOutNs       :: !Word64
+  , nmRTSMemoryAllocated      :: !Double
+  , nmRTSMemoryUsed           :: !Double
+  , nmRTSMemoryUsedPercent    :: !Double
+  , nmRTSGcCpu                :: !Double
+  , nmRTSGcElapsed            :: !Double
+  , nmRTSGcNum                :: !Integer
+  , nmRTSGcMajorNum           :: !Integer
   }
 
 defaultNodesState
@@ -168,6 +175,13 @@ defaultNodeMetrics = NodeMetrics
   , nmNetworkUsageOutMaxTotal = 0.0
   , nmNetworkUsageOutLast     = 0
   , nmNetworkUsageOutNs       = 10000
+  , nmRTSMemoryAllocated      = 1.0
+  , nmRTSMemoryUsed           = 0.1
+  , nmRTSMemoryUsedPercent    = 1.0
+  , nmRTSGcCpu                = 0.1
+  , nmRTSGcElapsed            = 0.1
+  , nmRTSGcNum                = 0
+  , nmRTSGcMajorNum           = 0
   }
  where
   maxBytesPerTx = 4096 :: Word64
