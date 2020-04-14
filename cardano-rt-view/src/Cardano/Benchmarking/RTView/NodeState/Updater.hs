@@ -99,6 +99,21 @@ updateNodesState nsMVar loggerName (LogObject aName aMeta aContent) = do
               LogValue "txsProcessed" (PureI txsProcessed) ->
                 nodesStateWith $ updateTxsProcessed ns txsProcessed
               _ -> return currentNodesState
+           | "cardano.node-metrics" `T.isInfixOf` aName ->
+              case aContent of
+                LogValue "RTS.bytesAllocated" (Bytes bytesAllocated) ->
+                  nodesStateWith $ updateBytesAllocated ns bytesAllocated
+                LogValue "RTS.usedMemBytes" (Bytes usedMemBytes) ->
+                  nodesStateWith $ updateBytesUsed ns usedMemBytes
+                LogValue "RTS.gcCpuNs" (Nanoseconds gcCpuNs) ->
+                  nodesStateWith $ updateGcCpuNs ns gcCpuNs
+                LogValue "RTS.gcElapsedNs" (Nanoseconds gcElapsedNs) ->
+                  nodesStateWith $ updateGcElapsedNs ns gcElapsedNs
+                LogValue "RTS.gcNum" (PureI gcNum) ->
+                  nodesStateWith $ updateGcNum ns gcNum
+                LogValue "RTS.gcMajorNum" (PureI gcMajorNum) ->
+                  nodesStateWith $ updateGcMajorNum ns gcMajorNum
+                _ -> return currentNodesState
            | "cardano.node.release" `T.isInfixOf` aName ->
               case aContent of
                 LogMessage release ->
@@ -303,6 +318,55 @@ updateTxsProcessed ns txsProcessed = ns { nsInfo = newNi }
  where
   newNi = currentNi { niTxsProcessed = niTxsProcessed currentNi + txsProcessed }
   currentNi = nsInfo ns
+
+updateBytesAllocated :: NodeState -> Word64 -> NodeState
+updateBytesAllocated ns bytesAllocated = ns { nsMetrics = newNm }
+ where
+  newNm =
+    currentNm
+      { nmRTSMemoryAllocated = mBytes
+      }
+  currentNm = nsMetrics ns
+  mBytes    = fromIntegral (bytesAllocated) / 1024 / 1024 :: Double
+
+updateBytesUsed :: NodeState -> Word64 -> NodeState
+updateBytesUsed ns usedMemBytes = ns { nsMetrics = newNm }
+ where
+  newNm =
+    currentNm
+      { nmRTSMemoryUsed = mBytes
+      , nmRTSMemoryUsedPercent =   mBytes
+                                 / (nmRTSMemoryAllocated currentNm)
+                                 * 100.0
+      }
+  currentNm = nsMetrics ns
+  mBytes    = fromIntegral (usedMemBytes) / 1024 / 1024 :: Double
+
+updateGcCpuNs :: NodeState -> Word64 -> NodeState
+updateGcCpuNs ns gcCpuNs = ns { nsMetrics = newNm }
+ where
+  newNm     = currentNm { nmRTSGcCpu = seconds }
+  currentNm = nsMetrics ns
+  seconds   = (fromIntegral gcCpuNs) / 1000000000 :: Double
+
+updateGcElapsedNs :: NodeState -> Word64 -> NodeState
+updateGcElapsedNs ns gcElapsedNs = ns { nsMetrics = newNm }
+ where
+  newNm     = currentNm { nmRTSGcElapsed = seconds }
+  currentNm = nsMetrics ns
+  seconds   = (fromIntegral gcElapsedNs) / 1000000000 :: Double
+
+updateGcNum :: NodeState -> Integer -> NodeState
+updateGcNum ns gcNum = ns { nsMetrics = newNm }
+ where
+  newNm     = currentNm { nmRTSGcNum = gcNum }
+  currentNm = nsMetrics ns
+
+updateGcMajorNum :: NodeState -> Integer -> NodeState
+updateGcMajorNum ns gcMajorNum = ns { nsMetrics = newNm }
+ where
+  newNm     = currentNm { nmRTSGcMajorNum = gcMajorNum }
+  currentNm = nsMetrics ns
 
 updateChainDensity :: NodeState -> Double -> NodeState
 updateChainDensity ns density = ns { nsInfo = newNi }

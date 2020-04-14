@@ -61,6 +61,13 @@ mkNodeWidget = do
   elNetworkUsageInMaxTotal  <- string "0"
   elNetworkUsageOut         <- string "0"
   elNetworkUsageOutMaxTotal <- string "0"
+  elRTSMemoryAllocated      <- string "0"
+  elRTSMemoryUsed           <- string "0"
+  elRTSMemoryUsedPercent    <- string "0"
+  elRTSGcCpu                <- string "0"
+  elRTSGcElapsed            <- string "0"
+  elRTSGcNum                <- string "0"
+  elRTSGcMajorNum           <- string "0"
 
   elMempoolBytesProgress    <- UI.div #. "w3-teal" #+
                                  [ UI.span #. "h-spacer" #+ []
@@ -109,6 +116,12 @@ mkNodeWidget = do
                                  [ UI.span #. "h-spacer" #+ []
                                  , element elNetworkUsageOut
                                  , UI.span #. "bar-value-unit" #+ [string "KB/s"]
+                                 ]
+
+  elRTSMemoryProgress       <- UI.div #. "w3-teal" #+
+                                 [ UI.span #. "h-spacer" #+ []
+                                 , element elRTSMemoryUsed
+                                 , UI.span #. "bar-value-unit" #+ [string "MB"]
                                  ]
 
   -- TODO: Currently there's no real cardano-node commit as a string.
@@ -322,7 +335,44 @@ mkNodeWidget = do
 
   ghcRTSTabContent
     <- UI.div #. "tab-container" # hideIt #+
-         [ string "GHC RTS metrics (under development)"
+         [ UI.div #. "" #+
+             [ UI.div #. "w3-container" #+
+                 [ UI.div #. "w3-row" #+
+                     [ UI.div #. "w3-half w3-theme" #+ [string "RTS memory"]
+                     , UI.div #. "w3-half w3-theme w3-right-align" #+
+                         [ element elRTSMemoryAllocated
+                         , UI.span #. "value-unit" #+ [string "MB"]
+                         ]
+                     ]
+                 , UI.div #. "w3-light-green" #+ [element elRTSMemoryProgress]
+                 ]
+             , vSpacer "node-metrics-v-spacer"
+             , vSpacer "node-metrics-v-spacer"
+             , UI.div #. "w3-row" #+
+                 [ UI.div #. "w3-half w3-theme" #+
+                     [ UI.div #. "" #+
+                         [ UI.div #. "" #+ [string "GC CPU:"]
+                         , UI.div #. "" #+ [string "GC Elapsed:"]
+                         , UI.div #. "" #+ [string "GC Number:"]
+                         , UI.div #. "" #+ [string "GC Major Number:"]
+                         ]
+                     ]
+                 , UI.div #. "w3-half w3-theme" #+
+                     [ UI.div #. "node-info-values" #+
+                         [ UI.div #. "" #+
+                             [ element elRTSGcCpu
+                             , UI.span #. "value-unit" #+ [string "s"]
+                             ]
+                         , UI.div #. "" #+
+                             [ element elRTSGcElapsed
+                             , UI.span #. "value-unit" #+ [string "s"]
+                             ]
+                         , UI.div #. "" #+ [element elRTSGcNum]
+                         , UI.div #. "" #+ [element elRTSGcMajorNum]
+                         ]
+                     ]
+                 ]
+             ]
          ]
 
   -- Tabs for corresponding sections.
@@ -401,6 +451,13 @@ mkNodeWidget = do
           , (ElNetworkUsageInMaxTotal,  elNetworkUsageInMaxTotal)
           , (ElNetworkUsageOut,         elNetworkUsageOut)
           , (ElNetworkUsageOutMaxTotal, elNetworkUsageOutMaxTotal)
+          , (ElRTSMemoryAllocated,      elRTSMemoryAllocated)
+          , (ElRTSMemoryUsed,           elRTSMemoryUsed)
+          , (ElRTSMemoryUsedPercent,    elRTSMemoryUsedPercent)
+          , (ElRTSGcCpu,                elRTSGcCpu)
+          , (ElRTSGcElapsed,            elRTSGcElapsed)
+          , (ElRTSGcNum,                elRTSGcNum)
+          , (ElRTSGcMajorNum,           elRTSGcMajorNum)
           -- Progress bars
           , (ElMempoolBytesProgress,    elMempoolBytesProgress)
           , (ElMempoolTxsProgress,      elMempoolTxsProgress)
@@ -410,6 +467,7 @@ mkNodeWidget = do
           , (ElDiskWriteProgress,       elDiskUsageWProgress)
           , (ElNetworkInProgress,       elNetworkUsageInProgress)
           , (ElNetworkOutProgress,      elNetworkUsageOutProgress)
+          , (ElRTSMemoryProgress,       elRTSMemoryProgress)
           ]
 
   return (nodeWidget, nodeStateElems)
