@@ -43,7 +43,6 @@ options:
   mapBackends:
     cardano-rt-view.acceptor:
       - LogBufferBK
-      - KatipBK
 
 traceAcceptAt:
   - nodeName: "a"
@@ -72,7 +71,7 @@ traceAcceptAt:
 # PBftSignatureThreshold: 0.5
 # TurnOnLogging: True
 # ViewMode: SimpleView
-# TurnOnLogMetrics: False
+TurnOnLogMetrics: False
 # ApplicationName: cardano-sl
 # ApplicationVersion: 1
 # LastKnownBlockVersion-Major: 0

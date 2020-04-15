@@ -75,7 +75,7 @@ options:
 
 NodeId:
 Protocol: RealPBFT
-GenesisFile: configuration/genesis/latest-genesis
+GenesisFile: some/path
 NumCoreNodes: 1
 RequiresNetworkMagic: RequiresMagic
 PBftSignatureThreshold:
