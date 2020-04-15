@@ -11,7 +11,7 @@ import           Cardano.BM.Backend.Switchboard
 import qualified Cardano.BM.Backend.TraceAcceptor as TraceAcceptor
 import           Cardano.BM.Configuration
                    ( Configuration )
-import           Cardano.BM.IOManager
+--import           Cardano.BM.IOManager
 import           Cardano.BM.Plugin
                    ( loadPlugin )
 import           Cardano.BM.Trace
@@ -27,7 +27,7 @@ launchMetricsAcceptor
   -> Trace IO Text
   -> Switchboard Text
   -> IO ()
-launchMetricsAcceptor config accTr switchBoard =
-  withIOManager $ \iomgr -> do
-    TraceAcceptor.plugin iomgr config accTr switchBoard >>= loadPlugin switchBoard
+launchMetricsAcceptor config accTr switchBoard = do
+  --withIOManager $ \iomgr -> do
+    TraceAcceptor.plugin {-iomgr-} config accTr switchBoard >>= loadPlugin switchBoard
     forever $ threadDelay 1000000
