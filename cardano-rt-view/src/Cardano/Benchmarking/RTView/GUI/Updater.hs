@@ -23,9 +23,11 @@ import           Data.Text
                    ( unpack )
 import           Formatting
                    ( sformat, fixed, (%) )
+import qualified Graphics.UI.Threepenny as UI
 import           Graphics.UI.Threepenny.Core
                    ( Element, UI
-                   , (#), element, set, style, text
+                   , (#), (#.), (#+), children, element
+                   , set, style, text
                    )
 
 import           Cardano.BM.Data.Configuration
@@ -36,7 +38,7 @@ import           Cardano.Benchmarking.RTView.GUI.Elements
                    )
 import           Cardano.Benchmarking.RTView.NodeState.Types
                    ( NodeInfo (..), NodeMetrics (..)
-                   , NodeState (..), NodesState
+                   , NodeState (..), NodesState, PeerInfo (..)
                    )
 
 -- | This function is calling by the timer. It updates the node' state elements
@@ -72,6 +74,7 @@ updateGUI nodesState acceptors nodesStateElems =
     void $ updateElementValue (ElementDouble  $ niChainDensity ni)            $ elements ! ElChainDensity
     void $ updateElementValue (ElementInteger $ niTxsProcessed ni)            $ elements ! ElTxsProcessed
     void $ updateElementValue (ElementInteger $ niPeersNumber ni)             $ elements ! ElPeersNumber
+    void $ updatePeersList    (niPeersInfo ni)                                $ elements ! ElPeersList
     void $ updateElementValue (ElementString  acceptorHost)                   $ elements ! ElTraceAcceptorHost
     void $ updateElementValue (ElementString  acceptorPort)                   $ elements ! ElTraceAcceptorPort
     void $ updateElementValue (ElementWord64  $ nmMempoolTxsNumber nm)        $ elements ! ElMempoolTxsNumber
@@ -133,6 +136,21 @@ updateProgressBar percents bar =
 
 showWith1DecPlace :: Double -> String
 showWith1DecPlace = unpack . sformat ("" % fixed 1)
+
+-- | Since peers list will be changed dynamically, we need it
+--   to update corresponding HTML-murkup dynamically as well.
+updatePeersList
+  :: [PeerInfo]
+  -> Element
+  -> UI Element
+updatePeersList peersInfo peersList = do
+  peersItems <- forM peersInfo $ \(PeerInfo endpoint slotNo blockNo) ->
+    UI.div #. "w3-row" #+
+      [ UI.div #. "w3-third w3-theme" #+ [UI.div #. "" #+ [UI.string endpoint]]
+      , UI.div #. "w3-third w3-theme" #+ [UI.div #. "" #+ [UI.string slotNo]]
+      , UI.div #. "w3-third w3-theme" #+ [UI.div #. "" #+ [UI.string blockNo]]
+      ]
+  element peersList # set children peersItems
 
 -- | To show TraceAcceptorHost and TraceAcceptorPort
 --   of the active node we use its name.

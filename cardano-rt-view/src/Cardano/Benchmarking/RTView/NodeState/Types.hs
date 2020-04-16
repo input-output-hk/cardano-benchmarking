@@ -6,6 +6,7 @@ module Cardano.Benchmarking.RTView.NodeState.Types
     , NodeState (..)
     , NodeInfo (..)
     , NodeMetrics (..)
+    , PeerInfo (..)
     , defaultNodesState
     ) where
 
@@ -31,7 +32,13 @@ type NodesState = Map Text NodeState
 data NodeState = NodeState
   { nsInfo    :: !NodeInfo
   , nsMetrics :: !NodeMetrics
-  }
+  } deriving Show
+
+data PeerInfo = PeerInfo
+  { piEndpoint    :: !String
+  , piSlotNumber  :: !String
+  , piBlockNumber :: !String
+  } deriving (Eq, Show)
 
 data NodeInfo = NodeInfo
   { niNodeRelease       :: !String
@@ -45,9 +52,10 @@ data NodeInfo = NodeInfo
   , niChainDensity      :: !Double
   , niTxsProcessed      :: !Integer
   , niPeersNumber       :: !Integer
+  , niPeersInfo         :: ![PeerInfo]
   , niTraceAcceptorHost :: !String
   , niTraceAcceptorPort :: !String
-  }
+  } deriving Show
 
 data NodeMetrics = NodeMetrics
   { nmMempoolTxsNumber        :: !Word64
@@ -94,7 +102,7 @@ data NodeMetrics = NodeMetrics
   , nmRTSGcElapsed            :: !Double
   , nmRTSGcNum                :: !Integer
   , nmRTSGcMajorNum           :: !Integer
-  }
+  } deriving Show
 
 defaultNodesState
   :: Configuration
@@ -132,6 +140,7 @@ defaultNodeInfo now = NodeInfo
   , niChainDensity      = 0.0
   , niTxsProcessed      = 0
   , niPeersNumber       = 0
+  , niPeersInfo         = []
   , niTraceAcceptorHost = "-"
   , niTraceAcceptorPort = "-"
   }

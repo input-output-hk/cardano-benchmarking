@@ -37,6 +37,7 @@ data ElementName
   | ElChainDensity
   | ElTxsProcessed
   | ElPeersNumber
+  | ElPeersList
   | ElTraceAcceptorHost
   | ElTraceAcceptorPort
   | ElMempoolTxsNumber

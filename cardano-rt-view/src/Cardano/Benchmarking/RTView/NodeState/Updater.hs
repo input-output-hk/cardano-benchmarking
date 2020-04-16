@@ -6,9 +6,15 @@ module Cardano.Benchmarking.RTView.NodeState.Updater
     ) where
 
 import           Cardano.Prelude
+import           Prelude
+                   ( String )
 
+import qualified Data.Aeson as A
+import           Data.Char
+                   ( isDigit )
+import qualified Data.HashMap.Strict as HM
 import           Data.List
-                   ( (!!) )
+                   ( (!!), findIndex, find )
 import qualified Data.Map.Strict as Map
 import           Data.Map.Strict
                    ( (!?) )
@@ -32,7 +38,7 @@ import           Cardano.BM.Trace
 
 import           Cardano.Benchmarking.RTView.NodeState.Types
                    ( NodesState, NodeState (..), NodeInfo (..)
-                   , NodeMetrics (..)
+                   , NodeMetrics (..), PeerInfo (..)
                    )
 
 -- | This function is running in a separate thread.
@@ -114,6 +120,18 @@ updateNodesState nsMVar loggerName (LogObject aName aMeta aContent) = do
                 LogValue "RTS.gcMajorNum" (PureI gcMajorNum) ->
                   nodesStateWith $ updateGcMajorNum ns gcMajorNum
                 _ -> return currentNodesState
+           | "cardano.node.BlockFetchDecision" `T.isInfixOf` aName ->
+              case aContent of
+                LogValue "connectedPeers" (PureI peersNum) ->
+                  nodesStateWith $ updatePeersNumber ns peersNum
+                LogStructured peerInfo ->
+                  nodesStateWith $ updatePeerEndpoint ns peerInfo
+                _ -> return currentNodesState
+           | "cardano.node.ChainSyncProtocol" `T.isInfixOf` aName ->
+              case aContent of
+                LogMessage traceLabelPeer ->
+                  nodesStateWith $ updatePeerInfo ns traceLabelPeer
+                _ -> return currentNodesState
            | "cardano.node.release" `T.isInfixOf` aName ->
               case aContent of
                 LogMessage release ->
@@ -133,8 +151,6 @@ updateNodesState nsMVar loggerName (LogObject aName aMeta aContent) = do
               case aContent of
                 LogValue "density" (PureD density) ->
                   nodesStateWith $ updateChainDensity ns density
-                LogValue "connectedPeers" (PureI peersNum) ->
-                  nodesStateWith $ updatePeersNumber ns peersNum
                 LogValue "blockNum" (PureI blockNum) ->
                   nodesStateWith $ updateBlocksNumber ns blockNum
                 LogValue "slotInEpoch" (PureI slotNum) ->
@@ -148,6 +164,65 @@ updateNodesState nsMVar loggerName (LogObject aName aMeta aContent) = do
         return currentNodesState
 
 -- Updaters for particular node state's fields.
+
+-- | Since we know the format of JSON-representation in log messages,
+--   we extract values as a raw strings.
+--     * Pros: the simplest solution without dependencies from ouroboros libraries.
+--     * Cons: primitive text parsing.
+--   At the worst, it can be treated as a temporary solution.
+updatePeerEndpoint :: NodeState -> HM.HashMap Text A.Value -> NodeState
+updatePeerEndpoint ns peerInfo = ns { nsInfo = newNi }
+ where
+  newNi = currentNi { niPeersInfo = newPeersInfo }
+  currentNi = nsInfo ns
+  currentPeers = niPeersInfo currentNi
+  connectionInfo = case HM.lookup "peer" peerInfo of
+                     Just (A.String info) -> info
+                     _ -> ""
+  endpoint = getValueOf "remoteAddress" endpointOnly $ T.words connectionInfo
+  endpointIsHere = isJust $ find (\(PeerInfo ep _ _) -> ep == endpoint) currentPeers
+  newPeersInfo = if endpointIsHere
+                   then currentPeers
+                   else currentPeers ++ [PeerInfo endpoint "-" "-"]
+  -- TODO: this function does NOT remove peer's info if corresponding
+  -- peer was disconnected. But we plan to add check of outdated metrics,
+  -- so it will be implemented later.
+
+updatePeerInfo :: NodeState -> Text -> NodeState
+updatePeerInfo ns peerInfo = ns { nsInfo = newNi }
+ where
+  newNi = currentNi { niPeersInfo = newPeersInfo }
+  currentNi = nsInfo ns
+  currentPeers = niPeersInfo currentNi
+  newPeersInfo = map (\pI@(PeerInfo ep _ _) ->
+                       if ep == endpoint && slotAndPortAreNew
+                         then PeerInfo ep slotNo blockNo
+                         else pI)
+                     currentPeers
+  endpoint = getValueOf "remoteAddress" endpointOnly $ T.words info
+  slotNo   = getValueOf "unSlotNo" numbersOnly tipInfo'
+  blockNo  = getValueOf "unBlockNo" numbersOnly tipInfo'
+  slotAndPortAreNew = (not . null $ slotNo) && (not . null $ blockNo)
+  (info, tipInfo) = T.breakOn "Tip" peerInfo
+  tipInfo' = T.words tipInfo
+
+getValueOf
+  :: Text
+  -> (Text -> Text)
+  -> [Text]
+  -> String
+getValueOf elemName aFilter parts = 
+  case findIndex (\n -> elemName `T.isInfixOf` n) parts of
+    Just i  -> T.unpack . aFilter $ parts !! (i + 2) -- Skip '=' mark.
+    Nothing -> ""
+
+endpointOnly :: Text -> Text
+endpointOnly = T.filter (\c -> isDigit c || c == '.' || c == ':')
+
+numbersOnly :: Text -> Text
+numbersOnly = T.filter isDigit
+
+---
 
 updateNodeRelease :: NodeState -> Text -> NodeState
 updateNodeRelease ns release = ns { nsInfo = newNi }
