@@ -54,6 +54,7 @@ extra-deps:
   - time-1.8.0.4
   - time-units-1.0.0
   - transformers-except-0.1.1
+  - unix-2.7.2.2
   - websockets-0.12.6.1
   - Win32-2.8.5.0
   - word-wrap-0.4.1
