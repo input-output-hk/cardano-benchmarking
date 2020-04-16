@@ -20,11 +20,11 @@ LASTDISKOUT=`jq -r 'select(.data.kind=="LogValue" and .data.name=="IO.wbytes") |
 # output git revision
 echo -n "cardano-benchmarking commit;"
 git log | head -1 | cut -d ' ' -f 2
-echo -n "slotfirst;"; echo $FIRSTSLOT
-echo -n "slotlast;"; echo $LASTSLOT
-echo -n "memorylast;"; echo $LASTRSS
-echo -n "netinlast;"; echo $LASTNETIN
-echo -n "netoutlast;"; echo $LASTNETOUT
-echo -n "diskinlast;"; echo $LASTDISKIN
-echo -n "diskoutlast;"; echo $LASTDISKOUT
+echo -n "slotfirst,"; echo $FIRSTSLOT
+echo -n "slotlast,"; echo $LASTSLOT
+echo -n "memorylast,"; echo $LASTRSS
+echo -n "netinlast,"; echo $LASTNETIN
+echo -n "netoutlast,"; echo $LASTNETOUT
+echo -n "diskinlast,"; echo $LASTDISKIN
+echo -n "diskoutlast,"; echo $LASTDISKOUT
 
