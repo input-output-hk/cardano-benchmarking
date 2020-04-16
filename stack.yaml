@@ -66,7 +66,7 @@ extra-deps:
       - test
 
   - git: https://github.com/input-output-hk/cardano-base
-    commit: 42c57fed487b61c13a68a1600a6675ad987822d0
+    commit: 6e71b0e3ff0c3fe151d47b1c3c5ea871d1bc70b9
     subdirs:
       - binary
       - binary/test
@@ -122,7 +122,7 @@ extra-deps:
         - Win32-network
 
   - git: https://github.com/input-output-hk/iohk-monitoring-framework
-    commit: 10877fbae54aa7a4c04ae3b5d87c825a4019e9e9
+    commit: eb340f88c0d52b973c0e80bf98a8152097a056c0
     subdirs:
       - contra-tracer
       - iohk-monitoring
@@ -152,7 +152,7 @@ extra-deps:
         - http-client
 
 nix:
-  shell-file: nix/stack-shell.nix
+    shell-file: nix/stack-shell.nix
 #  pure: true
 #  packages: [ zlib.dev, zlib.out
 #            , openssl.dev, openssl.out

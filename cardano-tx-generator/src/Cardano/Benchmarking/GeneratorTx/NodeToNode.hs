@@ -82,8 +82,7 @@ instance HasPrivacyAnnotation SendRecvConnect
 
 instance forall m . (m ~ IO) => Transformable Text m SendRecvConnect where
   -- transform to JSON Object
-  trTransformer StructuredLogging verb tr = trStructured verb tr
-  trTransformer _ _verb _tr = nullTracer
+  trTransformer = trStructured
 
 --------------------------------------------------------------------------------------
 
@@ -169,7 +168,7 @@ instance HasPrivacyAnnotation (SendRecvTxSubmission ByronBlock)
 
 instance Transformable Text IO (SendRecvTxSubmission ByronBlock) where
   -- transform to JSON Object
-  trTransformer StructuredLogging verb tr = Tracer $ \arg -> do
+  trTransformer verb tr = Tracer $ \arg -> do
     currentTime <- getCurrentTime
     let
       obj = toObject verb arg
@@ -182,7 +181,6 @@ instance Transformable Text IO (SendRecvTxSubmission ByronBlock) where
       tracer = if obj == emptyObject then nullTracer else tr
     meta <- mkLOMeta (getSeverityAnnotation arg) (getPrivacyAnnotation arg)
     traceWith tracer (mempty, LogObject mempty meta (LogStructured updatedObj))
-  trTransformer _ _verb _tr = nullTracer
 
 --------------------------------------------------------------------------------------
 
