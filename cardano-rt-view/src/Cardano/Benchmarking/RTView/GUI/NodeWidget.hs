@@ -166,20 +166,29 @@ mkNodeWidget = do
              ]
          ]
 
+  -- List of items corresponding to each peer, it will be changed dynamically!
+  elPeersList <- UI.div #. "" #+ []
+
   peersTabContent
     <- UI.div #. "tab-container" # hideIt #+
          [ UI.div #. "w3-row" #+
-             [ UI.div #. "w3-half w3-theme" #+
-                 [ UI.div #. "" #+
-                     [ UI.div #. "" #+ [string "Peers number:"]
+             [ UI.div #. "w3-third w3-theme" #+
+                 [ UI.div #. "node-info-values" #+
+                     [ UI.div #. "" #+ [string "Endpoint"]
                      ]
                  ]
-             , UI.div #. "w3-half w3-theme" #+
+             , UI.div #. "w3-third w3-theme" #+
                  [ UI.div #. "node-info-values" #+
-                     [ UI.div #. "" #+ [element elPeersNumber]
+                     [ UI.div #. "" #+ [string "Slot No."]
+                     ]
+                 ]
+             , UI.div #. "w3-third w3-theme" #+
+                 [ UI.div #. "node-info-values" #+
+                     [ UI.div #. "" #+ [string "Block No."]
                      ]
                  ]
              ]
+         , element elPeersList
          ]
 
   blockchainTabContent
@@ -430,6 +439,7 @@ mkNodeWidget = do
           , (ElChainDensity,            elChainDensity)
           , (ElTxsProcessed,            elTxsProcessed)
           , (ElPeersNumber,             elPeersNumber)
+          , (ElPeersList,               elPeersList)
           , (ElTraceAcceptorHost,       elTraceAcceptorHost)
           , (ElTraceAcceptorPort,       elTraceAcceptorPort)
           , (ElMempoolTxsNumber,        elMempoolTxsNumber)
