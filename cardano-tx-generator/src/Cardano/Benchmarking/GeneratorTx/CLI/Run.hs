@@ -14,13 +14,10 @@ import           Paths_cardano_tx_generator
                     ( version )
 import           Cardano.Prelude hiding (option)
 import           Control.Monad.Trans.Except.Extra
-                    ( firstExceptT, left )
+                    ( firstExceptT )
 
-import           Ouroboros.Consensus.Byron.Ledger (ByronBlock)
-import           Ouroboros.Consensus.Cardano hiding (Protocol)
-import qualified Ouroboros.Consensus.Cardano as Consensus
 import           Ouroboros.Network.NodeToClient
-                    ( AssociateWithIOCP
+                    ( IOManager
                     , withIOManager
                     )
 
@@ -33,11 +30,11 @@ import           Cardano.Config.Protocol.Byron
                     , mkConsensusProtocolRealPBFT )
 import           Cardano.Config.Types
                     ( DbFile(..), ConfigError(..), ConfigYamlFilePath(..)
-                    , CardanoEnvironment(..), LastKnownBlockVersion(..)
+                    , CardanoEnvironment(..), CLISocketPath (..)
+                    , LastKnownBlockVersion(..)
                     , MiscellaneousFilepaths (..), NodeConfiguration(..)
                     , Protocol, SigningKeyFile(..), TopologyFile(..), Update(..)
-                    , ncLogMetrics, ncReqNetworkMagic, ncProtocol
-                    , parseNodeConfigurationFP
+                    , ncLogMetrics, parseNodeConfigurationFP
                     )
 
 import           Cardano.Benchmarking.GeneratorTx.Error
@@ -81,51 +78,50 @@ runCommand (GenerateTxs logConfigFp
     -- Default update value
     let update = Update (ApplicationName "cardano-tx-generator") 1 $ LastKnownBlockVersion 0 2 0
     nc <- liftIO . parseNodeConfigurationFP $ ConfigYamlFilePath logConfigFp
-    -- TODO: add genesis file?
-    -- (Just genFile)
-    -- TODO: add update?
-    -- update
-    -- TODO: add socketFP?
-    -- socketFp
-
+    let updatedConfiguration :: NodeConfiguration
+        updatedConfiguration = nc { ncGenesisFile = genFile
+                                  , ncUpdate = update
+                                  }
     -- Logging layer
     (loggingLayer, _) <- firstExceptT (\(ConfigErrorFileNotFound fp) -> FileNotFoundError fp) $
                              createLoggingFeatureCLI
                              (pack $ showVersion version)
                              NoEnvironment
                              (Just logConfigFp)
-                             (ncLogMetrics nc)
+                             (ncLogMetrics updatedConfiguration)
 
-    p <- firstExceptT GenerateTxsError $
+    let miscFilepaths = MiscellaneousFilepaths
+                          { topFile = TopologyFile "" -- Tx generator doesn't use topology.
+                          , dBFile = DbFile ""        -- Tx generator doesn't use database.
+                          , delegCertFile = Just delegCert
+                          , signKeyFile = Just signingKey
+                          , socketFile = Just $ CLISocketPath socketFp
+                          }
+
+    proto <- firstExceptT GenerateTxsError $
         firstExceptT FromProtocolError $
-                         mkConsensusProtocolRealPBFT
-                             nc
-                             (Just MiscellaneousFilepaths {
-                                 topFile = TopologyFile "topology.yaml",  -- TODO
-                                 dBFile = DbFile "db",  -- TODO
-                                 delegCertFile = Just delegCert,
-                                 signKeyFile = Just signingKey,
-                                 socketFile = Nothing })
-    case p of
-        proto@Consensus.ProtocolRealPBFT{} -> firstExceptT GenerateTxsError $
-            firstExceptT GenesisBenchmarkRunnerError $
-                             genesisBenchmarkRunner
-                                 loggingLayer
-                                 iocp
-                                 socketFp
-                                 proto
-                                 targetNodeAddresses
-                                 numOfTxs
-                                 numOfInsPerTx
-                                 numOfOutsPerTx
-                                 feePerTx
-                                 tps
-                                 txAdditionalSize
-                                 explorerAPIEndpoint
-                                 [fp | SigningKeyFile fp <- sigKeysFiles]
-        _ -> left $ GenerateTxsError $ IncorrectProtocolSpecified (ncProtocol nc)
+            mkConsensusProtocolRealPBFT
+                updatedConfiguration
+                (Just miscFilepaths)
+
+    firstExceptT GenerateTxsError $
+        firstExceptT GenesisBenchmarkRunnerError $
+            genesisBenchmarkRunner
+                loggingLayer
+                iocp
+                socketFp
+                proto
+                targetNodeAddresses
+                numOfTxs
+                numOfInsPerTx
+                numOfOutsPerTx
+                feePerTx
+                tps
+                txAdditionalSize
+                explorerAPIEndpoint
+                [fp | SigningKeyFile fp <- sigKeysFiles]
 
 ----------------------------------------------------------------------------
 
-withIOManagerE :: (AssociateWithIOCP -> ExceptT e IO a) -> ExceptT e IO a
+withIOManagerE :: (IOManager -> ExceptT e IO a) -> ExceptT e IO a
 withIOManagerE k = ExceptT $ withIOManager (runExceptT . k)
