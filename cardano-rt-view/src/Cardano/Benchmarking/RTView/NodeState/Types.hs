@@ -2,7 +2,8 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Cardano.Benchmarking.RTView.NodeState.Types
-    ( NodesState
+    ( NodeError (..)
+    , NodesState
     , NodeState (..)
     , NodeInfo (..)
     , NodeMetrics (..)
@@ -24,6 +25,8 @@ import           Data.Time.Clock
 import           Cardano.BM.Configuration
                    ( Configuration )
 import qualified Cardano.BM.Configuration.Model as CM
+import           Cardano.BM.Data.Severity
+                   ( Severity )
 import           Cardano.BM.Data.Configuration
                    ( RemoteAddrNamed (..) )
 
@@ -40,6 +43,12 @@ data PeerInfo = PeerInfo
   , piBlockNumber :: !String
   } deriving (Eq, Show)
 
+data NodeError = NodeError
+  { eTimestamp :: !UTCTime
+  , eSeverity  :: !Severity
+  , eMessage   :: !String
+  } deriving Show
+
 data NodeInfo = NodeInfo
   { niNodeRelease       :: !String
   , niNodeVersion       :: !String
@@ -55,6 +64,7 @@ data NodeInfo = NodeInfo
   , niPeersInfo         :: ![PeerInfo]
   , niTraceAcceptorHost :: !String
   , niTraceAcceptorPort :: !String
+  , niNodeErrors        :: ![NodeError]
   } deriving Show
 
 data NodeMetrics = NodeMetrics
@@ -143,6 +153,7 @@ defaultNodeInfo now = NodeInfo
   , niPeersInfo         = []
   , niTraceAcceptorHost = "-"
   , niTraceAcceptorPort = "-"
+  , niNodeErrors        = []
   }
 
 defaultNodeMetrics :: NodeMetrics

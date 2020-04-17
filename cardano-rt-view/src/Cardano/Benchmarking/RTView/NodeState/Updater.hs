@@ -29,8 +29,11 @@ import           Cardano.BM.Data.Aggregated
                    ( Measurable (..) )
 import           Cardano.BM.Data.LogItem
                    ( LOContent (..), LOMeta (..), LogObject (..)
+                   , MonitorAction (..)
                    , utc2ns
                    )
+import           Cardano.BM.Data.Severity
+                   ( Severity (..) )
 import           Cardano.BM.Trace
                    ( Trace
                    , logDebug
@@ -38,7 +41,7 @@ import           Cardano.BM.Trace
 
 import           Cardano.Benchmarking.RTView.NodeState.Types
                    ( NodesState, NodeState (..), NodeInfo (..)
-                   , NodeMetrics (..), PeerInfo (..)
+                   , NodeMetrics (..), NodeError (..), PeerInfo (..)
                    )
 
 -- | This function is running in a separate thread.
@@ -84,7 +87,9 @@ updateNodesState nsMVar loggerName (LogObject aName aMeta aContent) = do
 
     case currentNodesState !? nameOfNode of
       Just ns ->
-        if | "cardano.node.metrics" `T.isInfixOf` aName ->
+        if | itIsErrorMessage aMeta ->
+              nodesStateWith $ updateNodeErrors ns aMeta aContent
+           | "cardano.node.metrics" `T.isInfixOf` aName ->
             case aContent of
               LogValue "Mem.resident" (PureI pages) ->
                 nodesStateWith $ updateMemoryUsage ns pages
@@ -163,7 +168,46 @@ updateNodesState nsMVar loggerName (LogObject aName aMeta aContent) = do
         -- name of node in getAcceptAt doesn't correspond to the name of loggerName.
         return currentNodesState
 
+-- | If this is an error message, it will be shown in "Errors" tab in GUI.
+itIsErrorMessage :: LOMeta -> Bool
+itIsErrorMessage aMeta =
+  case severity aMeta of
+    Warning   -> True
+    Error     -> True
+    Alert     -> True
+    Emergency -> True
+    _         -> False
+    -- 'Critical' is skipped because many non-error metrics have this severity.
+
 -- Updaters for particular node state's fields.
+
+updateNodeErrors :: Show a => NodeState -> LOMeta -> LOContent a -> NodeState
+updateNodeErrors ns (LOMeta timeStamp _ _ sev _) aContent = ns { nsInfo = newNi }
+ where
+  newNi = currentNi { niNodeErrors = currentErrors ++ newError }
+  currentNi = nsInfo ns
+  currentErrors = niNodeErrors currentNi
+  newError =
+    case errorMessage of
+      "" -> []
+      _  -> [NodeError timeStamp sev errorMessage]
+  errorMessage =
+    case aContent of
+      LogMessage msg -> show msg
+      LogError eMsg -> T.unpack eMsg
+      LogValue msg measurable -> T.unpack msg <> ", " <> prepared measurable
+      LogStructured obj -> show obj
+      MonitoringEffect (MonitorAlert msg) -> "Monitor alert: " <> T.unpack msg
+      MonitoringEffect _ -> ""
+      _ -> ""
+  prepared :: Measurable -> String
+  prepared (Microseconds v) = show v <> " mcs"
+  prepared (Nanoseconds v)  = show v <> " ns"
+  prepared (Seconds v)      = show v <> " s"
+  prepared (Bytes v)        = show v <> " bytes"
+  prepared (PureD v)        = show v
+  prepared (PureI v)        = show v
+  prepared _                = ""
 
 -- | Since we know the format of JSON-representation in log messages,
 --   we extract values as a raw strings.

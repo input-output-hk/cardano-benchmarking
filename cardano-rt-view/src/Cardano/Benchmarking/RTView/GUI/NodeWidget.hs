@@ -384,13 +384,34 @@ mkNodeWidget = do
              ]
          ]
 
+  -- List of node errors, it will be changed dynamically!
+  elNodeErrorsList <- UI.div #. "" #+ []
+
+  errorsTabContent
+    <- UI.div #. "tab-container errors-tab-container" # hideIt #+
+         [ UI.div #. "w3-row" #+
+             [ UI.div #. "w3-third w3-theme" #+
+                 [ UI.div #. "node-info-values" #+
+                     [ UI.div #. "" #+ [string "Timestamp"]
+                     ]
+                 ]
+             , UI.div #. "w3-twothird w3-theme" #+
+                 [ UI.div #. "node-info-values" #+
+                     [ UI.div #. "" #+ [string "Error message"]
+                     ]
+                 ]
+             ]
+         , element elNodeErrorsList
+         ]
+
   -- Tabs for corresponding sections.
   nodeTab        <- UI.button #. "w3-bar-item w3-button" # makeItActive #+ [string "Node"]
   peersTab       <- UI.button #. "w3-bar-item w3-button" #+ [string "Peers"]
   blockchainTab  <- UI.button #. "w3-bar-item w3-button" #+ [string "Blockchain"]
   txTab          <- UI.button #. "w3-bar-item w3-button" #+ [string "TXs"]
-  performanceTab <- UI.button #. "w3-bar-item w3-button" #+ [string "Performance"]
+  performanceTab <- UI.button #. "w3-bar-item w3-button" #+ [string "Resources"]
   ghcRTSTab      <- UI.button #. "w3-bar-item w3-button" #+ [string "GHC RTS"]
+  errorsTab      <- UI.button #. "w3-bar-item w3-button" #+ [string "Errors"]
 
   let tabs :: [(Element, Element, String)]
       tabs =
@@ -398,7 +419,8 @@ mkNodeWidget = do
         , (peersTab,       peersTabContent,       "Peers")
         , (blockchainTab,  blockchainTabContent,  "Blockchain")
         , (txTab,          txTabContent,          "TXs")
-        , (performanceTab, performanceTabContent, "Performance")
+        , (performanceTab, performanceTabContent, "Resources")
+        , (errorsTab,      errorsTabContent,      "Errors")
         , (ghcRTSTab,      ghcRTSTabContent,      "GHC RTS")
         ]
 
@@ -414,6 +436,7 @@ mkNodeWidget = do
           , element blockchainTab
           , element txTab
           , element performanceTab
+          , element errorsTab
           , element ghcRTSTab
           ]
       , element nodeTabContent
@@ -421,6 +444,7 @@ mkNodeWidget = do
       , element blockchainTabContent
       , element txTabContent
       , element performanceTabContent
+      , element errorsTabContent
       , element ghcRTSTabContent
       ]
 
@@ -442,6 +466,7 @@ mkNodeWidget = do
           , (ElPeersList,               elPeersList)
           , (ElTraceAcceptorHost,       elTraceAcceptorHost)
           , (ElTraceAcceptorPort,       elTraceAcceptorPort)
+          , (ElNodeErrors,              elNodeErrorsList)
           , (ElMempoolTxsNumber,        elMempoolTxsNumber)
           , (ElMempoolTxsPercent,       elMempoolTxsPercent)
           , (ElMempoolBytes,            elMempoolBytes)
