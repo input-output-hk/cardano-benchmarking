@@ -470,8 +470,7 @@ instance HasSeverityAnnotation (Mempool.GenTxId ByronBlock)
 instance HasPrivacyAnnotation (Mempool.GenTxId ByronBlock)
 
 instance Transformable Text IO (Mempool.GenTxId ByronBlock) where
-  trTransformer StructuredLogging verb tr = trStructured verb tr
-  trTransformer _ _ _tr = nullTracer
+  trTransformer = trStructured
 
 instance HasSeverityAnnotation (TraceBenchTxSubmit (Mempool.GenTxId ByronBlock))
 
@@ -479,8 +478,7 @@ instance HasPrivacyAnnotation (TraceBenchTxSubmit (Mempool.GenTxId ByronBlock))
 
 instance Transformable Text IO (TraceBenchTxSubmit (Mempool.GenTxId ByronBlock)) where
   -- transform to JSON Object
-  trTransformer StructuredLogging verb tr = trStructured verb tr
-  trTransformer _ _verb _tr = nullTracer
+  trTransformer = trStructured
 
 -- | Low-tevel tracer
 data TraceLowLevelSubmit
@@ -518,8 +516,7 @@ instance HasPrivacyAnnotation TraceLowLevelSubmit
 
 instance (MonadIO m) => Transformable Text m TraceLowLevelSubmit where
   -- transform to JSON Object
-  trTransformer StructuredLogging verb tr = trStructured verb tr
-  trTransformer _ _verb _tr = nullTracer
+  trTransformer = trStructured
 
 {-------------------------------------------------------------------------------
   Main logic
