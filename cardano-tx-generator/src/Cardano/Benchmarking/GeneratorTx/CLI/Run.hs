@@ -24,17 +24,18 @@ import           Ouroboros.Network.NodeToClient
 import qualified Cardano.Chain.Genesis as Genesis
 import           Cardano.Chain.Update (ApplicationName(..))
 import           Cardano.Config.Logging
-                    ( createLoggingFeatureCLI )
+                    ( createLoggingFeature )
 import           Cardano.Config.Protocol.Byron
                     ( ByronProtocolInstantiationError(..)
                     , mkConsensusProtocolRealPBFT )
 import           Cardano.Config.Types
                     ( DbFile(..), ConfigError(..), ConfigYamlFilePath(..)
-                    , CardanoEnvironment(..), CLISocketPath (..)
-                    , LastKnownBlockVersion(..)
-                    , MiscellaneousFilepaths (..), NodeConfiguration(..)
-                    , Protocol, SigningKeyFile(..), TopologyFile(..), Update(..)
-                    , ncLogMetrics, parseNodeConfigurationFP
+                    , CardanoEnvironment(..), CLISocketPath(..)
+                    , LastKnownBlockVersion(..), MiscellaneousFilepaths(..)
+                    , NodeAddress(..), NodeCLI(..), NodeConfiguration(..)
+                    , NodeHostAddress(..), NodeProtocolMode(..), Protocol
+                    , SigningKeyFile(..), TopologyFile(..), Update(..)
+                    , parseNodeConfigurationFP
                     )
 
 import           Cardano.Benchmarking.GeneratorTx.Error
@@ -75,6 +76,21 @@ runCommand (GenerateTxs logConfigFp
                         explorerAPIEndpoint
                         sigKeysFiles) =
   withIOManagerE $ \iocp -> do
+    let miscfp = MiscellaneousFilepaths
+                 { topFile = TopologyFile "" -- Tx generator doesn't use topology.
+                 , dBFile = DbFile ""        -- Tx generator doesn't use database.
+                 , delegCertFile = Just delegCert
+                 , signKeyFile = Just signingKey
+                 , socketFile = Just $ CLISocketPath socketFp
+                 }
+    let ncli = NodeCLI
+               { mscFp = miscfp
+               , nodeAddr = NodeAddress (NodeHostAddress Nothing) 19999
+               , configFp = ConfigYamlFilePath logConfigFp
+               , validateDB = False
+               , shutdownIPC = Nothing
+               }
+    let npm = RealProtocolMode ncli
     -- Default update value
     let update = Update (ApplicationName "cardano-tx-generator") 1 $ LastKnownBlockVersion 0 2 0
     nc <- liftIO . parseNodeConfigurationFP $ ConfigYamlFilePath logConfigFp
@@ -84,25 +100,16 @@ runCommand (GenerateTxs logConfigFp
                                   }
     -- Logging layer
     (loggingLayer, _) <- firstExceptT (\(ConfigErrorFileNotFound fp) -> FileNotFoundError fp) $
-                             createLoggingFeatureCLI
-                             (pack $ showVersion version)
-                             NoEnvironment
-                             (Just logConfigFp)
-                             (ncLogMetrics updatedConfiguration)
-
-    let miscFilepaths = MiscellaneousFilepaths
-                          { topFile = TopologyFile "" -- Tx generator doesn't use topology.
-                          , dBFile = DbFile ""        -- Tx generator doesn't use database.
-                          , delegCertFile = Just delegCert
-                          , signKeyFile = Just signingKey
-                          , socketFile = Just $ CLISocketPath socketFp
-                          }
+                             createLoggingFeature
+                                 (pack $ showVersion version)
+                                 NoEnvironment
+                                 npm
 
     proto <- firstExceptT GenerateTxsError $
         firstExceptT FromProtocolError $
             mkConsensusProtocolRealPBFT
                 updatedConfiguration
-                (Just miscFilepaths)
+                (Just miscfp)
 
     firstExceptT GenerateTxsError $
         firstExceptT GenesisBenchmarkRunnerError $
