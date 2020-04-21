@@ -218,7 +218,7 @@ mkNodeWidget = do
              ]
          ]
 
-  txTabContent
+  mempoolTabContent
     <- UI.div #. "tab-container" # hideIt #+
          [ UI.div #. "w3-row" #+
             [ UI.div #. "" #+
@@ -408,7 +408,7 @@ mkNodeWidget = do
   nodeTab        <- UI.button #. "w3-bar-item w3-button" # makeItActive #+ [string "Node"]
   peersTab       <- UI.button #. "w3-bar-item w3-button" #+ [string "Peers"]
   blockchainTab  <- UI.button #. "w3-bar-item w3-button" #+ [string "Blockchain"]
-  txTab          <- UI.button #. "w3-bar-item w3-button" #+ [string "TXs"]
+  mempoolTab     <- UI.button #. "w3-bar-item w3-button" #+ [string "Mempool"]
   performanceTab <- UI.button #. "w3-bar-item w3-button" #+ [string "Resources"]
   ghcRTSTab      <- UI.button #. "w3-bar-item w3-button" #+ [string "GHC RTS"]
   errorsTab      <- UI.button #. "w3-bar-item w3-button" #+ [string "Errors"]
@@ -418,7 +418,7 @@ mkNodeWidget = do
         [ (nodeTab,        nodeTabContent,        "Node")
         , (peersTab,       peersTabContent,       "Peers")
         , (blockchainTab,  blockchainTabContent,  "Blockchain")
-        , (txTab,          txTabContent,          "TXs")
+        , (mempoolTab,     mempoolTabContent,     "Mempool")
         , (performanceTab, performanceTabContent, "Resources")
         , (errorsTab,      errorsTabContent,      "Errors")
         , (ghcRTSTab,      ghcRTSTabContent,      "GHC RTS")
@@ -434,7 +434,7 @@ mkNodeWidget = do
           [ element nodeTab
           , element peersTab
           , element blockchainTab
-          , element txTab
+          , element mempoolTab
           , element performanceTab
           , element errorsTab
           , element ghcRTSTab
@@ -442,7 +442,7 @@ mkNodeWidget = do
       , element nodeTabContent
       , element peersTabContent
       , element blockchainTabContent
-      , element txTabContent
+      , element mempoolTabContent
       , element performanceTabContent
       , element errorsTabContent
       , element ghcRTSTabContent
