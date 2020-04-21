@@ -26,6 +26,34 @@
     padding-top: 16px;
 }
 
+.errors-tab-container {
+    overflow-y: scroll;
+    height: 305px;
+}
+
+.warning-message {
+    color: orange;
+}
+
+.error-message {
+    color: red;
+}
+
+.critical-message {
+    color: red;
+    font-weight: bold;
+}
+
+.alert-message {
+    color: red;
+    font-weight: bold;
+}
+
+.emergency-message {
+    color: red;
+    font-weight: bold;
+}
+
 .node-container {
     min-height: 420px;
     background-color: #eee;

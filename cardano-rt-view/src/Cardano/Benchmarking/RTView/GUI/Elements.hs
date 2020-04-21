@@ -40,6 +40,7 @@ data ElementName
   | ElPeersList
   | ElTraceAcceptorHost
   | ElTraceAcceptorPort
+  | ElNodeErrors
   | ElMempoolTxsNumber
   | ElMempoolTxsPercent
   | ElMempoolBytes

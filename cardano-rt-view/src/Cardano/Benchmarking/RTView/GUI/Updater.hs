@@ -32,12 +32,14 @@ import           Graphics.UI.Threepenny.Core
 
 import           Cardano.BM.Data.Configuration
                    ( RemoteAddrNamed (..), RemoteAddr (..) )
+import           Cardano.BM.Data.Severity
+                   ( Severity (..) )
 import           Cardano.Benchmarking.RTView.GUI.Elements
                    ( ElementName (..), ElementValue (..)
                    , NodesStateElements
                    )
 import           Cardano.Benchmarking.RTView.NodeState.Types
-                   ( NodeInfo (..), NodeMetrics (..)
+                   ( NodeInfo (..), NodeMetrics (..), NodeError (..)
                    , NodeState (..), NodesState, PeerInfo (..)
                    )
 
@@ -77,6 +79,7 @@ updateGUI nodesState acceptors nodesStateElems =
     void $ updatePeersList    (niPeersInfo ni)                                $ elements ! ElPeersList
     void $ updateElementValue (ElementString  acceptorHost)                   $ elements ! ElTraceAcceptorHost
     void $ updateElementValue (ElementString  acceptorPort)                   $ elements ! ElTraceAcceptorPort
+    void $ updateErrorsList   (niNodeErrors ni)                               $ elements ! ElNodeErrors
     void $ updateElementValue (ElementWord64  $ nmMempoolTxsNumber nm)        $ elements ! ElMempoolTxsNumber
     void $ updateElementValue (ElementDouble  $ nmMempoolTxsPercent nm)       $ elements ! ElMempoolTxsPercent
     void $ updateElementValue (ElementWord64  $ nmMempoolBytes nm)            $ elements ! ElMempoolBytes
@@ -151,6 +154,27 @@ updatePeersList peersInfo peersList = do
       , UI.div #. "w3-third w3-theme" #+ [UI.div #. "" #+ [UI.string blockNo]]
       ]
   element peersList # set children peersItems
+
+updateErrorsList
+  :: [NodeError]
+  -> Element
+  -> UI Element
+updateErrorsList nodeErrors errorsList = do
+  errors <- forM nodeErrors $ \(NodeError timeStamp sev msg) -> do
+    let className :: String
+        className = case sev of
+                      Warning   -> "warning-message"
+                      Error     -> "error-message"
+                      Critical  -> "critical-message"
+                      Alert     -> "alert-message"
+                      Emergency -> "emergency-message"
+                      _         -> ""
+
+    UI.div #. "w3-row" #+
+      [ UI.div #. "w3-third w3-theme" #+ [UI.div #. "" #+ [UI.string (show timeStamp)]]
+      , UI.div #. "w3-twothird w3-theme" #+ [UI.div #. className #+ [UI.string msg]]
+      ]
+  element errorsList # set children errors
 
 -- | To show TraceAcceptorHost and TraceAcceptorPort
 --   of the active node we use its name.

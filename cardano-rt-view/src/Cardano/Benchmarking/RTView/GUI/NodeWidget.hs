@@ -218,7 +218,7 @@ mkNodeWidget = do
              ]
          ]
 
-  txTabContent
+  mempoolTabContent
     <- UI.div #. "tab-container" # hideIt #+
          [ UI.div #. "w3-row" #+
             [ UI.div #. "" #+
@@ -384,21 +384,43 @@ mkNodeWidget = do
              ]
          ]
 
+  -- List of node errors, it will be changed dynamically!
+  elNodeErrorsList <- UI.div #. "" #+ []
+
+  errorsTabContent
+    <- UI.div #. "tab-container errors-tab-container" # hideIt #+
+         [ UI.div #. "w3-row" #+
+             [ UI.div #. "w3-third w3-theme" #+
+                 [ UI.div #. "node-info-values" #+
+                     [ UI.div #. "" #+ [string "Timestamp"]
+                     ]
+                 ]
+             , UI.div #. "w3-twothird w3-theme" #+
+                 [ UI.div #. "node-info-values" #+
+                     [ UI.div #. "" #+ [string "Error message"]
+                     ]
+                 ]
+             ]
+         , element elNodeErrorsList
+         ]
+
   -- Tabs for corresponding sections.
   nodeTab        <- UI.button #. "w3-bar-item w3-button" # makeItActive #+ [string "Node"]
   peersTab       <- UI.button #. "w3-bar-item w3-button" #+ [string "Peers"]
   blockchainTab  <- UI.button #. "w3-bar-item w3-button" #+ [string "Blockchain"]
-  txTab          <- UI.button #. "w3-bar-item w3-button" #+ [string "TXs"]
-  performanceTab <- UI.button #. "w3-bar-item w3-button" #+ [string "Performance"]
+  mempoolTab     <- UI.button #. "w3-bar-item w3-button" #+ [string "Mempool"]
+  performanceTab <- UI.button #. "w3-bar-item w3-button" #+ [string "Resources"]
   ghcRTSTab      <- UI.button #. "w3-bar-item w3-button" #+ [string "GHC RTS"]
+  errorsTab      <- UI.button #. "w3-bar-item w3-button" #+ [string "Errors"]
 
   let tabs :: [(Element, Element, String)]
       tabs =
         [ (nodeTab,        nodeTabContent,        "Node")
         , (peersTab,       peersTabContent,       "Peers")
         , (blockchainTab,  blockchainTabContent,  "Blockchain")
-        , (txTab,          txTabContent,          "TXs")
-        , (performanceTab, performanceTabContent, "Performance")
+        , (mempoolTab,     mempoolTabContent,     "Mempool")
+        , (performanceTab, performanceTabContent, "Resources")
+        , (errorsTab,      errorsTabContent,      "Errors")
         , (ghcRTSTab,      ghcRTSTabContent,      "GHC RTS")
         ]
 
@@ -412,15 +434,17 @@ mkNodeWidget = do
           [ element nodeTab
           , element peersTab
           , element blockchainTab
-          , element txTab
+          , element mempoolTab
           , element performanceTab
+          , element errorsTab
           , element ghcRTSTab
           ]
       , element nodeTabContent
       , element peersTabContent
       , element blockchainTabContent
-      , element txTabContent
+      , element mempoolTabContent
       , element performanceTabContent
+      , element errorsTabContent
       , element ghcRTSTabContent
       ]
 
@@ -442,6 +466,7 @@ mkNodeWidget = do
           , (ElPeersList,               elPeersList)
           , (ElTraceAcceptorHost,       elTraceAcceptorHost)
           , (ElTraceAcceptorPort,       elTraceAcceptorPort)
+          , (ElNodeErrors,              elNodeErrorsList)
           , (ElMempoolTxsNumber,        elMempoolTxsNumber)
           , (ElMempoolTxsPercent,       elMempoolTxsPercent)
           , (ElMempoolBytes,            elMempoolBytes)
