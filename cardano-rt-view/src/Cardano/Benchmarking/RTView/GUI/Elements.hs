@@ -27,8 +27,7 @@ type NodesStateElements = [(Text, NodeStateElements)]
 data ElementName
   = ElNodeRelease
   | ElNodeVersion
-  | ElNodeCommit
-  | ElNodeShortCommit
+  | ElNodeCommitHref
   | ElActiveNode
   | ElUptime
   | ElEpoch

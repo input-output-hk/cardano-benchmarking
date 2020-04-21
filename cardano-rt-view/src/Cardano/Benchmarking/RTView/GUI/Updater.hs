@@ -66,8 +66,7 @@ updateGUI nodesState acceptors nodesStateElems =
 
     void $ updateElementValue (ElementString  $ niNodeRelease ni)             $ elements ! ElNodeRelease
     void $ updateElementValue (ElementString  $ niNodeVersion ni)             $ elements ! ElNodeVersion
-    void $ updateElementValue (ElementString  $ niNodeCommit ni)              $ elements ! ElNodeCommit
-    void $ updateElementValue (ElementString  $ niNodeShortCommit ni)         $ elements ! ElNodeShortCommit
+    void $ updateNodeCommit   (niNodeCommit ni) (niNodeShortCommit ni)        $ elements ! ElNodeCommitHref
     void $ updateElementValue (ElementString activeNodeMark)                  $ elements ! ElActiveNode
     void $ updateElementValue (ElementString upTimeHMS)                       $ elements ! ElUptime
     void $ updateElementValue (ElementInteger $ niEpoch ni)                   $ elements ! ElEpoch
@@ -139,6 +138,16 @@ updateProgressBar percents bar =
 
 showWith1DecPlace :: Double -> String
 showWith1DecPlace = unpack . sformat ("" % fixed 1)
+
+updateNodeCommit
+  :: String
+  -> String
+  -> Element
+  -> UI Element
+updateNodeCommit commit shortCommit commitHref = do
+  sComm <- UI.string shortCommit
+  element commitHref # set UI.href ("https://github.com/input-output-hk/cardano-node/commit/" <> commit)
+                     # set children [sComm]
 
 -- | Since peers list will be changed dynamically, we need it
 --   to update corresponding HTML-murkup dynamically as well.
