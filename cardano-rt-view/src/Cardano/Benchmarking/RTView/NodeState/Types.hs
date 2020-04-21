@@ -17,10 +17,10 @@ import           Prelude
 import qualified Data.Map.Strict as Map
 import           Data.Map.Strict
                    ( Map )
+import           Data.Time.Calendar
+                   ( Day (..) )
 import           Data.Time.Clock
-                   ( UTCTime (..)
-                   , getCurrentTime
-                   )
+                   ( UTCTime (..) )
 
 import           Cardano.BM.Configuration
                    ( Configuration )
@@ -55,6 +55,7 @@ data NodeInfo = NodeInfo
   , niNodeCommit        :: !String
   , niNodeShortCommit   :: !String
   , niStartTime         :: !UTCTime
+  , niUpTime            :: !UTCTime
   , niEpoch             :: !Integer
   , niSlot              :: !Integer
   , niBlocksNumber      :: !Integer
@@ -120,30 +121,26 @@ defaultNodesState
 defaultNodesState config =
   CM.getAcceptAt config >>= \case
     Just remoteAddresses -> do
-      now <- getCurrentTime
-      return $ Map.fromList [(name, defaultNodeState now) | (RemoteAddrNamed name _) <- remoteAddresses]
+      return $ Map.fromList [(name, defaultNodeState) | (RemoteAddrNamed name _) <- remoteAddresses]
     Nothing ->
       -- Actually it's impossible, because at this point we already know
       -- that at least one |TraceAcceptor| is defined in the config.
       return Map.empty
 
-defaultNodeState
-  :: UTCTime
-  -> NodeState
-defaultNodeState now = NodeState
-  { nsInfo    = defaultNodeInfo now
+defaultNodeState :: NodeState
+defaultNodeState = NodeState
+  { nsInfo    = defaultNodeInfo
   , nsMetrics = defaultNodeMetrics
   }
 
-defaultNodeInfo
-  :: UTCTime
-  -> NodeInfo
-defaultNodeInfo now = NodeInfo
+defaultNodeInfo :: NodeInfo
+defaultNodeInfo = NodeInfo
   { niNodeRelease       = "-"
   , niNodeVersion       = "-"
   , niNodeCommit        = "-"
   , niNodeShortCommit   = "-"
-  , niStartTime         = now
+  , niStartTime         = UTCTime (ModifiedJulianDay 0) 0
+  , niUpTime            = UTCTime (ModifiedJulianDay 0) 0
   , niEpoch             = 0
   , niSlot              = 0
   , niBlocksNumber      = 0
