@@ -30,8 +30,6 @@ mkNodeWidget = do
   -- later they will be updated by acceptor thread.
   elNodeRelease             <- string ""
   elNodeVersion             <- string ""
-  elNodeCommit              <- string ""
-  elNodeShortCommit         <- string ""
   elActiveNode              <- string "-"
   elUptime                  <- string "00:00:00"
   elEpoch                   <- string "0"
@@ -124,11 +122,10 @@ mkNodeWidget = do
                                  , UI.span #. "bar-value-unit" #+ [string "MB"]
                                  ]
 
-  -- TODO: Currently there's no real cardano-node commit as a string.
-  -- It will be taken from MVar NodesState later, when connected nodes selector
-  -- will be implemented.
-  let fullCommit :: String
-      fullCommit = "#"
+  elNodeCommitHref <- UI.anchor # set UI.href ""
+                                # set UI.target "_blank"
+                                # set UI.title__ "Browse cardano-node repository on this commit"
+                                #+ [string ""]
 
   -- Create content area for each tab.
   nodeTabContent
@@ -150,12 +147,7 @@ mkNodeWidget = do
                  [ UI.div #. "node-info-values" #+
                      [ UI.span #. "release-name" #+ [element elNodeRelease]
                      , UI.div #. "" #+ [element elNodeVersion]
-                     , UI.div #. "commit-link" #+
-                         [ UI.anchor # set UI.href (cardanoNodeCommitUrl fullCommit)
-                                     # set UI.target "_blank"
-                                     # set UI.title__ "Browse cardano-node repository on this commit"
-                                     #+ [element elNodeShortCommit]
-                         ]
+                     , UI.div #. "commit-link" #+ [element elNodeCommitHref]
                      , vSpacer "node-info-v-spacer"
                      , UI.div #. "" #+ [element elTraceAcceptorHost]
                      , UI.div #. "" #+ [element elTraceAcceptorPort]
@@ -453,8 +445,7 @@ mkNodeWidget = do
         Map.fromList
           [ (ElNodeRelease,             elNodeRelease)
           , (ElNodeVersion,             elNodeVersion)
-          , (ElNodeCommit,              elNodeCommit)
-          , (ElNodeShortCommit,         elNodeShortCommit)
+          , (ElNodeCommitHref,          elNodeCommitHref)
           , (ElActiveNode,              elActiveNode)
           , (ElUptime,                  elUptime)
           , (ElEpoch,                   elEpoch)
@@ -518,13 +509,6 @@ twoElementsInRow firstOne secondOne =
     [ UI.div #. "w3-half" #+ [firstOne]
     , UI.div #. "w3-half" #+ [secondOne]
     ]
-
-cardanoNodeCommitUrl :: String -> String
-cardanoNodeCommitUrl fullCommit =
-  cardanoNodeRepositoryUrl <> "commit/" <> fullCommit
- where
-  cardanoNodeRepositoryUrl :: String
-  cardanoNodeRepositoryUrl = "https://github.com/input-output-hk/cardano-node/"
 
 -- | Since information and metrics are splitted to tabs,
 --   we have to make them clickable and show which one is active.
