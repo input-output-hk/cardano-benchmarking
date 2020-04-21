@@ -19,6 +19,12 @@ import qualified Data.Map.Strict as Map
 import           Data.Map.Strict
                    ( (!?) )
 import qualified Data.Text as T
+import           Data.Time.Calendar
+                   ( Day (..) )
+import           Data.Time.Clock
+                   ( UTCTime (..)
+                   , addUTCTime, diffUTCTime, getCurrentTime
+                   )
 
 import           Control.Concurrent.MVar
                    ( modifyMVar_ )
@@ -81,12 +87,16 @@ updateNodesState nsMVar loggerName (LogObject aName aMeta aContent) = do
   let loggerNameParts = filter (not . T.null) $ T.splitOn "." loggerName
       nameOfNode = loggerNameParts !! 3
 
+  now <- liftIO getCurrentTime
+
   modifyMVar_ nsMVar $ \currentNodesState -> do
     let nodesStateWith :: NodeState -> IO NodesState
         nodesStateWith newState = return $ Map.adjust (\_ -> newState) nameOfNode currentNodesState
 
     case currentNodesState !? nameOfNode of
-      Just ns ->
+      Just ns' -> do
+        -- Since the node sent this LogObject, we have to update the uptime of that node.
+        let ns = updateNodeUpTime ns' now
         if | itIsErrorMessage aMeta ->
               nodesStateWith $ updateNodeErrors ns aMeta aContent
            | "cardano.node.metrics" `T.isInfixOf` aName ->
@@ -180,6 +190,23 @@ itIsErrorMessage aMeta =
     -- 'Critical' is skipped because many non-error metrics have this severity.
 
 -- Updaters for particular node state's fields.
+
+updateNodeUpTime :: NodeState -> UTCTime -> NodeState
+updateNodeUpTime ns now = ns { nsInfo = newNi }
+ where
+  newNi =
+    currentNi
+      { niStartTime = startTime
+      , niUpTime    = upTime
+      }
+  currentNi = nsInfo ns
+  currentStartTime@(UTCTime day time) = niStartTime currentNi
+  startTime =
+    if day == (ModifiedJulianDay 0) && time == 0
+      then now -- This is the first LogObject from the node, update startTime.
+      else currentStartTime -- Node already sent something earlier, keep startTime.
+  diffBetweenNowAndStart = diffUTCTime now startTime
+  upTime = addUTCTime diffBetweenNowAndStart (UTCTime (ModifiedJulianDay 0) 0)
 
 updateNodeErrors :: Show a => NodeState -> LOMeta -> LOContent a -> NodeState
 updateNodeErrors ns (LOMeta timeStamp _ _ sev _) aContent = ns { nsInfo = newNi }

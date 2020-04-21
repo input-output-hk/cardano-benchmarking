@@ -11,12 +11,8 @@ import           Prelude
 import qualified Data.List as L
 import           Data.Map.Strict
                    ( (!) )
-import           Data.Time.Calendar
-                   ( Day (..) )
 import           Data.Time.Clock
-                   ( UTCTime (..)
-                   , addUTCTime, diffUTCTime, getCurrentTime
-                   )
+                   ( UTCTime (..) )
 import           Data.Time.Format
                    ( defaultTimeLocale, formatTime )
 import           Data.Text
@@ -57,18 +53,13 @@ updateGUI nodesState acceptors nodesStateElems =
 
     let ni = nsInfo nodeState
         nm = nsMetrics nodeState
-
-    now <- liftIO getCurrentTime
-    let diffBetweenNowAndStart = diffUTCTime now (niStartTime ni)
-        upTimeHMS = formatTime defaultTimeLocale "%X" $
-                      addUTCTime diffBetweenNowAndStart (UTCTime (ModifiedJulianDay 0) 0)
         activeNodeMark = unpack nameOfNode
 
     void $ updateElementValue (ElementString  $ niNodeRelease ni)             $ elements ! ElNodeRelease
     void $ updateElementValue (ElementString  $ niNodeVersion ni)             $ elements ! ElNodeVersion
     void $ updateNodeCommit   (niNodeCommit ni) (niNodeShortCommit ni)        $ elements ! ElNodeCommitHref
     void $ updateElementValue (ElementString activeNodeMark)                  $ elements ! ElActiveNode
-    void $ updateElementValue (ElementString upTimeHMS)                       $ elements ! ElUptime
+    void $ updateNodeUpTime   (niUpTime ni)                                   $ elements ! ElUptime
     void $ updateElementValue (ElementInteger $ niEpoch ni)                   $ elements ! ElEpoch
     void $ updateElementValue (ElementInteger $ niSlot ni)                    $ elements ! ElSlot
     void $ updateElementValue (ElementInteger $ niBlocksNumber ni)            $ elements ! ElBlocksNumber
@@ -148,6 +139,13 @@ updateNodeCommit commit shortCommit commitHref = do
   sComm <- UI.string shortCommit
   element commitHref # set UI.href ("https://github.com/input-output-hk/cardano-node/commit/" <> commit)
                      # set children [sComm]
+
+updateNodeUpTime
+  :: UTCTime
+  -> Element
+  -> UI Element
+updateNodeUpTime upTime upTimeLabel =
+  element upTimeLabel # set text (formatTime defaultTimeLocale "%X" upTime)
 
 -- | Since peers list will be changed dynamically, we need it
 --   to update corresponding HTML-murkup dynamically as well.
