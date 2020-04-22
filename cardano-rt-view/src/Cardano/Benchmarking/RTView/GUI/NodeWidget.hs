@@ -294,6 +294,11 @@ mkNodeWidget = do
                            , UI.div #. "w3-half w3-theme w3-right-align" #+
                                [ element elDiskUsageRMaxTotal
                                , UI.span #. "value-unit" #+ [string "KB/s"]
+                               , UI.span #. "w3-tooltip" #+
+                                   [ UI.span #. "info-mark"
+                                             # set UI.title__ "Maximum value over the last two minutes"
+                                             #+ [string "🛈"]
+                                   ]
                                ]
                            ]
                        , UI.div #. "w3-amber" #+ [element elDiskUsageRProgress]
@@ -304,6 +309,11 @@ mkNodeWidget = do
                            , UI.div #. "w3-half w3-theme w3-right-align" #+
                                [ element elDiskUsageWMaxTotal
                                , UI.span #. "value-unit" #+ [string "KB/s"]
+                               , UI.span #. "w3-tooltip" #+
+                                   [ UI.span #. "info-mark"
+                                             # set UI.title__ "Maximum value over the last two minutes"
+                                             #+ [string "🛈"]
+                                   ]
                                ]
                            ]
                        , UI.div #. "w3-amber" #+ [element elDiskUsageWProgress]

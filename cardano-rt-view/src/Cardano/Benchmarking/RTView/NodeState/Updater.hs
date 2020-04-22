@@ -22,7 +22,7 @@ import qualified Data.Text as T
 import           Data.Time.Calendar
                    ( Day (..) )
 import           Data.Time.Clock
-                   ( UTCTime (..)
+                   ( NominalDiffTime, UTCTime (..)
                    , addUTCTime, diffUTCTime, getCurrentTime
                    )
 
@@ -339,12 +339,13 @@ updateDiskRead ns bytesWereRead meta = ns { nsMetrics = newNm }
  where
   newNm =
     currentNm
-      { nmDiskUsageR         = currentDiskRate
-      , nmDiskUsageRPercent  = diskUsageRPercent
-      , nmDiskUsageRLast     = bytesWereRead
-      , nmDiskUsageRNs       = currentTimeInNs
-      , nmDiskUsageRMax      = maxDiskRate
-      , nmDiskUsageRMaxTotal = max maxDiskRate 1.0
+      { nmDiskUsageR          = currentDiskRate
+      , nmDiskUsageRPercent   = diskUsageRPercent
+      , nmDiskUsageRLast      = bytesWereRead
+      , nmDiskUsageRNs        = currentTimeInNs
+      , nmDiskUsageRMax       = maxDiskRate
+      , nmDiskUsageRMaxTotal  = max maxDiskRate 1.0
+      , nmDiskUsageRAdaptTime = newAdaptTime
       }
   currentNm         = nsMetrics ns
   currentTimeInNs   = utc2ns (tstamp meta)
@@ -356,7 +357,13 @@ updateDiskRead ns bytesWereRead meta = ns { nsMetrics = newNm }
                         then 1.0
                         else bytesDiffInKB'
   currentDiskRate   = bytesDiffInKB / timeDiffInSecs
-  maxDiskRate       = max currentDiskRate $ nmDiskUsageRMax currentNm
+  lastAdaptTime     = nmDiskUsageRAdaptTime currentNm
+  timeElapsed       = diffUTCTime (tstamp meta) lastAdaptTime
+  ( maxDiskRate
+    , newAdaptTime ) =
+        if timeElapsed >= adaptPeriod
+          then ((nmDiskUsageRMax currentNm + currentDiskRate) / 2, tstamp meta)
+          else (max currentDiskRate $ nmDiskUsageRMax currentNm, lastAdaptTime)
   diskUsageRPercent = currentDiskRate / (maxDiskRate / 100.0)
 
 updateDiskWrite :: NodeState -> Word64 -> LOMeta -> NodeState
@@ -364,12 +371,13 @@ updateDiskWrite ns bytesWereWritten meta = ns { nsMetrics = newNm }
  where
   newNm =
     currentNm
-      { nmDiskUsageW         = currentDiskRate
-      , nmDiskUsageWPercent  = diskUsageWPercent
-      , nmDiskUsageWLast     = bytesWereWritten
-      , nmDiskUsageWNs       = currentTimeInNs
-      , nmDiskUsageWMax      = maxDiskRate
-      , nmDiskUsageWMaxTotal = max maxDiskRate 1.0
+      { nmDiskUsageW          = currentDiskRate
+      , nmDiskUsageWPercent   = diskUsageWPercent
+      , nmDiskUsageWLast      = bytesWereWritten
+      , nmDiskUsageWNs        = currentTimeInNs
+      , nmDiskUsageWMax       = maxDiskRate
+      , nmDiskUsageWMaxTotal  = max maxDiskRate 1.0
+      , nmDiskUsageWAdaptTime = newAdaptTime
       }
   currentNm         = nsMetrics ns
   currentTimeInNs   = utc2ns (tstamp meta)
@@ -381,8 +389,20 @@ updateDiskWrite ns bytesWereWritten meta = ns { nsMetrics = newNm }
                         then 1.0
                         else bytesDiffInKB'
   currentDiskRate   = bytesDiffInKB / timeDiffInSecs
-  maxDiskRate       = max currentDiskRate $ nmDiskUsageWMax currentNm
+  lastAdaptTime     = nmDiskUsageWAdaptTime currentNm
+  timeElapsed       = diffUTCTime (tstamp meta) lastAdaptTime
+  ( maxDiskRate
+    , newAdaptTime ) =
+        if timeElapsed >= adaptPeriod
+          then ((nmDiskUsageWMax currentNm + currentDiskRate) / 2, tstamp meta)
+          else (max currentDiskRate $ nmDiskUsageWMax currentNm, lastAdaptTime)
   diskUsageWPercent = currentDiskRate / (maxDiskRate / 100.0)
+
+-- | Adaptaion period for disk usage max values.
+--   We have to adapt the max value to the new situation periodically,
+--   because it might get very high once, and then it will stay there forever.
+adaptPeriod :: NominalDiffTime
+adaptPeriod = fromInteger $ 60 * 2 -- 2 minutes.
 
 updateCPUUsage :: NodeState -> Integer -> LOMeta -> NodeState
 updateCPUUsage ns ticks meta = ns { nsMetrics = newNm }

@@ -88,12 +88,14 @@ data NodeMetrics = NodeMetrics
   , nmDiskUsageRPercent       :: !Double
   , nmDiskUsageRLast          :: !Word64
   , nmDiskUsageRNs            :: !Word64
+  , nmDiskUsageRAdaptTime     :: !UTCTime
   , nmDiskUsageW              :: !Double
   , nmDiskUsageWMax           :: !Double
   , nmDiskUsageWMaxTotal      :: !Double
   , nmDiskUsageWPercent       :: !Double
   , nmDiskUsageWLast          :: !Word64
   , nmDiskUsageWNs            :: !Word64
+  , nmDiskUsageWAdaptTime     :: !UTCTime
   , nmNetworkUsageIn          :: !Double
   , nmNetworkUsageInPercent   :: !Double
   , nmNetworkUsageInMax       :: !Double
@@ -174,12 +176,14 @@ defaultNodeMetrics = NodeMetrics
   , nmDiskUsageRPercent       = 0.0
   , nmDiskUsageRLast          = 0
   , nmDiskUsageRNs            = 10000
+  , nmDiskUsageRAdaptTime     = UTCTime (ModifiedJulianDay 0) 0
   , nmDiskUsageW              = 0.0
   , nmDiskUsageWMax           = 0.0
   , nmDiskUsageWMaxTotal      = 0.0
   , nmDiskUsageWPercent       = 0.0
   , nmDiskUsageWLast          = 0
   , nmDiskUsageWNs            = 10000
+  , nmDiskUsageWAdaptTime     = UTCTime (ModifiedJulianDay 0) 0
   , nmNetworkUsageIn          = 0.0
   , nmNetworkUsageInPercent   = 0.0
   , nmNetworkUsageInMax       = 0.0
