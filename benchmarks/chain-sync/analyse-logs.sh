@@ -27,10 +27,8 @@ echo -n "slotlast,"; echo $LASTSLOT
 echo -n "memorylast,"; echo $LASTRSS
 echo -n "netinfirst,"; echo $FIRSTNETIN
 echo -n "netinlast,"; echo $LASTNETIN
-echo -n "netin,"; echo $((LASTNETIN - FIRSTNETIN))
 echo -n "netoutfirst,"; echo $FIRSTNETOUT
 echo -n "netoutlast,"; echo $LASTNETOUT
-echo -n "netout,"; echo $((LASTNETOUT - FIRSTNETOUT))
 echo -n "diskinlast,"; echo $LASTDISKIN
 echo -n "diskoutlast,"; echo $LASTDISKOUT
 
