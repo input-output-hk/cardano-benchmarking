@@ -351,7 +351,10 @@ updateDiskRead ns bytesWereRead meta = ns { nsMetrics = newNm }
   timeDiff          = fromIntegral (currentTimeInNs - nmDiskUsageRNs currentNm) :: Double
   timeDiffInSecs    = timeDiff / 1000000000
   bytesDiff         = fromIntegral (bytesWereRead - nmDiskUsageRLast currentNm) :: Double
-  bytesDiffInKB     = bytesDiff / 1024
+  bytesDiffInKB'    = bytesDiff / 1024
+  bytesDiffInKB     = if bytesDiffInKB' > 500.0 -- To prevent an overflow if the node was restarted.
+                        then 1.0
+                        else bytesDiffInKB'
   currentDiskRate   = bytesDiffInKB / timeDiffInSecs
   maxDiskRate       = max currentDiskRate $ nmDiskUsageRMax currentNm
   diskUsageRPercent = currentDiskRate / (maxDiskRate / 100.0)
@@ -373,7 +376,10 @@ updateDiskWrite ns bytesWereWritten meta = ns { nsMetrics = newNm }
   timeDiff          = fromIntegral (currentTimeInNs - nmDiskUsageWNs currentNm) :: Double
   timeDiffInSecs    = timeDiff / 1000000000
   bytesDiff         = fromIntegral (bytesWereWritten - nmDiskUsageWLast currentNm) :: Double
-  bytesDiffInKB     = bytesDiff / 1024
+  bytesDiffInKB'    = bytesDiff / 1024
+  bytesDiffInKB     = if bytesDiffInKB' > 500.0 -- To prevent an overflow if the node was restarted.
+                        then 1.0
+                        else bytesDiffInKB'
   currentDiskRate   = bytesDiffInKB / timeDiffInSecs
   maxDiskRate       = max currentDiskRate $ nmDiskUsageWMax currentNm
   diskUsageWPercent = currentDiskRate / (maxDiskRate / 100.0)
