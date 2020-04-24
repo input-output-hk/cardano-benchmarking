@@ -5,7 +5,6 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 
@@ -40,6 +39,7 @@ import           Cardano.BM.Data.Tracer (emptyObject, mkObject, trStructured)
 import           Ouroboros.Consensus.Byron.Ledger (ByronBlock (..))
 import           Ouroboros.Consensus.Mempool.API (GenTxId, GenTx)
 import           Ouroboros.Consensus.Node.NetworkProtocolVersion
+-- import           Ouroboros.Consensus.Byron.Ledger.NetworkProtocolVersion
 import           Ouroboros.Consensus.Node.Run (RunNode, nodeNetworkMagic)
 import           Ouroboros.Consensus.Network.NodeToNode (Codecs(..), defaultCodecs)
 import           Ouroboros.Consensus.Config (TopLevelConfig)
@@ -216,8 +216,9 @@ benchmarkConnectTxSubmit iocp trs cfg localAddr remoteAddr myTxSubClient =
  where
   myCodecs :: Codecs blk DeserialiseFailure m
                 ByteString ByteString ByteString ByteString ByteString
-                ByteString ByteString ByteString
-  myCodecs  = defaultCodecs cfg (mostRecentNetworkProtocolVersion (Proxy @blk))
+  --               ByteString ByteString ByteString
+  -- myCodecs :: _
+  myCodecs  = defaultCodecs cfg (mostRecentNodeToNodeVersion (Proxy @blk))
 
   peerMultiplex :: Versions NtN.NodeToNodeVersion NtN.DictVersion
                             (NtN.ConnectionId SockAddr ->
