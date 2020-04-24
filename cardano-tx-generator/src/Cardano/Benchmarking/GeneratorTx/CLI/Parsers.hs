@@ -22,10 +22,6 @@ import           Cardano.Config.Types
                     , NodeAddress(..)
                     , NodeHostAddress(..)
                     )
-import           Cardano.Config.CommonCLI
-                    ( parseDelegationCert
-                    , parseGenesisPath
-                    )
 
 import           Cardano.Benchmarking.GeneratorTx
                     ( NumberOfTxs(..)
@@ -39,8 +35,8 @@ import           Cardano.Benchmarking.GeneratorTx
 
 data GenerateTxs =
   GenerateTxs FilePath
-              SigningKeyFile
-              DelegationCertFile
+              FilePath {- was SigningKeyFile -}
+              FilePath {- was DelegationCertFile -}
               GenesisFile
               SocketPath
               (NonEmpty NodeAddress)
@@ -62,7 +58,7 @@ parseCommand =
     <*> parseSigningKeyFile
           "signing-key"
           "Signing key file."
-    <*> (DelegationCertFile <$> parseDelegationCert)
+    <*> parseDelegationCert
     <*> (GenesisFile <$> parseGenesisPath)
     <*> parseSocketPath
           "socket-path"
@@ -144,8 +140,8 @@ parseTxAdditionalSize opt desc = TxAdditionalSize <$> parseIntegral opt desc
 parseExplorerAPIEndpoint :: String -> String -> Parser ExplorerAPIEnpoint
 parseExplorerAPIEndpoint opt desc = ExplorerAPIEnpoint <$> parseUrl opt desc
 
-parseSigningKeyFile :: String -> String -> Parser SigningKeyFile
-parseSigningKeyFile opt desc = SigningKeyFile <$> parseFilePath opt desc
+parseSigningKeyFile :: String -> String -> Parser FilePath
+parseSigningKeyFile opt desc = parseFilePath opt desc
 
 parseSigningKeysFiles :: String -> String -> Parser [SigningKeyFile]
 parseSigningKeysFiles opt desc = some $ SigningKeyFile <$> parseFilePath opt desc
@@ -178,3 +174,19 @@ parseSocketPath optname desc =
 
 parseConfigFile :: String -> String -> Parser FilePath
 parseConfigFile = parseFilePath
+
+parseDelegationCert :: Parser FilePath
+parseDelegationCert =
+  strOption
+    ( long "delegation-certificate"
+        <> metavar "FILEPATH"
+        <> help "Path to the delegation certificate."
+    )
+
+parseGenesisPath :: Parser FilePath
+parseGenesisPath =
+  strOption
+    ( long "genesis-file"
+        <> metavar "FILEPATH"
+        <> help "Path to the genesis yaml file."
+    )
