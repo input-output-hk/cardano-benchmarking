@@ -568,7 +568,7 @@ localInitiatorNetworkApplication tracer cfg tx =
             MuxPeer
               nullTracer
               (localChainSyncCodec @blk cfg)
-              (chainSyncClientPeer NodeToClient.chainSyncClientNull)
+              (chainSyncClientPeer NodeToClient.chainSyncPeerNull)
 
       , NodeToClient.localTxSubmissionProtocol =
           InitiatorProtocolOnly $

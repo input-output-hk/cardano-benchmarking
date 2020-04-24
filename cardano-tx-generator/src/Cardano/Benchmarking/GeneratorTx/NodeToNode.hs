@@ -41,7 +41,7 @@ import           Ouroboros.Consensus.Byron.Ledger (ByronBlock (..))
 import           Ouroboros.Consensus.Mempool.API (GenTxId, GenTx)
 import           Ouroboros.Consensus.Node.NetworkProtocolVersion
 import           Ouroboros.Consensus.Node.Run (RunNode, nodeNetworkMagic)
-import           Ouroboros.Consensus.NodeNetwork (ProtocolCodecs(..), protocolCodecs)
+import           Ouroboros.Consensus.Network.NodeToNode (Codecs(..), defaultCodecs)
 import           Ouroboros.Consensus.Config (TopLevelConfig)
 
 import           Ouroboros.Network.Codec (AnyMessage (..))
@@ -203,7 +203,7 @@ benchmarkConnectTxSubmit
   -> TxSubmissionClient (GenTxId blk) (GenTx blk) m ()
   -- ^ the particular txSubmission peer
   -> m ()
-benchmarkConnectTxSubmit iocp trs cfg localAddr remoteAddr myTxSubClient = do
+benchmarkConnectTxSubmit iocp trs cfg localAddr remoteAddr myTxSubClient =
   NtN.connectTo
     (socketSnocket iocp)
     NetworkConnectTracers {
@@ -214,10 +214,10 @@ benchmarkConnectTxSubmit iocp trs cfg localAddr remoteAddr myTxSubClient = do
     (addrAddress <$> localAddr)
     (addrAddress remoteAddr)
  where
-  myCodecs :: ProtocolCodecs blk DeserialiseFailure m
+  myCodecs :: Codecs blk DeserialiseFailure m
                 ByteString ByteString ByteString ByteString ByteString
                 ByteString ByteString ByteString
-  myCodecs  = protocolCodecs cfg (mostRecentNetworkProtocolVersion (Proxy @blk))
+  myCodecs  = defaultCodecs cfg (mostRecentNetworkProtocolVersion (Proxy @blk))
 
   peerMultiplex :: Versions NtN.NodeToNodeVersion NtN.DictVersion
                             (NtN.ConnectionId SockAddr ->
@@ -232,17 +232,17 @@ benchmarkConnectTxSubmit iocp trs cfg localAddr remoteAddr myTxSubClient = do
           { NtN.chainSyncProtocol = InitiatorProtocolOnly $
                                       MuxPeer
                                         nullTracer
-                                        (pcChainSyncCodec myCodecs)
+                                        (cChainSyncCodec myCodecs)
                                         (chainSyncClientPeer chainSyncClientNull)
           , NtN.blockFetchProtocol = InitiatorProtocolOnly $
                                        MuxPeer
                                          nullTracer
-                                         (pcBlockFetchCodec myCodecs)
+                                         (cBlockFetchCodec myCodecs)
                                          (blockFetchClientPeer blockFetchClientNull)
           , NtN.txSubmissionProtocol = InitiatorProtocolOnly $
                                          MuxPeer
                                            (trSendRecvTxSubmission trs)
-                                           (pcTxSubmissionCodec myCodecs)
+                                           (cTxSubmissionCodec myCodecs)
                                            (txSubmissionClientPeer myTxSubClient)
           }
 
