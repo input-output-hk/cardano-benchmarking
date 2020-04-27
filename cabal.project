@@ -110,6 +110,13 @@ source-repository-package
 
 source-repository-package
   type: git
+  location: https://github.com/input-output-hk/cardano-ledger-specs
+  tag: 52afaab4fe99df8fff1e7666e665a923118cfc53
+  --sha256: 1ldgpw37lnrgd09hhv2zxak9vc0kxbysmpsn7qd74zg3vli5z66j
+  subdir: shelley/chain-and-ledger/executable-spec/test
+
+source-repository-package
+  type: git
   location: https://github.com/input-output-hk/cardano-prelude
   tag: 91f357abae16099858193b999807323ca9a7c63c
   --sha256: 11ya7j7ga0axvjb583pkcyxdza1p5219857817mwga7djzm5gb0b
