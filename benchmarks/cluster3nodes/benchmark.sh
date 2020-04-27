@@ -23,12 +23,9 @@ fi
 BASEDIR=$(realpath $(dirname $0))
 
 # clean
-if [ -d db ]; then rm -rf db; fi
-if [ -d logs ]; then rm -rf logs; fi
-if [ -d socket ]; then rm -rf socket; fi
-if [ -d db-0 ]; then rm -rf db-0; fi
-if [ -d db-1 ]; then rm -rf db-1; fi
-if [ -d db-2 ]; then rm -rf db-2; fi
+for x in db db-* logs socket
+do test -d ./"$x" && rm -rf ./"$x"
+done
 
 # mk dirs
 mkdir -p db logs

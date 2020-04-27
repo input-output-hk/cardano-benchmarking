@@ -33,7 +33,7 @@ defaultBackends:
 # here we set up outputs of logging in 'katip':
 setupScribes:
   - scKind: FileSK
-    scName: "logs/explorer.log"
+    scName: "logs/explorer.json"
     scFormat: ScJson
   - scKind: StdoutSK
     scName: stdout
@@ -43,7 +43,7 @@ setupScribes:
 # if not indicated otherwise, then log output is directed to this:
 defaultScribes:
   - - FileSK
-    - "logs/explorer.log"
+    - "logs/explorer.json"
   - - StdoutSK
     - stdout
 
