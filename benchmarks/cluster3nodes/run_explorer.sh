@@ -15,7 +15,7 @@ sed -i 's/^GenesisHash: .*$/GenesisHash: '${GENESISHASH}'/' ${CONFIGFILE}
 #EXPLORER="${RUNNER} cardano-explorer-node --"
 EXPLORER="${BASEDIR}/../../bin/cardano-db-sync"
 
-exec ${EXPLORER} \
+${EXPLORER} \
   --config ${CONFIGFILE} \
   --genesis-file ${GENESISJSON} \
   --socket-path /tmp/cluster3nodes-socket/0 \

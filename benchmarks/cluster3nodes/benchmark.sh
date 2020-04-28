@@ -64,7 +64,6 @@ if [ $run_rt_view_service -eq 1 ]; then
   tmux select-window -t :0
   tmux new-window -n RTView "sleep 5; ./run_rt_view_service.sh; $SHELL"
   sleep 3
-  tmux set-window-option remain-on-exit on
 fi
 
 
@@ -79,7 +78,6 @@ if [ $run_cluster_nodes -eq 1 ]; then
     tmux new-window -n Nodes "./run-3node-cluster.sh local; $SHELL"  
   fi
   sleep 1
-  tmux set-window-option remain-on-exit on
 fi
 
 
@@ -88,7 +86,6 @@ if [ $run_tx_generator -eq 1 ]; then
   tmux select-window -t :0
   tmux new-window -n TxGen "sleep 10; ./run_tx_generator.sh; $SHELL" 
   sleep 1
-  tmux set-window-option remain-on-exit on
 fi
 
 
@@ -97,11 +94,9 @@ if [ $run_explorer -eq 1 ]; then
   tmux select-window -t :0
   tmux new-window -n Explorer "sleep 5; ./run_explorer.sh; $SHELL"
   sleep 1
-  tmux set-window-option remain-on-exit on
 fi
 
 
 tmux select-window -n Nodes
 sleep 1
-tmux set-window-option remain-on-exit on
 $SHELL
