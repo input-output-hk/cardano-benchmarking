@@ -105,6 +105,6 @@ if [ $run_explorer -eq 1 ]; then
 fi
 
 
-tmux select-window -n Nodes
+tmux select-window -t Nodes
 sleep 1
 $SHELL
