@@ -1,4 +1,9 @@
 #!/bin/sh
+# shellcheck disable=SC1090
+
+. "$(realpath "$(dirname "$0")")"/lib.sh
+
+export IGNOREEOF=2
 
 ### parameters
 
@@ -13,8 +18,11 @@ run_tx_generator=1
 
 ### >>>>>> do not change anything below this point
 
+#EXPLORER="$(nix_binary_for 'cardano-node' 'cardano-node' 'cardano-node')"
+EXPLORER="../../bin/cardano-db-sync"
+
 # check for explorer binary
-if [ ! -e ../../bin/cardano-db-sync ]; then
+if [ ! -x "${EXPLORER}" ]; then
   echo "cardano-db-sync missing. disabling explorer functionality."
   clean_explorer_db=0
   run_explorer=0

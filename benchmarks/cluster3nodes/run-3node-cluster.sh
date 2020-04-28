@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC1090
+
+. "$(realpath "$(dirname "$0")")"/lib.sh
 
 if [ $# -lt 1 ]; then
   echo "call: $0 <rt-view|local>"
@@ -16,15 +19,13 @@ fi
 
 # start a tmux session:
 # tmux new-session -s 'Demo' -t demo
-if [ -z "${TMUX}" ]; then
-  echo "can only be run under 'tmux' control."
-  exit 1
-fi
+test -n "${TMUX}" || fail "can only be run under 'tmux' control."
 
 BASEPATH=$(realpath $(dirname $0))
 
 #RUNNER=${RUNNER:-cabal v2-exec -v0}
 #CMD="${RUNNER} cardano-node --"
+#CMD="$(nix_binary_for 'cardano-node' 'cardano-node' 'cardano-node') "
 CMD="${BASEPATH}/../../bin/cardano-node "
 
 # VERBOSITY="--tracing-verbosity-minimal"
