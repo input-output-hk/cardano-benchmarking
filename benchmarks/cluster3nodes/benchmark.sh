@@ -54,15 +54,7 @@ fi
 # (assuming db user has been defined in the database system)
 
 if [ $clean_explorer_db -eq 1 ]; then
-  { . configuration/psql-settings.sh
-    psql -d postgres -c "DROP DATABASE ${PGDATABASE};" || echo "DB missing"
-    psql -d postgres -c "CREATE DATABASE ${PGDATABASE} OWNER=${PGUSER};" || echo "ignored"
-    read -p "Continue? (y|n)" answ
-    case $answ in
-      [Nn]) exit 1;;
-      * ) echo continuing;;
-    esac
-  }
+  ./clean-explorer-db.sh ${BASEDIR}
 fi
 
 
