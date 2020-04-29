@@ -322,14 +322,15 @@ source-repository-package
   subdir: cborg
 
 constraints:
-  ip < 1.5,
+  ip < 1.6,
   hedgehog >= 1.0,
   bimap >= 0.4.0,
   brick >= 0.47,
   libsystemd-journal >= 1.4.4,
-  quiet >= 0.2
+  quiet >= 0.2,
+  katip >= 0.8.4.0
 
-allow-newer: katip:Win32
+allow-newer: base
 
 package ouroboros-consensus-byron
   tests: False
@@ -341,6 +342,9 @@ package ouroboros-consensus-mock
   tests: False
 
 package cardano-node
+  tests: False
+
+package cardano-api
   tests: False
 
 package cardano-cli
@@ -371,6 +375,12 @@ package byron-spec-chain
   tests: False
 
 package byron-spec-ledger
+  tests: False
+
+package shelley-spec-ledger
+  tests: False
+
+package cardano-ledger
   tests: False
 
 package canonical-json
@@ -434,10 +444,4 @@ package small-steps
   tests: False
 
 package ouroboros-network
-  tests: False
-
-package shelley-spec-ledger
-  tests: False
-
-package cardano-ledger
   tests: False
