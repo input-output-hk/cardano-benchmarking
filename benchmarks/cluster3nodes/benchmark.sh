@@ -1,7 +1,9 @@
 #!/bin/sh
 # shellcheck disable=SC1090
 
-. "$(realpath "$(dirname "$0")")"/lib.sh
+BASEDIR="$(realpath "$(dirname "$0")")"
+
+. "${BASEDIR}"/lib.sh
 
 export IGNOREEOF=2
 
@@ -27,8 +29,6 @@ if [ ! -x "${EXPLORER}" ]; then
   clean_explorer_db=0
   run_explorer=0
 fi
-
-BASEDIR=$(realpath $(dirname $0))
 
 # clean
 for x in db db-* logs socket

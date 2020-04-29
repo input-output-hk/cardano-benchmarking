@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC1090
 
-. "$(realpath "$(dirname "$0")")"/lib.sh
+BASEDIR="$(realpath "$(dirname "$0")")"
+
+. "${BASEDIR}"/lib.sh
 
 if [ $# -lt 1 ]; then
   echo "call: $0 <rt-view|local>"
@@ -21,18 +23,12 @@ fi
 # tmux new-session -s 'Demo' -t demo
 test -n "${TMUX}" || fail "can only be run under 'tmux' control."
 
-BASEPATH=$(realpath $(dirname $0))
-
 #RUNNER=${RUNNER:-cabal v2-exec -v0}
 #CMD="${RUNNER} cardano-node --"
 #CMD="$(nix_binary_for 'cardano-node' 'cardano-node' 'cardano-node') "
-CMD="${BASEPATH}/../../bin/cardano-node "
+CMD="${BASEDIR}/../../bin/cardano-node "
 
-# VERBOSITY="--tracing-verbosity-minimal"
-# VERBOSITY="--tracing-verbosity-normal"
-VERBOSITY="--tracing-verbosity-maximal"
-
-genesis_root=${BASEPATH}/configuration/latest-genesis
+genesis_root=${BASEDIR}/configuration/latest-genesis
 genesis_file=${genesis_root}/genesis.json
 
 
@@ -49,7 +45,7 @@ function dlgcert () {
         printf -- "--delegation-certificate ${genesis_root}/delegation-cert.%03d.json " "$1"
 }
 function commonargs() {
-        printf -- "--topology ${BASEPATH}/configuration/simple-topology-real-pbft-node-$1.json "
+        printf -- "--topology ${BASEDIR}/configuration/simple-topology-real-pbft-node-$1.json "
         printf -- "--database-path ./db-$1/ "
         printf -- "--socket-path /tmp/cluster3nodes-socket/$1 "
 }
@@ -69,9 +65,9 @@ tmux select-pane -t 0
 
 # start nodes
 tmux select-pane -t 0
-tmux send-keys "cd '${BASEPATH}'; ${CMD} run $(nodeargs 0) " C-m
+tmux send-keys "cd '${BASEDIR}'; ${CMD} run $(nodeargs 0) " C-m
 tmux select-pane -t 1
-tmux send-keys "cd '${BASEPATH}'; ${CMD} run $(nodeargs 1) " C-m
+tmux send-keys "cd '${BASEDIR}'; ${CMD} run $(nodeargs 1) " C-m
 tmux select-pane -t 2
-tmux send-keys "cd '${BASEPATH}'; ${CMD} run $(nodeargs 2) " C-m
+tmux send-keys "cd '${BASEDIR}'; ${CMD} run $(nodeargs 2) " C-m
 

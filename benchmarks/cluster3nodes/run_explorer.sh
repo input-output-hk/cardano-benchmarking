@@ -1,9 +1,9 @@
 #!/bin/sh
 # shellcheck disable=SC1090
 
-. "$(realpath "$(dirname "$0")")"/lib.sh
+BASEDIR="$(realpath "$(dirname "$0")")"
 
-BASEDIR=$(realpath $(dirname $0))
+. "${BASEDIR}"/lib.sh
 
 CONFIGFILE=${BASEDIR}/configuration/log-config-explorer.yaml
 
