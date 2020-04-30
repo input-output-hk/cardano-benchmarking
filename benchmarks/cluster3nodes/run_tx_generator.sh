@@ -21,7 +21,7 @@ echo "$TARGETNODES"
 #GENERATOR="${RUNNER} cardano-cli --"
 GENERATOR="${BASEDIR}/../../bin/cardano-tx-generator"
 
-exec ${GENERATOR} \
+${GENERATOR} \
   --config ${CONFIGFILE} \
   --signing-key ${CONFIGDIR}/latest-genesis/delegate-keys.000.key \
   --delegation-certificate ${CONFIGDIR}/latest-genesis/delegation-cert.000.json \
