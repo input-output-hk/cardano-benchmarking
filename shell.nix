@@ -17,14 +17,21 @@ let
     # If shellFor local packages selection is wrong,
     # then list all local packages then include source-repository-package that cabal complains about:
     packages = ps: with ps; [
-       ps.cardano-node
-       ps.cardano-config
-       # in theory we should only have the above two packages (or better, they should be auto-detected),
+      cardano-rt-view
+      cardano-tx-generator
+      cardano-api
+      cardano-cli
+      cardano-node
+      cardano-config
+    ];
+
+    additional = ps: with ps; [
+      # in theory we should only have the above packages (or better, they should be auto-detected),
        # but due to source-repository-package declarations being considered as local packages by cabal, we need the following packages as well.
        # cf. https://github.com/haskell/cabal/issues/6249 and https://github.com/haskell/cabal/issues/5444
-       ps.cardano-sl-x509
-       ps.ouroboros-consensus
-       ps.ouroboros-network
+       #ps.cardano-sl-x509
+       #ps.ouroboros-consensus
+       #ps.ouroboros-network
     ];
 
     # These programs will be available inside the nix-shell.
