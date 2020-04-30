@@ -7,8 +7,6 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE TypeSynonymInstances #-}
 
 {-# OPTIONS_GHC -Wno-unticked-promoted-constructors #-}
 {-# OPTIONS_GHC -Wno-all-missed-specialisations #-}
@@ -24,11 +22,8 @@ module Cardano.Benchmarking.GeneratorTx.Submission
   , txSubmissionClient
   ) where
 
--- import           Prelude
 import           Prelude (error, id)
--- import           Cardano.Prelude
--- import           Cardano.Prelude hiding (atomically)
-import           Cardano.Prelude hiding (ByteString, atomically, option, retry, threadDelay)
+import           Cardano.Prelude hiding (ByteString, atomically, retry, threadDelay)
 
 import           Control.Exception (assert)
 import           Control.Monad.Class.MonadST (MonadST)
@@ -52,42 +47,36 @@ import           Data.Void (Void)
 
 import           Cardano.BM.Tracing
 import           Cardano.BM.Data.Tracer (emptyObject, mkObject, trStructured)
-
 import           Control.Tracer (Tracer, traceWith)
+
 import           Ouroboros.Consensus.Byron.Ledger (ByronBlock (..))
-import qualified Ouroboros.Consensus.Mempool as Mempool
-import qualified Ouroboros.Network.Protocol.TxSubmission.Type as TxSubmit
-
------------------
-
+import           Ouroboros.Consensus.Config (TopLevelConfig(..))
 import           Ouroboros.Consensus.Mempool (ApplyTxErr, GenTx)
+import           Ouroboros.Consensus.Network.NodeToClient
+import           Ouroboros.Consensus.Node.NetworkProtocolVersion
+                  (HasNetworkProtocolVersion (..))
 import           Ouroboros.Consensus.Node.Run (RunNode)
 import qualified Ouroboros.Consensus.Node.Run as Node
-import           Ouroboros.Consensus.Config (TopLevelConfig)
+import qualified Ouroboros.Consensus.Mempool as Mempool
 
-import           Ouroboros.Network.Codec (Codec, DeserialiseFailure)
 import           Ouroboros.Network.Mux
                    ( AppType(..), OuroborosApplication(..),
                      MuxPeer(..), RunMiniProtocol(..) )
-import           Ouroboros.Network.Block (Point)
-import qualified Ouroboros.Network.Block as Block
 import           Ouroboros.Network.Driver (runPeer)
-import qualified Ouroboros.Network.Protocol.LocalTxSubmission.Type as LocalTxSub
 import qualified Ouroboros.Network.Protocol.LocalTxSubmission.Client as LocalTxSub
-import qualified Ouroboros.Network.Protocol.LocalTxSubmission.Codec as LocalTxSub
-import           Ouroboros.Network.Protocol.ChainSync.Type (ChainSync)
-import           Ouroboros.Network.Protocol.ChainSync.Client (chainSyncClientPeer)
-import           Ouroboros.Network.Protocol.ChainSync.Codec (codecChainSync)
-import           Ouroboros.Network.Protocol.Handshake.Version ( Versions
-                                                              , simpleSingletonVersions)
+import           Ouroboros.Network.Protocol.Handshake.Version (Versions)
 import           Ouroboros.Network.Protocol.TxSubmission.Client (ClientStIdle(..),
                                                                  ClientStTxs(..),
                                                                  ClientStTxIds(..),
                                                                  TxSubmissionClient(..))
 import           Ouroboros.Network.Protocol.TxSubmission.Type (BlockingReplyList(..),
-                                                               TokBlockingStyle(..))
-import           Ouroboros.Network.NodeToClient ( AssociateWithIOCP
-                                                , NetworkConnectTracers (..))
+                                                               TokBlockingStyle(..),
+                                                               TxSizeInBytes)
+import           Ouroboros.Network.NodeToClient (IOManager,
+                                                 NetworkConnectTracers(..),
+                                                 NodeToClientVersionData(..),
+                                                 foldMapVersions,
+                                                 versionedNodeToClientProtocols)
 import qualified Ouroboros.Network.NodeToClient as NodeToClient
 
 import           Cardano.Config.Types (SocketPath(..))
@@ -103,7 +92,7 @@ import           Cardano.Config.Types (SocketPath(..))
 --   the tx generation is able to keep up the pace.
 --
 --   For the details of the protocol description see
---   `TxSubmit.TxSubmission` and its associated instances
+--   `TxSubmission` and its associated instances
 --   (e.g. `Message`).
 bulkSubmission
   :: forall blk txid tx .
@@ -121,10 +110,10 @@ bulkSubmission
   -- empty list indicates terminating
   -> TMVar IO (RPCTxSubmission IO txid tx)
   -- the RPC variable shared with
-  -- `TxSubmit.TxSubmission` local peer
+  -- `TxSubmission` local peer
   -> IO ()
-bulkSubmission updEnv tr termVar txIn rpcIn = do
---    liftIO $ putStrLn "bulkSubmission__0"
+bulkSubmission updEnv tr termVar txIn rpcIn =
+  -- liftIO $ putStrLn "bulkSubmission__0"
   defaultRWEnv >>= evalStateT (go $ updEnv defaultROEnv)
  where
   go :: ROEnv txid tx -> StateT (RWEnv IO txid tx) IO ()
@@ -149,7 +138,7 @@ bulkSubmission updEnv tr termVar txIn rpcIn = do
           case reqTxIds of
             RPCRequestTxIds _ resp -> putTMVar resp Nothing
             _ -> return ()
-    else do -- process next interaction
+    else  -- process next interaction
       -- lift . traceWith tr . TraceBenchTxSubDebug $ "go, process next interaction"
       go1 env
 
@@ -186,7 +175,7 @@ bulkSubmission updEnv tr termVar txIn rpcIn = do
 
     -- Update terminating, if needed
     -- lift . traceWith tr . TraceBenchTxSubDebug $ "go1, update terminating, if needed"
-    when (nowTerminating && not terminating') $ do
+    when (nowTerminating && not terminating') $
       -- lift . traceWith tr . TraceBenchTxSubDebug $ "go1, update terminating: True"
       modify (\x -> x {terminating = True})
 
@@ -215,7 +204,7 @@ bulkSubmission updEnv tr termVar txIn rpcIn = do
   getTxId :: tx -> txid
   getTxId = Mempool.txId
 
-  getTxSize :: tx -> TxSubmit.TxSizeInBytes
+  getTxSize :: tx -> TxSizeInBytes
   getTxSize = Mempool.txSize
 
   processOp :: ROEnv txid tx -> StateT (RWEnv IO txid tx) IO ()
@@ -303,7 +292,7 @@ bulkSubmission updEnv tr termVar txIn rpcIn = do
 
   setRateLimiter
     :: ROEnv txid tx
-    -> [TxSubmit.TxSizeInBytes]
+    -> [TxSizeInBytes]
     -> StateT (RWEnv IO txid tx) IO ()
   setRateLimiter env tls = do
     let txLimit   = (* fromIntegral (length tls)) <$> txNumServiceTime  env
@@ -332,7 +321,7 @@ bulkSubmission updEnv tr termVar txIn rpcIn = do
   noteBusy = do -- just can't get those memory write cycles out of my head
 --      liftIO $ putStrLn $ "noteBusy"
     wasIdle <- (== Idle) <$> gets activityState
-    when wasIdle $ do
+    when wasIdle $
 --        liftIO $ putStrLn $ "noteBusy, Busy!"
       modify (\x -> x { activityState = Busy})
 
@@ -356,10 +345,10 @@ data RWEnv m txid tx = RWEnv
   { terminating     :: Bool
   , activityState   :: ActivityState
   , proceedAfter    :: Time
-  , availableOp     :: Maybe (Int, TMVar m (Maybe [(txid, TxSubmit.TxSizeInBytes)]))
+  , availableOp     :: Maybe (Int, TMVar m (Maybe [(txid, TxSizeInBytes)]))
   -- ^ the window and the response action
   , inFlight
-  , notYetSent      :: Seq (txid, tx,  TxSubmit.TxSizeInBytes)
+  , notYetSent      :: Seq (txid, tx,  TxSizeInBytes)
   }
 
 defaultRWEnv :: MonadTime m => m (RWEnv m txid tx)
@@ -374,19 +363,19 @@ defaultRWEnv = do
     , notYetSent      = mempty
     }
 
--- | RPC interaction with `TxSubmit.TxSubmission`
+-- | RPC interaction with `TxSubmission`
 data RPCTxSubmission m txid tx
-  = RPCRequestTxIdsPromptly (Word16, Word16) (TMVar m [(txid, TxSubmit.TxSizeInBytes)])
+  = RPCRequestTxIdsPromptly (Word16, Word16) (TMVar m [(txid, TxSizeInBytes)])
   -- ^ Request contains the acknowledged number and the size of the
   --   open window. Response contains the list of transactions (that
-  --   can be empty - see the `TxSubmit.TxSubmission` description of
-  --   `TxSubmit.StBlockingStyle` for more details). A prompt response
+  --   can be empty - see the `TxSubmission` description of
+  --   `StBlockingStyle` for more details). A prompt response
   --   is expected.
-  |  RPCRequestTxIds (Word16, Word16) (TMVar m (Maybe [(txid, TxSubmit.TxSizeInBytes)]))
+  |  RPCRequestTxIds (Word16, Word16) (TMVar m (Maybe [(txid, TxSizeInBytes)]))
   -- ^ Request contains the acknowledged number and the size of the
   --   open window. Response contains the list of transactions (that
-  --   can not be empty - see the `TxSubmit.TxSubmission` description
-  --   of `TxSubmit.StBlockingStyle` for more details); `Nothing`
+  --   can not be empty - see the `TxSubmission` description
+  --   of `StBlockingStyle` for more details); `Nothing`
   --   indicates no more transaction submissions and a clean
   --   shutdown. A prompt response is not expected.
   | RPCRequestTxs [txid] (TMVar m [tx])
@@ -398,10 +387,10 @@ data TraceBenchTxSubmit txid
   = TraceBenchTxSubRecv [txid]
   -- ^ Received from generator.
   | TraceBenchTxSubStart [txid]
-  -- ^ The @txid@ has been submitted to `TxSubmit.TxSubmission`
+  -- ^ The @txid@ has been submitted to `TxSubmission`
   --   protocol peer.
   | TraceBenchTxSubServReq [txid]
-  -- ^ Request for @tx@ recieved from `TxSubmit.TxSubmission` protocol
+  -- ^ Request for @tx@ recieved from `TxSubmission` protocol
   --   peer.
   | TraceBenchTxSubServAck [txid]
   -- ^ An ack (window moved over) received for these transactions.
@@ -525,7 +514,7 @@ instance (MonadIO m) => Transformable Text m TraceLowLevelSubmit where
 submitTx :: ( RunNode blk
             , Show (ApplyTxErr blk)
             )
-         => AssociateWithIOCP
+         => IOManager
          -> SocketPath
          -> TopLevelConfig blk
          -> GenTx blk
@@ -542,7 +531,7 @@ submitTx iocp (SocketFile path) cfg tx tracer =
       path
 
 localInitiatorNetworkApplication
-  :: forall blk m peer.
+  :: forall blk m .
      ( RunNode blk
      , MonadST m
      , MonadThrow m
@@ -553,37 +542,59 @@ localInitiatorNetworkApplication
   -> TopLevelConfig blk
   -> GenTx blk
   -> Versions NodeToClient.NodeToClientVersion NodeToClient.DictVersion
-              (peer -> OuroborosApplication InitiatorApp ByteString m () Void)
+              (NodeToClient.LocalConnectionId -> OuroborosApplication InitiatorApp ByteString m () Void)
 localInitiatorNetworkApplication tracer cfg tx =
-    simpleSingletonVersions
-      NodeToClient.NodeToClientV_1
-      (NodeToClient.NodeToClientVersionData
-        { NodeToClient.networkMagic = Node.nodeNetworkMagic (Proxy @blk) cfg })
-      (NodeToClient.DictVersion NodeToClient.nodeToClientCodecCBORTerm) $ \_peerid ->
+  foldMapVersions
+    (\v -> 
+      versionedNodeToClientProtocols
+        (nodeToClientProtocolVersion proxy v)
+        versionData
+        (protocols v))
+    (supportedNodeToClientVersions proxy)
+ where
+    proxy :: Proxy blk
+    proxy = Proxy
 
-    NodeToClient.nodeToClientProtocols
-      NodeToClient.NodeToClientProtocols {
-        NodeToClient.localChainSyncProtocol =
-          InitiatorProtocolOnly $
-            MuxPeer
-              nullTracer
-              (localChainSyncCodec @blk cfg)
-              (chainSyncClientPeer NodeToClient.chainSyncClientNull)
+    versionData = NodeToClientVersionData (Node.nodeNetworkMagic proxy cfg)
 
-      , NodeToClient.localTxSubmissionProtocol =
-          InitiatorProtocolOnly $
-            MuxPeerRaw $ \channel -> do
-              traceWith tracer TraceLowLevelSubmitting
-              result <- runPeer
-                          nullTracer -- (contramap show tracer)
-                          localTxSubmissionCodec
-                          channel
-                          (LocalTxSub.localTxSubmissionClientPeer
-                             (txSubmissionClientSingle tx))
-              case result of
-                Nothing  -> traceWith tracer TraceLowLevelAccepted
-                Just msg -> traceWith tracer (TraceLowLevelRejected $ show msg)
-      }
+    protocols :: NodeToClientVersion blk
+              -> NodeToClient.NodeToClientProtocols InitiatorApp ByteString m () Void
+    protocols byronClientVersion  =
+        NodeToClient.NodeToClientProtocols {
+          NodeToClient.localChainSyncProtocol =
+            InitiatorProtocolOnly $
+              MuxPeer
+                nullTracer
+                cChainSyncCodec
+                NodeToClient.chainSyncPeerNull
+
+        , NodeToClient.localTxSubmissionProtocol =
+            InitiatorProtocolOnly $
+              MuxPeerRaw $ \channel -> do
+                traceWith tracer TraceLowLevelSubmitting
+                result <- runPeer
+                            nullTracer -- (contramap show tracer)
+                            cTxSubmissionCodec
+                            channel
+                            (LocalTxSub.localTxSubmissionClientPeer
+                               (txSubmissionClientSingle tx))
+                case result of
+                  Nothing  -> traceWith tracer TraceLowLevelAccepted
+                  Just msg -> traceWith tracer (TraceLowLevelRejected $ show msg)
+
+        , NodeToClient.localStateQueryProtocol = 
+            InitiatorProtocolOnly $
+              MuxPeer
+                nullTracer
+                cStateQueryCodec
+                NodeToClient.localStateQueryPeerNull
+        }
+     where 
+      Codecs { cChainSyncCodec
+             , cTxSubmissionCodec
+             , cStateQueryCodec
+             } = defaultCodecs (configBlock cfg) byronClientVersion
+
 
 -- | A 'LocalTxSubmissionClient' that submits exactly one transaction, and then
 -- disconnects, returning the confirmation or rejection.
@@ -593,34 +604,9 @@ txSubmissionClientSingle
      Applicative m
   => tx
   -> LocalTxSub.LocalTxSubmissionClient tx reject m (Maybe reject)
-txSubmissionClientSingle tx = LocalTxSub.LocalTxSubmissionClient $ do
+txSubmissionClientSingle tx = LocalTxSub.LocalTxSubmissionClient $
     pure $ LocalTxSub.SendMsgSubmitTx tx $ \mreject ->
       pure (LocalTxSub.SendMsgDone mreject)
-
-localTxSubmissionCodec
-  :: forall m blk . (RunNode blk, MonadST m)
-  => Codec (LocalTxSub.LocalTxSubmission (GenTx blk) (ApplyTxErr blk))
-           DeserialiseFailure m ByteString
-localTxSubmissionCodec =
-  LocalTxSub.codecLocalTxSubmission
-    Node.nodeEncodeGenTx
-    Node.nodeDecodeGenTx
-    (Node.nodeEncodeApplyTxError (Proxy @blk))
-    (Node.nodeDecodeApplyTxError (Proxy @blk))
-
-localChainSyncCodec
-  :: forall blk m. (RunNode blk, MonadST m)
-  => TopLevelConfig blk
-  -> Codec (ChainSync blk (Point blk))
-           DeserialiseFailure m ByteString
-localChainSyncCodec cfg =
-    codecChainSync
-      (Block.wrapCBORinCBOR   (Node.nodeEncodeBlock cfg))
-      (Block.unwrapCBORinCBOR (Node.nodeDecodeBlock cfg))
-      (Block.encodePoint (Node.nodeEncodeHeaderHash (Proxy @blk)))
-      (Block.decodePoint (Node.nodeDecodeHeaderHash (Proxy @blk)))
-      (Block.encodePoint (Node.nodeEncodeHeaderHash (Proxy @blk)))
-      (Block.decodePoint (Node.nodeDecodeHeaderHash (Proxy @blk)))
 
 txSubmissionClient
   :: forall m block txid tx .

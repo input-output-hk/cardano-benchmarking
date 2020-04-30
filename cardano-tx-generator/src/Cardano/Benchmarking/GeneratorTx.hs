@@ -86,7 +86,7 @@ import           Cardano.Benchmarking.GeneratorTx.Tx (toCborTxAux, txSpendGenesi
 
 import           Control.Tracer (Tracer, traceWith)
 
-import           Ouroboros.Network.NodeToClient (AssociateWithIOCP)
+import           Ouroboros.Network.NodeToClient (IOManager)
 
 import           Ouroboros.Consensus.Node.Run (RunNode)
 import           Ouroboros.Consensus.Node.ProtocolInfo (ProtocolInfo (..))
@@ -146,7 +146,7 @@ newtype ExplorerAPIEnpoint =
 -----------------------------------------------------------------------------------------
 genesisBenchmarkRunner
   :: LoggingLayer
-  -> AssociateWithIOCP
+  -> IOManager
   -> SocketPath
   -> Consensus.Protocol ByronBlock Consensus.ProtocolRealPBFT
   -> NonEmpty NodeAddress
@@ -162,7 +162,7 @@ genesisBenchmarkRunner
 genesisBenchmarkRunner loggingLayer
                        iocp
                        socketFp
-                       protocol@(Consensus.ProtocolRealPBFT genesisConfig _ _ _ _)
+                       protocol  @(Consensus.ProtocolRealPBFT genesisConfig _ _ _ _)
                        targetNodeAddresses
                        numOfTxs@(NumberOfTxs rawNumOfTxs)
                        numOfInsPerTx
@@ -400,7 +400,7 @@ extractGenesisFunds genesisConfig signingKeys =
 prepareInitialFunds
   :: Tracer IO (TraceBenchTxSubmit (Mempool.GenTxId ByronBlock))
   -> Tracer IO TraceLowLevelSubmit
-  -> AssociateWithIOCP 
+  -> IOManager 
   -> SocketPath
   -> CC.Genesis.Config
   -> TopLevelConfig ByronBlock
@@ -438,7 +438,7 @@ prepareInitialFunds benchTracer
       genesisTxGeneral = normalByronTxToGenTx genesisTx
 
   case explorerAPIEndpoint of
-    Nothing -> do
+    Nothing ->
       -- There's no Explorer's API endpoint specified, submit genesis
       -- transaction to the target nodes via 'ouroboros-network'.
       submitTx iocp socketFp pInfoConfig genesisTxGeneral llTracer
@@ -514,7 +514,7 @@ mkTransaction cfg inputs mChangeAddress payments txAdditionalSize txFee =
       -- change the order of comparisons first check emptiness of txouts AND remove appendr after
 
   (txOutputs, mChange) =
-    if (CC.Common.unsafeGetLovelace changeValue) > 0
+    if CC.Common.unsafeGetLovelace changeValue > 0
     then
       let changeAddress = fromMaybe (CC.UTxO.txOutAddress firstTxOutFrom) mChangeAddress
           changeTxOut   = CC.UTxO.TxOut {
@@ -646,7 +646,7 @@ runBenchmark
   -> Tracer IO SendRecvConnect
   -> Tracer IO (SendRecvTxSubmission ByronBlock)
   -> Tracer IO TraceLowLevelSubmit
-  -> AssociateWithIOCP
+  -> IOManager
   -> SocketPath
   -> TopLevelConfig ByronBlock
   -> Crypto.SigningKey
@@ -832,9 +832,9 @@ postTx benchTracer initialRequest serializedTx = do
   responseFromExplorer <- httpLbs request manager
   traceWith benchTracer . TraceBenchTxSubDebug
     $ "Response from Explorer WebAPI: status code: "
-      <> (show $ statusCode $ responseStatus responseFromExplorer)
+      <> show (statusCode $ responseStatus responseFromExplorer)
       <> ", body: "
-      <> (show $ responseBody responseFromExplorer)
+      <> show (responseBody responseFromExplorer)
 
 -- | At this moment 'sourceAddress' contains a huge amount of money (lets call it A).
 --   Now we have to split this amount to N equal parts, as a result we'll have
@@ -844,7 +844,7 @@ postTx benchTracer initialRequest serializedTx = do
 createMoreFundCoins
   :: Tracer IO (TraceBenchTxSubmit (Mempool.GenTxId ByronBlock))
   -> Tracer IO TraceLowLevelSubmit
-  -> AssociateWithIOCP
+  -> IOManager
   -> SocketPath
   -> TopLevelConfig ByronBlock
   -> Crypto.SigningKey
@@ -867,14 +867,14 @@ createMoreFundCoins benchTracer
                     explorerAPIEndpoint = do
   let feePerTx              = assumeBound . CC.Common.mkLovelace $ txFee
       -- The number of splitting txout entries (corresponds to the number of all inputs we will need).
-      numSplittingTxOuts    = numOfTxs * (fromIntegral numOfInsPerTx)
+      numSplittingTxOuts    = numOfTxs * fromIntegral numOfInsPerTx
       numOutsPerSplittingTx = 60 :: Word64 -- near the upper bound so as not to exceed the tx size limit
 
   -- Now we have to find the first output with sufficient amount of money.
   -- But since we made only one single transaction, there is only one
   -- 'FundValueStatus' in 'availableFunds', and it definitely contains a
   -- huge amount of money.
-  let genesisTxDetails = txDetails $ (Set.toList fundsWithGenesisMoney) !! 0
+  let genesisTxDetails = txDetails $ Set.toList fundsWithGenesisMoney !! 0
       sourceAddress = CC.UTxO.txOutAddress . snd $ genesisTxDetails
       sourceValue   = CC.UTxO.txOutValue   . snd $ genesisTxDetails
       -- Split the funds to 'numSplittingTxOuts' equal parts, subtracting the possible fees.
@@ -971,7 +971,7 @@ createMoreFundCoins benchTracer
     :: [(CC.UTxO.ATxAux ByteString, [TxDetails])]
     -> AvailableFunds
   reCreateAvailableFunds splittingTxs =
-    Set.fromList $
+    Set.fromList
       [ FundValueStatus { status    = Unknown
                         , txDetails = txDetails
                         }
@@ -1184,7 +1184,7 @@ launchTxPeer
   -- tracer for lower level connection and details of
   -- protocol interactisn, intended for debugging
   -- associated issues.
-  -> AssociateWithIOCP
+  -> IOManager
   -- ^ associate a file descriptor with IO completion port
   -> MSTM.TVar IO Bool
   -- a "global" stop variable, set to True to force shutdown
