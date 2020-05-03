@@ -12,9 +12,8 @@ import           Prelude
 import qualified Data.Aeson as A
 import           Data.Char
                    ( isDigit )
-import qualified Data.HashMap.Strict as HM
 import           Data.List
-                   ( (!!), findIndex, find )
+                   ( (!!), findIndex )
 import qualified Data.Map.Strict as Map
 import           Data.Map.Strict
                    ( (!?) )
@@ -25,9 +24,6 @@ import           Data.Time.Clock
                    ( NominalDiffTime, UTCTime (..)
                    , addUTCTime, diffUTCTime, getCurrentTime
                    )
-
-import           Control.Concurrent.MVar
-                   ( modifyMVar_ )
 
 import           Cardano.BM.Backend.Switchboard
                    ( Switchboard, readLogBuffer )
@@ -45,6 +41,8 @@ import           Cardano.BM.Trace
                    , logDebug
                    )
 
+import           Cardano.Benchmarking.RTView.NodeState.Parsers
+                   ( extractPeersInfo, updateCurrentPeersInfo )
 import           Cardano.Benchmarking.RTView.NodeState.Types
                    ( NodesState, NodeState (..), NodeInfo (..)
                    , NodeMetrics (..), NodeError (..), PeerInfo (..)
@@ -135,12 +133,15 @@ updateNodesState nsMVar loggerName (LogObject aName aMeta aContent) = do
                 LogValue "RTS.gcMajorNum" (PureI gcMajorNum) ->
                   nodesStateWith $ updateGcMajorNum ns gcMajorNum
                 _ -> return currentNodesState
+           | "cardano.node.BlockFetchDecision.peersList" `T.isInfixOf` aName ->
+              case aContent of
+                LogStructured peersInfo ->
+                  nodesStateWith $ updatePeersInfo ns peersInfo
+                _ -> return currentNodesState
            | "cardano.node.BlockFetchDecision" `T.isInfixOf` aName ->
               case aContent of
                 LogValue "connectedPeers" (PureI peersNum) ->
                   nodesStateWith $ updatePeersNumber ns peersNum
-                LogStructured peerInfo ->
-                  nodesStateWith $ updatePeerEndpoint ns peerInfo
                 _ -> return currentNodesState
            | "cardano.node.ChainSyncProtocol" `T.isInfixOf` aName ->
               case aContent of
@@ -236,28 +237,14 @@ updateNodeErrors ns (LOMeta timeStamp _ _ sev _) aContent = ns { nsInfo = newNi 
   prepared (PureI v)        = show v
   prepared _                = ""
 
--- | Since we know the format of JSON-representation in log messages,
---   we extract values as a raw strings.
---     * Pros: the simplest solution without dependencies from ouroboros libraries.
---     * Cons: primitive text parsing.
---   At the worst, it can be treated as a temporary solution.
-updatePeerEndpoint :: NodeState -> HM.HashMap Text A.Value -> NodeState
-updatePeerEndpoint ns peerInfo = ns { nsInfo = newNi }
+updatePeersInfo :: NodeState -> A.Object -> NodeState
+updatePeersInfo ns peersInfo = ns { nsInfo = newNi }
  where
-  newNi = currentNi { niPeersInfo = newPeersInfo }
+  newNi = currentNi { niPeersInfo = updatedPeersInfo }
   currentNi = nsInfo ns
-  currentPeers = niPeersInfo currentNi
-  connectionInfo = case HM.lookup "peer" peerInfo of
-                     Just (A.String info) -> info
-                     _ -> ""
-  endpoint = getValueOf "remoteAddress" endpointOnly $ T.words connectionInfo
-  endpointIsHere = isJust $ find (\(PeerInfo ep _ _) -> ep == endpoint) currentPeers
-  newPeersInfo = if endpointIsHere
-                   then currentPeers
-                   else currentPeers ++ [PeerInfo endpoint "-" "-"]
-  -- TODO: this function does NOT remove peer's info if corresponding
-  -- peer was disconnected. But we plan to add check of outdated metrics,
-  -- so it will be implemented later.
+  currentPeersInfo = niPeersInfo currentNi
+  newPeersInfo = extractPeersInfo peersInfo
+  updatedPeersInfo = updateCurrentPeersInfo currentPeersInfo newPeersInfo
 
 updatePeerInfo :: NodeState -> Text -> NodeState
 updatePeerInfo ns peerInfo = ns { nsInfo = newNi }
