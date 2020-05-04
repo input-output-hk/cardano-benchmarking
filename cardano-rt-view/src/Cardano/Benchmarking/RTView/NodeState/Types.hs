@@ -50,6 +50,7 @@ data NodeError = NodeError
   } deriving Show
 
 data NodeInfo = NodeInfo
+<<<<<<< HEAD
   { niNodeRelease       :: !String
   , niNodeVersion       :: !String
   , niNodeCommit        :: !String
@@ -66,6 +67,29 @@ data NodeInfo = NodeInfo
   , niTraceAcceptorHost :: !String
   , niTraceAcceptorPort :: !String
   , niNodeErrors        :: ![NodeError]
+=======
+  { niNodeRelease            :: !String
+  , niNodeVersion            :: !String
+  , niNodeCommit             :: !String
+  , niNodeShortCommit        :: !String
+  , niStartTime              :: !UTCTime
+  , niUpTime                 :: !UTCTime
+  , niUpTimeLastUpdate       :: !UTCTime
+  , niEpoch                  :: !Integer
+  , niEpochLastUpdate        :: !UTCTime
+  , niSlot                   :: !Integer
+  , niSlotLastUpdate         :: !UTCTime
+  , niBlocksNumber           :: !Integer
+  , niBlocksNumberLastUpdate :: !UTCTime
+  , niChainDensity           :: !Double
+  , niChainDensityLastUpdate :: !UTCTime
+  , niTxsProcessed           :: !Integer
+  , niPeersNumber            :: !Integer
+  , niPeersInfo              :: ![PeerInfo]
+  , niTraceAcceptorHost      :: !String
+  , niTraceAcceptorPort      :: !String
+  , niNodeErrors             :: ![NodeError]
+>>>>>>> 588c21b... CAD-806: Live monitoring.
   } deriving Show
 
 data NodeMetrics = NodeMetrics
@@ -112,9 +136,13 @@ data NodeMetrics = NodeMetrics
   , nmRTSMemoryUsed           :: !Double
   , nmRTSMemoryUsedPercent    :: !Double
   , nmRTSGcCpu                :: !Double
+  , nmRTSGcCpuLastUpdate      :: !UTCTime
   , nmRTSGcElapsed            :: !Double
+  , nmRTSGcElapsedLastUpdate  :: !UTCTime
   , nmRTSGcNum                :: !Integer
+  , nmRTSGcNumLastUpdate      :: !UTCTime
   , nmRTSGcMajorNum           :: !Integer
+  , nmRTSGcMajorNumLastUpdate :: !UTCTime
   } deriving Show
 
 defaultNodesState
@@ -137,6 +165,7 @@ defaultNodeState = NodeState
 
 defaultNodeInfo :: NodeInfo
 defaultNodeInfo = NodeInfo
+<<<<<<< HEAD
   { niNodeRelease       = "-"
   , niNodeVersion       = "-"
   , niNodeCommit        = "-"
@@ -153,6 +182,29 @@ defaultNodeInfo = NodeInfo
   , niTraceAcceptorHost = "-"
   , niTraceAcceptorPort = "-"
   , niNodeErrors        = []
+=======
+  { niNodeRelease            = "-"
+  , niNodeVersion            = "-"
+  , niNodeCommit             = "-"
+  , niNodeShortCommit        = "-"
+  , niStartTime              = UTCTime (ModifiedJulianDay 0) 0
+  , niUpTime                 = UTCTime (ModifiedJulianDay 0) 0
+  , niUpTimeLastUpdate       = UTCTime (ModifiedJulianDay 0) 0
+  , niEpoch                  = 0
+  , niEpochLastUpdate        = UTCTime (ModifiedJulianDay 0) 0
+  , niSlot                   = 0
+  , niSlotLastUpdate         = UTCTime (ModifiedJulianDay 0) 0
+  , niBlocksNumber           = 0
+  , niBlocksNumberLastUpdate = UTCTime (ModifiedJulianDay 0) 0
+  , niChainDensity           = 0.0
+  , niChainDensityLastUpdate = UTCTime (ModifiedJulianDay 0) 0
+  , niTxsProcessed           = 0
+  , niPeersNumber            = 0
+  , niPeersInfo              = []
+  , niTraceAcceptorHost      = "-"
+  , niTraceAcceptorPort      = "-"
+  , niNodeErrors             = []
+>>>>>>> 588c21b... CAD-806: Live monitoring.
   }
 
 defaultNodeMetrics :: NodeMetrics
@@ -200,9 +252,13 @@ defaultNodeMetrics = NodeMetrics
   , nmRTSMemoryUsed           = 0.1
   , nmRTSMemoryUsedPercent    = 1.0
   , nmRTSGcCpu                = 0.1
+  , nmRTSGcCpuLastUpdate      = UTCTime (ModifiedJulianDay 0) 0
   , nmRTSGcElapsed            = 0.1
+  , nmRTSGcElapsedLastUpdate  = UTCTime (ModifiedJulianDay 0) 0
   , nmRTSGcNum                = 0
+  , nmRTSGcNumLastUpdate      = UTCTime (ModifiedJulianDay 0) 0
   , nmRTSGcMajorNum           = 0
+  , nmRTSGcMajorNumLastUpdate = UTCTime (ModifiedJulianDay 0) 0
   }
  where
   maxBytesPerTx = 4096 :: Word64

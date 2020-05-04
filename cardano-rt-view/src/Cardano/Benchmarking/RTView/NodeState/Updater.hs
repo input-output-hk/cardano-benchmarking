@@ -134,18 +134,18 @@ updateNodesState nsMVar loggerName (LogObject aName aMeta aContent) = do
               _ -> return currentNodesState
            | "cardano.node-metrics" `T.isInfixOf` aName ->
             case aContent of
-              LogValue "RTS.maxUsedMemBytes" (Bytes bytesAllocated) ->
-                nodesStateWith $ updateRTSBytesAllocated ns bytesAllocated
-              LogValue "RTS.gcLiveBytes" (Bytes usedMemBytes) ->
-                nodesStateWith $ updateRTSBytesUsed ns usedMemBytes
+              LogValue "RTS.bytesAllocated" (Bytes bytesAllocated) ->
+                nodesStateWith $ updateBytesAllocated ns bytesAllocated
+              LogValue "RTS.usedMemBytes" (Bytes usedMemBytes) ->
+                nodesStateWith $ updateBytesUsed ns usedMemBytes
               LogValue "RTS.gcCpuNs" (Nanoseconds gcCpuNs) ->
-                nodesStateWith $ updateGcCpuNs ns gcCpuNs
+                nodesStateWith $ updateGcCpuNs ns gcCpuNs now
               LogValue "RTS.gcElapsedNs" (Nanoseconds gcElapsedNs) ->
-                nodesStateWith $ updateGcElapsedNs ns gcElapsedNs
+                nodesStateWith $ updateGcElapsedNs ns gcElapsedNs now
               LogValue "RTS.gcNum" (PureI gcNum) ->
-                nodesStateWith $ updateGcNum ns gcNum
+                nodesStateWith $ updateGcNum ns gcNum now
               LogValue "RTS.gcMajorNum" (PureI gcMajorNum) ->
-                nodesStateWith $ updateGcMajorNum ns gcMajorNum
+                nodesStateWith $ updateGcMajorNum ns gcMajorNum now
               _ -> return currentNodesState
            | "cardano.node.BlockFetchDecision.peersList" `T.isInfixOf` aName ->
             case aContent of
@@ -180,13 +180,13 @@ updateNodesState nsMVar loggerName (LogObject aName aMeta aContent) = do
            | otherwise ->
             case aContent of
               LogValue "density" (PureD density) ->
-                nodesStateWith $ updateChainDensity ns density
+                nodesStateWith $ updateChainDensity ns density now
               LogValue "blockNum" (PureI blockNum) ->
-                nodesStateWith $ updateBlocksNumber ns blockNum
+                nodesStateWith $ updateBlocksNumber ns blockNum now
               LogValue "slotInEpoch" (PureI slotNum) ->
-                nodesStateWith $ updateSlotInEpoch ns slotNum
+                nodesStateWith $ updateSlotInEpoch ns slotNum now
               LogValue "epoch" (PureI epoch) ->
-                nodesStateWith $ updateEpoch ns epoch
+                nodesStateWith $ updateEpoch ns epoch now
               _ -> return currentNodesState
       Nothing ->
         -- This is a problem, because it means that configuration is unexpected one:
@@ -209,7 +209,12 @@ itIsErrorMessage aMeta =
 updateNodeUpTime :: NodeState -> Word64 -> NodeState
 updateNodeUpTime ns upTimeInNs = ns { nsInfo = newNi }
  where
-  newNi = currentNi { niUpTime = upTime }
+  newNi =
+    currentNi
+      { niStartTime = startTime
+      , niUpTime    = upTime
+      , niUpTimeLastUpdate = now
+      }
   currentNi = nsInfo ns
   upTimeInSec = fromIntegral upTimeInNs / 1000000000
   -- We show up time as time with seconds, so we don't need fractions of second.
@@ -548,36 +553,46 @@ updateRTSBytesUsed ns usedMemBytes = ns { nsMetrics = newNm }
   currentNm = nsMetrics ns
   mBytes    = fromIntegral usedMemBytes / 1024 / 1024 :: Double
 
-updateGcCpuNs :: NodeState -> Word64 -> NodeState
-updateGcCpuNs ns gcCpuNs = ns { nsMetrics = newNm }
+updateGcCpuNs :: NodeState -> Word64 -> UTCTime -> NodeState
+updateGcCpuNs ns gcCpuNs now = ns { nsMetrics = newNm }
  where
-  newNm     = currentNm { nmRTSGcCpu = seconds }
+  newNm     = currentNm { nmRTSGcCpu = seconds
+                        , nmRTSGcCpuLastUpdate = now
+                        }
   currentNm = nsMetrics ns
   seconds   = (fromIntegral gcCpuNs) / 1000000000 :: Double
 
-updateGcElapsedNs :: NodeState -> Word64 -> NodeState
-updateGcElapsedNs ns gcElapsedNs = ns { nsMetrics = newNm }
+updateGcElapsedNs :: NodeState -> Word64 -> UTCTime -> NodeState
+updateGcElapsedNs ns gcElapsedNs now = ns { nsMetrics = newNm }
  where
-  newNm     = currentNm { nmRTSGcElapsed = seconds }
+  newNm     = currentNm { nmRTSGcElapsed = seconds
+                        , nmRTSGcElapsedLastUpdate = now
+                        }
   currentNm = nsMetrics ns
   seconds   = (fromIntegral gcElapsedNs) / 1000000000 :: Double
 
-updateGcNum :: NodeState -> Integer -> NodeState
-updateGcNum ns gcNum = ns { nsMetrics = newNm }
+updateGcNum :: NodeState -> Integer -> UTCTime -> NodeState
+updateGcNum ns gcNum now = ns { nsMetrics = newNm }
  where
-  newNm     = currentNm { nmRTSGcNum = gcNum }
+  newNm     = currentNm { nmRTSGcNum = gcNum
+                        , nmRTSGcNumLastUpdate = now
+                        }
   currentNm = nsMetrics ns
 
-updateGcMajorNum :: NodeState -> Integer -> NodeState
-updateGcMajorNum ns gcMajorNum = ns { nsMetrics = newNm }
+updateGcMajorNum :: NodeState -> Integer -> UTCTime -> NodeState
+updateGcMajorNum ns gcMajorNum now = ns { nsMetrics = newNm }
  where
-  newNm     = currentNm { nmRTSGcMajorNum = gcMajorNum }
+  newNm     = currentNm { nmRTSGcMajorNum = gcMajorNum
+                        , nmRTSGcMajorNumLastUpdate = now
+                        }
   currentNm = nsMetrics ns
 
-updateChainDensity :: NodeState -> Double -> NodeState
-updateChainDensity ns density = ns { nsInfo = newNi }
+updateChainDensity :: NodeState -> Double -> UTCTime -> NodeState
+updateChainDensity ns density now = ns { nsInfo = newNi }
  where
-  newNi = (nsInfo ns) { niChainDensity = chainDensity }
+  newNi = (nsInfo ns) { niChainDensity = chainDensity
+                      , niChainDensityLastUpdate = now
+                      }
   chainDensity = 0.05 + density * 100.0
 
 updatePeersNumber :: NodeState -> Integer -> NodeState
@@ -585,17 +600,23 @@ updatePeersNumber ns peersNum = ns { nsInfo = newNi }
  where
   newNi = (nsInfo ns) { niPeersNumber = peersNum }
 
-updateBlocksNumber :: NodeState -> Integer -> NodeState
-updateBlocksNumber ns blockNum = ns { nsInfo = newNi }
+updateBlocksNumber :: NodeState -> Integer -> UTCTime -> NodeState
+updateBlocksNumber ns blockNum now = ns { nsInfo = newNi }
  where
-  newNi = (nsInfo ns) { niBlocksNumber = blockNum }
+  newNi = (nsInfo ns) { niBlocksNumber = blockNum 
+                      , niBlocksNumberLastUpdate = now
+                      }
 
-updateSlotInEpoch :: NodeState -> Integer -> NodeState
-updateSlotInEpoch ns slotNum = ns { nsInfo = newNi }
+updateSlotInEpoch :: NodeState -> Integer -> UTCTime -> NodeState
+updateSlotInEpoch ns slotNum now = ns { nsInfo = newNi }
  where
-  newNi = (nsInfo ns) { niSlot = slotNum }
+  newNi = (nsInfo ns) { niSlot = slotNum
+                      , niSlotLastUpdate = now
+                      }
 
-updateEpoch :: NodeState -> Integer -> NodeState
-updateEpoch ns epoch = ns { nsInfo = newNi }
+updateEpoch :: NodeState -> Integer -> UTCTime -> NodeState
+updateEpoch ns epoch now = ns { nsInfo = newNi }
  where
-  newNi = (nsInfo ns) { niEpoch = epoch }
+  newNi = (nsInfo ns) { niEpoch = epoch
+                      , niEpochLastUpdate = now
+                      }

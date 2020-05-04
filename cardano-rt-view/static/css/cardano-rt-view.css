@@ -150,3 +150,8 @@ a:visited:hover {
 .node-port {
     padding-left: 10px;
 }
+
+.outdated-value {
+    color: #999;
+    font-weight: normal;
+}

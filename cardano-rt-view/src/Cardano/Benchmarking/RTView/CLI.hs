@@ -6,20 +6,28 @@ module Cardano.Benchmarking.RTView.CLI
 import           Cardano.Prelude hiding ( option )
 import           Prelude
                    ( String )
+import           Data.Time.Clock
+                   ( NominalDiffTime )
 import           Options.Applicative
                    ( Parser
                    , auto, bashCompleter, completer, help
                    , long, metavar, option, strOption
+                   , showDefault, value
                    )
 import           Network.Socket
                    ( PortNumber )
 
 -- | Type for CLI parameters required for the service.
-data RTViewParams =
-  RTViewParams
-    FilePath
-    FilePath
-    PortNumber
+data RTViewParams = RTViewParams
+  { rtvConfig             :: !FilePath
+  , rtvStatic             :: !FilePath
+  , rtvPort               :: !PortNumber
+  , rtvNodeInfoLife       :: !NominalDiffTime
+  , rtvPeersInfoLife      :: !NominalDiffTime
+  , rtvBlockchainInfoLife :: !NominalDiffTime
+  , rtvResourcesInfoLife  :: !NominalDiffTime
+  , rtvRTSInfoLife        :: !NominalDiffTime
+  }
 
 parseRTViewParams :: Parser RTViewParams
 parseRTViewParams =
@@ -35,6 +43,26 @@ parseRTViewParams =
     <*> parsePort
           "port"
           "The port number"
+    <*> parseDiffTime
+          "node-info-life"
+          "Lifetime of node info"
+          5
+    <*> parseDiffTime
+          "peers-info-life"
+          "Lifetime of peers info"
+          20
+    <*> parseDiffTime
+          "blockchain-info-life"
+          "Lifetime of blockchain info"
+          35
+    <*> parseDiffTime
+          "resources-info-life"
+          "Lifetime of resources info"
+          8
+    <*> parseDiffTime
+          "rts-info-life"
+          "Lifetime of GHC RTS info"
+          45
 
 -- Aux parsers
 
@@ -61,3 +89,16 @@ parsePort optname desc =
        <> help desc
     )
 
+parseDiffTime
+  :: String
+  -> String
+  -> NominalDiffTime
+  -> Parser NominalDiffTime
+parseDiffTime optname desc defaultTime =
+    option ((fromIntegral :: Int -> NominalDiffTime) <$> auto) (
+          long optname
+       <> metavar "DIFFTIME"
+       <> help desc
+       <> value defaultTime
+       <> showDefault
+    )

@@ -7,9 +7,6 @@ module Cardano.Benchmarking.RTView.Server
 
 import           Cardano.Prelude
 
-import           Network.Socket
-                   ( PortNumber )
-
 import qualified Graphics.UI.Threepenny as UI
 import           Graphics.UI.Threepenny.Core
                    ( UI
@@ -20,6 +17,9 @@ import           Graphics.UI.Threepenny.Timer
 
 import           Cardano.BM.Data.Configuration
                    ( RemoteAddrNamed (..) )
+
+import           Cardano.Benchmarking.RTView.CLI
+                   ( RTViewParams (..) )
 import           Cardano.Benchmarking.RTView.NodeState.Types
                    ( NodesState )
 import           Cardano.Benchmarking.RTView.GUI.Markup
@@ -30,24 +30,24 @@ import           Cardano.Benchmarking.RTView.GUI.Updater
 -- | Launch web server.
 launchServer
   :: MVar NodesState
-  -> FilePath
-  -> PortNumber
+  -> RTViewParams
   -> [RemoteAddrNamed]
   -> IO ()
-launchServer nsMVar pathToStatic port acceptors =
-  UI.startGUI config $ mainPage nsMVar acceptors
+launchServer nsMVar params acceptors =
+  UI.startGUI config $ mainPage nsMVar params acceptors
  where
   config = UI.defaultConfig
-    { UI.jsStatic = Just pathToStatic
-    , UI.jsPort   = Just $ fromIntegral port
+    { UI.jsStatic = Just $ rtvStatic params
+    , UI.jsPort   = Just $ fromIntegral (rtvPort params)
     }
 
 mainPage
   :: MVar NodesState
+  -> RTViewParams
   -> [RemoteAddrNamed]
   -> UI.Window
   -> UI ()
-mainPage nsMVar acceptors window = do
+mainPage nsMVar params acceptors window = do
   void $ return window # set UI.title "Cardano Node RTView"
 
   -- It is assumed that CSS files are available at 'pathToStatic/css/'.
@@ -62,7 +62,7 @@ mainPage nsMVar acceptors window = do
   guiUpdateTimer <- timer # set interval 600 -- Every 0.6 s.
   void $ onEvent (tick guiUpdateTimer) $ \_ -> do
     newState <- liftIO $ readMVar nsMVar
-    updateGUI newState acceptors nodesStateElems
+    updateGUI newState params acceptors nodesStateElems
   start guiUpdateTimer
 
   void $ UI.element pageBody

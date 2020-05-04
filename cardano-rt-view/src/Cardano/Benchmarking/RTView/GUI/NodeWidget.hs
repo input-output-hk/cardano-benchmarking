@@ -128,11 +128,25 @@ mkNodeWidget = do
                                 # set UI.title__ "Browse cardano-node repository on this commit"
                                 #+ [string ""]
 
+  elNodeReleaseOutdateWarning    <- infoMark "The value is outdated"
+  elNodeVersionOutdateWarning    <- infoMark "The value is outdated"
+  elNodeCommitHrefOutdateWarning <- infoMark "The value is outdated"
+  elUptimeOutdateWarning         <- infoMark "The value is outdated"
+  
+  elSlotOutdateWarning           <- infoMark "The value is outdated"
+  elBlocksNumberOutdateWarning   <- infoMark "The value is outdated"
+  elChainDensityOutdateWarning   <- infoMark "The value is outdated"
+
+  elRTSGcCpuOutdateWarning       <- infoMark "The value is outdated"
+  elRTSGcElapsedOutdateWarning   <- infoMark "The value is outdated"
+  elRTSGcNumOutdateWarning       <- infoMark "The value is outdated"
+  elRTSGcMajorNumOutdateWarning  <- infoMark "The value is outdated"
+
   -- Create content area for each tab.
   nodeTabContent
     <- UI.div #. "tab-container" # showIt #+
          [ UI.div #. "w3-row" #+
-             [ UI.div #. "w3-half w3-theme" #+
+             [ UI.div #. "w3-third w3-theme" #+
                  [ UI.div #. "" #+
                      [ UI.div #. "" #+ [string "Node release:"]
                      , UI.div #. "" #+ [string "Node version:"]
@@ -145,7 +159,7 @@ mkNodeWidget = do
                      , UI.div #. "" #+ [string "Node uptime:"]
                      ]
                  ]
-             , UI.div #. "w3-half w3-theme" #+
+             , UI.div #. "w3-third w3-theme" #+
                  [ UI.div #. "node-info-values" #+
                      [ UI.span #. "release-name" #+ [element elNodeRelease]
                      , UI.div #. "" #+ [element elNodeVersion]
@@ -156,6 +170,18 @@ mkNodeWidget = do
                      , UI.div #. "" #+ [element elTraceAcceptorPort]
                      , vSpacer "node-info-v-spacer"
                      , UI.div #. "" #+ [element elUptime]
+                     ]
+                 ]
+             , UI.div #. "w3-third w3-theme" #+
+                 [ UI.div #. "" #+
+                     [ UI.span #. "" #+ [element elNodeReleaseOutdateWarning]
+                     , UI.div #. "" #+ [element elNodeVersionOutdateWarning]
+                     , UI.div #. "" #+ [element elNodeCommitHrefOutdateWarning]
+                     , vSpacer "node-info-v-spacer"
+                     , UI.div #. "" #+ [UI.span # set UI.html "&nbsp;" #+ []]
+                     , UI.div #. "" #+ [UI.span # set UI.html "&nbsp;" #+ []]
+                     , vSpacer "node-info-v-spacer"
+                     , UI.div #. "" #+ [element elUptimeOutdateWarning]
                      ]
                  ]
              ]
@@ -189,14 +215,14 @@ mkNodeWidget = do
   blockchainTabContent
     <- UI.div #. "tab-container" # hideIt #+
          [ UI.div #. "w3-row" #+
-             [ UI.div #. "w3-half w3-theme" #+
+             [ UI.div #. "w3-third w3-theme" #+
                  [ UI.div #. "" #+
                      [ UI.div #. "" #+ [string "Epoch / Slot in epoch:"]
                      , UI.div #. "" #+ [string "Blocks number:"]
                      , UI.div #. "" #+ [string "Chain density:"]
                      ]
                  ]
-             , UI.div #. "w3-half w3-theme" #+
+             , UI.div #. "w3-third w3-theme" #+
                  [ UI.div #. "node-info-values" #+
                      [ UI.div #. "" #+
                          [ element elEpoch
@@ -208,6 +234,13 @@ mkNodeWidget = do
                          [ element elChainDensity
                          , UI.span #. "density-percent" #+ [string "%"]
                          ]
+                     ]
+                 ]
+             , UI.div #. "w3-third w3-theme" #+
+                 [ UI.div #. "" #+
+                     [ UI.div #. "" #+ [element elSlotOutdateWarning]
+                     , UI.div #. "" #+ [element elBlocksNumberOutdateWarning]
+                     , UI.div #. "" #+ [element elChainDensityOutdateWarning]
                      ]
                  ]
              ]
@@ -223,11 +256,7 @@ mkNodeWidget = do
                            [ UI.div #. "w3-half w3-theme" #+ [string "Mempool (Bytes)"]
                            , UI.div #. "w3-half w3-theme w3-right-align" #+
                                [ element elMempoolCapacityBytes
-                               , UI.span #. "w3-tooltip" #+
-                                   [ UI.span #. "info-mark" #+ [string "🛈"]
-                                   , UI.span #. "w3-text w3-tag w3-indigo w3-small w3-animate-opacity w3-round-xlarge" #+
-                                       [string "Capacity in bytes"]
-                                   ]
+                               , infoMark "Capacity in bytes"
                                ]
                            ]
                        , UI.div #. "w3-light-green" #+ [element elMempoolBytesProgress]
@@ -237,11 +266,7 @@ mkNodeWidget = do
                            [ UI.div #. "w3-half w3-theme" #+ [string "Mempool (TXs)"]
                            , UI.div #. "w3-half w3-theme w3-right-align" #+
                                [ element elMempoolCapacity
-                               , UI.span #. "w3-tooltip" #+
-                                   [ UI.span #. "info-mark" #+ [string "🛈"]
-                                   , UI.span #. "w3-text w3-tag w3-indigo w3-small w3-animate-opacity w3-round-xlarge" #+
-                                       [string "Capacity"]
-                                   ]
+                               , infoMark "Capacity"
                                ]
                            ]
                        , UI.div #. "w3-light-green" #+ [element elMempoolTxsProgress]
@@ -297,11 +322,7 @@ mkNodeWidget = do
                            , UI.div #. "w3-half w3-theme w3-right-align" #+
                                [ element elDiskUsageRMaxTotal
                                , UI.span #. "value-unit" #+ [string "KB/s"]
-                               , UI.span #. "w3-tooltip" #+
-                                   [ UI.span #. "info-mark"
-                                             # set UI.title__ "Maximum value over the last two minutes"
-                                             #+ [string "🛈"]
-                                   ]
+                               , infoMark "Maximum value over the last two minutes"
                                ]
                            ]
                        , UI.div #. "w3-amber" #+ [element elDiskUsageRProgress]
@@ -312,11 +333,7 @@ mkNodeWidget = do
                            , UI.div #. "w3-half w3-theme w3-right-align" #+
                                [ element elDiskUsageWMaxTotal
                                , UI.span #. "value-unit" #+ [string "KB/s"]
-                               , UI.span #. "w3-tooltip" #+
-                                   [ UI.span #. "info-mark"
-                                             # set UI.title__ "Maximum value over the last two minutes"
-                                             #+ [string "🛈"]
-                                   ]
+                               , infoMark "Maximum value over the last two minutes"
                                ]
                            ]
                        , UI.div #. "w3-amber" #+ [element elDiskUsageWProgress]
@@ -363,7 +380,7 @@ mkNodeWidget = do
              , vSpacer "node-metrics-v-spacer"
              , vSpacer "node-metrics-v-spacer"
              , UI.div #. "w3-row" #+
-                 [ UI.div #. "w3-half w3-theme" #+
+                 [ UI.div #. "w3-third w3-theme" #+
                      [ UI.div #. "" #+
                          [ UI.div #. "" #+ [string "GC CPU:"]
                          , UI.div #. "" #+ [string "GC Elapsed:"]
@@ -371,7 +388,7 @@ mkNodeWidget = do
                          , UI.div #. "" #+ [string "GC Major Number:"]
                          ]
                      ]
-                 , UI.div #. "w3-half w3-theme" #+
+                 , UI.div #. "w3-third w3-theme" #+
                      [ UI.div #. "node-info-values" #+
                          [ UI.div #. "" #+
                              [ element elRTSGcCpu
@@ -383,6 +400,14 @@ mkNodeWidget = do
                              ]
                          , UI.div #. "" #+ [element elRTSGcNum]
                          , UI.div #. "" #+ [element elRTSGcMajorNum]
+                         ]
+                     ]
+                 , UI.div #. "w3-third w3-theme" #+
+                     [ UI.div #. "" #+
+                         [ UI.div #. "" #+ [element elRTSGcCpuOutdateWarning]
+                         , UI.div #. "" #+ [element elRTSGcElapsedOutdateWarning]
+                         , UI.div #. "" #+ [element elRTSGcNumOutdateWarning]
+                         , UI.div #. "" #+ [element elRTSGcMajorNumOutdateWarning]
                          ]
                      ]
                  ]
@@ -498,6 +523,18 @@ mkNodeWidget = do
           , (ElRTSGcElapsed,            elRTSGcElapsed)
           , (ElRTSGcNum,                elRTSGcNum)
           , (ElRTSGcMajorNum,           elRTSGcMajorNum)
+          -- Outdated warnings
+          , (ElNodeReleaseOutdateWarning,    elNodeReleaseOutdateWarning)
+          , (ElNodeVersionOutdateWarning,    elNodeVersionOutdateWarning)
+          , (ElNodeCommitHrefOutdateWarning, elNodeCommitHrefOutdateWarning)
+          , (ElUptimeOutdateWarning,         elUptimeOutdateWarning)
+          , (ElSlotOutdateWarning,           elSlotOutdateWarning)
+          , (ElBlocksNumberOutdateWarning,   elBlocksNumberOutdateWarning)
+          , (ElChainDensityOutdateWarning,   elChainDensityOutdateWarning)
+          , (ElRTSGcCpuOutdateWarning,       elRTSGcCpuOutdateWarning)
+          , (ElRTSGcElapsedOutdateWarning,   elRTSGcElapsedOutdateWarning)
+          , (ElRTSGcNumOutdateWarning,       elRTSGcNumOutdateWarning)
+          , (ElRTSGcMajorNumOutdateWarning,  elRTSGcMajorNumOutdateWarning)
           -- Progress bars
           , (ElMempoolBytesProgress,    elMempoolBytesProgress)
           , (ElMempoolTxsProgress,      elMempoolTxsProgress)
@@ -550,3 +587,9 @@ hideIt = set UI.style [("display", "none")]
 makeItActive, makeItInactive :: UI Element -> UI Element
 makeItActive   = set UI.class_ "w3-bar-item w3-button w3-khaki"
 makeItInactive = set UI.class_ "w3-bar-item w3-button"
+
+infoMark :: String -> UI Element
+infoMark aTitle =
+  UI.span #. "info-mark"
+          #  set UI.title__ aTitle
+          #+ [string "🛈"]
