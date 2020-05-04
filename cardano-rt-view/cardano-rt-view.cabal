@@ -25,6 +25,7 @@ library
                        Cardano.Benchmarking.RTView.GUI.NodeWidget
                        Cardano.Benchmarking.RTView.GUI.Updater
 
+                       Cardano.Benchmarking.RTView.NodeState.Parsers
                        Cardano.Benchmarking.RTView.NodeState.Types
                        Cardano.Benchmarking.RTView.NodeState.Updater
 
@@ -48,7 +49,6 @@ library
                      , text
                      , time
                      , threepenny-gui
-                     , unordered-containers
 
   default-language:    Haskell2010
   default-extensions:  NoImplicitPrelude
