@@ -72,6 +72,18 @@ data ElementName
   | ElRTSGcElapsed
   | ElRTSGcNum
   | ElRTSGcMajorNum
+  -- Outdated warnings.
+  | ElNodeReleaseOutdateWarning
+  | ElNodeVersionOutdateWarning
+  | ElNodeCommitHrefOutdateWarning
+  | ElUptimeOutdateWarning
+  | ElSlotOutdateWarning
+  | ElBlocksNumberOutdateWarning
+  | ElChainDensityOutdateWarning
+  | ElRTSGcCpuOutdateWarning
+  | ElRTSGcElapsedOutdateWarning
+  | ElRTSGcNumOutdateWarning
+  | ElRTSGcMajorNumOutdateWarning
   -- Progress bars.
   | ElMempoolBytesProgress
   | ElMempoolTxsProgress

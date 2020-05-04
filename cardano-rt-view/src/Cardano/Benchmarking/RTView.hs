@@ -46,9 +46,9 @@ import           Cardano.Benchmarking.RTView.Server
 
 -- | Run the service.
 runCardanoRTView :: RTViewParams -> IO ()
-runCardanoRTView (RTViewParams pathToConfig pathToStatic port) = do
-  config <- readConfig pathToConfig
-  acceptors <- checkIfTraceAcceptorIsDefined config pathToConfig
+runCardanoRTView params = do
+  config <- readConfig (rtvConfig params)
+  acceptors <- checkIfTraceAcceptorIsDefined config (rtvConfig params)
   makeSureTraceAcceptorsAreUnique acceptors
 
   (tr :: Trace IO Text, switchBoard) <- Setup.setupTrace_ config "cardano-rt-view"
@@ -66,7 +66,7 @@ runCardanoRTView (RTViewParams pathToConfig pathToStatic port) = do
   --   3. server (it serves requests from user's browser and shows nodes' metrics in the real time).
   acceptorThr <- async $ launchMetricsAcceptor config accTr switchBoard
   updaterThr  <- async $ launchNodeStateUpdater tr switchBoard nodesStateMVar
-  serverThr   <- async $ launchServer nodesStateMVar pathToStatic port acceptors
+  serverThr   <- async $ launchServer nodesStateMVar params acceptors
 
   void $ waitAnyCancel [acceptorThr, updaterThr, serverThr]
 

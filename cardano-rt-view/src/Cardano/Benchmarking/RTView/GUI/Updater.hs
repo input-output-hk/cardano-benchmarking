@@ -12,7 +12,9 @@ import qualified Data.List as L
 import           Data.Map.Strict
                    ( (!) )
 import           Data.Time.Clock
-                   ( UTCTime (..) )
+                   ( NominalDiffTime, UTCTime (..)
+                   , diffUTCTime, getCurrentTime
+                   )
 import           Data.Time.Format
                    ( defaultTimeLocale, formatTime )
 import           Data.Text
@@ -30,9 +32,11 @@ import           Cardano.BM.Data.Configuration
                    ( RemoteAddrNamed (..), RemoteAddr (..) )
 import           Cardano.BM.Data.Severity
                    ( Severity (..) )
+import           Cardano.Benchmarking.RTView.CLI
+                   ( RTViewParams (..) )
 import           Cardano.Benchmarking.RTView.GUI.Elements
                    ( ElementName (..), ElementValue (..)
-                   , NodesStateElements
+                   , NodeStateElements, NodesStateElements
                    )
 import           Cardano.Benchmarking.RTView.NodeState.Types
                    ( NodeInfo (..), NodeMetrics (..), NodeError (..)
@@ -43,10 +47,11 @@ import           Cardano.Benchmarking.RTView.NodeState.Types
 --   on the page automatically, because threepenny-gui is based on websockets.
 updateGUI
   :: NodesState
+  -> RTViewParams
   -> [RemoteAddrNamed]
   -> NodesStateElements
   -> UI ()
-updateGUI nodesState acceptors nodesStateElems =
+updateGUI nodesState params acceptors nodesStateElems =
   forM_ nodesStateElems $ \(nameOfNode, elements) -> do
     let nodeState = nodesState ! nameOfNode
         (acceptorHost, acceptorPort) = findTraceAcceptorNetInfo nameOfNode acceptors
@@ -106,6 +111,8 @@ updateGUI nodesState acceptors nodesStateElems =
     void $ updateProgressBar (nmNetworkUsageInPercent nm)  $ elements ! ElNetworkInProgress
     void $ updateProgressBar (nmNetworkUsageOutPercent nm) $ elements ! ElNetworkOutProgress
     void $ updateProgressBar (nmRTSMemoryUsedPercent nm)   $ elements ! ElRTSMemoryProgress
+
+    markOutdatedElements params ni nm elements
 
 updateElementValue
   :: ElementValue
@@ -196,3 +203,86 @@ findTraceAcceptorNetInfo nameOfNode acceptors =
     Nothing -> ("-", "-")
  where
   maybeActiveNode = flip L.find acceptors $ \(RemoteAddrNamed name _) -> name == nameOfNode
+
+-- | If some metric wasn't receive for a long time -
+--   we mark corresponding value in GUI as outdated one.
+markOutdatedElements
+  :: RTViewParams
+  -> NodeInfo
+  -> NodeMetrics
+  -> NodeStateElements
+  -> UI ()
+markOutdatedElements params ni nm els = do
+  now <- liftIO $ getCurrentTime
+  -- Different metrics have different lifetime.
+  let niLife   = rtvNodeInfoLife params
+      _pLife   = rtvPeersInfoLife params
+      bcLife   = rtvBlockchainInfoLife params
+      _resLife = rtvResourcesInfoLife params
+      rtsLife  = rtvRTSInfoLife params
+
+
+  markValueW now (niUpTimeLastUpdate ni)       niLife [ els ! ElUptime
+                                                      , els ! ElNodeRelease
+                                                      , els ! ElNodeVersion
+                                                      , els ! ElNodeCommitHref
+                                                      ]
+                                                      [ els ! ElUptimeOutdateWarning
+                                                      , els ! ElNodeReleaseOutdateWarning
+                                                      , els ! ElNodeVersionOutdateWarning
+                                                      , els ! ElNodeCommitHrefOutdateWarning
+                                                      ]
+  
+  markValue  now (niEpochLastUpdate ni)        bcLife (els ! ElEpoch)
+  markValueW now (niSlotLastUpdate ni)         bcLife [els ! ElSlot]
+                                                      [els ! ElSlotOutdateWarning]
+  markValueW now (niBlocksNumberLastUpdate ni) bcLife [els ! ElBlocksNumber]
+                                                      [els ! ElBlocksNumberOutdateWarning]
+  markValueW now (niChainDensityLastUpdate ni) bcLife [els ! ElChainDensity]
+                                                      [els ! ElChainDensityOutdateWarning]
+  
+  markValueW now (nmRTSGcCpuLastUpdate nm)      rtsLife [els ! ElRTSGcCpu]
+                                                        [els ! ElRTSGcCpuOutdateWarning]
+  markValueW now (nmRTSGcElapsedLastUpdate nm)  rtsLife [els ! ElRTSGcElapsed]
+                                                        [els ! ElRTSGcElapsedOutdateWarning]
+  markValueW now (nmRTSGcNumLastUpdate nm)      rtsLife [els ! ElRTSGcNum]
+                                                        [els ! ElRTSGcNumOutdateWarning]
+  markValueW now (nmRTSGcMajorNumLastUpdate nm) rtsLife [els ! ElRTSGcMajorNum]
+                                                        [els ! ElRTSGcMajorNumOutdateWarning]
+
+  -- markProgressBar 
+
+markValue
+  :: UTCTime
+  -> UTCTime
+  -> NominalDiffTime
+  -> Element
+  -> UI ()
+markValue now lastUpdate lifetime el =
+  if diffUTCTime now lastUpdate > lifetime
+    then void $ markAsOutdated el
+    else void $ markAsUpToDate el
+
+markValueW
+  :: UTCTime
+  -> UTCTime
+  -> NominalDiffTime
+  -> [Element]
+  -> [Element]
+  -> UI ()
+markValueW now lastUpdate lifetime els warnings =
+  if diffUTCTime now lastUpdate > lifetime
+    then do
+      mapM_ (void . markAsOutdated) els
+      mapM_ (void . showWarning) warnings
+    else do
+      mapM_ (void . markAsUpToDate) els
+      mapM_ (void . hideWarning) warnings
+
+showWarning, hideWarning :: Element -> UI Element
+showWarning w = element w # set UI.style [("display", "inline")]
+hideWarning w = element w # set UI.style [("display", "none")]
+
+markAsOutdated, markAsUpToDate :: Element -> UI Element
+markAsOutdated el = element el # set UI.class_ "outdated-value"
+markAsUpToDate el = element el # set UI.class_ ""
