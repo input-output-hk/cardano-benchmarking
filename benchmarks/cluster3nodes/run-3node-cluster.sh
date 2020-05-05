@@ -26,7 +26,8 @@ test -n "${TMUX}" || fail "can only be run under 'tmux' control."
 #RUNNER=${RUNNER:-cabal v2-exec -v0}
 #CMD="${RUNNER} cardano-node --"
 #CMD="$(nix_binary_for 'cardano-node' 'cardano-node' 'cardano-node') "
-CMD="${BASEDIR}/../../bin/cardano-node "
+#CMD="${BASEDIR}/../../bin/cardano-node "
+CMD="stack exec cardano-node --"
 
 genesis_root=${BASEDIR}/configuration/latest-genesis
 genesis_file=${genesis_root}/genesis.json

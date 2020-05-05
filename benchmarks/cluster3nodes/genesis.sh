@@ -39,7 +39,8 @@ args=(
 set -xe
 #RUNNER=${RUNNER:-cabal v2-run -v0}
 #CMD="${RUNNER} cardano-cli --"
-CMD="${BASEPATH}/../../bin/cardano-cli"
+#CMD="${BASEPATH}/../../bin/cardano-cli"
+CMD="stack exec cardano-cli --"
 
 ${CMD} genesis "${args[@]}" "$@"
 

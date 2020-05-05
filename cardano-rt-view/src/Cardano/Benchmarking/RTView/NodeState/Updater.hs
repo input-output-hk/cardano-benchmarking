@@ -29,6 +29,8 @@ import           Cardano.BM.Backend.Switchboard
                    ( Switchboard, readLogBuffer )
 import           Cardano.BM.Data.Aggregated
                    ( Measurable (..) )
+import           Cardano.BM.Data.Counter
+                   ( Platform (..) )
 import           Cardano.BM.Data.LogItem
                    ( LOContent (..), LOMeta (..), LogObject (..)
                    , MonitorAction (..)
@@ -102,13 +104,17 @@ updateNodesState nsMVar loggerName (LogObject aName aMeta aContent) = do
            | "cardano.node.metrics" `T.isInfixOf` aName ->
             case aContent of
               LogValue "Mem.resident" (PureI pages) ->
-                nodesStateWith $ updateMemoryUsage ns pages
+                nodesStateWith $ updateMemoryPages ns pages
+              LogValue "Mem.resident_size" (Bytes bytes) ->    -- Darwin
+                nodesStateWith $ updateMemoryBytes ns bytes
               LogValue "IO.rchar" (Bytes bytesWereRead) ->
                 nodesStateWith $ updateDiskRead ns bytesWereRead aMeta
               LogValue "IO.wchar" (Bytes bytesWereWritten) ->
                 nodesStateWith $ updateDiskWrite ns bytesWereWritten aMeta
               LogValue "Stat.utime" (PureI ticks) ->
-                nodesStateWith $ updateCPUUsage ns ticks aMeta
+                nodesStateWith $ updateCPUTicks ns ticks aMeta
+              LogValue "Stat.user_time" (Nanoseconds nanosecs) ->    -- Darwin
+                nodesStateWith $ updateCPUSecs ns nanosecs aMeta
               LogValue "Net.IpExt:InOctets" (Bytes inBytes) ->
                 nodesStateWith $ updateNetworkIn ns inBytes aMeta
               LogValue "Net.IpExt:OutOctets" (Bytes outBytes) ->
@@ -119,6 +125,8 @@ updateNodesState nsMVar loggerName (LogObject aName aMeta aContent) = do
                 nodesStateWith $ updateMempoolBytes ns mempoolBytes
               LogValue "txsProcessed" (PureI txsProcessed) ->
                 nodesStateWith $ updateTxsProcessed ns txsProcessed
+              LogValue "Sys.Platform" (PureI pfid) ->
+                nodesStateWith $ updateNodePlatform ns (fromIntegral pfid)
               _ -> return currentNodesState
            | "cardano.node-metrics" `T.isInfixOf` aName ->
               case aContent of
@@ -300,8 +308,16 @@ updateNodeCommit ns commit = ns { nsInfo = newNi }
       }
   currentNi = nsInfo ns
 
-updateMemoryUsage :: NodeState -> Integer -> NodeState
-updateMemoryUsage ns pages = ns { nsMetrics = newNm }
+updateNodePlatform :: NodeState -> Int -> NodeState
+updateNodePlatform ns platfid = ns { nsInfo = newNi }
+ where
+  platform = toEnum platfid :: Platform
+  newNi = currentNi { niNodePlatform = show platform }
+  currentNi = nsInfo ns
+
+
+updateMemoryPages :: NodeState -> Integer -> NodeState
+updateMemoryPages ns pages = ns { nsMetrics = newNm }
  where
   newNm =
     currentNm
@@ -316,6 +332,22 @@ updateMemoryUsage ns pages = ns { nsMetrics = newNm }
   newMaxTotal = max newMax 200.0
   mBytes      = fromIntegral (pages * pageSize) / 1024 / 1024 :: Double
   pageSize    = 4096 :: Integer
+
+updateMemoryBytes :: NodeState -> Word64 -> NodeState
+updateMemoryBytes ns bytes = ns { nsMetrics = newNm }
+ where
+  newNm =
+    currentNm
+      { nmMemory         = mBytes
+      , nmMemoryMax      = newMax
+      , nmMemoryMaxTotal = newMaxTotal
+      , nmMemoryPercent  = mBytes / newMaxTotal * 100.0
+      }
+  currentNm   = nsMetrics ns
+  prevMax     = nmMemoryMax currentNm
+  newMax      = max prevMax mBytes
+  newMaxTotal = max newMax 200.0
+  mBytes      = fromIntegral bytes / 1024 / 1024 :: Double
 
 updateDiskRead :: NodeState -> Word64 -> LOMeta -> NodeState
 updateDiskRead ns bytesWereRead meta = ns { nsMetrics = newNm }
@@ -387,8 +419,8 @@ updateDiskWrite ns bytesWereWritten meta = ns { nsMetrics = newNm }
 adaptPeriod :: NominalDiffTime
 adaptPeriod = fromInteger $ 60 * 2 -- 2 minutes.
 
-updateCPUUsage :: NodeState -> Integer -> LOMeta -> NodeState
-updateCPUUsage ns ticks meta = ns { nsMetrics = newNm }
+updateCPUTicks :: NodeState -> Integer -> LOMeta -> NodeState
+updateCPUTicks ns ticks meta = ns { nsMetrics = newNm }
  where
   newNm =
     currentNm
@@ -401,6 +433,20 @@ updateCPUUsage ns ticks meta = ns { nsMetrics = newNm }
   tdiff     = min 1 $ (fromIntegral (tns - nmCPUNs currentNm)) / 1000000000 :: Double
   cpuperc   = (fromIntegral (ticks - nmCPULast currentNm)) / (fromIntegral clktck) / tdiff
   clktck    = 100 :: Integer
+
+updateCPUSecs :: NodeState -> Word64 -> LOMeta -> NodeState
+updateCPUSecs ns nanosecs meta = ns { nsMetrics = newNm }
+ where
+  newNm =
+    currentNm
+      { nmCPUPercent = cpuperc * 100.0
+      , nmCPULast    = fromIntegral tns
+      , nmCPUNs      = tns
+      }
+  currentNm = nsMetrics ns
+  tns       = nanosecs
+  tdiff     = min 1 $ (fromIntegral (tns - nmCPUNs currentNm)) / 1000000000 :: Double
+  cpuperc   = fromIntegral tns / tdiff
 
 updateNetworkIn :: NodeState -> Word64 -> LOMeta -> NodeState
 updateNetworkIn ns inBytes meta = ns { nsMetrics = newNm }
