@@ -4,10 +4,10 @@ compiler: ghc-8.6.5
 packages:
   - cardano-rt-view
   - cardano-tx-generator
-  - ext/cardano-node.git/cardano-api
-  - ext/cardano-node.git/cardano-cli
-  - ext/cardano-node.git/cardano-node
-  - ext/cardano-node.git/cardano-config
+    #- ext/cardano-node.git/cardano-api
+    #- ext/cardano-node.git/cardano-cli
+    #- ext/cardano-node.git/cardano-node
+    #- ext/cardano-node.git/cardano-config
     #- ext/cardano-db-sync.git/cardano-db
     #- ext/cardano-db-sync.git/cardano-db-sync
 
@@ -66,6 +66,20 @@ extra-deps:
     subdirs:
       - .
       - test
+
+  - git: https://github.com/input-output-hk/cardano-node
+    commit: 376562b0cb6dfde4b9f41e9f3ccea45cbfb41c22
+    subdirs:
+      - cardano-api
+      - cardano-config
+      - cardano-cli
+      - cardano-node
+
+  - git: https://github.com/input-output-hk/cardano-db-sync
+    commit: 8842aa6c14e258942419a1853b0d98f1415bfafc
+    subdirs:
+      - cardano-db
+      - cardano-db-sync
 
   - git: https://github.com/input-output-hk/cardano-base
     commit: 2cc27584bb19bd5be9f1721fd4a2393bb99c6119
