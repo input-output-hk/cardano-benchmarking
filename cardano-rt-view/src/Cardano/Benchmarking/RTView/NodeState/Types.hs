@@ -54,7 +54,6 @@ data NodeInfo = NodeInfo
   , niNodeVersion       :: !String
   , niNodeCommit        :: !String
   , niNodeShortCommit   :: !String
-  , niStartTime         :: !UTCTime
   , niUpTime            :: !UTCTime
   , niEpoch             :: !Integer
   , niSlot              :: !Integer
@@ -141,7 +140,6 @@ defaultNodeInfo = NodeInfo
   , niNodeVersion       = "-"
   , niNodeCommit        = "-"
   , niNodeShortCommit   = "-"
-  , niStartTime         = UTCTime (ModifiedJulianDay 0) 0
   , niUpTime            = UTCTime (ModifiedJulianDay 0) 0
   , niEpoch             = 0
   , niSlot              = 0
