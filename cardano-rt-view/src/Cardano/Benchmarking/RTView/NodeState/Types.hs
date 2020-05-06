@@ -93,56 +93,63 @@ data NodeInfo = NodeInfo
   } deriving Show
 
 data NodeMetrics = NodeMetrics
-  { nmMempoolTxsNumber        :: !Word64
-  , nmMempoolTxsPercent       :: !Double
-  , nmMempoolBytes            :: !Word64
-  , nmMempoolBytesPercent     :: !Double
-  , nmMempoolCapacity         :: !Word64
-  , nmMempoolCapacityBytes    :: !Word64
-  , nmMemory                  :: !Double
-  , nmMemoryMax               :: !Double
-  , nmMemoryMaxTotal          :: !Double
-  , nmMemoryPercent           :: !Double
-  , nmCPUPercent              :: !Double
-  , nmCPULast                 :: !Integer
-  , nmCPUNs                   :: !Word64
-  , nmDiskUsageR              :: !Double
-  , nmDiskUsageRMax           :: !Double
-  , nmDiskUsageRMaxTotal      :: !Double
-  , nmDiskUsageRPercent       :: !Double
-  , nmDiskUsageRLast          :: !Word64
-  , nmDiskUsageRNs            :: !Word64
-  , nmDiskUsageRAdaptTime     :: !UTCTime
-  , nmDiskUsageW              :: !Double
-  , nmDiskUsageWMax           :: !Double
-  , nmDiskUsageWMaxTotal      :: !Double
-  , nmDiskUsageWPercent       :: !Double
-  , nmDiskUsageWLast          :: !Word64
-  , nmDiskUsageWNs            :: !Word64
-  , nmDiskUsageWAdaptTime     :: !UTCTime
-  , nmNetworkUsageIn          :: !Double
-  , nmNetworkUsageInPercent   :: !Double
-  , nmNetworkUsageInMax       :: !Double
-  , nmNetworkUsageInMaxTotal  :: !Double
-  , nmNetworkUsageInLast      :: !Word64
-  , nmNetworkUsageInNs        :: !Word64
-  , nmNetworkUsageOut         :: !Double
-  , nmNetworkUsageOutPercent  :: !Double
-  , nmNetworkUsageOutMax      :: !Double
-  , nmNetworkUsageOutMaxTotal :: !Double
-  , nmNetworkUsageOutLast     :: !Word64
-  , nmNetworkUsageOutNs       :: !Word64
-  , nmRTSMemoryAllocated      :: !Double
-  , nmRTSMemoryUsed           :: !Double
-  , nmRTSMemoryUsedPercent    :: !Double
-  , nmRTSGcCpu                :: !Double
-  , nmRTSGcCpuLastUpdate      :: !UTCTime
-  , nmRTSGcElapsed            :: !Double
-  , nmRTSGcElapsedLastUpdate  :: !UTCTime
-  , nmRTSGcNum                :: !Integer
-  , nmRTSGcNumLastUpdate      :: !UTCTime
-  , nmRTSGcMajorNum           :: !Integer
-  , nmRTSGcMajorNumLastUpdate :: !UTCTime
+  { nmMempoolTxsNumber          :: !Word64
+  , nmMempoolTxsPercent         :: !Double
+  , nmMempoolBytes              :: !Word64
+  , nmMempoolBytesPercent       :: !Double
+  , nmMempoolCapacity           :: !Word64
+  , nmMempoolCapacityBytes      :: !Word64
+  , nmMemory                    :: !Double
+  , nmMemoryMax                 :: !Double
+  , nmMemoryMaxTotal            :: !Double
+  , nmMemoryPercent             :: !Double
+  , nmMemoryLastUpdate          :: !UTCTime
+  , nmCPUPercent                :: !Double
+  , nmCPULast                   :: !Integer
+  , nmCPUNs                     :: !Word64
+  , nmCPULastUpdate             :: !UTCTime
+  , nmDiskUsageR                :: !Double
+  , nmDiskUsageRMax             :: !Double
+  , nmDiskUsageRMaxTotal        :: !Double
+  , nmDiskUsageRPercent         :: !Double
+  , nmDiskUsageRLast            :: !Word64
+  , nmDiskUsageRNs              :: !Word64
+  , nmDiskUsageRAdaptTime       :: !UTCTime
+  , nmDiskUsageRLastUpdate      :: !UTCTime
+  , nmDiskUsageW                :: !Double
+  , nmDiskUsageWMax             :: !Double
+  , nmDiskUsageWMaxTotal        :: !Double
+  , nmDiskUsageWPercent         :: !Double
+  , nmDiskUsageWLast            :: !Word64
+  , nmDiskUsageWNs              :: !Word64
+  , nmDiskUsageWAdaptTime       :: !UTCTime
+  , nmDiskUsageWLastUpdate      :: !UTCTime
+  , nmNetworkUsageIn            :: !Double
+  , nmNetworkUsageInPercent     :: !Double
+  , nmNetworkUsageInMax         :: !Double
+  , nmNetworkUsageInMaxTotal    :: !Double
+  , nmNetworkUsageInLast        :: !Word64
+  , nmNetworkUsageInNs          :: !Word64
+  , nmNetworkUsageInLastUpdate  :: !UTCTime
+  , nmNetworkUsageOut           :: !Double
+  , nmNetworkUsageOutPercent    :: !Double
+  , nmNetworkUsageOutMax        :: !Double
+  , nmNetworkUsageOutMaxTotal   :: !Double
+  , nmNetworkUsageOutLast       :: !Word64
+  , nmNetworkUsageOutNs         :: !Word64
+  , nmNetworkUsageOutLastUpdate :: !UTCTime
+  , nmRTSMemoryAllocated        :: !Double
+  , nmRTSMemoryUsed             :: !Double
+  , nmRTSMemoryUsedPercent      :: !Double
+  , nmRTSMemoryLastUpdate       :: !UTCTime
+  , nmRTSGcCpu                  :: !Double
+  , nmRTSGcCpuLastUpdate        :: !UTCTime
+  , nmRTSGcElapsed              :: !Double
+  , nmRTSGcElapsedLastUpdate    :: !UTCTime
+  , nmRTSGcNum                  :: !Integer
+  , nmRTSGcNumLastUpdate        :: !UTCTime
+  , nmRTSGcMajorNum             :: !Integer
+  , nmRTSGcMajorNumLastUpdate   :: !UTCTime
   } deriving Show
 
 defaultNodesState
@@ -209,56 +216,63 @@ defaultNodeInfo = NodeInfo
 
 defaultNodeMetrics :: NodeMetrics
 defaultNodeMetrics = NodeMetrics
-  { nmMempoolTxsNumber        = 0
-  , nmMempoolTxsPercent       = 0.0
-  , nmMempoolBytes            = 0
-  , nmMempoolBytesPercent     = 0.0
-  , nmMempoolCapacity         = 200
-  , nmMempoolCapacityBytes    = 200 * maxBytesPerTx
-  , nmMemory                  = 0.0
-  , nmMemoryMax               = 0.0
-  , nmMemoryMaxTotal          = 200.0
-  , nmMemoryPercent           = 0.0
-  , nmCPUPercent              = 0.5
-  , nmCPULast                 = 0
-  , nmCPUNs                   = 10000
-  , nmDiskUsageR              = 0.0
-  , nmDiskUsageRMax           = 0.0
-  , nmDiskUsageRMaxTotal      = 0.0
-  , nmDiskUsageRPercent       = 0.0
-  , nmDiskUsageRLast          = 0
-  , nmDiskUsageRNs            = 10000
-  , nmDiskUsageRAdaptTime     = UTCTime (ModifiedJulianDay 0) 0
-  , nmDiskUsageW              = 0.0
-  , nmDiskUsageWMax           = 0.0
-  , nmDiskUsageWMaxTotal      = 0.0
-  , nmDiskUsageWPercent       = 0.0
-  , nmDiskUsageWLast          = 0
-  , nmDiskUsageWNs            = 10000
-  , nmDiskUsageWAdaptTime     = UTCTime (ModifiedJulianDay 0) 0
-  , nmNetworkUsageIn          = 0.0
-  , nmNetworkUsageInPercent   = 0.0
-  , nmNetworkUsageInMax       = 0.0
-  , nmNetworkUsageInMaxTotal  = 0.0
-  , nmNetworkUsageInLast      = 0
-  , nmNetworkUsageInNs        = 10000
-  , nmNetworkUsageOut         = 0.0
-  , nmNetworkUsageOutPercent  = 0.0
-  , nmNetworkUsageOutMax      = 0.0
-  , nmNetworkUsageOutMaxTotal = 0.0
-  , nmNetworkUsageOutLast     = 0
-  , nmNetworkUsageOutNs       = 10000
-  , nmRTSMemoryAllocated      = 1.0
-  , nmRTSMemoryUsed           = 0.1
-  , nmRTSMemoryUsedPercent    = 1.0
-  , nmRTSGcCpu                = 0.1
-  , nmRTSGcCpuLastUpdate      = UTCTime (ModifiedJulianDay 0) 0
-  , nmRTSGcElapsed            = 0.1
-  , nmRTSGcElapsedLastUpdate  = UTCTime (ModifiedJulianDay 0) 0
-  , nmRTSGcNum                = 0
-  , nmRTSGcNumLastUpdate      = UTCTime (ModifiedJulianDay 0) 0
-  , nmRTSGcMajorNum           = 0
-  , nmRTSGcMajorNumLastUpdate = UTCTime (ModifiedJulianDay 0) 0
+  { nmMempoolTxsNumber          = 0
+  , nmMempoolTxsPercent         = 0.0
+  , nmMempoolBytes              = 0
+  , nmMempoolBytesPercent       = 0.0
+  , nmMempoolCapacity           = 200
+  , nmMempoolCapacityBytes      = 200 * maxBytesPerTx
+  , nmMemory                    = 0.0
+  , nmMemoryMax                 = 0.0
+  , nmMemoryMaxTotal            = 200.0
+  , nmMemoryPercent             = 0.0
+  , nmMemoryLastUpdate          = UTCTime (ModifiedJulianDay 0) 0
+  , nmCPUPercent                = 0.5
+  , nmCPULast                   = 0
+  , nmCPUNs                     = 10000
+  , nmCPULastUpdate             = UTCTime (ModifiedJulianDay 0) 0
+  , nmDiskUsageR                = 0.0
+  , nmDiskUsageRMax             = 0.0
+  , nmDiskUsageRMaxTotal        = 0.0
+  , nmDiskUsageRPercent         = 0.0
+  , nmDiskUsageRLast            = 0
+  , nmDiskUsageRNs              = 10000
+  , nmDiskUsageRAdaptTime       = UTCTime (ModifiedJulianDay 0) 0
+  , nmDiskUsageRLastUpdate      = UTCTime (ModifiedJulianDay 0) 0
+  , nmDiskUsageW                = 0.0
+  , nmDiskUsageWMax             = 0.0
+  , nmDiskUsageWMaxTotal        = 0.0
+  , nmDiskUsageWPercent         = 0.0
+  , nmDiskUsageWLast            = 0
+  , nmDiskUsageWNs              = 10000
+  , nmDiskUsageWAdaptTime       = UTCTime (ModifiedJulianDay 0) 0
+  , nmDiskUsageWLastUpdate      = UTCTime (ModifiedJulianDay 0) 0
+  , nmNetworkUsageIn            = 0.0
+  , nmNetworkUsageInPercent     = 0.0
+  , nmNetworkUsageInMax         = 0.0
+  , nmNetworkUsageInMaxTotal    = 0.0
+  , nmNetworkUsageInLast        = 0
+  , nmNetworkUsageInNs          = 10000
+  , nmNetworkUsageInLastUpdate  = UTCTime (ModifiedJulianDay 0) 0
+  , nmNetworkUsageOut           = 0.0
+  , nmNetworkUsageOutPercent    = 0.0
+  , nmNetworkUsageOutMax        = 0.0
+  , nmNetworkUsageOutMaxTotal   = 0.0
+  , nmNetworkUsageOutLast       = 0
+  , nmNetworkUsageOutNs         = 10000
+  , nmNetworkUsageOutLastUpdate = UTCTime (ModifiedJulianDay 0) 0
+  , nmRTSMemoryAllocated        = 1.0
+  , nmRTSMemoryUsed             = 0.1
+  , nmRTSMemoryUsedPercent      = 1.0
+  , nmRTSMemoryLastUpdate       = UTCTime (ModifiedJulianDay 0) 0
+  , nmRTSGcCpu                  = 0.1
+  , nmRTSGcCpuLastUpdate        = UTCTime (ModifiedJulianDay 0) 0
+  , nmRTSGcElapsed              = 0.1
+  , nmRTSGcElapsedLastUpdate    = UTCTime (ModifiedJulianDay 0) 0
+  , nmRTSGcNum                  = 0
+  , nmRTSGcNumLastUpdate        = UTCTime (ModifiedJulianDay 0) 0
+  , nmRTSGcMajorNum             = 0
+  , nmRTSGcMajorNumLastUpdate   = UTCTime (ModifiedJulianDay 0) 0
   }
  where
   maxBytesPerTx = 4096 :: Word64

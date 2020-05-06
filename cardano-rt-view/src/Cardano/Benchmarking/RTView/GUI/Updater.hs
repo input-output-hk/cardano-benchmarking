@@ -216,11 +216,10 @@ markOutdatedElements
 markOutdatedElements params ni nm els = do
   now <- liftIO $ getCurrentTime
   -- Different metrics have different lifetime.
-  let niLife   = rtvNodeInfoLife params
-      _pLife   = rtvPeersInfoLife params
-      bcLife   = rtvBlockchainInfoLife params
-      _resLife = rtvResourcesInfoLife params
-      rtsLife  = rtvRTSInfoLife params
+  let niLife  = rtvNodeInfoLife params
+      bcLife  = rtvBlockchainInfoLife params
+      resLife = rtvResourcesInfoLife params
+      rtsLife = rtvRTSInfoLife params
 
 
   markValueW now (niUpTimeLastUpdate ni)       niLife [ els ! ElUptime
@@ -233,7 +232,7 @@ markOutdatedElements params ni nm els = do
                                                       , els ! ElNodeVersionOutdateWarning
                                                       , els ! ElNodeCommitHrefOutdateWarning
                                                       ]
-  
+
   markValue  now (niEpochLastUpdate ni)        bcLife (els ! ElEpoch)
   markValueW now (niSlotLastUpdate ni)         bcLife [els ! ElSlot]
                                                       [els ! ElSlotOutdateWarning]
@@ -241,7 +240,7 @@ markOutdatedElements params ni nm els = do
                                                       [els ! ElBlocksNumberOutdateWarning]
   markValueW now (niChainDensityLastUpdate ni) bcLife [els ! ElChainDensity]
                                                       [els ! ElChainDensityOutdateWarning]
-  
+
   markValueW now (nmRTSGcCpuLastUpdate nm)      rtsLife [els ! ElRTSGcCpu]
                                                         [els ! ElRTSGcCpuOutdateWarning]
   markValueW now (nmRTSGcElapsedLastUpdate nm)  rtsLife [els ! ElRTSGcElapsed]
@@ -251,7 +250,50 @@ markOutdatedElements params ni nm els = do
   markValueW now (nmRTSGcMajorNumLastUpdate nm) rtsLife [els ! ElRTSGcMajorNum]
                                                         [els ! ElRTSGcMajorNumOutdateWarning]
 
-  -- markProgressBar 
+  -- Mark progress bars' state.
+  markProgressBar now (nmRTSMemoryLastUpdate nm) rtsLife els ( ElRTSMemoryProgress
+                                                             , ElRTSMemoryProgressBox
+                                                             )
+                                                             [ ElRTSMemoryAllocated
+                                                             , ElRTSMemoryUsed
+                                                             , ElRTSMemoryUsedPercent
+                                                             ]
+  markProgressBar now (nmMemoryLastUpdate nm) resLife els ( ElMemoryProgress
+                                                          , ElMemoryProgressBox
+                                                          )
+                                                          [ ElMemoryMaxTotal
+                                                          , ElMemory
+                                                          , ElMemoryMax
+                                                          ]
+  markProgressBar now (nmCPULastUpdate nm)    resLife els ( ElCPUProgress
+                                                          , ElCPUProgressBox
+                                                          )
+                                                          [ ElCPUPercent
+                                                          ]
+  markProgressBar now (nmDiskUsageRLastUpdate nm) resLife els ( ElDiskReadProgress
+                                                              , ElDiskReadProgressBox
+                                                              )
+                                                              [ ElDiskUsageR
+                                                              , ElDiskUsageRMaxTotal
+                                                              ]
+  markProgressBar now (nmDiskUsageWLastUpdate nm) resLife els ( ElDiskWriteProgress
+                                                              , ElDiskWriteProgressBox
+                                                              )
+                                                              [ ElDiskUsageW
+                                                              , ElDiskUsageWMaxTotal
+                                                              ]
+  markProgressBar now (nmNetworkUsageInLastUpdate nm)  resLife els ( ElNetworkInProgress
+                                                                   , ElNetworkInProgressBox
+                                                                   )
+                                                                   [ ElNetworkUsageIn
+                                                                   , ElNetworkUsageInMaxTotal
+                                                                   ]
+  markProgressBar now (nmNetworkUsageOutLastUpdate nm) resLife els ( ElNetworkOutProgress
+                                                                   , ElNetworkOutProgressBox
+                                                                   )
+                                                                   [ ElNetworkUsageOut
+                                                                   , ElNetworkUsageOutMaxTotal
+                                                                   ]
 
 markValue
   :: UTCTime
@@ -287,3 +329,38 @@ hideWarning w = element w # set UI.style [("display", "none")]
 markAsOutdated, markAsUpToDate :: Element -> UI Element
 markAsOutdated el = element el # set UI.class_ "outdated-value"
 markAsUpToDate el = element el # set UI.class_ ""
+
+markProgressBar
+  :: UTCTime
+  -> UTCTime
+  -> NominalDiffTime
+  -> NodeStateElements
+  -> (ElementName, ElementName)
+  -> [ElementName]
+  -> UI ()
+markProgressBar now lastUpdate lifetime els (barName, barBoxName) labelsNames =
+  if diffUTCTime now lastUpdate > lifetime
+    then markBarAsOutdated
+    else markBarAsUpToDate
+ where
+  bar    = els ! barName
+  barBox = els ! barBoxName
+
+  barClass, barBoxClass :: String
+  barClass = show barName
+  barBoxClass = show barBoxName
+
+  barClassOutdated, barBoxClassOutdated :: String
+  barClassOutdated = barClass <> "-outdated"
+  barBoxClassOutdated = barBoxClass <> "-outdated"
+
+  markBarAsOutdated = do
+    void $ element bar    # set UI.class_ barClassOutdated
+    void $ element barBox # set UI.class_ barBoxClassOutdated
+                          # set UI.title__ "The progress values are outdated"
+    forM_ labelsNames $ \name -> void . markAsOutdated $ els ! name
+  markBarAsUpToDate = do
+    void $ element bar    # set UI.class_ barClass
+    void $ element barBox # set UI.class_ barBoxClass
+                          # set UI.title__ ""
+    forM_ labelsNames $ \name -> void . markAsUpToDate $ els ! name

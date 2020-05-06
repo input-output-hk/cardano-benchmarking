@@ -68,21 +68,26 @@ mkNodeWidget = do
   elRTSGcNum                <- string "0"
   elRTSGcMajorNum           <- string "0"
 
-  elMempoolBytesProgress    <- UI.div #. "w3-teal" #+
+  -- Progress bars.
+  elMempoolBytesProgress    <- UI.div #. (show ElMempoolBytesProgress) #+
                                  [ UI.span #. "h-spacer" #+ []
                                  , element elMempoolBytes
                                  , UI.span #. "percents-slash-h-spacer" #+ [string "/"]
                                  , element elMempoolBytesPercent
                                  , string "%"
                                  ]
-  elMempoolTxsProgress      <- UI.div #. "w3-teal" #+
+  elMempoolBytesProgressBox <- UI.div #. (show ElMempoolBytesProgressBox) #+ [element elMempoolBytesProgress]
+
+  elMempoolTxsProgress      <- UI.div #. (show ElMempoolTxsProgress) #+
                                  [ UI.span #. "h-spacer" #+ []
                                  , element elMempoolTxsNumber
                                  , UI.span #. "percents-slash-h-spacer" #+ [string "/"]
                                  , element elMempoolTxsPercent
                                  , string "%"
                                  ]
-  elMemoryProgress          <- UI.div #. "w3-teal" #+
+  elMempoolTxsProgressBox   <- UI.div #. (show ElMempoolTxsProgressBox) #+ [element elMempoolTxsProgress]
+
+  elMemoryProgress          <- UI.div #. (show ElMemoryProgress) #+
                                  [ UI.span #. "h-spacer" #+ []
                                  , element elMemory
                                  , UI.span #. "bar-value-unit" #+ [string "MB"]
@@ -91,37 +96,49 @@ mkNodeWidget = do
                                  , element elMemoryMax
                                  , UI.span #. "bar-value-unit" #+ [string "MB"]
                                  ]
-  elCPUProgress             <- UI.div #. "w3-indigo" #+
+  elMemoryProgressBox       <- UI.div #. (show ElMemoryProgressBox) #+ [element elMemoryProgress]
+
+  elCPUProgress             <- UI.div #. (show ElCPUProgress) #+
                                  [ UI.span #. "h-spacer" #+ []
                                  , element elCPUPercent
                                  , string "%"
                                  ]
-  elDiskUsageRProgress      <- UI.div #. "w3-deep-orange" #+
+  elCPUProgressBox          <- UI.div #. (show ElCPUProgressBox) #+ [element elCPUProgress]
+
+  elDiskUsageRProgress      <- UI.div #. (show ElDiskReadProgress) #+
                                  [ UI.span #. "h-spacer" #+ []
                                  , element elDiskUsageR
                                  , UI.span #. "bar-value-unit" #+ [string "KB/s"]
                                  ]
-  elDiskUsageWProgress      <- UI.div #. "w3-deep-orange" #+
+  elDiskUsageRProgressBox   <- UI.div #. (show ElDiskReadProgressBox) #+ [element elDiskUsageRProgress]
+
+  elDiskUsageWProgress      <- UI.div #. (show ElDiskWriteProgress) #+
                                  [ UI.span #. "h-spacer" #+ []
                                  , element elDiskUsageW
                                  , UI.span #. "bar-value-unit" #+ [string "KB/s"]
                                  ]
-  elNetworkUsageInProgress  <- UI.div #. "w3-purple" #+
-                                 [ UI.span #. "h-spacer" #+ []
-                                 , element elNetworkUsageIn
-                                 , UI.span #. "bar-value-unit" #+ [string "KB/s"]
-                                 ]
-  elNetworkUsageOutProgress <- UI.div #. "w3-purple" #+
-                                 [ UI.span #. "h-spacer" #+ []
-                                 , element elNetworkUsageOut
-                                 , UI.span #. "bar-value-unit" #+ [string "KB/s"]
-                                 ]
+  elDiskUsageWProgressBox   <- UI.div #. (show ElDiskWriteProgressBox) #+ [element elDiskUsageWProgress]
 
-  elRTSMemoryProgress       <- UI.div #. "w3-teal" #+
+  elNetworkUsageInProgress     <- UI.div #. (show ElNetworkInProgress) #+
+                                    [ UI.span #. "h-spacer" #+ []
+                                    , element elNetworkUsageIn
+                                    , UI.span #. "bar-value-unit" #+ [string "KB/s"]
+                                    ]
+  elNetworkUsageInProgressBox  <- UI.div #. (show ElNetworkInProgressBox) #+ [element elNetworkUsageInProgress]
+
+  elNetworkUsageOutProgress    <- UI.div #. (show ElNetworkOutProgress) #+
+                                    [ UI.span #. "h-spacer" #+ []
+                                    , element elNetworkUsageOut
+                                    , UI.span #. "bar-value-unit" #+ [string "KB/s"]
+                                    ]
+  elNetworkUsageOutProgressBox <- UI.div #. (show ElNetworkOutProgressBox) #+ [element elNetworkUsageOutProgress]
+
+  elRTSMemoryProgress       <- UI.div #. (show ElRTSMemoryProgress) #+
                                  [ UI.span #. "h-spacer" #+ []
                                  , element elRTSMemoryUsed
                                  , UI.span #. "bar-value-unit" #+ [string "MB"]
                                  ]
+  elRTSMemoryProgressBox    <- UI.div #. (show ElRTSMemoryProgressBox) #+ [element elRTSMemoryProgress]
 
   elNodeCommitHref <- UI.anchor # set UI.href ""
                                 # set UI.target "_blank"
@@ -132,7 +149,7 @@ mkNodeWidget = do
   elNodeVersionOutdateWarning    <- infoMark "The value is outdated"
   elNodeCommitHrefOutdateWarning <- infoMark "The value is outdated"
   elUptimeOutdateWarning         <- infoMark "The value is outdated"
-  
+
   elSlotOutdateWarning           <- infoMark "The value is outdated"
   elBlocksNumberOutdateWarning   <- infoMark "The value is outdated"
   elChainDensityOutdateWarning   <- infoMark "The value is outdated"
@@ -259,7 +276,7 @@ mkNodeWidget = do
                                , infoMark "Capacity in bytes"
                                ]
                            ]
-                       , UI.div #. "w3-light-green" #+ [element elMempoolBytesProgress]
+                       , element elMempoolBytesProgressBox
                        ])
                     (UI.div #. "w3-container" #+
                        [ UI.div #. "w3-row" #+
@@ -269,7 +286,7 @@ mkNodeWidget = do
                                , infoMark "Capacity"
                                ]
                            ]
-                       , UI.div #. "w3-light-green" #+ [element elMempoolTxsProgress]
+                       , element elMempoolTxsProgressBox
                        ])
                 , vSpacer "node-metrics-v-spacer"
                 , vSpacer "node-metrics-v-spacer"
@@ -301,7 +318,7 @@ mkNodeWidget = do
                             , UI.span #. "value-unit" #+ [string "MB"]
                             ]
                         ]
-                    , UI.div #. "w3-light-green" #+ [element elMemoryProgress]
+                    , element elMemoryProgressBox
                     ]
                 , vSpacer "node-metrics-v-spacer"
                 , UI.div #. "w3-container" #+
@@ -312,7 +329,7 @@ mkNodeWidget = do
                             , UI.span #. "value-unit" #+ [string "%"]
                             ]
                         ]
-                    , UI.div #. "w3-cyan" #+ [element elCPUProgress]
+                    , element elCPUProgressBox
                     ]
                 , vSpacer "node-metrics-v-spacer"
                 , twoElementsInRow
@@ -325,7 +342,7 @@ mkNodeWidget = do
                                , infoMark "Maximum value over the last two minutes"
                                ]
                            ]
-                       , UI.div #. "w3-amber" #+ [element elDiskUsageRProgress]
+                       , element elDiskUsageRProgressBox
                        ])
                     (UI.div #. "w3-container" #+
                        [ UI.div #. "w3-row" #+
@@ -336,7 +353,7 @@ mkNodeWidget = do
                                , infoMark "Maximum value over the last two minutes"
                                ]
                            ]
-                       , UI.div #. "w3-amber" #+ [element elDiskUsageWProgress]
+                       , element elDiskUsageWProgressBox
                        ])
                 , vSpacer "node-metrics-v-spacer"
                 , twoElementsInRow
@@ -348,7 +365,7 @@ mkNodeWidget = do
                                , UI.span #. "value-unit" #+ [string "KB/s"]
                                ]
                            ]
-                       , UI.div #. "w3-pale-red" #+ [element elNetworkUsageInProgress]
+                       , element elNetworkUsageInProgressBox
                        ])
                     (UI.div #. "w3-container" #+
                        [ UI.div #. "w3-row" #+
@@ -358,7 +375,7 @@ mkNodeWidget = do
                                , UI.span #. "value-unit" #+ [string "KB/s"]
                                ]
                            ]
-                       , UI.div #. "w3-pale-red" #+ [element elNetworkUsageOutProgress]
+                       , element elNetworkUsageOutProgressBox
                        ])
                 ]
             ]
@@ -375,7 +392,7 @@ mkNodeWidget = do
                          , UI.span #. "value-unit" #+ [string "MB"]
                          ]
                      ]
-                 , UI.div #. "w3-light-green" #+ [element elRTSMemoryProgress]
+                 , element elRTSMemoryProgressBox
                  ]
              , vSpacer "node-metrics-v-spacer"
              , vSpacer "node-metrics-v-spacer"
@@ -537,14 +554,23 @@ mkNodeWidget = do
           , (ElRTSGcMajorNumOutdateWarning,  elRTSGcMajorNumOutdateWarning)
           -- Progress bars
           , (ElMempoolBytesProgress,    elMempoolBytesProgress)
+          , (ElMempoolBytesProgressBox, elMempoolBytesProgressBox)
           , (ElMempoolTxsProgress,      elMempoolTxsProgress)
+          , (ElMempoolTxsProgressBox,   elMempoolTxsProgressBox)
           , (ElMemoryProgress,          elMemoryProgress)
+          , (ElMemoryProgressBox,       elMemoryProgressBox)
           , (ElCPUProgress,             elCPUProgress)
+          , (ElCPUProgressBox,          elCPUProgressBox)
           , (ElDiskReadProgress,        elDiskUsageRProgress)
+          , (ElDiskReadProgressBox,     elDiskUsageRProgressBox)
           , (ElDiskWriteProgress,       elDiskUsageWProgress)
+          , (ElDiskWriteProgressBox,    elDiskUsageWProgressBox)
           , (ElNetworkInProgress,       elNetworkUsageInProgress)
+          , (ElNetworkInProgressBox,    elNetworkUsageInProgressBox)
           , (ElNetworkOutProgress,      elNetworkUsageOutProgress)
+          , (ElNetworkOutProgressBox,   elNetworkUsageOutProgressBox)
           , (ElRTSMemoryProgress,       elRTSMemoryProgress)
+          , (ElRTSMemoryProgressBox,    elRTSMemoryProgressBox)
           ]
 
   return (nodeWidget, nodeStateElems)

@@ -23,7 +23,6 @@ data RTViewParams = RTViewParams
   , rtvStatic             :: !FilePath
   , rtvPort               :: !PortNumber
   , rtvNodeInfoLife       :: !NominalDiffTime
-  , rtvPeersInfoLife      :: !NominalDiffTime
   , rtvBlockchainInfoLife :: !NominalDiffTime
   , rtvResourcesInfoLife  :: !NominalDiffTime
   , rtvRTSInfoLife        :: !NominalDiffTime
@@ -47,10 +46,6 @@ parseRTViewParams =
           "node-info-life"
           "Lifetime of node info"
           5
-    <*> parseDiffTime
-          "peers-info-life"
-          "Lifetime of peers info"
-          20
     <*> parseDiffTime
           "blockchain-info-life"
           "Lifetime of blockchain info"

@@ -87,15 +87,24 @@ data ElementName
   | ElRTSGcMajorNumOutdateWarning
   -- Progress bars.
   | ElMempoolBytesProgress
+  | ElMempoolBytesProgressBox
   | ElMempoolTxsProgress
+  | ElMempoolTxsProgressBox
   | ElMemoryProgress
+  | ElMemoryProgressBox
   | ElCPUProgress
+  | ElCPUProgressBox
   | ElDiskReadProgress
+  | ElDiskReadProgressBox
   | ElDiskWriteProgress
+  | ElDiskWriteProgressBox
   | ElNetworkInProgress
+  | ElNetworkInProgressBox
   | ElNetworkOutProgress
+  | ElNetworkOutProgressBox
   | ElRTSMemoryProgress
-  deriving (Eq, Ord)
+  | ElRTSMemoryProgressBox
+  deriving (Eq, Ord, Show)
 
 data ElementValue
   = ElementInteger Integer
