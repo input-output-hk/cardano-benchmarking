@@ -85,7 +85,6 @@ updateNodesState nsMVar loggerName (LogObject aName aMeta aContent) = do
   let loggerNameParts = filter (not . T.null) $ T.splitOn "." loggerName
       nameOfNode = loggerNameParts !! 3
 
-  -- now <- liftIO getCurrentTime
 
   modifyMVar_ nsMVar $ \currentNodesState -> do
     let nodesStateWith :: NodeState -> IO NodesState
