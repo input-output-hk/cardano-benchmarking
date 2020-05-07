@@ -22,7 +22,7 @@ import           Data.Time.Calendar
                    ( Day (..) )
 import           Data.Time.Clock
                    ( NominalDiffTime, UTCTime (..)
-                   , addUTCTime, diffUTCTime
+                   , addUTCTime, diffUTCTime, getCurrentTime
                    )
 
 import           Cardano.BM.Backend.Switchboard
@@ -87,6 +87,7 @@ updateNodesState nsMVar loggerName (LogObject aName aMeta aContent) = do
   let loggerNameParts = filter (not . T.null) $ T.splitOn "." loggerName
       nameOfNode = loggerNameParts !! 3
 
+  now <- getCurrentTime
 
   modifyMVar_ nsMVar $ \currentNodesState -> do
     let nodesStateWith :: NodeState -> IO NodesState
@@ -99,7 +100,7 @@ updateNodesState nsMVar loggerName (LogObject aName aMeta aContent) = do
            | "cardano.node.upTime" `T.isInfixOf` aName ->
             case aContent of
               LogValue "upTime" (Nanoseconds upTimeInNs) ->
-                nodesStateWith $ updateNodeUpTime ns upTimeInNs
+                nodesStateWith $ updateNodeUpTime ns upTimeInNs now
               _ -> return currentNodesState
            | "cardano.node.metrics" `T.isInfixOf` aName ->
             case aContent of
@@ -206,16 +207,16 @@ itIsErrorMessage aMeta =
 
 -- Updaters for particular node state's fields.
 
-updateNodeUpTime :: NodeState -> Word64 -> NodeState
-updateNodeUpTime ns upTimeInNs = ns { nsInfo = newNi }
+updateNodeUpTime :: NodeState -> Word64 -> UTCTime -> NodeState
+updateNodeUpTime ns upTimeInNs now = ns { nsInfo = newNi }
  where
   newNi =
     currentNi
-      { niStartTime = startTime
-      , niUpTime    = upTime
+      { niUpTime = upTime
       , niUpTimeLastUpdate = now
       }
   currentNi = nsInfo ns
+  upTimeInSec :: Double
   upTimeInSec = fromIntegral upTimeInNs / 1000000000
   -- We show up time as time with seconds, so we don't need fractions of second.
   upTimeDiff :: NominalDiffTime

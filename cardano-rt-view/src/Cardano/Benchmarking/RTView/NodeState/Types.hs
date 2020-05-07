@@ -50,29 +50,11 @@ data NodeError = NodeError
   } deriving Show
 
 data NodeInfo = NodeInfo
-<<<<<<< HEAD
-  { niNodeRelease       :: !String
-  , niNodeVersion       :: !String
-  , niNodeCommit        :: !String
-  , niNodeShortCommit   :: !String
-  , niNodePlatform      :: !String
-  , niUpTime            :: !UTCTime
-  , niEpoch             :: !Integer
-  , niSlot              :: !Integer
-  , niBlocksNumber      :: !Integer
-  , niChainDensity      :: !Double
-  , niTxsProcessed      :: !Integer
-  , niPeersNumber       :: !Integer
-  , niPeersInfo         :: ![PeerInfo]
-  , niTraceAcceptorHost :: !String
-  , niTraceAcceptorPort :: !String
-  , niNodeErrors        :: ![NodeError]
-=======
   { niNodeRelease            :: !String
   , niNodeVersion            :: !String
   , niNodeCommit             :: !String
   , niNodeShortCommit        :: !String
-  , niStartTime              :: !UTCTime
+  , niNodePlatform           :: !String
   , niUpTime                 :: !UTCTime
   , niUpTimeLastUpdate       :: !UTCTime
   , niEpoch                  :: !Integer
@@ -89,7 +71,6 @@ data NodeInfo = NodeInfo
   , niTraceAcceptorHost      :: !String
   , niTraceAcceptorPort      :: !String
   , niNodeErrors             :: ![NodeError]
->>>>>>> 588c21b... CAD-806: Live monitoring.
   } deriving Show
 
 data NodeMetrics = NodeMetrics
@@ -172,29 +153,11 @@ defaultNodeState = NodeState
 
 defaultNodeInfo :: NodeInfo
 defaultNodeInfo = NodeInfo
-<<<<<<< HEAD
-  { niNodeRelease       = "-"
-  , niNodeVersion       = "-"
-  , niNodeCommit        = "-"
-  , niNodeShortCommit   = "-"
-  , niNodePlatform      = "?"
-  , niUpTime            = UTCTime (ModifiedJulianDay 0) 0
-  , niEpoch             = 0
-  , niSlot              = 0
-  , niBlocksNumber      = 0
-  , niChainDensity      = 0.0
-  , niTxsProcessed      = 0
-  , niPeersNumber       = 0
-  , niPeersInfo         = []
-  , niTraceAcceptorHost = "-"
-  , niTraceAcceptorPort = "-"
-  , niNodeErrors        = []
-=======
   { niNodeRelease            = "-"
   , niNodeVersion            = "-"
   , niNodeCommit             = "-"
   , niNodeShortCommit        = "-"
-  , niStartTime              = UTCTime (ModifiedJulianDay 0) 0
+  , niNodePlatform           = "?"
   , niUpTime                 = UTCTime (ModifiedJulianDay 0) 0
   , niUpTimeLastUpdate       = UTCTime (ModifiedJulianDay 0) 0
   , niEpoch                  = 0
@@ -211,7 +174,6 @@ defaultNodeInfo = NodeInfo
   , niTraceAcceptorHost      = "-"
   , niTraceAcceptorPort      = "-"
   , niNodeErrors             = []
->>>>>>> 588c21b... CAD-806: Live monitoring.
   }
 
 defaultNodeMetrics :: NodeMetrics
