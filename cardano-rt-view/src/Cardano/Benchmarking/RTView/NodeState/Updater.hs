@@ -22,7 +22,7 @@ import           Data.Time.Calendar
                    ( Day (..) )
 import           Data.Time.Clock
                    ( NominalDiffTime, UTCTime (..)
-                   , addUTCTime, diffUTCTime, getCurrentTime
+                   , addUTCTime, diffUTCTime
                    )
 
 import           Cardano.BM.Backend.Switchboard
@@ -85,18 +85,20 @@ updateNodesState nsMVar loggerName (LogObject aName aMeta aContent) = do
   let loggerNameParts = filter (not . T.null) $ T.splitOn "." loggerName
       nameOfNode = loggerNameParts !! 3
 
-  now <- liftIO getCurrentTime
 
   modifyMVar_ nsMVar $ \currentNodesState -> do
     let nodesStateWith :: NodeState -> IO NodesState
         nodesStateWith newState = return $ Map.adjust (\_ -> newState) nameOfNode currentNodesState
 
     case currentNodesState !? nameOfNode of
-      Just ns' -> do
-        -- Since the node sent this LogObject, we have to update the uptime of that node.
-        let ns = updateNodeUpTime ns' now
+      Just ns -> do
         if | itIsErrorMessage aMeta ->
               nodesStateWith $ updateNodeErrors ns aMeta aContent
+           | "cardano.node.upTime" `T.isInfixOf` aName ->
+              case aContent of
+                LogValue "upTime" (Nanoseconds upTimeInNs) ->
+                  nodesStateWith $ updateNodeUpTime ns upTimeInNs
+                _ -> return currentNodesState
            | "cardano.node.metrics" `T.isInfixOf` aName ->
             case aContent of
               LogValue "Mem.resident" (PureI pages) ->
@@ -192,22 +194,16 @@ itIsErrorMessage aMeta =
 
 -- Updaters for particular node state's fields.
 
-updateNodeUpTime :: NodeState -> UTCTime -> NodeState
-updateNodeUpTime ns now = ns { nsInfo = newNi }
+updateNodeUpTime :: NodeState -> Word64 -> NodeState
+updateNodeUpTime ns upTimeInNs = ns { nsInfo = newNi }
  where
-  newNi =
-    currentNi
-      { niStartTime = startTime
-      , niUpTime    = upTime
-      }
+  newNi = currentNi { niUpTime = upTime }
   currentNi = nsInfo ns
-  currentStartTime@(UTCTime day time) = niStartTime currentNi
-  startTime =
-    if day == (ModifiedJulianDay 0) && time == 0
-      then now -- This is the first LogObject from the node, update startTime.
-      else currentStartTime -- Node already sent something earlier, keep startTime.
-  diffBetweenNowAndStart = diffUTCTime now startTime
-  upTime = addUTCTime diffBetweenNowAndStart (UTCTime (ModifiedJulianDay 0) 0)
+  upTimeInSec = fromIntegral upTimeInNs / 1000000000
+  -- We show up time as time with seconds, so we don't need fractions of second.
+  upTimeDiff :: NominalDiffTime
+  upTimeDiff = fromInteger $ round upTimeInSec
+  upTime = addUTCTime upTimeDiff (UTCTime (ModifiedJulianDay 0) 0)
 
 updateNodeErrors :: Show a => NodeState -> LOMeta -> LOContent a -> NodeState
 updateNodeErrors ns (LOMeta timeStamp _ _ sev _) aContent = ns { nsInfo = newNi }
