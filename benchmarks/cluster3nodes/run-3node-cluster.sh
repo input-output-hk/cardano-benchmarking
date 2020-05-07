@@ -10,6 +10,20 @@ if [ $# -lt 1 ]; then
   exit 1
 fi
 
+SED=sed
+ARCH=$(uname)
+if [ $ARCH == "Darwin" ]; then
+  # check for GNU sed
+  T=$(which gsed && echo 1 || echo 0)
+  if [ "${T}" == "0" ]; then
+    echo "On Darwin we need GNU's version of sed"
+    echo "can be installed via 'brew install gnu-sed'"
+    exit 1
+  else
+    SED=gsed
+  fi
+fi
+
 SUBCONFIG=
 if [ $1 == "rt-view" ]; then
   SUBCONFIG="-rt-view"
@@ -32,12 +46,16 @@ CMD="stack exec cardano-node --"
 genesis_root=${BASEDIR}/configuration/latest-genesis
 genesis_file=${genesis_root}/genesis.json
 
+SOCKETDIR="/tmp/cluster3nodes-socket/"
+if [ ! -d $SOCKETDIR ]; then
+  mkdir $SOCKETDIR
+fi
 
 ### prep cli arguments
 
 function nodecfg () {
-        sed -i 's|^GenesisFile: .*$|GenesisFile: '${genesis_file}'|' configuration/log-config${SUBCONFIG}-${1}.yaml
-        printf -- "--config configuration/log-config${SUBCONFIG}-${1}.yaml "
+        $SED -i 's|^GenesisFile: .*$|GenesisFile: '${genesis_file}'|' ${BASEDIR}/configuration/log-config${SUBCONFIG}-${1}.yaml
+        printf -- "--config ${BASEDIR}/configuration/log-config${SUBCONFIG}-${1}.yaml "
 }
 function dlgkey () {
         printf -- "--signing-key ${genesis_root}/delegate-keys.%03d.key " "$1"
@@ -48,7 +66,7 @@ function dlgcert () {
 function commonargs() {
         printf -- "--topology ${BASEDIR}/configuration/simple-topology-real-pbft-node-$1.json "
         printf -- "--database-path ./db-$1/ "
-        printf -- "--socket-path /tmp/cluster3nodes-socket/$1 "
+        printf -- "--socket-path ${SOCKETDIR}/$1 "
 }
 
 function nodeargs () {
@@ -56,6 +74,7 @@ function nodeargs () {
         dlgkey $1
         dlgcert $1
         printf -- "--port $((3000 + $1)) "
+        printf -- "+RTS -T -RTS "
         nodecfg $1
 }
 

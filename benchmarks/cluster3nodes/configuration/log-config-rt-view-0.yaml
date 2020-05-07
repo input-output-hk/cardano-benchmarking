@@ -35,44 +35,25 @@ defaultScribes:
 
 # more options which can be passed as key-value pairs:
 options:
-  mapSubtrace:
-    '#ekgview':
-      contents:
-      - - tag: Contains
-          contents: 'cardano.epoch-validation.benchmark'
-        - - tag: Contains
-            contents: .monoclock.basic.
-      - - tag: Contains
-          contents: 'cardano.epoch-validation.benchmark'
-        - - tag: Contains
-            contents: diff.RTS.cpuNs.timed.
-      - - tag: StartsWith
-          contents: '#ekgview.#aggregation.cardano.epoch-validation.benchmark'
-        - - tag: Contains
-            contents: diff.RTS.gcNum.timed.
-      subtrace: FilterTrace
-    'cardano.epoch-validation.utxo-stats':
-      # Change the `subtrace` value to `Neutral` in order to log
-      # `UTxO`-related messages during epoch validation.
-      subtrace: NoTrace
   mapBackends:
     cardano.node.ChainDB.metrics:
+      - TraceForwarderBK
       - EKGViewBK
+      - kind: UserDefinedBK
+        name: LiveViewBackend
+    cardano.node-metrics:
       - kind: UserDefinedBK
         name: LiveViewBackend
       - TraceForwarderBK
     cardano.node.metrics:
+      - TraceForwarderBK
+      - EKGViewBK
       - kind: UserDefinedBK
         name: LiveViewBackend
-      - TraceForwarderBK
-    cardano.node.BlockFetchDecision:
-      - kind: UserDefinedBK
-        name: LiveViewBackend
-      - TraceForwarderBK
     cardano.node.BlockFetchDecision.peers:
+      - TraceForwarderBK
       - kind: UserDefinedBK
         name: LiveViewBackend
-      - TraceForwarderBK
     cardano.node.release:
       - TraceForwarderBK
     cardano.node.version:
@@ -99,7 +80,7 @@ RequiresNetworkMagic: RequiresMagic
 PBftSignatureThreshold:
 TurnOnLogging: True
 ViewMode: LiveView
-TurnOnLogMetrics: False
+TurnOnLogMetrics: True
 SocketPath:
 
 

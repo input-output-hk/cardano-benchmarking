@@ -1,4 +1,4 @@
-resolver: https://raw.githubusercontent.com/input-output-hk/cardano-prelude/f4fa92a94dd974f433f22b401c6fc31a18a50230/snapshot.yaml
+resolver: https://raw.githubusercontent.com/input-output-hk/cardano-prelude/bd7eb69d27bfaee46d435bc1d2720520b1446426/snapshot.yaml
 compiler: ghc-8.6.5
 
 packages:
@@ -62,13 +62,13 @@ extra-deps:
   - word-wrap-0.4.1
 
   - git: https://github.com/input-output-hk/cardano-prelude
-    commit: f4fa92a94dd974f433f22b401c6fc31a18a50230
+    commit: bd7eb69d27bfaee46d435bc1d2720520b1446426
     subdirs:
       - .
       - test
 
 #  - git: https://github.com/input-output-hk/cardano-node
-#    commit: 376562b0cb6dfde4b9f41e9f3ccea45cbfb41c22
+#    commit: 6aa06834f648768611f8e3b73201075082d228b7
 #    subdirs:
 #      - cardano-api
 #      - cardano-config
@@ -121,7 +121,7 @@ extra-deps:
     commit: 26d35ad52fe9ade3391532dbfeb2f416f07650bc
 
   - git: https://github.com/input-output-hk/ouroboros-network
-    commit: 6a9acbf65fff16063643d9fb5c135b4aa87e771e
+    commit: e82c4fe3dc28b2c63d09db12d51e104cd5466600
     subdirs:
         - io-sim
         - io-sim-classes
@@ -139,7 +139,7 @@ extra-deps:
         - Win32-network
 
   - git: https://github.com/input-output-hk/iohk-monitoring-framework
-    commit: 0ef50931708e2ac135e2cdbbe20890a335be1d43
+    commit: 20309d5aa56b0ae5fd982465297a1d87aa5658a1
     subdirs:
       - contra-tracer
       - iohk-monitoring

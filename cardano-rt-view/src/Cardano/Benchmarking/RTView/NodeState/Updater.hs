@@ -113,11 +113,15 @@ updateNodesState nsMVar loggerName (LogObject aName aMeta aContent) = do
                 nodesStateWith $ updateDiskWrite ns bytesWereWritten aMeta
               LogValue "Stat.utime" (PureI ticks) ->
                 nodesStateWith $ updateCPUTicks ns ticks aMeta
-              LogValue "Stat.user_time" (Nanoseconds nanosecs) ->    -- Darwin
+              LogValue "Sys.SysUserTime" (Nanoseconds nanosecs) ->    -- Darwin
                 nodesStateWith $ updateCPUSecs ns nanosecs aMeta
               LogValue "Net.IpExt:InOctets" (Bytes inBytes) ->
                 nodesStateWith $ updateNetworkIn ns inBytes aMeta
               LogValue "Net.IpExt:OutOctets" (Bytes outBytes) ->
+                nodesStateWith $ updateNetworkOut ns outBytes aMeta
+              LogValue "Net.ifd_0-ibytes" (Bytes inBytes) ->    -- Darwin
+                nodesStateWith $ updateNetworkIn ns inBytes aMeta
+              LogValue "Net.ifd_0-obytes" (Bytes outBytes) ->    -- Darwin
                 nodesStateWith $ updateNetworkOut ns outBytes aMeta
               LogValue "txsInMempool" (PureI txsInMempool) ->
                 nodesStateWith $ updateMempoolTxs ns txsInMempool
@@ -129,61 +133,61 @@ updateNodesState nsMVar loggerName (LogObject aName aMeta aContent) = do
                 nodesStateWith $ updateNodePlatform ns (fromIntegral pfid)
               _ -> return currentNodesState
            | "cardano.node-metrics" `T.isInfixOf` aName ->
-              case aContent of
-                LogValue "RTS.bytesAllocated" (Bytes bytesAllocated) ->
-                  nodesStateWith $ updateBytesAllocated ns bytesAllocated
-                LogValue "RTS.usedMemBytes" (Bytes usedMemBytes) ->
-                  nodesStateWith $ updateBytesUsed ns usedMemBytes
-                LogValue "RTS.gcCpuNs" (Nanoseconds gcCpuNs) ->
-                  nodesStateWith $ updateGcCpuNs ns gcCpuNs
-                LogValue "RTS.gcElapsedNs" (Nanoseconds gcElapsedNs) ->
-                  nodesStateWith $ updateGcElapsedNs ns gcElapsedNs
-                LogValue "RTS.gcNum" (PureI gcNum) ->
-                  nodesStateWith $ updateGcNum ns gcNum
-                LogValue "RTS.gcMajorNum" (PureI gcMajorNum) ->
-                  nodesStateWith $ updateGcMajorNum ns gcMajorNum
-                _ -> return currentNodesState
+            case aContent of
+              LogValue "RTS.maxUsedMemBytes" (Bytes bytesAllocated) ->
+                nodesStateWith $ updateRTSBytesAllocated ns bytesAllocated
+              LogValue "RTS.gcLiveBytes" (Bytes usedMemBytes) ->
+                nodesStateWith $ updateRTSBytesUsed ns usedMemBytes
+              LogValue "RTS.gcCpuNs" (Nanoseconds gcCpuNs) ->
+                nodesStateWith $ updateGcCpuNs ns gcCpuNs
+              LogValue "RTS.gcElapsedNs" (Nanoseconds gcElapsedNs) ->
+                nodesStateWith $ updateGcElapsedNs ns gcElapsedNs
+              LogValue "RTS.gcNum" (PureI gcNum) ->
+                nodesStateWith $ updateGcNum ns gcNum
+              LogValue "RTS.gcMajorNum" (PureI gcMajorNum) ->
+                nodesStateWith $ updateGcMajorNum ns gcMajorNum
+              _ -> return currentNodesState
            | "cardano.node.BlockFetchDecision.peersList" `T.isInfixOf` aName ->
-              case aContent of
-                LogStructured peersInfo ->
-                  nodesStateWith $ updatePeersInfo ns peersInfo
-                _ -> return currentNodesState
+            case aContent of
+              LogStructured peersInfo ->
+                nodesStateWith $ updatePeersInfo ns peersInfo
+              _ -> return currentNodesState
            | "cardano.node.BlockFetchDecision" `T.isInfixOf` aName ->
-              case aContent of
-                LogValue "connectedPeers" (PureI peersNum) ->
-                  nodesStateWith $ updatePeersNumber ns peersNum
-                _ -> return currentNodesState
+            case aContent of
+              LogValue "connectedPeers" (PureI peersNum) ->
+                nodesStateWith $ updatePeersNumber ns peersNum
+              _ -> return currentNodesState
            | "cardano.node.ChainSyncProtocol" `T.isInfixOf` aName ->
-              case aContent of
-                LogMessage traceLabelPeer ->
-                  nodesStateWith $ updatePeerInfo ns traceLabelPeer
-                _ -> return currentNodesState
+            case aContent of
+              LogMessage traceLabelPeer ->
+                nodesStateWith $ updatePeerInfo ns traceLabelPeer
+              _ -> return currentNodesState
            | "cardano.node.release" `T.isInfixOf` aName ->
-              case aContent of
-                LogMessage release ->
-                  nodesStateWith $ updateNodeRelease ns release
-                _ -> return currentNodesState
+            case aContent of
+              LogMessage release ->
+                nodesStateWith $ updateNodeRelease ns release
+              _ -> return currentNodesState
            | "cardano.node.version" `T.isInfixOf` aName ->
-              case aContent of
-                LogMessage version ->
-                  nodesStateWith $ updateNodeVersion ns version
-                _ -> return currentNodesState
+            case aContent of
+              LogMessage version ->
+                nodesStateWith $ updateNodeVersion ns version
+              _ -> return currentNodesState
            | "cardano.node.commit" `T.isInfixOf` aName ->
-              case aContent of
-                LogMessage commit ->
-                  nodesStateWith $ updateNodeCommit ns commit
-                _ -> return currentNodesState
+            case aContent of
+              LogMessage commit ->
+                nodesStateWith $ updateNodeCommit ns commit
+              _ -> return currentNodesState
            | otherwise ->
-              case aContent of
-                LogValue "density" (PureD density) ->
-                  nodesStateWith $ updateChainDensity ns density
-                LogValue "blockNum" (PureI blockNum) ->
-                  nodesStateWith $ updateBlocksNumber ns blockNum
-                LogValue "slotInEpoch" (PureI slotNum) ->
-                  nodesStateWith $ updateSlotInEpoch ns slotNum
-                LogValue "epoch" (PureI epoch) ->
-                  nodesStateWith $ updateEpoch ns epoch
-                _ -> return currentNodesState
+            case aContent of
+              LogValue "density" (PureD density) ->
+                nodesStateWith $ updateChainDensity ns density
+              LogValue "blockNum" (PureI blockNum) ->
+                nodesStateWith $ updateBlocksNumber ns blockNum
+              LogValue "slotInEpoch" (PureI slotNum) ->
+                nodesStateWith $ updateSlotInEpoch ns slotNum
+              LogValue "epoch" (PureI epoch) ->
+                nodesStateWith $ updateEpoch ns epoch
+              _ -> return currentNodesState
       Nothing ->
         -- This is a problem, because it means that configuration is unexpected one:
         -- name of node in getAcceptAt doesn't correspond to the name of loggerName.
@@ -430,7 +434,7 @@ updateCPUTicks ns ticks meta = ns { nsMetrics = newNm }
       }
   currentNm = nsMetrics ns
   tns       = utc2ns $ tstamp meta
-  tdiff     = min 1 $ (fromIntegral (tns - nmCPUNs currentNm)) / 1000000000 :: Double
+  tdiff     = max 0.1 $ (fromIntegral (tns - nmCPUNs currentNm)) / 1000000000 :: Double
   cpuperc   = (fromIntegral (ticks - nmCPULast currentNm)) / (fromIntegral clktck) / tdiff
   clktck    = 100 :: Integer
 
@@ -440,13 +444,14 @@ updateCPUSecs ns nanosecs meta = ns { nsMetrics = newNm }
   newNm =
     currentNm
       { nmCPUPercent = cpuperc * 100.0
-      , nmCPULast    = fromIntegral tns
+      , nmCPULast    = fromIntegral nanosecs
       , nmCPUNs      = tns
       }
   currentNm = nsMetrics ns
-  tns       = nanosecs
-  tdiff     = min 1 $ (fromIntegral (tns - nmCPUNs currentNm)) / 1000000000 :: Double
-  cpuperc   = fromIntegral tns / tdiff
+  tns       = utc2ns $ tstamp meta
+  tdiff     = max 0.1 $ fromIntegral (tns - nmCPUNs currentNm) / 1000000000 :: Double
+  deltacpu  = fromIntegral nanosecs - nmCPULast currentNm
+  cpuperc   = fromIntegral deltacpu / 100000000 / tdiff
 
 updateNetworkIn :: NodeState -> Word64 -> LOMeta -> NodeState
 updateNetworkIn ns inBytes meta = ns { nsMetrics = newNm }
@@ -520,18 +525,18 @@ updateTxsProcessed ns txsProcessed = ns { nsInfo = newNi }
   newNi = currentNi { niTxsProcessed = niTxsProcessed currentNi + txsProcessed }
   currentNi = nsInfo ns
 
-updateBytesAllocated :: NodeState -> Word64 -> NodeState
-updateBytesAllocated ns bytesAllocated = ns { nsMetrics = newNm }
+updateRTSBytesAllocated :: NodeState -> Word64 -> NodeState
+updateRTSBytesAllocated ns bytesAllocated = ns { nsMetrics = newNm }
  where
   newNm =
     currentNm
       { nmRTSMemoryAllocated = mBytes
       }
   currentNm = nsMetrics ns
-  mBytes    = fromIntegral (bytesAllocated) / 1024 / 1024 :: Double
+  mBytes    = fromIntegral bytesAllocated / 1024 / 1024 :: Double
 
-updateBytesUsed :: NodeState -> Word64 -> NodeState
-updateBytesUsed ns usedMemBytes = ns { nsMetrics = newNm }
+updateRTSBytesUsed :: NodeState -> Word64 -> NodeState
+updateRTSBytesUsed ns usedMemBytes = ns { nsMetrics = newNm }
  where
   newNm =
     currentNm
@@ -541,7 +546,7 @@ updateBytesUsed ns usedMemBytes = ns { nsMetrics = newNm }
                                  * 100.0
       }
   currentNm = nsMetrics ns
-  mBytes    = fromIntegral (usedMemBytes) / 1024 / 1024 :: Double
+  mBytes    = fromIntegral usedMemBytes / 1024 / 1024 :: Double
 
 updateGcCpuNs :: NodeState -> Word64 -> NodeState
 updateGcCpuNs ns gcCpuNs = ns { nsMetrics = newNm }

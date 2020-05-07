@@ -9,6 +9,7 @@ STATICDIR=${BASEDIR}/../../cardano-rt-view/static/
 #RUNNER=${RUNNER:-cabal v2-run -v0}
 #GENERATOR="${RUNNER} cardano-cli --"
 RTVIEWSERVICE="${BASEDIR}/../../bin/cardano-rt-view-service"
+RTVIEWSERVICE="stack exec cardano-rt-view-service --"
 
 exec ${RTVIEWSERVICE} \
   --config ${CONFIGFILE} \
