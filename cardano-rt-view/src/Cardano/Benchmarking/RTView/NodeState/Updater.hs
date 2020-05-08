@@ -91,19 +91,16 @@ updateNodesState nsMVar loggerName (LogObject aName aMeta aContent) = do
 
   modifyMVar_ nsMVar $ \currentNodesState -> do
     let nodesStateWith :: NodeState -> IO NodesState
-        nodesStateWith newState = return $ Map.adjust (\_ -> newState) nameOfNode currentNodesState
+        nodesStateWith newState = return $ Map.adjust (const newState) nameOfNode currentNodesState
 
     case currentNodesState !? nameOfNode of
-      Just ns -> do
+      Just ns ->
         if | itIsErrorMessage aMeta ->
               nodesStateWith $ updateNodeErrors ns aMeta aContent
-           | "cardano.node.upTime" `T.isInfixOf` aName ->
+           | "cardano.node.metrics" `T.isInfixOf` aName ->
             case aContent of
               LogValue "upTime" (Nanoseconds upTimeInNs) ->
                 nodesStateWith $ updateNodeUpTime ns upTimeInNs now
-              _ -> return currentNodesState
-           | "cardano.node.metrics" `T.isInfixOf` aName ->
-            case aContent of
               LogValue "Mem.resident" (PureI pages) ->
                 nodesStateWith $ updateMemoryPages ns pages now
               LogValue "Mem.resident_size" (Bytes bytes) ->    -- Darwin
