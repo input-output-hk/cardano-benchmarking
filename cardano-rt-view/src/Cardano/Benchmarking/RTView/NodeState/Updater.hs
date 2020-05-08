@@ -24,7 +24,6 @@ import           Data.Time.Clock
                    ( NominalDiffTime, UTCTime (..)
                    , addUTCTime, diffUTCTime
                    )
-
 import           Cardano.BM.Backend.Switchboard
                    ( Switchboard, readLogBuffer )
 import           Cardano.BM.Data.Aggregated
@@ -40,7 +39,6 @@ import           Cardano.BM.Trace
                    ( Trace
                    , logDebug
                    )
-
 import           Cardano.Benchmarking.RTView.NodeState.Parsers
                    ( extractPeersInfo, updateCurrentPeersInfo )
 import           Cardano.Benchmarking.RTView.NodeState.Types
@@ -180,7 +178,6 @@ updateNodesState nsMVar loggerName (LogObject aName aMeta aContent) = do
         -- This is a problem, because it means that configuration is unexpected one:
         -- name of node in getAcceptAt doesn't correspond to the name of loggerName.
         return currentNodesState
-
 -- | If this is an error message, it will be shown in "Errors" tab in GUI.
 itIsErrorMessage :: LOMeta -> Bool
 itIsErrorMessage aMeta =
@@ -265,7 +262,7 @@ getValueOf
   -> (Text -> Text)
   -> [Text]
   -> String
-getValueOf elemName aFilter parts = 
+getValueOf elemName aFilter parts =
   case findIndex (\n -> elemName `T.isInfixOf` n) parts of
     Just i  -> T.unpack . aFilter $ parts !! (i + 2) -- Skip '=' mark.
     Nothing -> ""
