@@ -11,14 +11,20 @@ import           Prelude
 import qualified Data.List as L
 import           Data.Map.Strict
                    ( (!) )
+import           Data.Time.Calendar
+                   ( Day (..) )
 import           Data.Time.Clock
-                   ( UTCTime (..) )
+                   ( NominalDiffTime, UTCTime (..)
+                   , addUTCTime
+                   )
 import           Data.Time.Format
                    ( defaultTimeLocale, formatTime )
 import           Data.Text
                    ( unpack )
 import           Formatting
                    ( sformat, fixed, (%) )
+import           GHC.Clock
+                   ( getMonotonicTimeNSec )
 import qualified Graphics.UI.Threepenny as UI
 import           Graphics.UI.Threepenny.Core
                    ( Element, UI
@@ -30,9 +36,11 @@ import           Cardano.BM.Data.Configuration
                    ( RemoteAddrNamed (..), RemoteAddr (..) )
 import           Cardano.BM.Data.Severity
                    ( Severity (..) )
+import           Cardano.Benchmarking.RTView.CLI
+                   ( RTViewParams (..) )
 import           Cardano.Benchmarking.RTView.GUI.Elements
                    ( ElementName (..), ElementValue (..)
-                   , NodesStateElements
+                   , NodeStateElements, NodesStateElements
                    )
 import           Cardano.Benchmarking.RTView.NodeState.Types
                    ( NodeInfo (..), NodeMetrics (..), NodeError (..)
@@ -43,10 +51,11 @@ import           Cardano.Benchmarking.RTView.NodeState.Types
 --   on the page automatically, because threepenny-gui is based on websockets.
 updateGUI
   :: NodesState
+  -> RTViewParams
   -> [RemoteAddrNamed]
   -> NodesStateElements
   -> UI ()
-updateGUI nodesState acceptors nodesStateElems =
+updateGUI nodesState params acceptors nodesStateElems =
   forM_ nodesStateElems $ \(nameOfNode, elements) -> do
     let nodeState = nodesState ! nameOfNode
         (acceptorHost, acceptorPort) = findTraceAcceptorNetInfo nameOfNode acceptors
@@ -108,6 +117,8 @@ updateGUI nodesState acceptors nodesStateElems =
     void $ updateProgressBar (nmNetworkUsageOutPercent nm) $ elements ! ElNetworkOutProgress
     void $ updateProgressBar (nmRTSMemoryUsedPercent nm)   $ elements ! ElRTSMemoryProgress
 
+    markOutdatedElements params ni nm elements
+
 updateElementValue
   :: ElementValue
   -> Element
@@ -142,11 +153,18 @@ updateNodeCommit commit shortCommit commitHref = do
                      # set children [sComm]
 
 updateNodeUpTime
-  :: UTCTime
+  :: Word64
   -> Element
   -> UI Element
-updateNodeUpTime upTime upTimeLabel =
+updateNodeUpTime upTimeInNs upTimeLabel =
   element upTimeLabel # set text (formatTime defaultTimeLocale "%X" upTime)
+ where
+  upTimeInSec :: Double
+  upTimeInSec = fromIntegral upTimeInNs / 1000000000
+  -- We show up time as time with seconds, so we don't need fractions of second.
+  upTimeDiff :: NominalDiffTime
+  upTimeDiff = fromInteger $ round upTimeInSec
+  upTime = addUTCTime upTimeDiff (UTCTime (ModifiedJulianDay 0) 0)
 
 -- | Since peers list will be changed dynamically, we need it
 --   to update corresponding HTML-murkup dynamically as well.
@@ -197,3 +215,165 @@ findTraceAcceptorNetInfo nameOfNode acceptors =
     Nothing -> ("-", "-")
  where
   maybeActiveNode = flip L.find acceptors $ \(RemoteAddrNamed name _) -> name == nameOfNode
+
+-- | If some metric wasn't receive for a long time -
+--   we mark corresponding value in GUI as outdated one.
+markOutdatedElements
+  :: RTViewParams
+  -> NodeInfo
+  -> NodeMetrics
+  -> NodeStateElements
+  -> UI ()
+markOutdatedElements params ni nm els = do
+  now <- liftIO $ getMonotonicTimeNSec
+  -- Different metrics have different lifetime.
+  let niLife  = rtvNodeInfoLife params
+      bcLife  = rtvBlockchainInfoLife params
+      resLife = rtvResourcesInfoLife params
+      rtsLife = rtvRTSInfoLife params
+
+
+  markValueW now (niUpTimeLastUpdate ni)       niLife [ els ! ElUptime
+                                                      , els ! ElNodeRelease
+                                                      , els ! ElNodeVersion
+                                                      , els ! ElNodePlatform
+                                                      , els ! ElNodeCommitHref
+                                                      ]
+                                                      [ els ! ElUptimeOutdateWarning
+                                                      , els ! ElNodeReleaseOutdateWarning
+                                                      , els ! ElNodeVersionOutdateWarning
+                                                      , els ! ElNodePlatformOutdateWarning
+                                                      , els ! ElNodeCommitHrefOutdateWarning
+                                                      ]
+
+  markValue  now (niEpochLastUpdate ni)        bcLife (els ! ElEpoch)
+  markValueW now (niSlotLastUpdate ni)         bcLife [els ! ElSlot]
+                                                      [els ! ElSlotOutdateWarning]
+  markValueW now (niBlocksNumberLastUpdate ni) bcLife [els ! ElBlocksNumber]
+                                                      [els ! ElBlocksNumberOutdateWarning]
+  markValueW now (niChainDensityLastUpdate ni) bcLife [els ! ElChainDensity]
+                                                      [els ! ElChainDensityOutdateWarning]
+
+  markValueW now (nmRTSGcCpuLastUpdate nm)      rtsLife [els ! ElRTSGcCpu]
+                                                        [els ! ElRTSGcCpuOutdateWarning]
+  markValueW now (nmRTSGcElapsedLastUpdate nm)  rtsLife [els ! ElRTSGcElapsed]
+                                                        [els ! ElRTSGcElapsedOutdateWarning]
+  markValueW now (nmRTSGcNumLastUpdate nm)      rtsLife [els ! ElRTSGcNum]
+                                                        [els ! ElRTSGcNumOutdateWarning]
+  markValueW now (nmRTSGcMajorNumLastUpdate nm) rtsLife [els ! ElRTSGcMajorNum]
+                                                        [els ! ElRTSGcMajorNumOutdateWarning]
+
+  -- Mark progress bars' state.
+  markProgressBar now (nmRTSMemoryLastUpdate nm) rtsLife els ( ElRTSMemoryProgress
+                                                             , ElRTSMemoryProgressBox
+                                                             )
+                                                             [ ElRTSMemoryAllocated
+                                                             , ElRTSMemoryUsed
+                                                             , ElRTSMemoryUsedPercent
+                                                             ]
+  markProgressBar now (nmMemoryLastUpdate nm) resLife els ( ElMemoryProgress
+                                                          , ElMemoryProgressBox
+                                                          )
+                                                          [ ElMemoryMaxTotal
+                                                          , ElMemory
+                                                          , ElMemoryMax
+                                                          ]
+  markProgressBar now (nmCPULastUpdate nm)    resLife els ( ElCPUProgress
+                                                          , ElCPUProgressBox
+                                                          )
+                                                          [ ElCPUPercent
+                                                          ]
+  markProgressBar now (nmDiskUsageRLastUpdate nm) resLife els ( ElDiskReadProgress
+                                                              , ElDiskReadProgressBox
+                                                              )
+                                                              [ ElDiskUsageR
+                                                              , ElDiskUsageRMaxTotal
+                                                              ]
+  markProgressBar now (nmDiskUsageWLastUpdate nm) resLife els ( ElDiskWriteProgress
+                                                              , ElDiskWriteProgressBox
+                                                              )
+                                                              [ ElDiskUsageW
+                                                              , ElDiskUsageWMaxTotal
+                                                              ]
+  markProgressBar now (nmNetworkUsageInLastUpdate nm)  resLife els ( ElNetworkInProgress
+                                                                   , ElNetworkInProgressBox
+                                                                   )
+                                                                   [ ElNetworkUsageIn
+                                                                   , ElNetworkUsageInMaxTotal
+                                                                   ]
+  markProgressBar now (nmNetworkUsageOutLastUpdate nm) resLife els ( ElNetworkOutProgress
+                                                                   , ElNetworkOutProgressBox
+                                                                   )
+                                                                   [ ElNetworkUsageOut
+                                                                   , ElNetworkUsageOutMaxTotal
+                                                                   ]
+
+markValue
+  :: Word64
+  -> Word64
+  -> Word64
+  -> Element
+  -> UI ()
+markValue now lastUpdate lifetime el =
+  if now - lastUpdate > lifetime
+    then void $ markAsOutdated el
+    else void $ markAsUpToDate el
+
+markValueW
+  :: Word64
+  -> Word64
+  -> Word64
+  -> [Element]
+  -> [Element]
+  -> UI ()
+markValueW now lastUpdate lifetime els warnings =
+  if now - lastUpdate > lifetime
+    then do
+      mapM_ (void . markAsOutdated) els
+      mapM_ (void . showWarning) warnings
+    else do
+      mapM_ (void . markAsUpToDate) els
+      mapM_ (void . hideWarning) warnings
+
+showWarning, hideWarning :: Element -> UI Element
+showWarning w = element w # set UI.style [("display", "inline")]
+hideWarning w = element w # set UI.style [("display", "none")]
+
+markAsOutdated, markAsUpToDate :: Element -> UI Element
+markAsOutdated el = element el # set UI.class_ "outdated-value"
+markAsUpToDate el = element el # set UI.class_ ""
+
+markProgressBar
+  :: Word64
+  -> Word64
+  -> Word64
+  -> NodeStateElements
+  -> (ElementName, ElementName)
+  -> [ElementName]
+  -> UI ()
+markProgressBar now lastUpdate lifetime els (barName, barBoxName) labelsNames =
+  if now - lastUpdate > lifetime
+    then markBarAsOutdated
+    else markBarAsUpToDate
+ where
+  bar    = els ! barName
+  barBox = els ! barBoxName
+
+  barClass, barBoxClass :: String
+  barClass = show barName
+  barBoxClass = show barBoxName
+
+  barClassOutdated, barBoxClassOutdated :: String
+  barClassOutdated = barClass <> "-outdated"
+  barBoxClassOutdated = barBoxClass <> "-outdated"
+
+  markBarAsOutdated = do
+    void $ element bar    # set UI.class_ barClassOutdated
+    void $ element barBox # set UI.class_ barBoxClassOutdated
+                          # set UI.title__ "The progress values are outdated"
+    forM_ labelsNames $ \name -> void . markAsOutdated $ els ! name
+  markBarAsUpToDate = do
+    void $ element bar    # set UI.class_ barClass
+    void $ element barBox # set UI.class_ barBoxClass
+                          # set UI.title__ ""
+    forM_ labelsNames $ \name -> void . markAsUpToDate $ els ! name

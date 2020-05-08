@@ -150,3 +150,187 @@ a:visited:hover {
 .node-port {
     padding-left: 10px;
 }
+
+.outdated-value {
+    color: #999;
+    font-weight: normal;
+}
+
+.ElRTSMemoryProgress {
+    background-color: #009688;
+    color: white;
+}
+
+.ElRTSMemoryProgress-outdated {
+    background-color: #999;
+    color: #999 !important;
+}
+
+.ElRTSMemoryProgressBox {
+    background-color: #8bc34a;
+}
+
+.ElRTSMemoryProgressBox-outdated {
+    background-color: #aaa;
+    color: #999 !important;
+}
+
+.ElMemoryProgress {
+    background-color: #009688;
+    color: white;
+}
+
+.ElMemoryProgress-outdated {
+    background-color: #999;
+    color: #999 !important;
+}
+
+.ElMemoryProgressBox {
+    background-color: #8bc34a;
+    color: white;
+}
+
+.ElMemoryProgressBox-outdated {
+    background-color: #aaa;
+    color: #999 !important;
+}
+
+.ElMempoolBytesProgress {
+    background-color: #009688;
+    color: white;
+}
+
+.ElMempoolBytesProgress-outdated {
+    background-color: #999;
+    color: #999 !important;
+}
+
+.ElMempoolBytesProgressBox {
+    background-color: #8bc34a;
+    color: white;
+}
+
+.ElMempoolBytesProgressBox-outdated {
+    background-color: #aaa;
+    color: #999 !important;
+}
+
+.ElMempoolTxsProgress {
+    background-color: #009688;
+    color: white;
+}
+
+.ElMempoolTxsProgress-outdated {
+    background-color: #999;
+    color: #999 !important;
+}
+
+.ElMempoolTxsProgressBox {
+    background-color: #8bc34a;
+    color: white;
+}
+
+.ElMempoolTxsProgressBox-outdated {
+    background-color: #aaa;
+    color: #999 !important;
+}
+
+.ElCPUProgress {
+    background-color: #3f51b5;
+    color: white;
+}
+
+.ElCPUProgress-outdated {
+    background-color: #999;
+    color: #999 !important;
+}
+
+.ElCPUProgressBox {
+    background-color: #00bcd4;
+    color: white;
+}
+
+.ElCPUProgressBox-outdated {
+    background-color: #aaa;
+    color: #999 !important;
+}
+
+.ElDiskReadProgress {
+    background-color: #ff5722;
+    color: white;
+}
+
+.ElDiskReadProgress-outdated {
+    background-color: #999;
+    color: #999 !important;
+}
+
+.ElDiskReadProgressBox {
+    background-color: #ffc107;
+    color: white;
+}
+
+.ElDiskReadProgressBox-outdated {
+    background-color: #aaa;
+    color: #999 !important;
+}
+
+.ElDiskWriteProgress {
+    background-color: #ff5722;
+    color: white;
+}
+
+.ElDiskWriteProgress-outdated {
+    background-color: #999;
+    color: #999 !important;
+}
+
+.ElDiskWriteProgressBox {
+    background-color: #ffc107;
+    color: white;
+}
+
+.ElDiskWriteProgressBox-outdated {
+    background-color: #aaa;
+    color: #999 !important;
+}
+
+.ElNetworkInProgress {
+    background-color: #9c27b0;
+    color: white;
+}
+
+.ElNetworkInProgress-outdated {
+    background-color: #999;
+    color: #999 !important;
+}
+
+.ElNetworkInProgressBox {
+    background-color: #ffdddd;
+    color: white;
+}
+
+.ElNetworkInProgressBox-outdated {
+    background-color: #aaa;
+    color: #999 !important;
+}
+
+.ElNetworkOutProgress {
+    background-color: #9c27b0;
+    color: white;
+}
+
+.ElNetworkOutProgress-outdated {
+    background-color: #999;
+    color: #999 !important;
+}
+
+.ElNetworkOutProgressBox {
+    background-color: #ffdddd;
+    color: white;
+}
+
+.ElNetworkOutProgressBox-outdated {
+    background-color: #aaa;
+    color: #999 !important;
+}

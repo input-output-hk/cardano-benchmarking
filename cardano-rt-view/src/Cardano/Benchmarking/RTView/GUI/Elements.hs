@@ -73,17 +73,39 @@ data ElementName
   | ElRTSGcElapsed
   | ElRTSGcNum
   | ElRTSGcMajorNum
+  -- Outdated warnings.
+  | ElNodeReleaseOutdateWarning
+  | ElNodeVersionOutdateWarning
+  | ElNodePlatformOutdateWarning
+  | ElNodeCommitHrefOutdateWarning
+  | ElUptimeOutdateWarning
+  | ElSlotOutdateWarning
+  | ElBlocksNumberOutdateWarning
+  | ElChainDensityOutdateWarning
+  | ElRTSGcCpuOutdateWarning
+  | ElRTSGcElapsedOutdateWarning
+  | ElRTSGcNumOutdateWarning
+  | ElRTSGcMajorNumOutdateWarning
   -- Progress bars.
   | ElMempoolBytesProgress
+  | ElMempoolBytesProgressBox
   | ElMempoolTxsProgress
+  | ElMempoolTxsProgressBox
   | ElMemoryProgress
+  | ElMemoryProgressBox
   | ElCPUProgress
+  | ElCPUProgressBox
   | ElDiskReadProgress
+  | ElDiskReadProgressBox
   | ElDiskWriteProgress
+  | ElDiskWriteProgressBox
   | ElNetworkInProgress
+  | ElNetworkInProgressBox
   | ElNetworkOutProgress
+  | ElNetworkOutProgressBox
   | ElRTSMemoryProgress
-  deriving (Eq, Ord)
+  | ElRTSMemoryProgressBox
+  deriving (Eq, Ord, Show)
 
 data ElementValue
   = ElementInteger Integer
