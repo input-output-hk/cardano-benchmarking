@@ -54,17 +54,22 @@ data NodeInfo = NodeInfo
   , niNodeVersion            :: !String
   , niNodeCommit             :: !String
   , niNodeShortCommit        :: !String
+<<<<<<< HEAD
   , niNodePlatform           :: !String
   , niUpTime                 :: !UTCTime
   , niUpTimeLastUpdate       :: !UTCTime
+=======
+  , niUpTime                 :: !Word64
+  , niUpTimeLastUpdate       :: !Word64
+>>>>>>> CAD-806: Live monitoring, monotonic time instead of UTCTime.
   , niEpoch                  :: !Integer
-  , niEpochLastUpdate        :: !UTCTime
+  , niEpochLastUpdate        :: !Word64
   , niSlot                   :: !Integer
-  , niSlotLastUpdate         :: !UTCTime
+  , niSlotLastUpdate         :: !Word64
   , niBlocksNumber           :: !Integer
-  , niBlocksNumberLastUpdate :: !UTCTime
+  , niBlocksNumberLastUpdate :: !Word64
   , niChainDensity           :: !Double
-  , niChainDensityLastUpdate :: !UTCTime
+  , niChainDensityLastUpdate :: !Word64
   , niTxsProcessed           :: !Integer
   , niPeersNumber            :: !Integer
   , niPeersInfo              :: ![PeerInfo]
@@ -84,11 +89,11 @@ data NodeMetrics = NodeMetrics
   , nmMemoryMax                 :: !Double
   , nmMemoryMaxTotal            :: !Double
   , nmMemoryPercent             :: !Double
-  , nmMemoryLastUpdate          :: !UTCTime
+  , nmMemoryLastUpdate          :: !Word64
   , nmCPUPercent                :: !Double
   , nmCPULast                   :: !Integer
   , nmCPUNs                     :: !Word64
-  , nmCPULastUpdate             :: !UTCTime
+  , nmCPULastUpdate             :: !Word64
   , nmDiskUsageR                :: !Double
   , nmDiskUsageRMax             :: !Double
   , nmDiskUsageRMaxTotal        :: !Double
@@ -96,7 +101,7 @@ data NodeMetrics = NodeMetrics
   , nmDiskUsageRLast            :: !Word64
   , nmDiskUsageRNs              :: !Word64
   , nmDiskUsageRAdaptTime       :: !UTCTime
-  , nmDiskUsageRLastUpdate      :: !UTCTime
+  , nmDiskUsageRLastUpdate      :: !Word64
   , nmDiskUsageW                :: !Double
   , nmDiskUsageWMax             :: !Double
   , nmDiskUsageWMaxTotal        :: !Double
@@ -104,33 +109,33 @@ data NodeMetrics = NodeMetrics
   , nmDiskUsageWLast            :: !Word64
   , nmDiskUsageWNs              :: !Word64
   , nmDiskUsageWAdaptTime       :: !UTCTime
-  , nmDiskUsageWLastUpdate      :: !UTCTime
+  , nmDiskUsageWLastUpdate      :: !Word64
   , nmNetworkUsageIn            :: !Double
   , nmNetworkUsageInPercent     :: !Double
   , nmNetworkUsageInMax         :: !Double
   , nmNetworkUsageInMaxTotal    :: !Double
   , nmNetworkUsageInLast        :: !Word64
   , nmNetworkUsageInNs          :: !Word64
-  , nmNetworkUsageInLastUpdate  :: !UTCTime
+  , nmNetworkUsageInLastUpdate  :: !Word64
   , nmNetworkUsageOut           :: !Double
   , nmNetworkUsageOutPercent    :: !Double
   , nmNetworkUsageOutMax        :: !Double
   , nmNetworkUsageOutMaxTotal   :: !Double
   , nmNetworkUsageOutLast       :: !Word64
   , nmNetworkUsageOutNs         :: !Word64
-  , nmNetworkUsageOutLastUpdate :: !UTCTime
+  , nmNetworkUsageOutLastUpdate :: !Word64
   , nmRTSMemoryAllocated        :: !Double
   , nmRTSMemoryUsed             :: !Double
   , nmRTSMemoryUsedPercent      :: !Double
-  , nmRTSMemoryLastUpdate       :: !UTCTime
+  , nmRTSMemoryLastUpdate       :: !Word64
   , nmRTSGcCpu                  :: !Double
-  , nmRTSGcCpuLastUpdate        :: !UTCTime
+  , nmRTSGcCpuLastUpdate        :: !Word64
   , nmRTSGcElapsed              :: !Double
-  , nmRTSGcElapsedLastUpdate    :: !UTCTime
+  , nmRTSGcElapsedLastUpdate    :: !Word64
   , nmRTSGcNum                  :: !Integer
-  , nmRTSGcNumLastUpdate        :: !UTCTime
+  , nmRTSGcNumLastUpdate        :: !Word64
   , nmRTSGcMajorNum             :: !Integer
-  , nmRTSGcMajorNumLastUpdate   :: !UTCTime
+  , nmRTSGcMajorNumLastUpdate   :: !Word64
   } deriving Show
 
 defaultNodesState
@@ -157,17 +162,22 @@ defaultNodeInfo = NodeInfo
   , niNodeVersion            = "-"
   , niNodeCommit             = "-"
   , niNodeShortCommit        = "-"
+<<<<<<< HEAD
   , niNodePlatform           = "?"
   , niUpTime                 = UTCTime (ModifiedJulianDay 0) 0
   , niUpTimeLastUpdate       = UTCTime (ModifiedJulianDay 0) 0
+=======
+  , niUpTime                 = 0
+  , niUpTimeLastUpdate       = 0
+>>>>>>> CAD-806: Live monitoring, monotonic time instead of UTCTime.
   , niEpoch                  = 0
-  , niEpochLastUpdate        = UTCTime (ModifiedJulianDay 0) 0
+  , niEpochLastUpdate        = 0
   , niSlot                   = 0
-  , niSlotLastUpdate         = UTCTime (ModifiedJulianDay 0) 0
+  , niSlotLastUpdate         = 0
   , niBlocksNumber           = 0
-  , niBlocksNumberLastUpdate = UTCTime (ModifiedJulianDay 0) 0
+  , niBlocksNumberLastUpdate = 0
   , niChainDensity           = 0.0
-  , niChainDensityLastUpdate = UTCTime (ModifiedJulianDay 0) 0
+  , niChainDensityLastUpdate = 0
   , niTxsProcessed           = 0
   , niPeersNumber            = 0
   , niPeersInfo              = []
@@ -188,11 +198,11 @@ defaultNodeMetrics = NodeMetrics
   , nmMemoryMax                 = 0.0
   , nmMemoryMaxTotal            = 200.0
   , nmMemoryPercent             = 0.0
-  , nmMemoryLastUpdate          = UTCTime (ModifiedJulianDay 0) 0
+  , nmMemoryLastUpdate          = 0
   , nmCPUPercent                = 0.5
   , nmCPULast                   = 0
   , nmCPUNs                     = 10000
-  , nmCPULastUpdate             = UTCTime (ModifiedJulianDay 0) 0
+  , nmCPULastUpdate             = 0
   , nmDiskUsageR                = 0.0
   , nmDiskUsageRMax             = 0.0
   , nmDiskUsageRMaxTotal        = 0.0
@@ -200,7 +210,7 @@ defaultNodeMetrics = NodeMetrics
   , nmDiskUsageRLast            = 0
   , nmDiskUsageRNs              = 10000
   , nmDiskUsageRAdaptTime       = UTCTime (ModifiedJulianDay 0) 0
-  , nmDiskUsageRLastUpdate      = UTCTime (ModifiedJulianDay 0) 0
+  , nmDiskUsageRLastUpdate      = 0
   , nmDiskUsageW                = 0.0
   , nmDiskUsageWMax             = 0.0
   , nmDiskUsageWMaxTotal        = 0.0
@@ -208,33 +218,33 @@ defaultNodeMetrics = NodeMetrics
   , nmDiskUsageWLast            = 0
   , nmDiskUsageWNs              = 10000
   , nmDiskUsageWAdaptTime       = UTCTime (ModifiedJulianDay 0) 0
-  , nmDiskUsageWLastUpdate      = UTCTime (ModifiedJulianDay 0) 0
+  , nmDiskUsageWLastUpdate      = 0
   , nmNetworkUsageIn            = 0.0
   , nmNetworkUsageInPercent     = 0.0
   , nmNetworkUsageInMax         = 0.0
   , nmNetworkUsageInMaxTotal    = 0.0
   , nmNetworkUsageInLast        = 0
   , nmNetworkUsageInNs          = 10000
-  , nmNetworkUsageInLastUpdate  = UTCTime (ModifiedJulianDay 0) 0
+  , nmNetworkUsageInLastUpdate  = 0
   , nmNetworkUsageOut           = 0.0
   , nmNetworkUsageOutPercent    = 0.0
   , nmNetworkUsageOutMax        = 0.0
   , nmNetworkUsageOutMaxTotal   = 0.0
   , nmNetworkUsageOutLast       = 0
   , nmNetworkUsageOutNs         = 10000
-  , nmNetworkUsageOutLastUpdate = UTCTime (ModifiedJulianDay 0) 0
+  , nmNetworkUsageOutLastUpdate = 0
   , nmRTSMemoryAllocated        = 1.0
   , nmRTSMemoryUsed             = 0.1
   , nmRTSMemoryUsedPercent      = 1.0
-  , nmRTSMemoryLastUpdate       = UTCTime (ModifiedJulianDay 0) 0
+  , nmRTSMemoryLastUpdate       = 0
   , nmRTSGcCpu                  = 0.1
-  , nmRTSGcCpuLastUpdate        = UTCTime (ModifiedJulianDay 0) 0
+  , nmRTSGcCpuLastUpdate        = 0
   , nmRTSGcElapsed              = 0.1
-  , nmRTSGcElapsedLastUpdate    = UTCTime (ModifiedJulianDay 0) 0
+  , nmRTSGcElapsedLastUpdate    = 0
   , nmRTSGcNum                  = 0
-  , nmRTSGcNumLastUpdate        = UTCTime (ModifiedJulianDay 0) 0
+  , nmRTSGcNumLastUpdate        = 0
   , nmRTSGcMajorNum             = 0
-  , nmRTSGcMajorNumLastUpdate   = UTCTime (ModifiedJulianDay 0) 0
+  , nmRTSGcMajorNumLastUpdate   = 0
   }
  where
   maxBytesPerTx = 4096 :: Word64

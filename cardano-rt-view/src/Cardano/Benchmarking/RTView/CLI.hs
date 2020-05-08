@@ -6,8 +6,6 @@ module Cardano.Benchmarking.RTView.CLI
 import           Cardano.Prelude hiding ( option )
 import           Prelude
                    ( String )
-import           Data.Time.Clock
-                   ( NominalDiffTime )
 import           Options.Applicative
                    ( Parser
                    , auto, bashCompleter, completer, help
@@ -22,10 +20,10 @@ data RTViewParams = RTViewParams
   { rtvConfig             :: !FilePath
   , rtvStatic             :: !FilePath
   , rtvPort               :: !PortNumber
-  , rtvNodeInfoLife       :: !NominalDiffTime
-  , rtvBlockchainInfoLife :: !NominalDiffTime
-  , rtvResourcesInfoLife  :: !NominalDiffTime
-  , rtvRTSInfoLife        :: !NominalDiffTime
+  , rtvNodeInfoLife       :: !Word64
+  , rtvBlockchainInfoLife :: !Word64
+  , rtvResourcesInfoLife  :: !Word64
+  , rtvRTSInfoLife        :: !Word64
   }
 
 parseRTViewParams :: Parser RTViewParams
@@ -78,22 +76,25 @@ parsePort
   -> String
   -> Parser PortNumber
 parsePort optname desc =
-    option ((fromIntegral :: Int -> PortNumber) <$> auto) (
-          long optname
-       <> metavar "PORT"
-       <> help desc
-    )
+  option ((fromIntegral :: Int -> PortNumber) <$> auto) (
+       long optname
+    <> metavar "PORT"
+    <> help desc
+  )
 
 parseDiffTime
   :: String
   -> String
-  -> NominalDiffTime
-  -> Parser NominalDiffTime
-parseDiffTime optname desc defaultTime =
-    option ((fromIntegral :: Int -> NominalDiffTime) <$> auto) (
-          long optname
-       <> metavar "DIFFTIME"
-       <> help desc
-       <> value defaultTime
-       <> showDefault
-    )
+  -> Int
+  -> Parser Word64
+parseDiffTime optname desc defaultTimeInSec =
+  option (secToNanosec <$> auto) (
+       long optname
+    <> metavar "DIFFTIME"
+    <> help desc
+    <> value (secToNanosec defaultTimeInSec)
+    <> showDefault
+  )
+ where
+  secToNanosec :: Int -> Word64
+  secToNanosec s = fromIntegral $ s * 1000000000

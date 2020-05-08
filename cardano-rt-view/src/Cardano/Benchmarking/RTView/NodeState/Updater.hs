@@ -18,12 +18,12 @@ import qualified Data.Map.Strict as Map
 import           Data.Map.Strict
                    ( (!?) )
 import qualified Data.Text as T
-import           Data.Time.Calendar
-                   ( Day (..) )
 import           Data.Time.Clock
-                   ( NominalDiffTime, UTCTime (..)
-                   , addUTCTime, diffUTCTime, getCurrentTime
+                   ( NominalDiffTime
+                   , diffUTCTime
                    )
+import           GHC.Clock
+                   ( getMonotonicTimeNSec )
 
 import           Cardano.BM.Backend.Switchboard
                    ( Switchboard, readLogBuffer )
@@ -87,7 +87,7 @@ updateNodesState nsMVar loggerName (LogObject aName aMeta aContent) = do
   let loggerNameParts = filter (not . T.null) $ T.splitOn "." loggerName
       nameOfNode = loggerNameParts !! 3
 
-  now <- getCurrentTime
+  now <- getMonotonicTimeNSec
 
   modifyMVar_ nsMVar $ \currentNodesState -> do
     let nodesStateWith :: NodeState -> IO NodesState
@@ -207,21 +207,15 @@ itIsErrorMessage aMeta =
 
 -- Updaters for particular node state's fields.
 
-updateNodeUpTime :: NodeState -> Word64 -> UTCTime -> NodeState
+updateNodeUpTime :: NodeState -> Word64 -> Word64 -> NodeState
 updateNodeUpTime ns upTimeInNs now = ns { nsInfo = newNi }
  where
   newNi =
     currentNi
-      { niUpTime = upTime
+      { niUpTime = upTimeInNs
       , niUpTimeLastUpdate = now
       }
   currentNi = nsInfo ns
-  upTimeInSec :: Double
-  upTimeInSec = fromIntegral upTimeInNs / 1000000000
-  -- We show up time as time with seconds, so we don't need fractions of second.
-  upTimeDiff :: NominalDiffTime
-  upTimeDiff = fromInteger $ round upTimeInSec
-  upTime = addUTCTime upTimeDiff (UTCTime (ModifiedJulianDay 0) 0)
 
 updateNodeErrors :: Show a => NodeState -> LOMeta -> LOContent a -> NodeState
 updateNodeErrors ns (LOMeta timeStamp _ _ sev _) aContent = ns { nsInfo = newNi }
@@ -283,7 +277,7 @@ getValueOf
   -> (Text -> Text)
   -> [Text]
   -> String
-getValueOf elemName aFilter parts = 
+getValueOf elemName aFilter parts =
   case findIndex (\n -> elemName `T.isInfixOf` n) parts of
     Just i  -> T.unpack . aFilter $ parts !! (i + 2) -- Skip '=' mark.
     Nothing -> ""
@@ -325,7 +319,7 @@ updateNodePlatform ns platfid = ns { nsInfo = newNi }
   newNi = currentNi { niNodePlatform = show platform }
   currentNi = nsInfo ns
 
-updateMemoryUsage :: NodeState -> Integer -> UTCTime -> NodeState
+updateMemoryUsage :: NodeState -> Integer -> Word64 -> NodeState
 updateMemoryUsage ns pages now = ns { nsMetrics = newNm }
  where
   newNm =
@@ -359,7 +353,7 @@ updateMemoryBytes ns bytes = ns { nsMetrics = newNm }
   newMaxTotal = max newMax 200.0
   mBytes      = fromIntegral bytes / 1024 / 1024 :: Double
 
-updateDiskRead :: NodeState -> Word64 -> LOMeta -> UTCTime -> NodeState
+updateDiskRead :: NodeState -> Word64 -> LOMeta -> Word64 -> NodeState
 updateDiskRead ns bytesWereRead meta now = ns { nsMetrics = newNm }
  where
   newNm =
@@ -392,7 +386,7 @@ updateDiskRead ns bytesWereRead meta now = ns { nsMetrics = newNm }
           else (max currentDiskRate $ nmDiskUsageRMax currentNm, lastAdaptTime)
   diskUsageRPercent = currentDiskRate / (maxDiskRate / 100.0)
 
-updateDiskWrite :: NodeState -> Word64 -> LOMeta -> UTCTime -> NodeState
+updateDiskWrite :: NodeState -> Word64 -> LOMeta -> Word64 -> NodeState
 updateDiskWrite ns bytesWereWritten meta now = ns { nsMetrics = newNm }
  where
   newNm =
@@ -485,7 +479,7 @@ updateNetworkIn ns inBytes meta now = ns { nsMetrics = newNm }
   currentNetRate  = bytesDiffInKB / timeDiffInSecs
   maxNetRate      = max currentNetRate $ nmNetworkUsageInMax currentNm
 
-updateNetworkOut :: NodeState -> Word64 -> LOMeta -> UTCTime -> NodeState
+updateNetworkOut :: NodeState -> Word64 -> LOMeta -> Word64 -> NodeState
 updateNetworkOut ns outBytes meta now = ns { nsMetrics = newNm }
  where
   newNm =
@@ -537,8 +531,8 @@ updateTxsProcessed ns txsProcessed = ns { nsInfo = newNi }
   newNi = currentNi { niTxsProcessed = niTxsProcessed currentNi + txsProcessed }
   currentNi = nsInfo ns
 
-updateRTSBytesAllocated :: NodeState -> Word64 -> NodeState
-updateRTSBytesAllocated ns bytesAllocated = ns { nsMetrics = newNm }
+updateRTSBytesAllocated :: NodeState -> Word64 -> Word64 -> NodeState
+updateRTSBytesAllocated ns bytesAllocated now = ns { nsMetrics = newNm }
  where
   newNm =
     currentNm
@@ -548,8 +542,8 @@ updateRTSBytesAllocated ns bytesAllocated = ns { nsMetrics = newNm }
   currentNm = nsMetrics ns
   mBytes    = fromIntegral bytesAllocated / 1024 / 1024 :: Double
 
-updateRTSBytesUsed :: NodeState -> Word64 -> NodeState
-updateRTSBytesUsed ns usedMemBytes = ns { nsMetrics = newNm }
+updateRTSBytesUsed :: NodeState -> Word64 -> Word64 -> NodeState
+updateRTSBytesUsed ns usedMemBytes now = ns { nsMetrics = newNm }
  where
   newNm =
     currentNm
@@ -562,7 +556,7 @@ updateRTSBytesUsed ns usedMemBytes = ns { nsMetrics = newNm }
   currentNm = nsMetrics ns
   mBytes    = fromIntegral usedMemBytes / 1024 / 1024 :: Double
 
-updateGcCpuNs :: NodeState -> Word64 -> UTCTime -> NodeState
+updateGcCpuNs :: NodeState -> Word64 -> Word64 -> NodeState
 updateGcCpuNs ns gcCpuNs now = ns { nsMetrics = newNm }
  where
   newNm     = currentNm { nmRTSGcCpu = seconds
@@ -571,7 +565,7 @@ updateGcCpuNs ns gcCpuNs now = ns { nsMetrics = newNm }
   currentNm = nsMetrics ns
   seconds   = (fromIntegral gcCpuNs) / 1000000000 :: Double
 
-updateGcElapsedNs :: NodeState -> Word64 -> UTCTime -> NodeState
+updateGcElapsedNs :: NodeState -> Word64 -> Word64 -> NodeState
 updateGcElapsedNs ns gcElapsedNs now = ns { nsMetrics = newNm }
  where
   newNm     = currentNm { nmRTSGcElapsed = seconds
@@ -580,7 +574,7 @@ updateGcElapsedNs ns gcElapsedNs now = ns { nsMetrics = newNm }
   currentNm = nsMetrics ns
   seconds   = (fromIntegral gcElapsedNs) / 1000000000 :: Double
 
-updateGcNum :: NodeState -> Integer -> UTCTime -> NodeState
+updateGcNum :: NodeState -> Integer -> Word64 -> NodeState
 updateGcNum ns gcNum now = ns { nsMetrics = newNm }
  where
   newNm     = currentNm { nmRTSGcNum = gcNum
@@ -588,7 +582,7 @@ updateGcNum ns gcNum now = ns { nsMetrics = newNm }
                         }
   currentNm = nsMetrics ns
 
-updateGcMajorNum :: NodeState -> Integer -> UTCTime -> NodeState
+updateGcMajorNum :: NodeState -> Integer -> Word64 -> NodeState
 updateGcMajorNum ns gcMajorNum now = ns { nsMetrics = newNm }
  where
   newNm     = currentNm { nmRTSGcMajorNum = gcMajorNum
@@ -596,7 +590,7 @@ updateGcMajorNum ns gcMajorNum now = ns { nsMetrics = newNm }
                         }
   currentNm = nsMetrics ns
 
-updateChainDensity :: NodeState -> Double -> UTCTime -> NodeState
+updateChainDensity :: NodeState -> Double -> Word64 -> NodeState
 updateChainDensity ns density now = ns { nsInfo = newNi }
  where
   newNi = (nsInfo ns) { niChainDensity = chainDensity
@@ -609,21 +603,21 @@ updatePeersNumber ns peersNum = ns { nsInfo = newNi }
  where
   newNi = (nsInfo ns) { niPeersNumber = peersNum }
 
-updateBlocksNumber :: NodeState -> Integer -> UTCTime -> NodeState
+updateBlocksNumber :: NodeState -> Integer -> Word64 -> NodeState
 updateBlocksNumber ns blockNum now = ns { nsInfo = newNi }
  where
-  newNi = (nsInfo ns) { niBlocksNumber = blockNum 
+  newNi = (nsInfo ns) { niBlocksNumber = blockNum
                       , niBlocksNumberLastUpdate = now
                       }
 
-updateSlotInEpoch :: NodeState -> Integer -> UTCTime -> NodeState
+updateSlotInEpoch :: NodeState -> Integer -> Word64 -> NodeState
 updateSlotInEpoch ns slotNum now = ns { nsInfo = newNi }
  where
   newNi = (nsInfo ns) { niSlot = slotNum
                       , niSlotLastUpdate = now
                       }
 
-updateEpoch :: NodeState -> Integer -> UTCTime -> NodeState
+updateEpoch :: NodeState -> Integer -> Word64 -> NodeState
 updateEpoch ns epoch now = ns { nsInfo = newNi }
  where
   newNi = (nsInfo ns) { niEpoch = epoch

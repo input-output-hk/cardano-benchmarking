@@ -11,9 +11,11 @@ import           Prelude
 import qualified Data.List as L
 import           Data.Map.Strict
                    ( (!) )
+import           Data.Time.Calendar
+                   ( Day (..) )
 import           Data.Time.Clock
                    ( NominalDiffTime, UTCTime (..)
-                   , diffUTCTime, getCurrentTime
+                   , addUTCTime
                    )
 import           Data.Time.Format
                    ( defaultTimeLocale, formatTime )
@@ -21,6 +23,8 @@ import           Data.Text
                    ( unpack )
 import           Formatting
                    ( sformat, fixed, (%) )
+import           GHC.Clock
+                   ( getMonotonicTimeNSec )
 import qualified Graphics.UI.Threepenny as UI
 import           Graphics.UI.Threepenny.Core
                    ( Element, UI
@@ -149,11 +153,18 @@ updateNodeCommit commit shortCommit commitHref = do
                      # set children [sComm]
 
 updateNodeUpTime
-  :: UTCTime
+  :: Word64
   -> Element
   -> UI Element
-updateNodeUpTime upTime upTimeLabel =
+updateNodeUpTime upTimeInNs upTimeLabel =
   element upTimeLabel # set text (formatTime defaultTimeLocale "%X" upTime)
+ where
+  upTimeInSec :: Double
+  upTimeInSec = fromIntegral upTimeInNs / 1000000000
+  -- We show up time as time with seconds, so we don't need fractions of second.
+  upTimeDiff :: NominalDiffTime
+  upTimeDiff = fromInteger $ round upTimeInSec
+  upTime = addUTCTime upTimeDiff (UTCTime (ModifiedJulianDay 0) 0)
 
 -- | Since peers list will be changed dynamically, we need it
 --   to update corresponding HTML-murkup dynamically as well.
@@ -214,7 +225,7 @@ markOutdatedElements
   -> NodeStateElements
   -> UI ()
 markOutdatedElements params ni nm els = do
-  now <- liftIO $ getCurrentTime
+  now <- liftIO $ getMonotonicTimeNSec
   -- Different metrics have different lifetime.
   let niLife  = rtvNodeInfoLife params
       bcLife  = rtvBlockchainInfoLife params
@@ -296,25 +307,25 @@ markOutdatedElements params ni nm els = do
                                                                    ]
 
 markValue
-  :: UTCTime
-  -> UTCTime
-  -> NominalDiffTime
+  :: Word64
+  -> Word64
+  -> Word64
   -> Element
   -> UI ()
 markValue now lastUpdate lifetime el =
-  if diffUTCTime now lastUpdate > lifetime
+  if now - lastUpdate > lifetime
     then void $ markAsOutdated el
     else void $ markAsUpToDate el
 
 markValueW
-  :: UTCTime
-  -> UTCTime
-  -> NominalDiffTime
+  :: Word64
+  -> Word64
+  -> Word64
   -> [Element]
   -> [Element]
   -> UI ()
 markValueW now lastUpdate lifetime els warnings =
-  if diffUTCTime now lastUpdate > lifetime
+  if now - lastUpdate > lifetime
     then do
       mapM_ (void . markAsOutdated) els
       mapM_ (void . showWarning) warnings
@@ -331,15 +342,15 @@ markAsOutdated el = element el # set UI.class_ "outdated-value"
 markAsUpToDate el = element el # set UI.class_ ""
 
 markProgressBar
-  :: UTCTime
-  -> UTCTime
-  -> NominalDiffTime
+  :: Word64
+  -> Word64
+  -> Word64
   -> NodeStateElements
   -> (ElementName, ElementName)
   -> [ElementName]
   -> UI ()
 markProgressBar now lastUpdate lifetime els (barName, barBoxName) labelsNames =
-  if diffUTCTime now lastUpdate > lifetime
+  if now - lastUpdate > lifetime
     then markBarAsOutdated
     else markBarAsUpToDate
  where
