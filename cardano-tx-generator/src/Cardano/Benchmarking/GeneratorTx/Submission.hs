@@ -28,9 +28,10 @@ import           Cardano.Prelude hiding (ByteString, atomically, retry, threadDe
 import           Control.Exception (assert)
 import           Control.Monad.Class.MonadST (MonadST)
 import           Control.Monad.Class.MonadSTM (MonadSTM, TMVar, TVar,
-                                               atomically, newEmptyTMVarM, putTMVar, readTVar,
-                                               retry, takeTMVar, tryTakeTMVar)
-import           Control.Monad.Class.MonadTime (MonadTime(..), addTime, diffTime, Time)
+                   atomically, newEmptyTMVarM, putTMVar, readTVar, retry,
+                   takeTMVar, tryTakeTMVar)
+import           Control.Monad.Class.MonadTime (MonadTime(..), Time, addTime,
+                   diffTime, getMonotonicTime)
 import           Control.Monad.Class.MonadTimer (MonadTimer, threadDelay)
 import           Control.Monad.Class.MonadThrow (MonadThrow)
 

@@ -57,6 +57,7 @@ updateGUI nodesState acceptors nodesStateElems =
 
     void $ updateElementValue (ElementString  $ niNodeRelease ni)             $ elements ! ElNodeRelease
     void $ updateElementValue (ElementString  $ niNodeVersion ni)             $ elements ! ElNodeVersion
+    void $ updateElementValue (ElementString  $ niNodePlatform ni)            $ elements ! ElNodePlatform
     void $ updateNodeCommit   (niNodeCommit ni) (niNodeShortCommit ni)        $ elements ! ElNodeCommitHref
     void $ updateElementValue (ElementString activeNodeMark)                  $ elements ! ElActiveNode
     void $ updateNodeUpTime   (niUpTime ni)                                   $ elements ! ElUptime

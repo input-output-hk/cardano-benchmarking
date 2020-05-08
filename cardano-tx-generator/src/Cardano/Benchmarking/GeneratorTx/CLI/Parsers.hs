@@ -16,7 +16,7 @@ import           Network.Socket (PortNumber)
 
 import           Cardano.Config.Types
                     ( SigningKeyFile(..)
-                    , DelegationCertFile(..)
+                    -- , DelegationCertFile(..)
                     , GenesisFile(..)
                     , SocketPath(..)
                     , NodeAddress(..)
@@ -112,8 +112,8 @@ parseTargetNodeAddress optname desc =
       <> metavar "(HOST,PORT)"
       <> help desc
 
-parseHostAddress :: String -> NodeHostAddress
-parseHostAddress = NodeHostAddress . Just .
+parseHostAddress :: String -> Maybe NodeHostAddress
+parseHostAddress = Just . NodeHostAddress .
   maybe (panic "Bad host of target node") identity . readMaybe
 
 parsePort :: Word16 -> PortNumber

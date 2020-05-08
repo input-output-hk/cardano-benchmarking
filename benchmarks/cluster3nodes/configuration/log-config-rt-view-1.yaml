@@ -63,11 +63,11 @@ options:
       - kind: UserDefinedBK
         name: LiveViewBackend
       - TraceForwarderBK
-    cardano.node.metrics:
+    cardano.node-metrics:
       - kind: UserDefinedBK
         name: LiveViewBackend
       - TraceForwarderBK
-    cardano.node.BlockFetchDecision:
+    cardano.node.metrics:
       - kind: UserDefinedBK
         name: LiveViewBackend
       - TraceForwarderBK
@@ -101,7 +101,7 @@ RequiresNetworkMagic: RequiresMagic
 PBftSignatureThreshold:
 TurnOnLogging: True
 ViewMode: LiveView
-TurnOnLogMetrics: False
+TurnOnLogMetrics: True
 SocketPath:
 
 

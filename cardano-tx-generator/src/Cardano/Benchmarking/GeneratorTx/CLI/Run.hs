@@ -17,6 +17,7 @@ import           Control.Monad.Trans.Except.Extra
                     ( firstExceptT )
 
 import qualified Ouroboros.Consensus.Cardano as Consensus
+import           Ouroboros.Network.Block (MaxSlotNo (..))
 import           Ouroboros.Network.NodeToClient
                     ( IOManager
                     , withIOManager
@@ -26,10 +27,10 @@ import qualified Cardano.Chain.Genesis as Genesis
 import           Cardano.Chain.Update (ApplicationName(..))
 import           Cardano.Config.Logging
                     ( createLoggingFeature )
-import           Cardano.Config.Protocol.Byron
+import           Cardano.Config.Byron.Protocol
                     ( ByronProtocolInstantiationError(..)
                     , mkConsensusProtocolRealPBFT )
-import           Cardano.Config.Protocol.Types (SomeConsensusProtocol(..))
+import           Cardano.Config.Protocol (SomeConsensusProtocol(..))
 import           Cardano.Config.Types
                     ( DbFile(..), ConfigError(..), ConfigYamlFilePath(..)
                     , CardanoEnvironment(..), CLISocketPath(..)
@@ -79,7 +80,7 @@ runCommand (GenerateTxs logConfigFp
   withIOManagerE $ \iocp -> do
     let ncli = NodeCLI
                { nodeMode = RealProtocolMode
-               , nodeAddr = NodeAddress (NodeHostAddress Nothing) 19999
+               , nodeAddr = NodeAddress Nothing 19999
                , configFile = ConfigYamlFilePath logConfigFp
                , topologyFile = TopologyFile "" -- Tx generator doesn't use topology
                , databaseFile = DbFile ""       -- Tx generator doesn't use database
@@ -93,6 +94,7 @@ runCommand (GenerateTxs logConfigFp
                   }
                , validateDB = False
                , shutdownIPC = Nothing
+               , shutdownOnSlotSynced = NoMaxSlotNo
                }
     -- Default update value
     let update = Update (ApplicationName "cardano-tx-generator") 1 $ LastKnownBlockVersion 0 2 0

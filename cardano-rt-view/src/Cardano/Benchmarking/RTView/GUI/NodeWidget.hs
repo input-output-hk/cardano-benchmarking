@@ -30,6 +30,7 @@ mkNodeWidget = do
   -- later they will be updated by acceptor thread.
   elNodeRelease             <- string ""
   elNodeVersion             <- string ""
+  elNodePlatform            <- string ""
   elActiveNode              <- string "-"
   elUptime                  <- string "00:00:00"
   elEpoch                   <- string "0"
@@ -135,6 +136,7 @@ mkNodeWidget = do
                  [ UI.div #. "" #+
                      [ UI.div #. "" #+ [string "Node release:"]
                      , UI.div #. "" #+ [string "Node version:"]
+                     , UI.div #. "" #+ [string "Node platform:"]
                      , UI.div #. "" #+ [string "Node commit:"]
                      , vSpacer "node-info-v-spacer"
                      , UI.div #. "" #+ [string "TraceAcceptor host:"]
@@ -147,6 +149,7 @@ mkNodeWidget = do
                  [ UI.div #. "node-info-values" #+
                      [ UI.span #. "release-name" #+ [element elNodeRelease]
                      , UI.div #. "" #+ [element elNodeVersion]
+                     , UI.div #. "" #+ [element elNodePlatform]
                      , UI.div #. "commit-link" #+ [element elNodeCommitHref]
                      , vSpacer "node-info-v-spacer"
                      , UI.div #. "" #+ [element elTraceAcceptorHost]
@@ -455,6 +458,7 @@ mkNodeWidget = do
         Map.fromList
           [ (ElNodeRelease,             elNodeRelease)
           , (ElNodeVersion,             elNodeVersion)
+          , (ElNodePlatform,            elNodePlatform)
           , (ElNodeCommitHref,          elNodeCommitHref)
           , (ElActiveNode,              elActiveNode)
           , (ElUptime,                  elUptime)
