@@ -236,11 +236,13 @@ markOutdatedElements params ni nm els = do
   markValueW now (niUpTimeLastUpdate ni)       niLife [ els ! ElUptime
                                                       , els ! ElNodeRelease
                                                       , els ! ElNodeVersion
+                                                      , els ! ElNodePlatform
                                                       , els ! ElNodeCommitHref
                                                       ]
                                                       [ els ! ElUptimeOutdateWarning
                                                       , els ! ElNodeReleaseOutdateWarning
                                                       , els ! ElNodeVersionOutdateWarning
+                                                      , els ! ElNodePlatformOutdateWarning
                                                       , els ! ElNodeCommitHrefOutdateWarning
                                                       ]
 

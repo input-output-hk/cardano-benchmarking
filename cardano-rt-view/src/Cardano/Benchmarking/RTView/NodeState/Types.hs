@@ -54,14 +54,9 @@ data NodeInfo = NodeInfo
   , niNodeVersion            :: !String
   , niNodeCommit             :: !String
   , niNodeShortCommit        :: !String
-<<<<<<< HEAD
   , niNodePlatform           :: !String
-  , niUpTime                 :: !UTCTime
-  , niUpTimeLastUpdate       :: !UTCTime
-=======
   , niUpTime                 :: !Word64
   , niUpTimeLastUpdate       :: !Word64
->>>>>>> CAD-806: Live monitoring, monotonic time instead of UTCTime.
   , niEpoch                  :: !Integer
   , niEpochLastUpdate        :: !Word64
   , niSlot                   :: !Integer
@@ -162,14 +157,9 @@ defaultNodeInfo = NodeInfo
   , niNodeVersion            = "-"
   , niNodeCommit             = "-"
   , niNodeShortCommit        = "-"
-<<<<<<< HEAD
   , niNodePlatform           = "?"
-  , niUpTime                 = UTCTime (ModifiedJulianDay 0) 0
-  , niUpTimeLastUpdate       = UTCTime (ModifiedJulianDay 0) 0
-=======
   , niUpTime                 = 0
   , niUpTimeLastUpdate       = 0
->>>>>>> CAD-806: Live monitoring, monotonic time instead of UTCTime.
   , niEpoch                  = 0
   , niEpochLastUpdate        = 0
   , niSlot                   = 0

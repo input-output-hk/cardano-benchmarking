@@ -147,6 +147,7 @@ mkNodeWidget = do
 
   elNodeReleaseOutdateWarning    <- infoMark "The value is outdated"
   elNodeVersionOutdateWarning    <- infoMark "The value is outdated"
+  elNodePlatformOutdateWarning   <- infoMark "The value is outdated"
   elNodeCommitHrefOutdateWarning <- infoMark "The value is outdated"
   elUptimeOutdateWarning         <- infoMark "The value is outdated"
 
@@ -193,6 +194,7 @@ mkNodeWidget = do
                  [ UI.div #. "" #+
                      [ UI.span #. "" #+ [element elNodeReleaseOutdateWarning]
                      , UI.div #. "" #+ [element elNodeVersionOutdateWarning]
+                     , UI.div #. "" #+ [element elNodePlatformOutdateWarning]
                      , UI.div #. "" #+ [element elNodeCommitHrefOutdateWarning]
                      , vSpacer "node-info-v-spacer"
                      , UI.div #. "" #+ [UI.span # set UI.html "&nbsp;" #+ []]
@@ -543,6 +545,7 @@ mkNodeWidget = do
           -- Outdated warnings
           , (ElNodeReleaseOutdateWarning,    elNodeReleaseOutdateWarning)
           , (ElNodeVersionOutdateWarning,    elNodeVersionOutdateWarning)
+          , (ElNodePlatformOutdateWarning,   elNodePlatformOutdateWarning)
           , (ElNodeCommitHrefOutdateWarning, elNodeCommitHrefOutdateWarning)
           , (ElUptimeOutdateWarning,         elUptimeOutdateWarning)
           , (ElSlotOutdateWarning,           elSlotOutdateWarning)

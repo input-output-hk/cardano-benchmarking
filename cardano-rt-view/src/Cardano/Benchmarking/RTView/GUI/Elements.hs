@@ -76,6 +76,7 @@ data ElementName
   -- Outdated warnings.
   | ElNodeReleaseOutdateWarning
   | ElNodeVersionOutdateWarning
+  | ElNodePlatformOutdateWarning
   | ElNodeCommitHrefOutdateWarning
   | ElUptimeOutdateWarning
   | ElSlotOutdateWarning

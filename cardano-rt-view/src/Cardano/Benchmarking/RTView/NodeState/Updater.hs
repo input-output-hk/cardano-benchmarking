@@ -105,7 +105,7 @@ updateNodesState nsMVar loggerName (LogObject aName aMeta aContent) = do
            | "cardano.node.metrics" `T.isInfixOf` aName ->
             case aContent of
               LogValue "Mem.resident" (PureI pages) ->
-                nodesStateWith $ updateMemoryPages ns pages
+                nodesStateWith $ updateMemoryPages ns pages now
               LogValue "Mem.resident_size" (Bytes bytes) ->    -- Darwin
                 nodesStateWith $ updateMemoryBytes ns bytes now
               LogValue "IO.rchar" (Bytes bytesWereRead) ->
@@ -113,13 +113,13 @@ updateNodesState nsMVar loggerName (LogObject aName aMeta aContent) = do
               LogValue "IO.wchar" (Bytes bytesWereWritten) ->
                 nodesStateWith $ updateDiskWrite ns bytesWereWritten aMeta now
               LogValue "Stat.utime" (PureI ticks) ->
-                nodesStateWith $ updateCPUTicks ns ticks aMeta
+                nodesStateWith $ updateCPUTicks ns ticks aMeta now
               LogValue "Sys.SysUserTime" (Nanoseconds nanosecs) ->    -- Darwin
                 nodesStateWith $ updateCPUSecs ns nanosecs aMeta now
               LogValue "Net.IpExt:InOctets" (Bytes inBytes) ->
                 nodesStateWith $ updateNetworkIn ns inBytes aMeta now
               LogValue "Net.IpExt:OutOctets" (Bytes outBytes) ->
-                nodesStateWith $ updateNetworkOut ns outBytes aMeta
+                nodesStateWith $ updateNetworkOut ns outBytes aMeta now
               LogValue "Net.ifd_0-ibytes" (Bytes inBytes) ->    -- Darwin
                 nodesStateWith $ updateNetworkIn ns inBytes aMeta now
               LogValue "Net.ifd_0-obytes" (Bytes outBytes) ->    -- Darwin
@@ -136,9 +136,9 @@ updateNodesState nsMVar loggerName (LogObject aName aMeta aContent) = do
            | "cardano.node-metrics" `T.isInfixOf` aName ->
             case aContent of
               LogValue "RTS.bytesAllocated" (Bytes bytesAllocated) ->
-                nodesStateWith $ updateBytesAllocated ns bytesAllocated
+                nodesStateWith $ updateRTSBytesAllocated ns bytesAllocated now
               LogValue "RTS.usedMemBytes" (Bytes usedMemBytes) ->
-                nodesStateWith $ updateBytesUsed ns usedMemBytes
+                nodesStateWith $ updateRTSBytesUsed ns usedMemBytes now
               LogValue "RTS.gcCpuNs" (Nanoseconds gcCpuNs) ->
                 nodesStateWith $ updateGcCpuNs ns gcCpuNs now
               LogValue "RTS.gcElapsedNs" (Nanoseconds gcElapsedNs) ->
@@ -319,15 +319,15 @@ updateNodePlatform ns platfid = ns { nsInfo = newNi }
   newNi = currentNi { niNodePlatform = show platform }
   currentNi = nsInfo ns
 
-updateMemoryUsage :: NodeState -> Integer -> Word64 -> NodeState
-updateMemoryUsage ns pages now = ns { nsMetrics = newNm }
+updateMemoryPages :: NodeState -> Integer -> Word64 -> NodeState
+updateMemoryPages ns pages now = ns { nsMetrics = newNm }
  where
   newNm =
     currentNm
-      { nmMemory           = mBytes
-      , nmMemoryMax        = newMax
-      , nmMemoryMaxTotal   = newMaxTotal
-      , nmMemoryPercent    = mBytes / newMaxTotal * 100.0
+      { nmMemory         = mBytes
+      , nmMemoryMax      = newMax
+      , nmMemoryMaxTotal = newMaxTotal
+      , nmMemoryPercent  = mBytes / newMaxTotal * 100.0
       , nmMemoryLastUpdate = now
       }
   currentNm   = nsMetrics ns
@@ -337,8 +337,8 @@ updateMemoryUsage ns pages now = ns { nsMetrics = newNm }
   mBytes      = fromIntegral (pages * pageSize) / 1024 / 1024 :: Double
   pageSize    = 4096 :: Integer
 
-updateMemoryBytes :: NodeState -> Word64 -> NodeState
-updateMemoryBytes ns bytes = ns { nsMetrics = newNm }
+updateMemoryBytes :: NodeState -> Word64 -> Word64 -> NodeState
+updateMemoryBytes ns bytes now = ns { nsMetrics = newNm }
  where
   newNm =
     currentNm
@@ -346,6 +346,7 @@ updateMemoryBytes ns bytes = ns { nsMetrics = newNm }
       , nmMemoryMax      = newMax
       , nmMemoryMaxTotal = newMaxTotal
       , nmMemoryPercent  = mBytes / newMaxTotal * 100.0
+      , nmMemoryLastUpdate = now
       }
   currentNm   = nsMetrics ns
   prevMax     = nmMemoryMax currentNm
