@@ -125,8 +125,8 @@ updateNodesState nsMVar loggerName (LogObject aName aMeta aContent) = do
                 nodesStateWith $ updateMempoolTxs ns txsInMempool
               LogValue "mempoolBytes" (PureI mempoolBytes) ->
                 nodesStateWith $ updateMempoolBytes ns mempoolBytes
-              LogValue "txsProcessed" (PureI txsProcessed) ->
-                nodesStateWith $ updateTxsProcessed ns txsProcessed
+              LogValue "txsProcessedNum" (PureI processedTxsNum) ->
+                nodesStateWith $ updateTxsProcessed ns processedTxsNum
               LogValue "Sys.Platform" (PureI pfid) ->
                 nodesStateWith $ updateNodePlatform ns (fromIntegral pfid)
               _ -> return currentNodesState
@@ -526,7 +526,7 @@ updateMempoolBytes ns mempoolBytes = ns { nsMetrics = newNm }
 updateTxsProcessed :: NodeState -> Integer -> NodeState
 updateTxsProcessed ns txsProcessed = ns { nsInfo = newNi }
  where
-  newNi = currentNi { niTxsProcessed = niTxsProcessed currentNi + txsProcessed }
+  newNi = currentNi { niTxsProcessed = txsProcessed }
   currentNi = nsInfo ns
 
 updateRTSBytesAllocated :: NodeState -> Word64 -> Word64 -> NodeState
