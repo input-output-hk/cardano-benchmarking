@@ -1,11 +1,14 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC1090
+
+set -e
+
+BASEDIR="$(realpath "$(dirname "$0")")"
+. "$(realpath "${BASEDIR}"/../../scripts/common.sh)"
+
+CONFIGDIR="${BASEDIR}/configuration"
 
 umask 077
-
-BASEPATH=$(realpath $(dirname $0))
-
-CONFIGDIR="${BASEPATH}/configuration"
-
 start_time=$(date '+%s')
 protocol_params="${CONFIGDIR}/protocol-params.json"
 
@@ -36,29 +39,25 @@ args=(
       --secret-seed                  ${not_so_secret}
 )
 
-set -xe
-#RUNNER=${RUNNER:-cabal v2-run -v0}
-#CMD="${RUNNER} cardano-cli --"
-#CMD="${BASEPATH}/../../bin/cardano-cli"
-CMD="stack exec cardano-cli --"
-
-${CMD} genesis "${args[@]}" "$@"
+run 'cardano-cli' genesis "${args[@]}" "$@"
 
 # move new genesis to configuration
-GENHASH=`${CMD} "${common[@]}" print-genesis-hash --genesis-json "${tmpdir}/genesis.json" | tail -1`
+GENHASH=$(run 'cardano-cli' \
+              print-genesis-hash \
+              --genesis-json "${tmpdir}/genesis.json" |
+                  tail -1)
 TARGETDIR="${CONFIGDIR}/${GENHASH:0:5}"
-mkdir -vp "${TARGETDIR}"
-cp -iav ${tmpdir}/genesis.json ${TARGETDIR}/
-cp -iav ${tmpdir}/delegate-keys.*.key ${TARGETDIR}/
-cp -iav ${tmpdir}/delegation-cert.*.json ${TARGETDIR}/
-
-if [ -d ${CONFIGDIR}/latest-genesis ]; then
-  rm ${CONFIGDIR}/latest-genesis
-fi
-ln -sf ${GENHASH:0:5} ${CONFIGDIR}/latest-genesis
-
-set -
-
+set -x
+mkdir -p "${TARGETDIR}"
+cp -ia ${tmpdir}/genesis.json ${TARGETDIR}/
+cp -ia ${tmpdir}/delegate-keys.*.key ${TARGETDIR}/
+cp -ia ${tmpdir}/delegation-cert.*.json ${TARGETDIR}/
 echo $GENHASH > ${TARGETDIR}/GENHASH
-echo "genesis created with hash = ${GENHASH}"
-echo "  in directory ${TARGETDIR}"
+
+if [ -d ${CONFIGDIR}/genesis ]; then
+  mv ${CONFIGDIR}/genesis "${CONFIGDIR}/$(cut -c-5 ${CONFIGDIR}/genesis/GENHASH)"
+fi
+mv ${CONFIGDIR}/${GENHASH:0:5} ${CONFIGDIR}/genesis
+
+echo "genesis created with hash = $(cat "${CONFIGDIR}/genesis/GENHASH")"
+echo "  in directory ${CONFIGDIR}/genesis"

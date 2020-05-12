@@ -19,23 +19,13 @@ let
     packages = ps: with ps; [
       cardano-rt-view
       cardano-tx-generator
-      cardano-api
-      cardano-cli
-      cardano-node
-      cardano-config
-    ];
-
-    additional = ps: with ps; [
-      # in theory we should only have the above packages (or better, they should be auto-detected),
-       # but due to source-repository-package declarations being considered as local packages by cabal, we need the following packages as well.
-       # cf. https://github.com/haskell/cabal/issues/6249 and https://github.com/haskell/cabal/issues/5444
-       #ps.cardano-sl-x509
-       #ps.ouroboros-consensus
-       #ps.ouroboros-network
     ];
 
     # These programs will be available inside the nix-shell.
     buildInputs = with haskellPackages; [
+      cardanoDbSync.cardano-db-sync
+      cardanoNode.cardano-cli
+      cardanoNode.cardano-node
       cabal-install
       stack
       ghcid

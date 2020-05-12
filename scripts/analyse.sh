@@ -7,14 +7,60 @@ set -e
 # explorer_log_prefix="${2:-node-on-explorer/node}"
 generator_log_prefix="${1:-logs/generator}"
 explorer_log_prefix="${2:-logs/node}"
+extra_prefix="${3}"
 
+rm -rf ./'analysis'
 mkdir -p 'analysis'
 cd 'analysis'
-rm -f ./*
 BP=../$(dirname "$0")
 
-sender_logs=($(ls ../"${generator_log_prefix}"-*.json))
-receiver_logs=($(ls ../"${explorer_log_prefix}"-*.json))
+## NOTE:  Keep the pattern as-is:
+##        it allows matching 'node.json' with 'node' passed as prefix.
+sender_logs=($(ls ../"${generator_log_prefix}"*json))
+receiver_logs=($(ls ../"${explorer_log_prefix}"*json))
+
+# Given a JSON log from a Tx generator with configuration, where:
+#
+#   minSeverity: Debug
+#   TracingVerbosity: MaximalVerbosity
+#
+# ..extract the list of submitted transactions,
+# as soon as we see them being requested by the remote peer:
+#
+#   | TraceBenchTxSubServReq [txid]
+#   -- ^ Request for @tx@ recieved from `TxSubmit.TxSubmission` protocol
+#   --   peer.
+extract_sends() {
+        jq '
+          select (.data.kind == "TraceBenchTxSubServReq")
+        | .at as $at       # bind timestamp
+        | .data.txIds      # narrow to the txid list
+        | map ( .[5:]          # cut the "txid: txid: " prefix
+              | "\(.);\($at)") # produce the resulting string
+        | .[]              # merge string lists over all messages
+        ' $1 |
+        tr -d '"'
+}
+
+# Given a JSON log from a node with configuration, where:
+#
+#   minSeverity: Debug
+#   TracingVerbosity: MaximalVerbosity
+#   TraceBlockFetchClient: True
+#
+# ..extract the list of incoming transactions,
+# as soon as we see them coming in a via BlockFetch protocol.
+extract_recvs() {
+        jq '
+          select (.data.kind == "Recv" and .data.msg.kind == "MsgBlock")
+        | .at as $at       # bind timestamp
+        | .data.msg.txids  # narrow to the txid list
+        | map ( .[5:]          # cut the "txid: txid: " prefix
+              | "\(.);\($at)") # produce the resulting string
+        | .[]              # merge string lists over all messages
+        ' $1 |
+        tr -d '"'
+}
 
 ###
 ### Since we're using intermediate files with intricate semantics of sorting,
@@ -31,14 +77,14 @@ receiver_logs=($(ls ../"${explorer_log_prefix}"-*.json))
 ##  blk - block number
 
 # extract tx;timestamp pairs from generator, sort by TxId
-"${BP}"/xsends.sh "${sender_logs[@]}"      |
+extract_sends "${sender_logs[@]}" |
         sort -k 1 -t ';'                   > stx_stime.1
         sort -k 2 -t ';'                   > stx_stime.2     < stx_stime.1
 count_sent="$(cat stx_stime.1 | wc -l)"
 
 # extract tx;timestamp pairs from explorer node, sort & unique by TxId
 for L in "${receiver_logs[@]}"
-do "${BP}"/xrecvs.sh "$L"
+do extract_recvs "$L"
 done |  sort -k 2 -t ';'                   > rtx_rtime-with-dups.1
         sed 's_^\([^;]*\);\(.*\)$_\2;\1_'  < rtx_rtime-with-dups.1 |
         sort -k 2 -t ';' -u                |  ## W/around for apparent bug in sort.
@@ -53,20 +99,39 @@ cat <<EOF
 -- Sends:                analysis/stx_stime.1
 -- Receipts:             analysis/rtx_rtime.1
 EOF
+
+count_missing=0 count_martian=0
 if test "${count_sent}" != "${count_recvd}"
 then join -1 1       -2 1 -v 1 -t ";" \
-          stx_stime.1 rtx_rtime.1          > rtx_stime_rtime-missing.1
-     join -1 1       -2 1 -v 2 -t ";" \
-          stx_stime.1 rtx_rtime.1          > rtx_stime_rtime-martian.1
-     missing=$(cat rtx_stime_rtime-missing.1 | wc -l)
-     martian=$(cat rtx_stime_rtime-martian.1 | wc -l)
-     cat <<EOF
--- Lost Txs:             ${missing}: or $(((missing * 100 / count_sent)))% of sent
--- Martian Txs:          ${martian}: or $(((martian * 100 / count_recvd)))% of received
--- Missing sends:        analysis/rtx_stime_rtime-missing.1
--- Martian receipts:     analysis/rtx_stime_rtime-martian.1
+          stx_stime.1 rtx_rtime.1          > rtx_stime-missing.1
+     sort -k 2 -t ';'                      > rtx_stime-missing.2 < rtx_stime-missing.1
+     count_missing=$(cat rtx_stime-missing.1 | wc -l)
+     if test "${count_missing}" -eq 0
+     then rm -f rtx_*-missing.*
+     else cat <<EOF
+-- Lost Txs:             ${count_missing}: or $(((count_missing * 100 / count_sent)))% of sent
+-- Missing sends:        ${extra_prefix}/analysis/rtx_stime-missing.1 ${extra_prefix}/analysis/rtx_stime-missing.2
 EOF
+     fi
+
+     join -1 1       -2 1 -v 2 -t ";" \
+          stx_stime.1 rtx_rtime.1          > rtx_rtime-martian.1
+     count_martian=$(cat rtx_rtime-martian.1 | wc -l)
+     if test "${count_martian}" -eq 0
+     then rm -f rtx_*-martian.*
+     else cat <<EOF
+-- Martian Txs:          ${count_martian}: or $(((count_martian * 100 / count_recvd)))% of received
+-- Martian receipts:     ${extra_prefix}analysis/rtx_rtime-martian.1
+EOF
+     fi
 fi
+
+jq > tx-stats.json --null-input '
+{ "tx_generated":      '${count_sent}'
+, "tx_seen_in_blocks": '${count_recvd}'
+, "tx_missing":        '${count_missing}'
+, "tx_martian":        '${count_martian}'
+}'
 
 # count distinct tx receipt stamps -- which essentially translates to blocks nos
 block_stamps=($(cut -d ';' -f 2 < rtx_rtime.1 | sort -u))
