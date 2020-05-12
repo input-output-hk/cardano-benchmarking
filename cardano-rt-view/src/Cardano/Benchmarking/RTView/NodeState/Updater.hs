@@ -29,8 +29,8 @@ import           Cardano.BM.Backend.Switchboard
                    ( Switchboard, readLogBuffer )
 import           Cardano.BM.Data.Aggregated
                    ( Measurable (..) )
-import           Cardano.BM.Data.Counter
-                   ( Platform (..) )
+-- import           Cardano.BM.Data.Counter
+--                    ( Platform (..) )
 import           Cardano.BM.Data.LogItem
                    ( LOContent (..), LOMeta (..), LogObject (..)
                    , MonitorAction (..)
@@ -127,8 +127,8 @@ updateNodesState nsMVar loggerName (LogObject aName aMeta aContent) = do
                 nodesStateWith $ updateMempoolBytes ns mempoolBytes
               LogValue "txsProcessedNum" (PureI processedTxsNum) ->
                 nodesStateWith $ updateTxsProcessed ns processedTxsNum
-              LogValue "Sys.Platform" (PureI pfid) ->
-                nodesStateWith $ updateNodePlatform ns (fromIntegral pfid)
+              -- LogValue "Sys.Platform" (PureI pfid) ->
+              --   nodesStateWith $ updateNodePlatform ns (fromIntegral pfid)
               _ -> return currentNodesState
            | "cardano.node-metrics" `T.isInfixOf` aName ->
             case aContent of
@@ -309,12 +309,13 @@ updateNodeCommit ns commit = ns { nsInfo = newNi }
       }
   currentNi = nsInfo ns
 
+{-
 updateNodePlatform :: NodeState -> Int -> NodeState
 updateNodePlatform ns platfid = ns { nsInfo = newNi }
  where
   platform = toEnum platfid :: Platform
   newNi = currentNi { niNodePlatform = show platform }
-  currentNi = nsInfo ns
+  currentNi = nsInfo ns -}
 
 updateMemoryPages :: NodeState -> Integer -> Word64 -> NodeState
 updateMemoryPages ns pages now = ns { nsMetrics = newNm }

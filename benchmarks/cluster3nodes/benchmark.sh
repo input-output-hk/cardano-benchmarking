@@ -10,10 +10,10 @@ export IGNOREEOF=2
 
 # process
 create_new_genesis=1
-clean_explorer_db=1
+clean_explorer_db=0
 run_rt_view_service=1
 run_cluster_nodes=1
-run_explorer=1
+run_explorer=0
 run_tx_generator=1
 
 
@@ -69,7 +69,7 @@ fi
 if [ $run_rt_view_service -eq 1 ]; then
   tmux select-window -t :0
   tmux new-window -n RTView \
-               "${TMUX_ENV_PASSTHROUGH[*]} sleep 5; ./run_rt_view_service.sh; $SHELL"
+               "${TMUX_ENV_PASSTHROUGH[*]} ./run_rt_view_service.sh; $SHELL"
   sleep 3
 fi
 
@@ -81,7 +81,7 @@ if [ $run_cluster_nodes -eq 1 ]; then
   # using another configuration files to forward metrics.
   if [ $run_rt_view_service -eq 1 ]; then
     tmux new-window -n Nodes \
-               "${TMUX_ENV_PASSTHROUGH[*]} ./run-3node-cluster.sh rt-view; $SHELL"
+               "${TMUX_ENV_PASSTHROUGH[*]} sleep 3; ./run-3node-cluster.sh rt-view; $SHELL"
   else
     tmux new-window -n Nodes \
                "${TMUX_ENV_PASSTHROUGH[*]} ./run-3node-cluster.sh local; $SHELL"
@@ -94,7 +94,7 @@ fi
 if [ $run_tx_generator -eq 1 ]; then
   tmux select-window -t :0
   tmux new-window -n TxGen \
-               "${TMUX_ENV_PASSTHROUGH[*]} sleep 3; ./run_tx_generator.sh; $SHELL"
+               "${TMUX_ENV_PASSTHROUGH[*]} sleep 5; ./run_tx_generator.sh; $SHELL"
   sleep 1
 fi
 
@@ -103,7 +103,7 @@ fi
 if [ $run_explorer -eq 1 ]; then
   tmux select-window -t :0
   tmux new-window -n Explorer \
-               "${TMUX_ENV_PASSTHROUGH[*]} sleep 3; ./run_explorer.sh; $SHELL"
+               "${TMUX_ENV_PASSTHROUGH[*]} sleep 5; ./run_explorer.sh; $SHELL"
   sleep 1
 fi
 
