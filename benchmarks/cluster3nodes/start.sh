@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -e
+
 # this benchmark runs in 'tmux' which provides several windows and panes
 # to arrange the nodes and the transaction generator.
 
@@ -7,7 +9,8 @@
 # set-window-option -g mouse on
 # set -g default-terminal "tmux-256color"
 
-BASEPATH=$(realpath $(dirname $0))
+BASEDIR="$(realpath "$(dirname "$0")")"
 
-tmux new-s -s Cluster3Nodes -n Main "${BASEPATH}/benchmark.sh"
+cd "${BASEDIR}"
+tmux new-s -E -s Cluster3Nodes -n Main "${BASEDIR}/benchmark.sh ${*@Q}"
 

@@ -2,8 +2,6 @@
 , crossSystem ? null
 # allows to cutomize haskellNix (ghc and profiling, see ./nix/haskell.nix)
 , config ? {}
-# override scripts with custom configuration
-, customConfig ? {}
 # allows to override dependencies of the project without modifications,
 # eg. to test build against local checkout of nixpkgs and iohk-nix:
 # nix build -f default.nix cardano-node --arg sourcesOverride '{
@@ -11,7 +9,7 @@
 # }'
 , sourcesOverride ? {}
 # pinned version of nixpkgs augmented with overlays (iohk-nix and our packages).
-, pkgs ? import ./nix { inherit system crossSystem config sourcesOverride customConfig; }
+, pkgs ? import ./nix { inherit system crossSystem config sourcesOverride; }
 , gitrev ? pkgs.iohkNix.commitIdFromGitRepoOrZero ./.git
 }:
 with pkgs; with commonLib;
@@ -22,7 +20,11 @@ let
     (selectProjectPackages cardanoBenchmarkingHaskellPackages);
 
   self = {
-    inherit haskellPackages cardanoNode;
+    inherit
+      haskellPackages
+      cardanoBenchmarkingHaskellPackages
+      cardanoDbSyncHaskellPackages cardanoDbSync
+      cardanoNodeHaskellPackages cardanoNode;
 
     # Grab the executable component of our package.
     inherit (haskellPackages.cardano-tx-generator.components.exes)
@@ -42,9 +44,11 @@ let
       tests = collectChecks haskellPackages;
     };
 
+    scripts = (callPackage (import ./nix/svclib.nix) {}).scripts;
+
     shell = import ./shell.nix {
       inherit pkgs;
       withHoogle = true;
     };
-};
+  };
 in self

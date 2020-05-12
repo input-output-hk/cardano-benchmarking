@@ -10,32 +10,33 @@ packages:
     --ext/cardano-db-sync.git/cardano-db
     --ext/cardano-db-sync.git/cardano-db-sync
 
+---------- 8< -----------
 source-repository-package
   type: git
   location: https://github.com/input-output-hk/cardano-node
-  tag: 66f0e6d4066930bcebd34fd280a8bc1f6fab8706
-  --sha256: 0il6nhlswxa8wnc1nr2360bzfd0n41qhlqb8fq30x3k9vf34yvg6
+  tag: 376562b0cb6dfde4b9f41e9f3ccea45cbfb41c22
+  --sha256: 0zg6f8dbgn3kaki7r1lbmb1hsqkiw1h0j443d338lrv2zk2ggicg
   subdir: cardano-api
 
 source-repository-package
   type: git
   location: https://github.com/input-output-hk/cardano-node
-  tag: 66f0e6d4066930bcebd34fd280a8bc1f6fab8706
-  --sha256: 0il6nhlswxa8wnc1nr2360bzfd0n41qhlqb8fq30x3k9vf34yvg6
+  tag: 376562b0cb6dfde4b9f41e9f3ccea45cbfb41c22
+  --sha256: 0zg6f8dbgn3kaki7r1lbmb1hsqkiw1h0j443d338lrv2zk2ggicg
   subdir: cardano-cli
 
 source-repository-package
   type: git
   location: https://github.com/input-output-hk/cardano-node
-  tag: 66f0e6d4066930bcebd34fd280a8bc1f6fab8706
-  --sha256: 0il6nhlswxa8wnc1nr2360bzfd0n41qhlqb8fq30x3k9vf34yvg6
+  tag: 376562b0cb6dfde4b9f41e9f3ccea45cbfb41c22
+  --sha256: 0zg6f8dbgn3kaki7r1lbmb1hsqkiw1h0j443d338lrv2zk2ggicg
   subdir: cardano-config
 
 source-repository-package
   type: git
   location: https://github.com/input-output-hk/cardano-node
-  tag: 66f0e6d4066930bcebd34fd280a8bc1f6fab8706
-  --sha256: 0il6nhlswxa8wnc1nr2360bzfd0n41qhlqb8fq30x3k9vf34yvg6
+  tag: 376562b0cb6dfde4b9f41e9f3ccea45cbfb41c22
+  --sha256: 0zg6f8dbgn3kaki7r1lbmb1hsqkiw1h0j443d338lrv2zk2ggicg
   subdir: cardano-node
 
 source-repository-package

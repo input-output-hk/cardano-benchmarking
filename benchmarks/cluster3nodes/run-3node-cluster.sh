@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC1090
 
+set -x
 BASEDIR="$(realpath "$(dirname "$0")")"
-
-. "${BASEDIR}"/lib.sh
+. "$(realpath "${BASEDIR}"/../../scripts/common.sh)"
 
 if [ $# -lt 1 ]; then
   echo "call: $0 <rt-view|local>"
@@ -29,22 +29,11 @@ if [ $1 == "rt-view" ]; then
   SUBCONFIG="-rt-view"
 fi
 
-# add to your ~/.tmux.conf:
-# set-window-option -g mouse on
-# set -g default-terminal "tmux-256color"
-
 # start a tmux session:
 # tmux new-session -s 'Demo' -t demo
 test -n "${TMUX}" || fail "can only be run under 'tmux' control."
 
-#RUNNER=${RUNNER:-cabal v2-exec -v0}
-#CMD="${RUNNER} cardano-node --"
-#CMD="$(nix_binary_for 'cardano-node' 'cardano-node' 'cardano-node') "
-#CMD="${BASEDIR}/../../bin/cardano-node "
-CMD="stack exec cardano-node --"
-
-genesis_root=${BASEDIR}/configuration/latest-genesis
-genesis_file=${genesis_root}/genesis.json
+genesis_root=${BASEDIR}/configuration/genesis
 
 SOCKETDIR="/tmp/cluster3nodes-socket/"
 if [ ! -d $SOCKETDIR ]; then
@@ -54,8 +43,7 @@ fi
 ### prep cli arguments
 
 function nodecfg () {
-        $SED -i 's|^GenesisFile: .*$|GenesisFile: '${genesis_file}'|' ${BASEDIR}/configuration/log-config${SUBCONFIG}-${1}.yaml
-        printf -- "--config ${BASEDIR}/configuration/log-config${SUBCONFIG}-${1}.yaml "
+        printf -- "--config configuration/log-config${SUBCONFIG}-${1}.yaml "
 }
 function dlgkey () {
         printf -- "--signing-key ${genesis_root}/delegate-keys.%03d.key " "$1"
@@ -78,16 +66,29 @@ function nodeargs () {
         nodecfg $1
 }
 
-# create tmux panes
+## Keep in sync with benchmark.sh
+TMUX_ENV_PASSTHROUGH=(
+         "export SCRIPTS_LIB_SH_MODE=${SCRIPTS_LIB_SH_MODE};"
+         "export __COMMON_SRCROOT=${__COMMON_SRCROOT};"
+         "export DEFAULT_DEBUG=${DEFAULT_DEBUG};"
+         "export DEFAULT_VERBOSE=${DEFAULT_VERBOSE};"
+         "export DEFAULT_TRACE=${DEFAULT_TRACE}"
+         "$(nix_cache_passthrough)"
+)
 tmux split-window -v
 tmux split-window -h
-tmux select-pane -t 0
 
-# start nodes
-tmux select-pane -t 0
-tmux send-keys "cd '${BASEDIR}'; ${CMD} run $(nodeargs 0) " C-m
-tmux select-pane -t 1
-tmux send-keys "cd '${BASEDIR}'; ${CMD} run $(nodeargs 1) " C-m
-tmux select-pane -t 2
-tmux send-keys "cd '${BASEDIR}'; ${CMD} run $(nodeargs 2) " C-m
+for i in 0 1 2
+do tmux select-pane -t ${i}
+   tmux send-keys \
+     "${TMUX_ENV_PASSTHROUGH[*]}
 
+      cd '${BASEDIR}';
+      . ${__COMMON_SRCROOT}/scripts/lib.sh;
+      . ${__COMMON_SRCROOT}/scripts/lib-cli.sh;
+      . ${__COMMON_SRCROOT}/scripts/lib-node.sh;
+
+      run cardano-node run $(nodeargs $i)" \
+     C-m
+done
+tmux select-pane -t 0
