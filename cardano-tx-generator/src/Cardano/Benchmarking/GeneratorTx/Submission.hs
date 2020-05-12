@@ -300,6 +300,8 @@ bulkSubmission updEnv tr termVar txIn rpcIn =
         sizeLimit = (* fromIntegral (sum    tls)) <$> txSizeServiceTime env
         limit     = max txLimit sizeLimit
     flip (maybe (pure ())) limit $ \d -> do
+      liftIO . traceWith tr . TraceBenchTxSubDebug
+        $ "******* sleeping for " ++ show d
       waitUntil <- (addTime d) <$> lift getMonotonicTime
       modify (\x -> x { proceedAfter = waitUntil })
 

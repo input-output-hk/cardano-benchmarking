@@ -694,8 +694,8 @@ runBenchmark benchTracer
                           fundsWithGenesisMoney
                           explorerAPIEndpoint
 
-  -- sleep for 20 s; subsequent txs enter new block
-  liftIO $ threadDelay (20*1000*1000)
+  -- sleep for 100s -- let the cluster absorb the init Txs and acquiesce
+  liftIO $ threadDelay (100*1000*1000)
 
   liftIO . traceWith benchTracer . TraceBenchTxSubDebug
     $ "******* Tx generator, phase 2: pay to recipients *******"
@@ -741,7 +741,7 @@ runBenchmark benchTracer
   -- List of 'TMVar's with lists of transactions for submitting.
   -- The number of these lists corresponds to the number of target nodes.
   txsListsForTargetNodes :: MSTM.TMVar IO [MSTM.TMVar IO [CC.UTxO.ATxAux ByteString]]
-    <- liftIO $ STM.newTMVarIO []
+    <- liftIO $ STM.newEmptyTMVarIO
 
   -- Run generator.
   txGenerator benchTracer
@@ -757,9 +757,6 @@ runBenchmark benchTracer
               fundsWithSufficientCoins
               txsListsForTargetNodes
 
-  liftIO . traceWith benchTracer . TraceBenchTxSubDebug
-    $ "******* Tx generator, launch submission threads... *******"
-
   -- TVar for termination.
   txSubmissionTerm :: MSTM.TVar IO Bool <- liftIO $ STM.newTVarIO False
 
@@ -772,6 +769,8 @@ runBenchmark benchTracer
       -- to the target nodes via 'ouroboros-network'.
       liftIO $ do
         let targetNodesAddrsAndTxsLists = zip (NE.toList remoteAddresses) txsLists
+        liftIO . traceWith benchTracer . TraceBenchTxSubDebug
+            $ "******* Tx generator, launching Tx peers:  " ++ show (length targetNodesAddrsAndTxsLists) ++ " of them"
         allAsyncs <- forM targetNodesAddrsAndTxsLists $ \(remoteAddr, txsList) -> do
           -- Launch connection and submission threads for a peer
           -- (corresponding to one target node).
@@ -781,7 +780,7 @@ runBenchmark benchTracer
 
           txsListGeneral :: MSTM.TMVar IO [GenTx ByronBlock] <- liftIO $ STM.newTMVarIO generalTxs
 
-          launchTxPeer benchTracer
+          r <- launchTxPeer benchTracer
                        benchmarkTracers
                        iocp
                        txSubmissionTerm
@@ -790,6 +789,11 @@ runBenchmark benchTracer
                        remoteAddr
                        updROEnv
                        txsListGeneral
+          liftIO . traceWith benchTracer . TraceBenchTxSubDebug
+            $ "******* Tx generator, launched a submission peer for " <> show remoteAddr
+          pure r
+        liftIO . traceWith benchTracer . TraceBenchTxSubDebug
+            $ "******* Tx generator, all " ++ show (length targetNodesAddrsAndTxsLists) ++ " peers started"
         let allAsyncs' = intercalate [] [[c, s] | (c, s) <- allAsyncs]
         -- Just wait for all threads to complete.
         mapM_ (void . wait) allAsyncs'
@@ -1022,16 +1026,17 @@ txGenerator benchTracer
             txsListsForTargetNodes = do
   liftIO . traceWith benchTracer . TraceBenchTxSubDebug
     $ " Prepare to generate, total number of transactions " ++ show numOfTransactions
+      ++ ", for " ++ show numOfTargetNodes ++ " peers"
 
   -- Generator is producing transactions and writes them in the list.
   -- Later sumbitter is reading and submitting these transactions.
-  txsForSubmission :: MSTM.TMVar IO [CC.UTxO.ATxAux ByteString] <- liftIO $ STM.newTMVarIO []
+  txsForSubmission :: [MSTM.TMVar IO [CC.UTxO.ATxAux ByteString]] <-
+    liftIO $ replicateM numOfTargetNodes $ STM.newTMVarIO []
 
   -- Prepare a number of lists for transactions, for all target nodes.
   -- Later we'll write generated transactions in these lists,
   -- and they will be received and submitted by 'bulkSubmission' function.
-  forM_ [1 .. numOfTargetNodes] $ \_ ->
-    liftIO $ addTxsListForTargetNode txsListsForTargetNodes txsForSubmission
+  liftIO $ STM.atomically $ STM.putTMVar txsListsForTargetNodes txsForSubmission
 
   txs <- createMainTxs numOfTransactions numOfInsPerTx fundsWithSufficientCoins
 
@@ -1136,18 +1141,6 @@ divListToSublists l  d =
 ---------------------------------------------------------------------------------------------------
 -- Txs for submission.
 ---------------------------------------------------------------------------------------------------
-
-
--- | Adds a list for transactions, for particular target node.
-addTxsListForTargetNode
-  :: MSTM.TMVar IO [MSTM.TMVar IO [CC.UTxO.ATxAux ByteString]]
-  -> MSTM.TMVar IO [CC.UTxO.ATxAux ByteString]
-  -> IO ()
-addTxsListForTargetNode txsListsForTargetNodes listForOneTargetNode = STM.atomically $
-  STM.tryTakeTMVar txsListsForTargetNodes >>=
-    \case
-      Nothing      -> STM.putTMVar txsListsForTargetNodes [listForOneTargetNode]
-      Just curList -> STM.putTMVar txsListsForTargetNodes $ curList ++ [listForOneTargetNode]
 
 -- | Writes list of generated transactions to the list, for particular target node.
 --   For example, if we have 3 target nodes and write txs to the list 0,
