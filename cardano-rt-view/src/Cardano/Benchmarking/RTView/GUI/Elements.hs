@@ -34,7 +34,10 @@ data ElementName
   | ElEpoch
   | ElSlot
   | ElBlocksNumber
+  | ElBlocksForgedNumber
   | ElChainDensity
+  | ElSlotsMissedNumber
+  | ElForksCreatedNumber
   | ElTxsProcessed
   | ElPeersNumber
   | ElPeersList
@@ -81,7 +84,10 @@ data ElementName
   | ElUptimeOutdateWarning
   | ElSlotOutdateWarning
   | ElBlocksNumberOutdateWarning
+  | ElBlocksForgedNumberOutdateWarning
   | ElChainDensityOutdateWarning
+  | ElSlotsMissedNumberOutdateWarning
+  | ElForksCreatedNumberOutdateWarning
   | ElRTSGcCpuOutdateWarning
   | ElRTSGcElapsedOutdateWarning
   | ElRTSGcNumOutdateWarning

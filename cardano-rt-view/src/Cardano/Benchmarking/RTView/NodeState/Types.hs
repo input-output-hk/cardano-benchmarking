@@ -50,27 +50,33 @@ data NodeError = NodeError
   } deriving Show
 
 data NodeInfo = NodeInfo
-  { niNodeRelease            :: !String
-  , niNodeVersion            :: !String
-  , niNodeCommit             :: !String
-  , niNodeShortCommit        :: !String
-  , niNodePlatform           :: !String
-  , niUpTime                 :: !Word64
-  , niUpTimeLastUpdate       :: !Word64
-  , niEpoch                  :: !Integer
-  , niEpochLastUpdate        :: !Word64
-  , niSlot                   :: !Integer
-  , niSlotLastUpdate         :: !Word64
-  , niBlocksNumber           :: !Integer
-  , niBlocksNumberLastUpdate :: !Word64
-  , niChainDensity           :: !Double
-  , niChainDensityLastUpdate :: !Word64
-  , niTxsProcessed           :: !Integer
-  , niPeersNumber            :: !Integer
-  , niPeersInfo              :: ![PeerInfo]
-  , niTraceAcceptorHost      :: !String
-  , niTraceAcceptorPort      :: !String
-  , niNodeErrors             :: ![NodeError]
+  { niNodeRelease                   :: !String
+  , niNodeVersion                   :: !String
+  , niNodeCommit                    :: !String
+  , niNodeShortCommit               :: !String
+  , niNodePlatform                  :: !String
+  , niUpTime                        :: !Word64
+  , niUpTimeLastUpdate              :: !Word64
+  , niEpoch                         :: !Integer
+  , niEpochLastUpdate               :: !Word64
+  , niSlot                          :: !Integer
+  , niSlotLastUpdate                :: !Word64
+  , niSlotsMissedNumber             :: !Integer
+  , niSlotsMissedNumberLastUpdate   :: !Word64
+  , niBlocksNumber                  :: !Integer
+  , niBlocksNumberLastUpdate        :: !Word64
+  , niBlocksForgedNumber            :: !Integer
+  , niBlocksForgedNumberLastUpdate  :: !Word64
+  , niChainDensity                  :: !Double
+  , niChainDensityLastUpdate        :: !Word64
+  , niForksCreated                  :: !Integer
+  , niForksCreatedLastUpdate        :: !Word64
+  , niTxsProcessed                  :: !Integer
+  , niPeersNumber                   :: !Integer
+  , niPeersInfo                     :: ![PeerInfo]
+  , niTraceAcceptorHost             :: !String
+  , niTraceAcceptorPort             :: !String
+  , niNodeErrors                    :: ![NodeError]
   } deriving Show
 
 data NodeMetrics = NodeMetrics
@@ -153,27 +159,33 @@ defaultNodeState = NodeState
 
 defaultNodeInfo :: NodeInfo
 defaultNodeInfo = NodeInfo
-  { niNodeRelease            = "-"
-  , niNodeVersion            = "-"
-  , niNodeCommit             = "-"
-  , niNodeShortCommit        = "-"
-  , niNodePlatform           = "?"
-  , niUpTime                 = 0
-  , niUpTimeLastUpdate       = 0
-  , niEpoch                  = 0
-  , niEpochLastUpdate        = 0
-  , niSlot                   = 0
-  , niSlotLastUpdate         = 0
-  , niBlocksNumber           = 0
-  , niBlocksNumberLastUpdate = 0
-  , niChainDensity           = 0.0
-  , niChainDensityLastUpdate = 0
-  , niTxsProcessed           = 0
-  , niPeersNumber            = 0
-  , niPeersInfo              = []
-  , niTraceAcceptorHost      = "-"
-  , niTraceAcceptorPort      = "-"
-  , niNodeErrors             = []
+  { niNodeRelease                   = "-"
+  , niNodeVersion                   = "-"
+  , niNodeCommit                    = "-"
+  , niNodeShortCommit               = "-"
+  , niNodePlatform                  = "?"
+  , niUpTime                        = 0
+  , niUpTimeLastUpdate              = 0
+  , niEpoch                         = 0
+  , niEpochLastUpdate               = 0
+  , niSlot                          = 0
+  , niSlotLastUpdate                = 0
+  , niSlotsMissedNumber             = 0
+  , niSlotsMissedNumberLastUpdate   = 0
+  , niBlocksNumber                  = 0
+  , niBlocksNumberLastUpdate        = 0
+  , niBlocksForgedNumber            = 0
+  , niBlocksForgedNumberLastUpdate  = 0
+  , niChainDensity                  = 0.0
+  , niChainDensityLastUpdate        = 0
+  , niForksCreated                  = 0
+  , niForksCreatedLastUpdate        = 0
+  , niTxsProcessed                  = 0
+  , niPeersNumber                   = 0
+  , niPeersInfo                     = []
+  , niTraceAcceptorHost             = "-"
+  , niTraceAcceptorPort             = "-"
+  , niNodeErrors                    = []
   }
 
 defaultNodeMetrics :: NodeMetrics

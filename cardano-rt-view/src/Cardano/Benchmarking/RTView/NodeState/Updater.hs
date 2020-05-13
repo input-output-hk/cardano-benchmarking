@@ -127,6 +127,12 @@ updateNodesState nsMVar loggerName (LogObject aName aMeta aContent) = do
                 nodesStateWith $ updateMempoolBytes ns mempoolBytes
               LogValue "txsProcessedNum" (PureI processedTxsNum) ->
                 nodesStateWith $ updateTxsProcessed ns processedTxsNum
+              LogValue "blocksForgedNum" (PureI forgedBlocksNum) ->
+                nodesStateWith $ updateBlocksForged ns forgedBlocksNum now
+              LogValue "slotsMissedNum" (PureI missedSlotsNum) ->
+                nodesStateWith $ updateSlotsMissed ns missedSlotsNum now
+              LogValue "forksCreatedNum" (PureI createdForksNum) ->
+                nodesStateWith $ updateForksCreated ns createdForksNum now
               -- LogValue "Sys.Platform" (PureI pfid) ->
               --   nodesStateWith $ updateNodePlatform ns (fromIntegral pfid)
               _ -> return currentNodesState
@@ -528,6 +534,36 @@ updateTxsProcessed :: NodeState -> Integer -> NodeState
 updateTxsProcessed ns txsProcessed = ns { nsInfo = newNi }
  where
   newNi = currentNi { niTxsProcessed = txsProcessed }
+  currentNi = nsInfo ns
+
+updateBlocksForged :: NodeState -> Integer -> Word64 -> NodeState
+updateBlocksForged ns blocksForged now = ns { nsInfo = newNi }
+ where
+  newNi =
+    currentNi
+      { niBlocksForgedNumber = blocksForged
+      , niBlocksForgedNumberLastUpdate = now
+      }
+  currentNi = nsInfo ns
+
+updateSlotsMissed :: NodeState -> Integer -> Word64 -> NodeState
+updateSlotsMissed ns slotsMissed now = ns { nsInfo = newNi }
+ where
+  newNi =
+    currentNi
+      { niSlotsMissedNumber = slotsMissed
+      , niSlotsMissedNumberLastUpdate = now
+      }
+  currentNi = nsInfo ns
+
+updateForksCreated :: NodeState -> Integer -> Word64 -> NodeState
+updateForksCreated ns forksCreated now = ns { nsInfo = newNi }
+ where
+  newNi =
+    currentNi
+      { niForksCreated = forksCreated
+      , niForksCreatedLastUpdate = now
+      }
   currentNi = nsInfo ns
 
 updateRTSBytesAllocated :: NodeState -> Word64 -> Word64 -> NodeState

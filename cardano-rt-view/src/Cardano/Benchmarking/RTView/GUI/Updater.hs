@@ -73,7 +73,10 @@ updateGUI nodesState params acceptors nodesStateElems =
     void $ updateElementValue (ElementInteger $ niEpoch ni)                   $ elements ! ElEpoch
     void $ updateElementValue (ElementInteger $ niSlot ni)                    $ elements ! ElSlot
     void $ updateElementValue (ElementInteger $ niBlocksNumber ni)            $ elements ! ElBlocksNumber
+    void $ updateElementValue (ElementInteger $ niBlocksForgedNumber ni)      $ elements ! ElBlocksForgedNumber
     void $ updateElementValue (ElementDouble  $ niChainDensity ni)            $ elements ! ElChainDensity
+    void $ updateElementValue (ElementInteger $ niSlotsMissedNumber ni)       $ elements ! ElSlotsMissedNumber
+    void $ updateElementValue (ElementInteger $ niForksCreated ni)            $ elements ! ElForksCreatedNumber
     void $ updateElementValue (ElementInteger $ niTxsProcessed ni)            $ elements ! ElTxsProcessed
     void $ updateElementValue (ElementInteger $ niPeersNumber ni)             $ elements ! ElPeersNumber
     void $ updatePeersList    (niPeersInfo ni)                                $ elements ! ElPeersList
@@ -251,8 +254,14 @@ markOutdatedElements params ni nm els = do
                                                       [els ! ElSlotOutdateWarning]
   markValueW now (niBlocksNumberLastUpdate ni) bcLife [els ! ElBlocksNumber]
                                                       [els ! ElBlocksNumberOutdateWarning]
+  markValueW now (niBlocksForgedNumberLastUpdate ni) bcLife [els ! ElBlocksForgedNumber]
+                                                            [els ! ElBlocksForgedNumberOutdateWarning]
   markValueW now (niChainDensityLastUpdate ni) bcLife [els ! ElChainDensity]
                                                       [els ! ElChainDensityOutdateWarning]
+  markValueW now (niSlotsMissedNumberLastUpdate ni) bcLife [els ! ElSlotsMissedNumber]
+                                                           [els ! ElSlotsMissedNumberOutdateWarning]
+  markValueW now (niForksCreatedLastUpdate ni) bcLife [els ! ElForksCreatedNumber]
+                                                      [els ! ElForksCreatedNumberOutdateWarning]
 
   markValueW now (nmRTSGcCpuLastUpdate nm)      rtsLife [els ! ElRTSGcCpu]
                                                         [els ! ElRTSGcCpuOutdateWarning]
