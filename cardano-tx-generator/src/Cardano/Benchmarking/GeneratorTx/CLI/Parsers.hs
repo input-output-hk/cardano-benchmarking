@@ -23,14 +23,6 @@ import           Cardano.Config.Types
                     )
 
 import           Cardano.Benchmarking.GeneratorTx
-                    ( NumberOfTxs(..)
-                    , NumberOfInputsPerTx(..)
-                    , NumberOfOutputsPerTx(..)
-                    , FeePerTx(..)
-                    , TPSRate(..)
-                    , TxAdditionalSize(..)
-                    , ExplorerAPIEnpoint(..)
-                    )
 
 data GenerateTxs =
   GenerateTxs FilePath
@@ -44,6 +36,7 @@ data GenerateTxs =
               NumberOfOutputsPerTx
               FeePerTx
               TPSRate
+              InitCooldown
               (Maybe TxAdditionalSize)
               (Maybe ExplorerAPIEnpoint)
               [SigningKeyFile]
@@ -83,6 +76,10 @@ parseCommand =
     <*> parseTPSRate
           "tps"
           "TPS (transaction per second) rate."
+    <*> fmap (fromMaybe defaultInitCooldown)
+          (optional $ parseInitCooldown
+             "init-cooldown"
+             "Delay between init and main submission phases.")
     <*> optional (
           parseTxAdditionalSize
             "add-tx-size"
@@ -96,6 +93,9 @@ parseCommand =
     <*> parseSigningKeysFiles
           "sig-key"
           "Path to signing key file, for genesis UTxO using by generator."
+
+defaultInitCooldown :: InitCooldown
+defaultInitCooldown = InitCooldown 100
 
 ----------------------------------------------------------------
 
@@ -132,6 +132,9 @@ parseFeePerTx opt desc = FeePerTx <$> parseIntegral opt desc
 
 parseTPSRate :: String -> String -> Parser TPSRate
 parseTPSRate opt desc = TPSRate <$> parseFloat opt desc
+
+parseInitCooldown :: String -> String -> Parser InitCooldown
+parseInitCooldown opt desc = InitCooldown <$> parseIntegral opt desc
 
 parseTxAdditionalSize :: String -> String -> Parser TxAdditionalSize
 parseTxAdditionalSize opt desc = TxAdditionalSize <$> parseIntegral opt desc
