@@ -36,7 +36,10 @@ mkNodeWidget = do
   elEpoch                   <- string "0"
   elSlot                    <- string "0"
   elBlocksNumber            <- string "0"
+  elBlocksForgedNumber      <- string "0"
   elChainDensity            <- string "0"
+  elSlotsMissedNumber       <- string "0"
+  elForksCreatedNumber      <- string "0"
   elTxsProcessed            <- string "0"
   elPeersNumber             <- string "0"
   elTraceAcceptorHost       <- string "0"
@@ -151,9 +154,12 @@ mkNodeWidget = do
   elNodeCommitHrefOutdateWarning <- infoMark "The value is outdated"
   elUptimeOutdateWarning         <- infoMark "The value is outdated"
 
-  elSlotOutdateWarning           <- infoMark "The value is outdated"
-  elBlocksNumberOutdateWarning   <- infoMark "The value is outdated"
-  elChainDensityOutdateWarning   <- infoMark "The value is outdated"
+  elSlotOutdateWarning               <- infoMark "The value is outdated"
+  elBlocksNumberOutdateWarning       <- infoMark "The value is outdated"
+  elBlocksForgedNumberOutdateWarning <- infoMark "The value is outdated"
+  elChainDensityOutdateWarning       <- infoMark "The value is outdated"
+  elSlotsMissedNumberOutdateWarning  <- infoMark "The value is outdated"
+  elForksCreatedNumberOutdateWarning <- infoMark "The value is outdated"
 
   elRTSGcCpuOutdateWarning       <- infoMark "The value is outdated"
   elRTSGcElapsedOutdateWarning   <- infoMark "The value is outdated"
@@ -192,15 +198,30 @@ mkNodeWidget = do
                  ]
              , UI.div #. "w3-third w3-theme" #+
                  [ UI.div #. "" #+
-                     [ UI.span #. "" #+ [element elNodeReleaseOutdateWarning]
-                     , UI.div #. "" #+ [element elNodeVersionOutdateWarning]
-                     , UI.div #. "" #+ [element elNodePlatformOutdateWarning]
-                     , UI.div #. "" #+ [element elNodeCommitHrefOutdateWarning]
+                     [ UI.span #. "" #+
+                         [ element elNodeReleaseOutdateWarning
+                         , UI.span # set UI.html "&nbsp;" #+ []
+                         ]
+                     , UI.div #. "" #+
+                         [ element elNodeVersionOutdateWarning
+                         , UI.span # set UI.html "&nbsp;" #+ []
+                         ]
+                     , UI.div #. "" #+
+                         [ element elNodePlatformOutdateWarning
+                         , UI.span # set UI.html "&nbsp;" #+ []
+                         ]
+                     , UI.div #. "" #+
+                         [ element elNodeCommitHrefOutdateWarning
+                         , UI.span # set UI.html "&nbsp;" #+ []
+                         ]
                      , vSpacer "node-info-v-spacer"
                      , UI.div #. "" #+ [UI.span # set UI.html "&nbsp;" #+ []]
                      , UI.div #. "" #+ [UI.span # set UI.html "&nbsp;" #+ []]
                      , vSpacer "node-info-v-spacer"
-                     , UI.div #. "" #+ [element elUptimeOutdateWarning]
+                     , UI.div #. "" #+
+                         [ element elUptimeOutdateWarning
+                         , UI.span # set UI.html "&nbsp;" #+ []
+                         ]
                      ]
                  ]
              ]
@@ -238,7 +259,10 @@ mkNodeWidget = do
                  [ UI.div #. "" #+
                      [ UI.div #. "" #+ [string "Epoch / Slot in epoch:"]
                      , UI.div #. "" #+ [string "Blocks number:"]
+                     , UI.div #. "" #+ [string "Forged blocks number:"]
                      , UI.div #. "" #+ [string "Chain density:"]
+                     , UI.div #. "" #+ [string "Missed slots number:"]
+                     , UI.div #. "" #+ [string "Created forks number:"]
                      ]
                  ]
              , UI.div #. "w3-third w3-theme" #+
@@ -249,17 +273,41 @@ mkNodeWidget = do
                          , element elSlot
                          ]
                      , UI.div #. "" #+ [element elBlocksNumber]
+                     , UI.div #. "" #+ [element elBlocksForgedNumber]
                      , UI.div #. "" #+
                          [ element elChainDensity
                          , UI.span #. "density-percent" #+ [string "%"]
                          ]
+                     , UI.div #. "" #+ [element elSlotsMissedNumber]
+                     , UI.div #. "" #+ [element elForksCreatedNumber]
                      ]
                  ]
              , UI.div #. "w3-third w3-theme" #+
                  [ UI.div #. "" #+
-                     [ UI.div #. "" #+ [element elSlotOutdateWarning]
-                     , UI.div #. "" #+ [element elBlocksNumberOutdateWarning]
-                     , UI.div #. "" #+ [element elChainDensityOutdateWarning]
+                     [ UI.div #. "" #+
+                         [ element elSlotOutdateWarning
+                         , UI.span # set UI.html "&nbsp;" #+ []
+                         ]
+                     , UI.div #. "" #+
+                         [ element elBlocksNumberOutdateWarning
+                         , UI.span # set UI.html "&nbsp;" #+ []
+                         ]
+                     , UI.div #. "" #+
+                         [ element elBlocksForgedNumberOutdateWarning
+                         , UI.span # set UI.html "&nbsp;" #+ []
+                         ]
+                     , UI.div #. "" #+
+                         [ element elChainDensityOutdateWarning
+                         , UI.span # set UI.html "&nbsp;" #+ []
+                         ]
+                     , UI.div #. "" #+
+                         [ element elSlotsMissedNumberOutdateWarning
+                         , UI.span # set UI.html "&nbsp;" #+ []
+                         ]
+                     , UI.div #. "" #+
+                         [ element elForksCreatedNumberOutdateWarning
+                         , UI.span # set UI.html "&nbsp;" #+ []
+                         ]
                      ]
                  ]
              ]
@@ -423,10 +471,22 @@ mkNodeWidget = do
                      ]
                  , UI.div #. "w3-third w3-theme" #+
                      [ UI.div #. "" #+
-                         [ UI.div #. "" #+ [element elRTSGcCpuOutdateWarning]
-                         , UI.div #. "" #+ [element elRTSGcElapsedOutdateWarning]
-                         , UI.div #. "" #+ [element elRTSGcNumOutdateWarning]
-                         , UI.div #. "" #+ [element elRTSGcMajorNumOutdateWarning]
+                         [ UI.div #. "" #+
+                             [ element elRTSGcCpuOutdateWarning
+                             , UI.span # set UI.html "&nbsp;" #+ []
+                             ]
+                         , UI.div #. "" #+
+                             [ element elRTSGcElapsedOutdateWarning
+                             , UI.span # set UI.html "&nbsp;" #+ []
+                             ]
+                         , UI.div #. "" #+
+                             [ element elRTSGcNumOutdateWarning
+                             , UI.span # set UI.html "&nbsp;" #+ []
+                             ]
+                         , UI.div #. "" #+
+                             [ element elRTSGcMajorNumOutdateWarning
+                             , UI.span # set UI.html "&nbsp;" #+ []
+                             ]
                          ]
                      ]
                  ]
@@ -509,7 +569,10 @@ mkNodeWidget = do
           , (ElEpoch,                   elEpoch)
           , (ElSlot,                    elSlot)
           , (ElBlocksNumber,            elBlocksNumber)
+          , (ElBlocksForgedNumber,      elBlocksForgedNumber)
           , (ElChainDensity,            elChainDensity)
+          , (ElSlotsMissedNumber,       elSlotsMissedNumber)
+          , (ElForksCreatedNumber,      elForksCreatedNumber)
           , (ElTxsProcessed,            elTxsProcessed)
           , (ElPeersNumber,             elPeersNumber)
           , (ElPeersList,               elPeersList)
@@ -543,18 +606,21 @@ mkNodeWidget = do
           , (ElRTSGcNum,                elRTSGcNum)
           , (ElRTSGcMajorNum,           elRTSGcMajorNum)
           -- Outdated warnings
-          , (ElNodeReleaseOutdateWarning,    elNodeReleaseOutdateWarning)
-          , (ElNodeVersionOutdateWarning,    elNodeVersionOutdateWarning)
-          , (ElNodePlatformOutdateWarning,   elNodePlatformOutdateWarning)
-          , (ElNodeCommitHrefOutdateWarning, elNodeCommitHrefOutdateWarning)
-          , (ElUptimeOutdateWarning,         elUptimeOutdateWarning)
-          , (ElSlotOutdateWarning,           elSlotOutdateWarning)
-          , (ElBlocksNumberOutdateWarning,   elBlocksNumberOutdateWarning)
-          , (ElChainDensityOutdateWarning,   elChainDensityOutdateWarning)
-          , (ElRTSGcCpuOutdateWarning,       elRTSGcCpuOutdateWarning)
-          , (ElRTSGcElapsedOutdateWarning,   elRTSGcElapsedOutdateWarning)
-          , (ElRTSGcNumOutdateWarning,       elRTSGcNumOutdateWarning)
-          , (ElRTSGcMajorNumOutdateWarning,  elRTSGcMajorNumOutdateWarning)
+          , (ElNodeReleaseOutdateWarning,        elNodeReleaseOutdateWarning)
+          , (ElNodeVersionOutdateWarning,        elNodeVersionOutdateWarning)
+          , (ElNodePlatformOutdateWarning,       elNodePlatformOutdateWarning)
+          , (ElNodeCommitHrefOutdateWarning,     elNodeCommitHrefOutdateWarning)
+          , (ElUptimeOutdateWarning,             elUptimeOutdateWarning)
+          , (ElSlotOutdateWarning,               elSlotOutdateWarning)
+          , (ElBlocksNumberOutdateWarning,       elBlocksNumberOutdateWarning)
+          , (ElBlocksForgedNumberOutdateWarning, elBlocksForgedNumberOutdateWarning)
+          , (ElChainDensityOutdateWarning,       elChainDensityOutdateWarning)
+          , (ElSlotsMissedNumberOutdateWarning,  elSlotsMissedNumberOutdateWarning)
+          , (ElForksCreatedNumberOutdateWarning, elForksCreatedNumberOutdateWarning)
+          , (ElRTSGcCpuOutdateWarning,           elRTSGcCpuOutdateWarning)
+          , (ElRTSGcElapsedOutdateWarning,       elRTSGcElapsedOutdateWarning)
+          , (ElRTSGcNumOutdateWarning,           elRTSGcNumOutdateWarning)
+          , (ElRTSGcMajorNumOutdateWarning,      elRTSGcMajorNumOutdateWarning)
           -- Progress bars
           , (ElMempoolBytesProgress,    elMempoolBytesProgress)
           , (ElMempoolBytesProgressBox, elMempoolBytesProgressBox)
