@@ -2,8 +2,6 @@
 , crossSystem ? null
 , config ? {}
 , sourcesOverride ? {}
-# override scripts with custom configuration
-, customConfig ? {}
 }:
 let
   sources = import ./sources.nix { inherit pkgs; }
@@ -28,7 +26,7 @@ let
     ++ iohKNix.overlays.iohkNix
     # our own overlays:
     ++ [
-      (pkgs: _: with pkgs; {
+      (pkgs: _: with pkgs; rec {
 
         # commonLib: mix pkgs.lib with iohk-nix utils and our own:
         commonLib = lib // iohkNix // iohkNix.cardanoLib
@@ -39,8 +37,13 @@ let
         svcLib = import ./svclib.nix { inherit pkgs; };
 
         cardanoNode = import sources.cardano-node {
-          inherit customConfig system crossSystem config sourcesOverride;
+          inherit system crossSystem config sourcesOverride;
         };
+        cardanoDbSync = import sources.cardano-db-sync {
+          inherit system crossSystem config sourcesOverride;
+        };
+        cardanoNodeHaskellPackages = cardanoNode.haskellPackages;
+        cardanoDbSyncHaskellPackages = cardanoDbSync.haskellPackages;
       })
       # And, of course, our haskell-nix-ified cabal project:
       (import ./pkgs.nix)

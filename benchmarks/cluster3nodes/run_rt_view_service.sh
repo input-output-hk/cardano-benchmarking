@@ -1,17 +1,14 @@
-#!/bin/sh
+#!/usr/bin/env bash
+# shellcheck disable=SC1090
 
-BASEDIR=$(realpath $(dirname $0))
+BASEDIR="$(realpath "$(dirname "$0")")"
+. "$(realpath "${BASEDIR}"/../../scripts/common.sh)"
 
 CONFIGDIR=${BASEDIR}/configuration
 CONFIGFILE=${CONFIGDIR}/log-config-rt-view-service.yaml
 STATICDIR=${BASEDIR}/../../cardano-rt-view/static/
 
-#RUNNER=${RUNNER:-cabal v2-run -v0}
-#GENERATOR="${RUNNER} cardano-cli --"
-RTVIEWSERVICE="${BASEDIR}/../../bin/cardano-rt-view-service"
-RTVIEWSERVICE="stack exec cardano-rt-view-service --"
-
-exec ${RTVIEWSERVICE} \
+run 'cardano-rt-view-service' \
   --config ${CONFIGFILE} \
   --static ${STATICDIR} \
   --port 8024

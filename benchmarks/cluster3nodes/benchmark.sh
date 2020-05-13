@@ -1,9 +1,8 @@
-#!/bin/sh
+#!/usr/bin/env bash
 # shellcheck disable=SC1090
 
 BASEDIR="$(realpath "$(dirname "$0")")"
-
-. "${BASEDIR}"/lib.sh
+. "$(realpath "${BASEDIR}"/../../scripts/common.sh)"
 
 export IGNOREEOF=2
 
@@ -20,20 +19,27 @@ run_tx_generator=1
 
 ### >>>>>> do not change anything below this point
 
-#EXPLORER="$(nix_binary_for 'cardano-node' 'cardano-node' 'cardano-node')"
-EXPLORER="../../bin/cardano-db-sync"
-
-# check for explorer binary
-if [ ! -x "${EXPLORER}" ]; then
-  echo "cardano-db-sync missing. disabling explorer functionality."
-  clean_explorer_db=0
-  run_explorer=0
-fi
+## Oh the absolute, sheer horrors of 'tmux'..
+prebuild 'cardano-tx-generator'
+prebuild 'cardano-rt-view-service'
+prebuild 'cardano-node'
+prebuild 'cardano-db-sync'
+prebuild 'cardano-cli'
+TMUX_ENV_PASSTHROUGH=(
+         "export SCRIPTS_LIB_SH_MODE=${SCRIPTS_LIB_SH_MODE};"
+         "export __COMMON_SRCROOT=${__COMMON_SRCROOT};"
+         "export DEFAULT_DEBUG=${DEFAULT_DEBUG};"
+         "export DEFAULT_VERBOSE=${DEFAULT_VERBOSE};"
+         "export DEFAULT_TRACE=${DEFAULT_TRACE};"
+         "$(nix_cache_passthrough)"
+)
+## ^^ Keep in sync with run-3node-cluster.sh
 
 # clean
 for x in db db-* logs socket
 do test -d ./"$x" && rm -rf ./"$x"
 done
+
 
 # mk dirs
 mkdir -p db logs
@@ -48,7 +54,7 @@ if [ $create_new_genesis -eq 1 ]; then
     * ) echo continuing;;
   esac
 fi
-
+set -x
 
 # 2) prepare SQL database
 # (assuming db user has been defined in the database system)
@@ -62,7 +68,8 @@ fi
 # the cluster, to avoid TraceForwarderConnectionError.
 if [ $run_rt_view_service -eq 1 ]; then
   tmux select-window -t :0
-  tmux new-window -n RTView "sleep 5; ./run_rt_view_service.sh; $SHELL"
+  tmux new-window -n RTView \
+               "${TMUX_ENV_PASSTHROUGH[*]} ./run_rt_view_service.sh; $SHELL"
   sleep 3
 fi
 
@@ -73,9 +80,11 @@ if [ $run_cluster_nodes -eq 1 ]; then
   # If rt-view service is enabled, run cluster's nodes
   # using another configuration files to forward metrics.
   if [ $run_rt_view_service -eq 1 ]; then
-    tmux new-window -n Nodes "./run-3node-cluster.sh rt-view; $SHELL"
+    tmux new-window -n Nodes \
+               "${TMUX_ENV_PASSTHROUGH[*]} sleep 3; ./run-3node-cluster.sh rt-view; $SHELL"
   else
-    tmux new-window -n Nodes "./run-3node-cluster.sh local; $SHELL"  
+    tmux new-window -n Nodes \
+               "${TMUX_ENV_PASSTHROUGH[*]} ./run-3node-cluster.sh local; $SHELL"
   fi
   sleep 1
 fi
@@ -84,7 +93,8 @@ fi
 # 5) run transaction generator
 if [ $run_tx_generator -eq 1 ]; then
   tmux select-window -t :0
-  tmux new-window -n TxGen "sleep 10; ./run_tx_generator.sh; $SHELL" 
+  tmux new-window -n TxGen \
+               "${TMUX_ENV_PASSTHROUGH[*]} sleep 5; ./run_tx_generator.sh; $SHELL"
   sleep 1
 fi
 
@@ -92,7 +102,8 @@ fi
 # 6) run explorer
 if [ $run_explorer -eq 1 ]; then
   tmux select-window -t :0
-  tmux new-window -n Explorer "sleep 5; ./run_explorer.sh; $SHELL"
+  tmux new-window -n Explorer \
+               "${TMUX_ENV_PASSTHROUGH[*]} sleep 5; ./run_explorer.sh; $SHELL"
   sleep 1
 fi
 

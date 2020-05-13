@@ -26,11 +26,16 @@ setupScribes:
   - scKind: FileSK
     scName: "logs/node-2.json"
     scFormat: ScJson
+  - scKind: StdoutSK
+    scName: "stdout"
+    scFormat: ScJson
 
 # if not indicated otherwise, then log output is directed to this:
 defaultScribes:
   - - FileSK
     - "logs/node-2.json"
+  # - - StdoutSK
+  #   - "stdout"
 
 # more options which can be passed as key-value pairs:
 options:
@@ -81,7 +86,7 @@ options:
 
 NodeId:
 Protocol: RealPBFT
-GenesisFile: some/path
+GenesisFile: genesis/genesis.json
 NumCoreNodes: 1
 RequiresNetworkMagic: RequiresMagic
 PBftSignatureThreshold:
@@ -107,74 +112,26 @@ LastKnownBlockVersion-Alt: 0
 # NormalVerbosity: the default level of the rendering of captured items
 TracingVerbosity: NormalVerbosity
 
-# Trace BlockFetch client.
 TraceBlockFetchClient: True
-
-# Trace BlockFetch decisions made by the BlockFetch client.
-TraceBlockFetchDecisions: True
-
-# Trace BlockFetch protocol messages.
+TraceBlockFetchDecisions: False
 TraceBlockFetchProtocol: True
-
-# Serialised Trace BlockFetch protocol messages.
 TraceBlockFetchProtocolSerialised: False
-
-# Trace BlockFetch server.
-TraceBlockFetchServer: True
-
-# Verbose tracer of ChainDB
+TraceBlockFetchServer: False
 TraceChainDb: True
-
-# Trace ChainSync client.
 TraceChainSyncClient: False
-
-# Trace ChainSync server (blocks).
 TraceChainSyncBlockServer: False
-
-# Trace ChainSync server (headers)
 TraceChainSyncHeaderServer: False
-
-# Trace ChainSync protocol messages.
-TraceChainSyncProtocol: True
-
-# Trace DNS Resolver messages.
+TraceChainSyncProtocol: False
 TraceDNSResolver: False
-
-# Trace DNS Subscription messages.
 TraceDNSSubscription: False
-
-# Trace error policy resolution.
 TraceErrorPolicy: False
-
-# Trace local error policy resolution.
-TraceLocalErrorPolicy: True
-
-# Trace block forging.
-TraceForge: True
-
-# Trace IP Subscription messages.
+TraceForge: False
 TraceIpSubscription: False
-
-# Trace local ChainSync protocol messages.
 TraceLocalChainSyncProtocol: True
-
-# Trace local TxSubmission protocol messages.
 TraceLocalTxSubmissionProtocol: True
-
-# Trace local TxSubmission server.
 TraceLocalTxSubmissionServer: True
-
-# Trace mempool.
 TraceMempool: True
-
-# Trace Mux Events
-TraceMux: True
-
-# Trace TxSubmission server (inbound transactions).
+TraceMux: False
 TraceTxInbound: True
-
-# Trace TxSubmission client (outbound transactions).
 TraceTxOutbound: True
-
-# Trace TxSubmission protocol messages.
 TraceTxSubmissionProtocol: True
