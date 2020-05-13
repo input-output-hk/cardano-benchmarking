@@ -22,12 +22,13 @@
       extraOptionDecls = {
         ## TODO: the defaults should be externalised to a file.
         ##
-        txCount         =  intOpt 1000       "How many Txs to send, total.";
-        addTxSize       =  intOpt 100        "Extra Tx payload, in bytes.";
-        inputsPerTx     =  intOpt 4          "Inputs per Tx.";
-        outputsPerTx    =  intOpt 4          "Outputs per Tx.";
-        txFee           =  intOpt 10000000   "Tx fee, in Lovelace.";
+        tx_count        =  intOpt 1000       "How many Txs to send, total.";
+        add_tx_size     =  intOpt 100        "Extra Tx payload, in bytes.";
+        inputs_per_tx   =  intOpt 4          "Inputs per Tx.";
+        outputs_per_tx  =  intOpt 4          "Outputs per Tx.";
+        tx_fee          =  intOpt 10000000   "Tx fee, in Lovelace.";
         tps             =  intOpt 100        "Strength of generated load, in TPS.";
+        init_cooldown   =  intOpt 100        "Delay between init and main submissions.";
 
         nodeConfig      = attrOpt {}         "Node-style config, overrides the default.";
         keyGen          =  strOpt null       "Signing key: generator";
@@ -49,12 +50,14 @@
 
             "--socket-path"            localNodeConf.socketPath
 
-            "--num-of-txs"             txCount
-            "--add-tx-size"            addTxSize
-            "--inputs-per-tx"          inputsPerTx
-            "--outputs-per-tx"         outputsPerTx
-            "--tx-fee"                 txFee
+            "--num-of-txs"             tx_count
+            "--add-tx-size"            add_tx_size
+            "--inputs-per-tx"          inputs_per_tx
+            "--outputs-per-tx"         outputs_per_tx
+            "--tx-fee"                 tx_fee
             "--tps"                    tps
+            "--init-cooldown"          init_cooldown
+
             "--sig-key"                keyGen
             "--sig-key"                keySrc
             "--sig-key"                keyRec

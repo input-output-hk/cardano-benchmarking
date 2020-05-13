@@ -71,6 +71,7 @@ runCommand (GenerateTxs logConfigFp
                         numOfOutsPerTx
                         feePerTx
                         tps
+                        initCooldown
                         txAdditionalSize
                         explorerAPIEndpoint
                         sigKeysFiles) =
@@ -126,6 +127,7 @@ runCommand (GenerateTxs logConfigFp
                 numOfOutsPerTx
                 feePerTx
                 tps
+                initCooldown
                 txAdditionalSize
                 explorerAPIEndpoint
                 [fp | SigningKeyFile fp <- sigKeysFiles]
