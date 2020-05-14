@@ -710,13 +710,10 @@ runBenchmark benchTracer
 
   remoteAddresses <- forM targetNodeAddresses $ \targetNodeAddress -> do
     let (anAddrFamily, targetNodeHost) =
-          case getAddress $ naHostAddress targetNodeAddress of
-            Just (IP.IPv4 ipv4) -> (AF_INET,  show ipv4)
-            Just (IP.IPv6 ipv6) -> (AF_INET6, show ipv6)
-{-           case naHostAddress targetNodeAddress of
+          case naHostAddress targetNodeAddress of
             Just na -> case unNodeHostAddress na of
                          IP.IPv4 ipv4 -> (AF_INET,  show ipv4)
-                         IP.IPv6 ipv6 -> (AF_INET6, show ipv6) -}
+                         IP.IPv6 ipv6 -> (AF_INET6, show ipv6)
             Nothing -> panic "Target node's IP-address is undefined!"
 
     let targetNodePort = show $ naPort targetNodeAddress

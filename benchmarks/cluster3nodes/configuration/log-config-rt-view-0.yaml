@@ -1,5 +1,5 @@
 # global filter; messages must have at least this severity to pass:
-minSeverity: Info
+minSeverity: Debug
 
 # global file rotation settings:
 rotation:
@@ -98,7 +98,7 @@ LastKnownBlockVersion-Alt: 0
 # MinimalVerbosity: Minimal level of the rendering of captured items
 # MaximalVerbosity: Maximal level of the rendering of captured items
 # NormalVerbosity: the default level of the rendering of captured items
-TracingVerbosity: NormalVerbosity
+TracingVerbosity: MaximalVerbosity
 
 # Trace BlockFetch client.
 TraceBlockFetchClient: True
