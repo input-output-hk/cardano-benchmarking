@@ -14,7 +14,7 @@ BASEDIR="$(realpath $(dirname $0))"
 CLUSTER="$1"
 
 [[ $CLUSTER == $MAINNET ]] \
-  && EXPLORER_URL="http://explorer.mainnet.cardano.org" \
+  && EXPLORER_URL="https://explorer.mainnet.cardano.org" \
   || EXPLORER_URL="https://explorer.cardano-testnet.iohkdev.io"
 echo "Using explorer at $EXPLORER_URL to retrieve last block height"
 LAST_BLOCK_HEIGHT=$(curl --silent $EXPLORER_URL/api/blocks/pages | jq -r '.[][1][0].cbeBlkHeight')
@@ -57,7 +57,7 @@ do
   REMAINING_BLOCKS=$(($LAST_BLOCK_HEIGHT - $SYNCED_BLOCKS))
   echo "$SYNCED_BLOCKS blocks synced, $REMAINING_BLOCKS to go."
   sleep 15
-  SYNCED_BLOCKS=$(curl --silent 127.0.0.1:13789/metrics | grep cardano_node_ChainDB_metrics_blockNum_int  | cut -d ' ' -f 2)
+  SYNCED_BLOCKS=$(curl --silent 127.0.0.1:12798/metrics | grep cardano_node_ChainDB_metrics_blockNum_int  | cut -d ' ' -f 2)
 done
 
 kill $NODE_PID
