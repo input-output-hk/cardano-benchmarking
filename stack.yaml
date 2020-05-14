@@ -4,7 +4,7 @@ compiler: ghc-8.6.5
 packages:
   - cardano-rt-view
   - cardano-tx-generator
-    #- bm-timeline
+  - bm-timeline
   - ext/cardano-node.git/cardano-api
   - ext/cardano-node.git/cardano-cli
   - ext/cardano-node.git/cardano-node
@@ -72,7 +72,7 @@ extra-deps:
       - test
 
 #  - git: https://github.com/input-output-hk/cardano-node
-#    commit: 66f0e6d4066930bcebd34fd280a8bc1f6fab8706
+#    commit: f7c56548c05b7a3b544acb2c30f28803ff7524b2
 #    subdirs:
 #      - cardano-api
 #      - cardano-config
@@ -173,12 +173,12 @@ extra-deps:
 #        - http-client
 
 nix:
-    shell-file: nix/stack-shell.nix
-#  pure: true
-#  packages: [ zlib.dev, zlib.out
-#            , openssl.dev, openssl.out
-#            , haskell.compiler.ghc865
-#            , pkg-config
-#            , systemd.dev
-#            , postgresql
-#            ]
+#    shell-file: nix/stack-shell.nix
+  pure: true
+  packages: [ zlib.dev, zlib.out
+            , openssl.dev, openssl.out
+            , haskell.compiler.ghc865
+            , pkg-config
+            , systemd.dev
+            , postgresql
+            ]
