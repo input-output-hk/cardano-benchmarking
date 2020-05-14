@@ -4,7 +4,7 @@ compiler: ghc-8.6.5
 packages:
   - cardano-rt-view
   - cardano-tx-generator
-    #- bm-timeline
+  - bm-timeline
   - ext/cardano-node.git/cardano-api
   - ext/cardano-node.git/cardano-cli
   - ext/cardano-node.git/cardano-node
@@ -173,7 +173,7 @@ extra-deps:
 #        - http-client
 
 nix:
-    shell-file: nix/stack-shell.nix
+   shell-file: nix/stack-shell.nix
 #  pure: true
 #  packages: [ zlib.dev, zlib.out
 #            , openssl.dev, openssl.out
