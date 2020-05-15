@@ -61,6 +61,8 @@ data NodeInfo = NodeInfo
   , niEpochLastUpdate               :: !Word64
   , niSlot                          :: !Integer
   , niSlotLastUpdate                :: !Word64
+  , niNodeIsLeaderNum               :: !Integer
+  , niNodeIsLeaderNumLastUpdate     :: !Word64
   , niSlotsMissedNumber             :: !Integer
   , niSlotsMissedNumberLastUpdate   :: !Word64
   , niBlocksNumber                  :: !Integer
@@ -170,6 +172,8 @@ defaultNodeInfo = NodeInfo
   , niEpochLastUpdate               = 0
   , niSlot                          = 0
   , niSlotLastUpdate                = 0
+  , niNodeIsLeaderNum               = 0
+  , niNodeIsLeaderNumLastUpdate     = 0
   , niSlotsMissedNumber             = 0
   , niSlotsMissedNumberLastUpdate   = 0
   , niBlocksNumber                  = 0
