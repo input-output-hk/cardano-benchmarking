@@ -36,6 +36,7 @@ data ElementName
   | ElBlocksNumber
   | ElBlocksForgedNumber
   | ElChainDensity
+  | ElNodeIsLeaderNumber
   | ElSlotsMissedNumber
   | ElForksCreatedNumber
   | ElTxsProcessed
@@ -86,6 +87,7 @@ data ElementName
   | ElBlocksNumberOutdateWarning
   | ElBlocksForgedNumberOutdateWarning
   | ElChainDensityOutdateWarning
+  | ElNodeIsLeaderNumberOutdateWarning
   | ElSlotsMissedNumberOutdateWarning
   | ElForksCreatedNumberOutdateWarning
   | ElRTSGcCpuOutdateWarning

@@ -38,6 +38,7 @@ mkNodeWidget = do
   elBlocksNumber            <- string "0"
   elBlocksForgedNumber      <- string "0"
   elChainDensity            <- string "0"
+  elNodeIsLeaderNumber      <- string "0"
   elSlotsMissedNumber       <- string "0"
   elForksCreatedNumber      <- string "0"
   elTxsProcessed            <- string "0"
@@ -158,6 +159,7 @@ mkNodeWidget = do
   elBlocksNumberOutdateWarning       <- infoMark "The value is outdated"
   elBlocksForgedNumberOutdateWarning <- infoMark "The value is outdated"
   elChainDensityOutdateWarning       <- infoMark "The value is outdated"
+  elNodeIsLeaderNumberOutdateWarning <- infoMark "The value is outdated"
   elSlotsMissedNumberOutdateWarning  <- infoMark "The value is outdated"
   elForksCreatedNumberOutdateWarning <- infoMark "The value is outdated"
 
@@ -261,6 +263,7 @@ mkNodeWidget = do
                      , UI.div #. "" #+ [string "Blocks number:"]
                      , UI.div #. "" #+ [string "Forged blocks number:"]
                      , UI.div #. "" #+ [string "Chain density:"]
+                     , UI.div #. "" #+ [string "Slot leader, number:"]
                      , UI.div #. "" #+ [string "Missed slots number:"]
                      , UI.div #. "" #+ [string "Created forks number:"]
                      ]
@@ -278,6 +281,7 @@ mkNodeWidget = do
                          [ element elChainDensity
                          , UI.span #. "density-percent" #+ [string "%"]
                          ]
+                     , UI.div #. "" #+ [element elNodeIsLeaderNumber]
                      , UI.div #. "" #+ [element elSlotsMissedNumber]
                      , UI.div #. "" #+ [element elForksCreatedNumber]
                      ]
@@ -298,6 +302,10 @@ mkNodeWidget = do
                          ]
                      , UI.div #. "" #+
                          [ element elChainDensityOutdateWarning
+                         , UI.span # set UI.html "&nbsp;" #+ []
+                         ]
+                     , UI.div #. "" #+
+                         [ element elNodeIsLeaderNumberOutdateWarning
                          , UI.span # set UI.html "&nbsp;" #+ []
                          ]
                      , UI.div #. "" #+
@@ -571,6 +579,7 @@ mkNodeWidget = do
           , (ElBlocksNumber,            elBlocksNumber)
           , (ElBlocksForgedNumber,      elBlocksForgedNumber)
           , (ElChainDensity,            elChainDensity)
+          , (ElNodeIsLeaderNumber,      elNodeIsLeaderNumber)
           , (ElSlotsMissedNumber,       elSlotsMissedNumber)
           , (ElForksCreatedNumber,      elForksCreatedNumber)
           , (ElTxsProcessed,            elTxsProcessed)
@@ -615,6 +624,7 @@ mkNodeWidget = do
           , (ElBlocksNumberOutdateWarning,       elBlocksNumberOutdateWarning)
           , (ElBlocksForgedNumberOutdateWarning, elBlocksForgedNumberOutdateWarning)
           , (ElChainDensityOutdateWarning,       elChainDensityOutdateWarning)
+          , (ElNodeIsLeaderNumberOutdateWarning, elNodeIsLeaderNumberOutdateWarning)
           , (ElSlotsMissedNumberOutdateWarning,  elSlotsMissedNumberOutdateWarning)
           , (ElForksCreatedNumberOutdateWarning, elForksCreatedNumberOutdateWarning)
           , (ElRTSGcCpuOutdateWarning,           elRTSGcCpuOutdateWarning)

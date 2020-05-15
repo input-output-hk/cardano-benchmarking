@@ -129,6 +129,8 @@ updateNodesState nsMVar loggerName (LogObject aName aMeta aContent) = do
                 nodesStateWith $ updateTxsProcessed ns processedTxsNum
               LogValue "blocksForgedNum" (PureI forgedBlocksNum) ->
                 nodesStateWith $ updateBlocksForged ns forgedBlocksNum now
+              LogValue "nodeIsLeaderNum" (PureI leaderNum) ->
+                nodesStateWith $ updateNodeIsLeader ns leaderNum now
               LogValue "slotsMissedNum" (PureI missedSlotsNum) ->
                 nodesStateWith $ updateSlotsMissed ns missedSlotsNum now
               LogValue "forksCreatedNum" (PureI createdForksNum) ->
@@ -543,6 +545,16 @@ updateBlocksForged ns blocksForged now = ns { nsInfo = newNi }
     currentNi
       { niBlocksForgedNumber = blocksForged
       , niBlocksForgedNumberLastUpdate = now
+      }
+  currentNi = nsInfo ns
+
+updateNodeIsLeader :: NodeState -> Integer -> Word64 -> NodeState
+updateNodeIsLeader ns nodeIsLeader now = ns { nsInfo = newNi }
+ where
+  newNi =
+    currentNi
+      { niNodeIsLeaderNum = nodeIsLeader
+      , niNodeIsLeaderNumLastUpdate = now
       }
   currentNi = nsInfo ns
 
