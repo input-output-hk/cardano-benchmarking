@@ -334,3 +334,14 @@ a:visited:hover {
     background-color: #aaa;
     color: #999 !important;
 }
+
+.in-flight {
+    color: #444;
+    font-weight: bold;
+}
+
+.in-flight-values {
+    color: #444;
+    font-weight: bold;
+    font-style: italic;
+}
