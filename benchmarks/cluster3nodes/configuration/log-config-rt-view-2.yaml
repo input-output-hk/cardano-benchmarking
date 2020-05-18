@@ -36,32 +36,17 @@ defaultScribes:
 # more options which can be passed as key-value pairs:
 options:
   mapSubtrace:
-    benchmark:
-      contents:
-        - GhcRtsStats
-        - MonotonicClock
-      subtrace: ObservableTrace
-    '#ekgview':
-      contents:
-      - - tag: Contains
-          contents: 'cardano.epoch-validation.benchmark'
-        - - tag: Contains
-            contents: .monoclock.basic.
-      - - tag: Contains
-          contents: 'cardano.epoch-validation.benchmark'
-        - - tag: Contains
-            contents: diff.RTS.cpuNs.timed.
-      - - tag: StartsWith
-          contents: '#ekgview.#aggregation.cardano.epoch-validation.benchmark'
-        - - tag: Contains
-            contents: diff.RTS.gcNum.timed.
-      subtrace: FilterTrace
     'cardano.epoch-validation.utxo-stats':
       # Change the `subtrace` value to `Neutral` in order to log
       # `UTxO`-related messages during epoch validation.
       subtrace: NoTrace
   mapBackends:
     cardano.node.ChainDB.metrics:
+      - EKGViewBK
+      - kind: UserDefinedBK
+        name: LiveViewBackend
+      - TraceForwarderBK
+    cardano.node.Forge.metrics:
       - EKGViewBK
       - kind: UserDefinedBK
         name: LiveViewBackend
@@ -86,10 +71,8 @@ options:
       - TraceForwarderBK
 
 traceForwardTo:
-  tag: RemoteSocket
-  contents:
-    - "127.0.0.1"
-    - "2999"
+  tag: RemotePipe
+  contents: "/tmp/cluster3nodes-socket/c"
 
 ##########################################################
 ############### Cardano Node Configuration ###############
@@ -185,7 +168,7 @@ TraceLocalTxSubmissionServer: True
 TraceMempool: True
 
 # Trace Mux Events
-TraceMux: True
+TraceMux: False
 
 # Trace TxSubmission server (inbound transactions).
 TraceTxInbound: True

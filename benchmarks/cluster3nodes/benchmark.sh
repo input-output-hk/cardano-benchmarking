@@ -13,6 +13,7 @@ create_new_genesis=1
 clean_explorer_db=0
 run_rt_view_service=1
 run_cluster_nodes=1
+run_second_cluster=1
 run_explorer=0
 run_tx_generator=1
 
@@ -63,30 +64,34 @@ if [ $clean_explorer_db -eq 1 ]; then
   ./clean-explorer-db.sh ${BASEDIR}
 fi
 
+node_mode=local
 
 # 3) run rt-view service. If it enabled, it should be launched BEFORE
 # the cluster, to avoid TraceForwarderConnectionError.
 if [ $run_rt_view_service -eq 1 ]; then
+  node_mode=rt-view
   tmux select-window -t :0
   tmux new-window -n RTView \
                "${TMUX_ENV_PASSTHROUGH[*]} ./run_rt_view_service.sh; $SHELL"
-  sleep 3
+  sleep 2
 fi
 
 
-# 4) run cluster in tmux
+# 4a) run cluster in tmux
 if [ $run_cluster_nodes -eq 1 ]; then
   tmux select-window -t :0
-  # If rt-view service is enabled, run cluster's nodes
-  # using another configuration files to forward metrics.
-  if [ $run_rt_view_service -eq 1 ]; then
-    tmux new-window -n Nodes \
-               "${TMUX_ENV_PASSTHROUGH[*]} sleep 3; ./run-3node-cluster.sh rt-view; $SHELL"
-  else
-    tmux new-window -n Nodes \
-               "${TMUX_ENV_PASSTHROUGH[*]} ./run-3node-cluster.sh local; $SHELL"
-  fi
-  sleep 1
+  tmux new-window -n Nodes1 \
+               "${TMUX_ENV_PASSTHROUGH[*]} ./run-3node-cluster.sh ${node_mode}; $SHELL"
+  sleep 2
+fi
+
+
+# 4b) run cluster in tmux
+if [ $run_second_cluster -eq 1 ]; then
+  tmux select-window -t :0
+  tmux new-window -n Nodes2 \
+               "${TMUX_ENV_PASSTHROUGH[*]} ./run-second-3node-cluster.sh ${node_mode}; $SHELL"
+  sleep 2
 fi
 
 
@@ -95,7 +100,7 @@ if [ $run_tx_generator -eq 1 ]; then
   tmux select-window -t :0
   tmux new-window -n TxGen \
                "${TMUX_ENV_PASSTHROUGH[*]} sleep 5; ./run_tx_generator.sh; $SHELL"
-  sleep 1
+  sleep 6
 fi
 
 
@@ -103,8 +108,8 @@ fi
 if [ $run_explorer -eq 1 ]; then
   tmux select-window -t :0
   tmux new-window -n Explorer \
-               "${TMUX_ENV_PASSTHROUGH[*]} sleep 5; ./run_explorer.sh; $SHELL"
-  sleep 1
+               "${TMUX_ENV_PASSTHROUGH[*]} sleep 1; ./run_explorer.sh; $SHELL"
+  sleep 2
 fi
 
 

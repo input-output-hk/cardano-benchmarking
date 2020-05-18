@@ -47,22 +47,28 @@ options:
 traceAcceptAt:
   - nodeName: "a"
     remoteAddr:
-      tag: RemoteSocket
-      contents:
-        - "127.0.0.1"
-        - "2997"
+      tag: RemotePipe
+      contents: "/tmp/cluster3nodes-socket/a"
   - nodeName: "b"
     remoteAddr:
-      tag: RemoteSocket
-      contents:
-        - "127.0.0.1"
-        - "2998"
+      tag: RemotePipe
+      contents: "/tmp/cluster3nodes-socket/b"
   - nodeName: "c"
     remoteAddr:
-      tag: RemoteSocket
-      contents:
-        - "127.0.0.1"
-        - "2999"
+      tag: RemotePipe
+      contents: "/tmp/cluster3nodes-socket/c"
+  - nodeName: "d"
+    remoteAddr:
+      tag: RemotePipe
+      contents: "/tmp/cluster3nodes-socket/d"
+  - nodeName: "e"
+    remoteAddr:
+      tag: RemotePipe
+      contents: "/tmp/cluster3nodes-socket/e"
+  - nodeName: "f"
+    remoteAddr:
+      tag: RemotePipe
+      contents: "/tmp/cluster3nodes-socket/f"
 
 # NodeId: 4
 # Protocol: RealPBFT
