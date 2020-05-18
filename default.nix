@@ -8,8 +8,10 @@
 #   iohk-nix = ../iohk-nix;
 # }'
 , sourcesOverride ? {}
+# override scripts with custom configuration
+, customConfig ? {}
 # pinned version of nixpkgs augmented with overlays (iohk-nix and our packages).
-, pkgs ? import ./nix { inherit system crossSystem config sourcesOverride; }
+, pkgs ? import ./nix { inherit system crossSystem config sourcesOverride customConfig; }
 , gitrev ? pkgs.iohkNix.commitIdFromGitRepoOrZero ./.git
 }:
 with pkgs; with commonLib;
