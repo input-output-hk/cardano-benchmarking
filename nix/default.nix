@@ -2,6 +2,8 @@
 , crossSystem ? null
 , config ? {}
 , sourcesOverride ? {}
+# override scripts with custom configuration
+, customConfig ? {}
 }:
 let
   sources = import ./sources.nix { inherit pkgs; }
@@ -37,7 +39,7 @@ let
         svcLib = import ./svclib.nix { inherit pkgs; };
 
         cardanoNode = import sources.cardano-node {
-          inherit system crossSystem config sourcesOverride;
+          inherit system crossSystem config sourcesOverride customConfig;
         };
         cardanoDbSync = import sources.cardano-db-sync {
           inherit system crossSystem config sourcesOverride;
