@@ -19,6 +19,7 @@ module Cardano.Benchmarking.GeneratorTx.Submission
   , TraceLowLevelSubmit (..)
   , bulkSubmission
   , submitTx
+  , NodeToNodeSubmissionTrace(..)
   , txSubmissionClient
   ) where
 
@@ -52,7 +53,7 @@ import           Control.Tracer (Tracer, traceWith)
 
 import           Ouroboros.Consensus.Byron.Ledger (ByronBlock (..))
 import           Ouroboros.Consensus.Config (TopLevelConfig(..), configCodec)
-import           Ouroboros.Consensus.Mempool (ApplyTxErr, GenTx)
+import           Ouroboros.Consensus.Mempool (ApplyTxErr, GenTx, GenTxId, TxId, txId)
 import           Ouroboros.Consensus.Network.NodeToClient
 import           Ouroboros.Consensus.Node.NetworkProtocolVersion
                   (HasNetworkProtocolVersion (..))
@@ -301,6 +302,8 @@ bulkSubmission updEnv tr termVar txIn rpcIn =
         sizeLimit = (* fromIntegral (sum    tls)) <$> txSizeServiceTime env
         limit     = max txLimit sizeLimit
     flip (maybe (pure ())) limit $ \d -> do
+      liftIO . traceWith tr . TraceBenchTxSubDebug
+        $ "******* sleeping for " ++ show d
       waitUntil <- (addTime d) <$> lift getMonotonicTime
       modify (\x -> x { proceedAfter = waitUntil })
 
@@ -391,11 +394,17 @@ data TraceBenchTxSubmit txid
   | TraceBenchTxSubStart [txid]
   -- ^ The @txid@ has been submitted to `TxSubmission`
   --   protocol peer.
+  | TraceBenchTxSubServAnn [txid]
+  -- ^ Announcing txids in response for server's request.
   | TraceBenchTxSubServReq [txid]
   -- ^ Request for @tx@ recieved from `TxSubmission` protocol
   --   peer.
   | TraceBenchTxSubServAck [txid]
   -- ^ An ack (window moved over) received for these transactions.
+  | TraceBenchTxSubServDrop [txid]
+  -- ^ Transactions the server implicitly dropped.
+  | TraceBenchTxSubServOuts [txid]
+  -- ^ Transactions outstanding.
   | TraceBenchTxSubIdle
   -- ^ Remote peer requested new transasctions but none were
   --   available, generator not keeping up?
@@ -403,10 +412,11 @@ data TraceBenchTxSubmit txid
   -- ^ Rate limiter bit, this much delay inserted to keep within
   --   configured rate.
   | TraceBenchTxSubDebug String
+  | TraceBenchTxSubError Text
   deriving (Show)
 
 instance ToJSON (Mempool.GenTxId ByronBlock) where
-  toJSON txId = A.String (T.pack $ show txId)
+  toJSON txid = A.String (T.pack $ show txid)
 
 instance ToObject (TraceBenchTxSubmit (Mempool.GenTxId ByronBlock)) where
   toObject MinimalVerbosity _ = emptyObject -- do not log
@@ -414,11 +424,15 @@ instance ToObject (TraceBenchTxSubmit (Mempool.GenTxId ByronBlock)) where
     case t of
       TraceBenchTxSubRecv _      -> mkObject ["kind" .= A.String "TraceBenchTxSubRecv"]
       TraceBenchTxSubStart _     -> mkObject ["kind" .= A.String "TraceBenchTxSubStart"]
+      TraceBenchTxSubServAnn _  -> mkObject ["kind" .= A.String "TraceBenchTxSubServAnn"]
       TraceBenchTxSubServReq _   -> mkObject ["kind" .= A.String "TraceBenchTxSubServReq"]
       TraceBenchTxSubServAck _   -> mkObject ["kind" .= A.String "TraceBenchTxSubServAck"]
+      TraceBenchTxSubServDrop _  -> mkObject ["kind" .= A.String "TraceBenchTxSubServDrop"]
+      TraceBenchTxSubServOuts _  -> mkObject ["kind" .= A.String "TraceBenchTxSubServOuts"]
       TraceBenchTxSubIdle        -> mkObject ["kind" .= A.String "TraceBenchTxSubIdle"]
       TraceBenchTxSubRateLimit _ -> mkObject ["kind" .= A.String "TraceBenchTxSubRateLimit"]
       TraceBenchTxSubDebug _     -> mkObject ["kind" .= A.String "TraceBenchTxSubDebug"]
+      TraceBenchTxSubError _     -> mkObject ["kind" .= A.String "TraceBenchTxSubError"]
   toObject MaximalVerbosity t =
     case t of
       TraceBenchTxSubRecv txIds ->
@@ -429,12 +443,24 @@ instance ToObject (TraceBenchTxSubmit (Mempool.GenTxId ByronBlock)) where
         mkObject [ "kind"  .= A.String "TraceBenchTxSubStart"
                  , "txIds" .= toJSON txIds
                  ]
+      TraceBenchTxSubServAnn txIds ->
+        mkObject [ "kind"  .= A.String "TraceBenchTxSubServAnn"
+                 , "txIds" .= toJSON txIds
+                 ]
       TraceBenchTxSubServReq txIds ->
         mkObject [ "kind"  .= A.String "TraceBenchTxSubServReq"
                  , "txIds" .= toJSON txIds
                  ]
       TraceBenchTxSubServAck txIds ->
         mkObject [ "kind"  .= A.String "TraceBenchTxSubServAck"
+                 , "txIds" .= toJSON txIds
+                 ]
+      TraceBenchTxSubServDrop txIds ->
+        mkObject [ "kind"  .= A.String "TraceBenchTxSubServDrop"
+                 , "txIds" .= toJSON txIds
+                 ]
+      TraceBenchTxSubServOuts txIds ->
+        mkObject [ "kind"  .= A.String "TraceBenchTxSubServOuts"
                  , "txIds" .= toJSON txIds
                  ]
       TraceBenchTxSubIdle ->
@@ -448,12 +474,16 @@ instance ToObject (TraceBenchTxSubmit (Mempool.GenTxId ByronBlock)) where
         mkObject [ "kind" .= A.String "TraceBenchTxSubDebug"
                  , "msg"  .= A.String (T.pack s)
                  ]
+      TraceBenchTxSubError s ->
+        mkObject [ "kind" .= A.String "TraceBenchTxSubError"
+                 , "msg"  .= A.String s
+                 ]
 
 instance ToObject (Mempool.GenTxId ByronBlock) where
   toObject MinimalVerbosity _    = emptyObject -- do not log
   toObject NormalVerbosity _     = mkObject [ "kind" .= A.String "GenTxId"]
-  toObject MaximalVerbosity txId = mkObject [ "kind" .= A.String "GenTxId"
-                                            , "txId" .= toJSON txId
+  toObject MaximalVerbosity txid = mkObject [ "kind" .= A.String "GenTxId"
+                                            , "txId" .= toJSON txid
                                             ]
 
 instance HasSeverityAnnotation (Mempool.GenTxId ByronBlock)
@@ -550,7 +580,7 @@ localInitiatorNetworkApplication
               (NodeToClient.LocalConnectionId -> OuroborosApplication InitiatorApp ByteString m () Void)
 localInitiatorNetworkApplication tracer cfg tx =
   foldMapVersions
-    (\v -> 
+    (\v ->
       versionedNodeToClientProtocols
         (nodeToClientProtocolVersion proxy v)
         versionData
@@ -587,14 +617,14 @@ localInitiatorNetworkApplication tracer cfg tx =
                   SubmitSuccess -> traceWith tracer TraceLowLevelAccepted
                   SubmitFail msg -> traceWith tracer (TraceLowLevelRejected $ show msg)
 
-        , NodeToClient.localStateQueryProtocol = 
+        , NodeToClient.localStateQueryProtocol =
             InitiatorProtocolOnly $
               MuxPeer
                 nullTracer
                 cStateQueryCodec
                 NodeToClient.localStateQueryPeerNull
         }
-     where 
+     where
       Codecs { cChainSyncCodec
              , cTxSubmissionCodec
              , cStateQueryCodec
@@ -613,38 +643,83 @@ txSubmissionClientSingle tx = LocalTxSub.LocalTxSubmissionClient $
     pure $ LocalTxSub.SendMsgSubmitTx tx $ \mreject ->
       pure (LocalTxSub.SendMsgDone mreject)
 
+instance ToObject NodeToNodeSubmissionTrace where
+  toObject MinimalVerbosity = const emptyObject -- do not log
+  toObject _ = \case
+    ReqIdsBlocking  ack req -> mkObject [ "kind" .= A.String "ReqIdsBlocking"
+                                        , "ack"  .= A.toJSON ack
+                                        , "req"  .= A.toJSON req ]
+    IdsListBlocking sent    -> mkObject [ "kind" .= A.String "IdsListBlocking"
+                                        , "sent" .= A.toJSON sent ]
+    ReqIdsPrompt    ack req -> mkObject [ "kind" .= A.String "ReqIdsPrompt"
+                                        , "ack"  .= A.toJSON ack
+                                        , "req"  .= A.toJSON req ]
+    IdsListPrompt   sent    -> mkObject [ "kind" .= A.String "IdsListPrompt"
+                                        , "sent" .= A.toJSON sent ]
+    EndOfProtocol           -> mkObject [ "kind" .= A.String "EndOfProtocol" ]
+    ReqTxs          req     -> mkObject [ "kind" .= A.String "ReqTxs"
+                                        , "req"  .= A.toJSON req ]
+    TxList          sent    -> mkObject [ "kind" .= A.String "TxList"
+                                        , "sent" .= A.toJSON sent ]
+
+instance HasSeverityAnnotation NodeToNodeSubmissionTrace
+instance HasPrivacyAnnotation  NodeToNodeSubmissionTrace
+instance Transformable Text IO NodeToNodeSubmissionTrace where
+  trTransformer = trStructured
+
+data NodeToNodeSubmissionTrace
+  = ReqIdsBlocking  Word16 Word16
+  | IdsListBlocking Int
+
+  | ReqIdsPrompt    Word16 Word16
+  | IdsListPrompt   Int
+
+  | ReqTxs          Int
+  | TxList          Int
+
+  | EndOfProtocol
+
 txSubmissionClient
   :: forall m block txid tx .
      ( MonadSTM m
      , txid ~ Mempool.GenTxId block
      , tx ~ GenTx block)
-  => TMVar m (RPCTxSubmission m txid tx)
+  => Tracer m NodeToNodeSubmissionTrace
+  -> TMVar m (RPCTxSubmission m txid tx)
   -> TxSubmissionClient txid tx m ()
-txSubmissionClient tmvReq =
+txSubmissionClient tr tmvReq =
   TxSubmissionClient $ pure client
  where
   client = ClientStIdle
     { recvMsgRequestTxIds = \blocking acked window ->
         case blocking of
           TokBlocking -> do -- prompt reply not required
+            traceWith tr $ ReqIdsBlocking acked window
             resp' <- newEmptyTMVarM
             atomically . putTMVar tmvReq $
               RPCRequestTxIds (acked, window) resp'
             -- might be some delay at this point
             r <- atomically $ takeTMVar resp'
-            pure $
-              case r of
-                Nothing  -> SendMsgDone ()
-                Just txs -> SendMsgReplyTxIds (BlockingReply $ fromList txs) client
+            case r of
+              Nothing  -> do
+                traceWith tr $ EndOfProtocol
+                pure $ SendMsgDone ()
+              Just txs -> do
+                traceWith tr $ IdsListPrompt (length txs)
+                pure $ SendMsgReplyTxIds (BlockingReply $ fromList txs) client
           TokNonBlocking -> do -- prompt reply required
+            traceWith tr $ ReqIdsPrompt acked window
             resp' <- newEmptyTMVarM
             atomically . putTMVar tmvReq $
               RPCRequestTxIdsPromptly (acked, window) resp'
             txs <- atomically $ takeTMVar resp'
+            traceWith tr $ IdsListBlocking (length txs)
             pure $ SendMsgReplyTxIds (NonBlockingReply txs) client
     , recvMsgRequestTxs = \txids -> do
+        traceWith tr $ ReqTxs (length txids)
         resp' <- newEmptyTMVarM
         atomically $ putTMVar tmvReq $ RPCRequestTxs txids resp'
         r <- atomically $ takeTMVar resp'
+        traceWith tr $ TxList (length r)
         pure $ SendMsgReplyTxs r client
     }

@@ -75,12 +75,7 @@ import           Cardano.Benchmarking.GeneratorTx.NodeToNode (BenchmarkTxSubmitT
                      SendRecvConnect,
                      SendRecvTxSubmission,
                      benchmarkConnectTxSubmit)
-import           Cardano.Benchmarking.GeneratorTx.Submission (ROEnv (..),
-                     TraceBenchTxSubmit (..),
-                     TraceLowLevelSubmit (..),
-                     bulkSubmission,
-                     submitTx,
-                     txSubmissionClient)
+import           Cardano.Benchmarking.GeneratorTx.Submission
 import           Cardano.Benchmarking.GeneratorTx.Tx (toCborTxAux, txSpendGenesisUTxOByronPBFT,
                      normalByronTxToGenTx)
 
@@ -179,7 +174,11 @@ genesisBenchmarkRunner loggingLayer
   when (tps < 0.05) $
     left $ TooSmallTPSRate tps
 
-  let (benchTracer, connectTracer, submitTracer, lowLevelSubmitTracer) = createTracers loggingLayer
+  let ( benchTracer
+       , connectTracer
+       , submitMuxTracer
+       , lowLevelSubmitTracer
+       , submitTracer) = createTracers loggingLayer
 
   liftIO . traceWith benchTracer . TraceBenchTxSubDebug
     $ "******* Tx generator, tracers are ready *******"
@@ -227,8 +226,9 @@ genesisBenchmarkRunner loggingLayer
   when (rawNumOfTxs > 0) $
     runBenchmark benchTracer
                  connectTracer
-                 submitTracer
+                 submitMuxTracer
                  lowLevelSubmitTracer
+                 submitTracer
                  iocp
                  socketFp
                  pInfoConfig
@@ -286,9 +286,10 @@ createTracers
      , Tracer IO SendRecvConnect
      , Tracer IO (SendRecvTxSubmission ByronBlock)
      , Tracer IO TraceLowLevelSubmit
+     , Tracer IO NodeToNodeSubmissionTrace
      )
 createTracers loggingLayer =
-  (benchTracer, connectTracer, submitTracer, lowLevelSubmitTracer)
+  (benchTracer, connectTracer, submitTracer, lowLevelSubmitTracer, n2nSubmitTracer)
  where
   basicTr :: Trace IO Text
   basicTr = llBasicTrace loggingLayer
@@ -310,6 +311,9 @@ createTracers loggingLayer =
 
   lowLevelSubmitTracer :: Tracer IO TraceLowLevelSubmit
   lowLevelSubmitTracer = toLogObjectVerbose (appendName "llSubmit" tr')
+
+  n2nSubmitTracer :: Tracer IO NodeToNodeSubmissionTrace
+  n2nSubmitTracer = toLogObjectVerbose (appendName "submit2" tr')
 
 -----------------------------------------------------------------------------------------
 -- | Prepare signing keys and addresses for transactions.
@@ -646,6 +650,7 @@ runBenchmark
   -> Tracer IO SendRecvConnect
   -> Tracer IO (SendRecvTxSubmission ByronBlock)
   -> Tracer IO TraceLowLevelSubmit
+  -> Tracer IO NodeToNodeSubmissionTrace
   -> IOManager
   -> SocketPath
   -> TopLevelConfig ByronBlock
@@ -663,8 +668,9 @@ runBenchmark
   -> ExceptT TxGenError IO ()
 runBenchmark benchTracer
              connectTracer
-             submitTracer
+             submitMuxTracer
              lowLevelSubmitTracer
+             submitTracer
              iocp
              socketFp
              pInfoConfig
@@ -702,7 +708,7 @@ runBenchmark benchTracer
   let benchmarkTracers :: BenchmarkTxSubmitTracers IO ByronBlock
       benchmarkTracers = BenchmarkTracers
                            { trSendRecvConnect      = connectTracer
-                           , trSendRecvTxSubmission = submitTracer
+                           , trSendRecvTxSubmission = submitMuxTracer
                            }
 
   let localAddr :: Maybe Network.Socket.AddrInfo
@@ -781,6 +787,7 @@ runBenchmark benchTracer
 
           r <- launchTxPeer benchTracer
                        benchmarkTracers
+                       submitTracer
                        iocp
                        txSubmissionTerm
                        pInfoConfig
@@ -1177,6 +1184,7 @@ launchTxPeer
   -- tracer for lower level connection and details of
   -- protocol interactisn, intended for debugging
   -- associated issues.
+  -> Tracer IO NodeToNodeSubmissionTrace
   -> IOManager
   -- ^ associate a file descriptor with IO completion port
   -> MSTM.TVar IO Bool
@@ -1194,7 +1202,7 @@ launchTxPeer
   -- give this peer 1 or more transactions, empty list
   -- signifies stop this peer
   -> IO (Async (), Async ())
-launchTxPeer tr1 tr2 iocp termTM nc localAddr remoteAddr updROEnv txInChan = do
+launchTxPeer tr1 tr2 tr3 iocp termTM nc localAddr remoteAddr updROEnv txInChan = do
   tmv <- MSTM.newEmptyTMVarM
-  (,) <$> (async $ benchmarkConnectTxSubmit iocp tr2 nc localAddr remoteAddr (txSubmissionClient tmv))
+  (,) <$> (async $ benchmarkConnectTxSubmit iocp tr2 nc localAddr remoteAddr (txSubmissionClient tr3 tmv))
       <*> (async $ bulkSubmission updROEnv tr1 termTM txInChan tmv)
