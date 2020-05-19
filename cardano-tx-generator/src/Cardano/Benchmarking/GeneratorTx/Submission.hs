@@ -51,12 +51,12 @@ import           Cardano.BM.Data.Tracer (emptyObject, mkObject, trStructured)
 import           Control.Tracer (Tracer, traceWith)
 
 import           Ouroboros.Consensus.Byron.Ledger (ByronBlock (..))
-import           Ouroboros.Consensus.Config (TopLevelConfig(..))
+import           Ouroboros.Consensus.Config (TopLevelConfig(..), configCodec)
 import           Ouroboros.Consensus.Mempool (ApplyTxErr, GenTx)
 import           Ouroboros.Consensus.Network.NodeToClient
 import           Ouroboros.Consensus.Node.NetworkProtocolVersion
                   (HasNetworkProtocolVersion (..))
-import           Ouroboros.Consensus.Node.Run (RunNode)
+import           Ouroboros.Consensus.Node.Run (RunNode(..))
 import qualified Ouroboros.Consensus.Node.Run as Node
 import qualified Ouroboros.Consensus.Mempool as Mempool
 
@@ -65,6 +65,7 @@ import           Ouroboros.Network.Mux
                      MuxPeer(..), RunMiniProtocol(..) )
 import           Ouroboros.Network.Driver (runPeer)
 import qualified Ouroboros.Network.Protocol.LocalTxSubmission.Client as LocalTxSub
+import           Ouroboros.Network.Protocol.LocalTxSubmission.Type (SubmitResult(..))
 import           Ouroboros.Network.Protocol.Handshake.Version (Versions)
 import           Ouroboros.Network.Protocol.TxSubmission.Client (ClientStIdle(..),
                                                                  ClientStTxs(..),
@@ -98,8 +99,8 @@ import           Cardano.Config.Types (SocketPath(..))
 bulkSubmission
   :: forall blk txid tx .
      ( Ord txid
-     , Mempool.ApplyTx blk
      , Mempool.HasTxId tx
+     , RunNode blk
      , tx ~ Mempool.GenTx blk, txid ~ Mempool.GenTxId blk)
   => (ROEnv txid tx -> ROEnv txid tx)
   -- changes to default settings
@@ -206,7 +207,7 @@ bulkSubmission updEnv tr termVar txIn rpcIn =
   getTxId = Mempool.txId
 
   getTxSize :: tx -> TxSizeInBytes
-  getTxSize = Mempool.txSize
+  getTxSize = nodeTxSize --nodeTxInBlockSize
 
   processOp :: ROEnv txid tx -> StateT (RWEnv IO txid tx) IO ()
   processOp env = do
@@ -486,7 +487,9 @@ instance ToObject TraceLowLevelSubmit where
     case t of
       TraceLowLevelSubmitting -> mkObject ["kind" .= A.String "TraceLowLevelSubmitting"]
       TraceLowLevelAccepted   -> mkObject ["kind" .= A.String "TraceLowLevelAccepted"]
-      TraceLowLevelRejected _ -> mkObject ["kind" .= A.String "TraceLowLevelRejected"]
+      TraceLowLevelRejected m -> mkObject [ "kind" .= A.String "TraceLowLevelRejected"
+                                          , "message" .= A.String (T.pack m)
+                                          ]
   toObject MaximalVerbosity t =
     case t of
       TraceLowLevelSubmitting ->
@@ -521,15 +524,16 @@ submitTx :: ( RunNode blk
          -> GenTx blk
          -> Tracer IO TraceLowLevelSubmit
          -> IO ()
-submitTx iocp (SocketFile path) cfg tx tracer =
-    NodeToClient.connectTo
-      (NodeToClient.localSnocket iocp path)
-      NetworkConnectTracers {
-          nctMuxTracer       = nullTracer,
-          nctHandshakeTracer = nullTracer
-        }
-      (localInitiatorNetworkApplication tracer cfg tx)
-      path
+submitTx iocp sockpath cfg tx tracer =
+    let path = unSocketPath sockpath
+    in NodeToClient.connectTo
+         (NodeToClient.localSnocket iocp path)
+         NetworkConnectTracers {
+             nctMuxTracer       = nullTracer,
+             nctHandshakeTracer = nullTracer
+           }
+         (localInitiatorNetworkApplication tracer cfg tx)
+         path
 
 localInitiatorNetworkApplication
   :: forall blk m .
@@ -556,7 +560,7 @@ localInitiatorNetworkApplication tracer cfg tx =
     proxy :: Proxy blk
     proxy = Proxy
 
-    versionData = NodeToClientVersionData (Node.nodeNetworkMagic proxy cfg)
+    versionData = NodeToClientVersionData (Node.nodeNetworkMagic cfg)
 
     protocols :: NodeToClientVersion blk
               -> NodeToClient.NodeToClientProtocols InitiatorApp ByteString m () Void
@@ -580,8 +584,8 @@ localInitiatorNetworkApplication tracer cfg tx =
                             (LocalTxSub.localTxSubmissionClientPeer
                                (txSubmissionClientSingle tx))
                 case result of
-                  Nothing  -> traceWith tracer TraceLowLevelAccepted
-                  Just msg -> traceWith tracer (TraceLowLevelRejected $ show msg)
+                  SubmitSuccess -> traceWith tracer TraceLowLevelAccepted
+                  SubmitFail msg -> traceWith tracer (TraceLowLevelRejected $ show msg)
 
         , NodeToClient.localStateQueryProtocol = 
             InitiatorProtocolOnly $
@@ -594,7 +598,7 @@ localInitiatorNetworkApplication tracer cfg tx =
       Codecs { cChainSyncCodec
              , cTxSubmissionCodec
              , cStateQueryCodec
-             } = defaultCodecs (configBlock cfg) byronClientVersion
+             } = defaultCodecs (configCodec cfg) byronClientVersion
 
 
 -- | A 'LocalTxSubmissionClient' that submits exactly one transaction, and then
@@ -604,7 +608,7 @@ txSubmissionClientSingle
   :: forall tx reject m.
      Applicative m
   => tx
-  -> LocalTxSub.LocalTxSubmissionClient tx reject m (Maybe reject)
+  -> LocalTxSub.LocalTxSubmissionClient tx reject m (LocalTxSub.SubmitResult reject)
 txSubmissionClientSingle tx = LocalTxSub.LocalTxSubmissionClient $
     pure $ LocalTxSub.SendMsgSubmitTx tx $ \mreject ->
       pure (LocalTxSub.SendMsgDone mreject)

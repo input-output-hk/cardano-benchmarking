@@ -27,6 +27,7 @@ fi
 SUBCONFIG=
 if [ $1 == "rt-view" ]; then
   SUBCONFIG="-rt-view"
+  REDIRSTDERR="2>/dev/null"
 fi
 
 # start a tmux session:
@@ -88,7 +89,7 @@ do tmux select-pane -t $((i-3))
       . ${__COMMON_SRCROOT}/scripts/lib-cli.sh;
       . ${__COMMON_SRCROOT}/scripts/lib-node.sh;
 
-      run cardano-node run $(nodeargs $i)" \
+      run cardano-node run $(nodeargs $i)" ${REDIRSTDERR} \
      C-m
 done
 tmux select-pane -t 0
