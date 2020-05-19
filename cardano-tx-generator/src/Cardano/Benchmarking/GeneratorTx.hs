@@ -161,6 +161,7 @@ genesisBenchmarkRunner
   -> Maybe TxAdditionalSize
   -> Maybe ExplorerAPIEnpoint
   -> [FilePath]
+  -> Bool
   -> ExceptT TxGenError IO ()
 genesisBenchmarkRunner loggingLayer
                        iocp
@@ -175,7 +176,8 @@ genesisBenchmarkRunner loggingLayer
                        initCooldown
                        txAdditionalSize
                        explorerAPIEndpoint
-                       signingKeyFiles = do
+                       signingKeyFiles
+                       singleThreaded = do
   when (length signingKeyFiles < 3) $
     left $ NeedMinimumThreeSigningKeyFiles signingKeyFiles
 
@@ -253,6 +255,7 @@ genesisBenchmarkRunner loggingLayer
                  txAdditionalSize
                  explorerAPIEndpoint
                  fundsWithGenesisMoney
+                 singleThreaded
 
 {-------------------------------------------------------------------------------
   Main logic
@@ -676,6 +679,7 @@ runBenchmark
   -> Maybe TxAdditionalSize
   -> Maybe ExplorerAPIEnpoint
   -> AvailableFunds
+  -> Bool
   -> ExceptT TxGenError IO ()
 runBenchmark benchTracer
              connectTracer
@@ -696,7 +700,8 @@ runBenchmark benchTracer
              (InitCooldown initCooldown)
              txAdditionalSize
              explorerAPIEndpoint
-             fundsWithGenesisMoney = do
+             fundsWithGenesisMoney
+             singleThreaded = do
   liftIO . traceWith benchTracer . TraceBenchTxSubDebug
     $ "******* Tx generator, phase 1: make enough available UTxO entries *******"
   fundsWithSufficientCoins <-
@@ -767,7 +772,8 @@ runBenchmark benchTracer
               recipientAddress
               sourceKey
               txFee
-              (NE.length targetNodeAddresses)
+              (if singleThreaded then 1
+               else (NE.length targetNodeAddresses))
               numOfTxs
               numOfInsPerTx
               numOfOutsPerTx

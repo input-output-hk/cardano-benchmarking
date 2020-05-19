@@ -74,7 +74,8 @@ runCommand (GenerateTxs logConfigFp
                         initCooldown
                         txAdditionalSize
                         explorerAPIEndpoint
-                        sigKeysFiles) =
+                        sigKeysFiles
+                        singleThreaded) =
   withIOManagerE $ \iocp -> do
     let ncli = NodeCLI
                { nodeMode = RealProtocolMode
@@ -131,6 +132,7 @@ runCommand (GenerateTxs logConfigFp
                 txAdditionalSize
                 explorerAPIEndpoint
                 [fp | SigningKeyFile fp <- sigKeysFiles]
+                singleThreaded
 
 ----------------------------------------------------------------------------
 

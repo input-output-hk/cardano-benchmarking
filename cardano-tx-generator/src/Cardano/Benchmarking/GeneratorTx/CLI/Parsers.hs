@@ -9,7 +9,7 @@ import           Prelude (String)
 import           Options.Applicative
                     ( Parser
                     , bashCompleter, completer, help, long, metavar
-                    , auto, option, strOption
+                    , auto, flag, option, strOption
                     )
 import qualified Control.Arrow as Arr
 import           Network.Socket (PortNumber)
@@ -40,6 +40,7 @@ data GenerateTxs =
               (Maybe TxAdditionalSize)
               (Maybe ExplorerAPIEnpoint)
               [SigningKeyFile]
+              Bool
 
 parseCommand :: Parser GenerateTxs
 parseCommand =
@@ -94,10 +95,21 @@ parseCommand =
           "sig-key"
           "Path to signing key file, for genesis UTxO using by generator."
 
+    <*> parseFlag
+          "single-threaded"
+          "Single-threaded submission."
+
 defaultInitCooldown :: InitCooldown
 defaultInitCooldown = InitCooldown 100
 
 ----------------------------------------------------------------
+
+parseFlag :: String -> String -> Parser Bool
+parseFlag = parseFlag' False True
+
+parseFlag' :: a -> a -> String -> String -> Parser a
+parseFlag' def active optname desc =
+  flag def active $ long optname <> help desc
 
 parseTargetNodeAddress :: String -> String -> Parser NodeAddress
 parseTargetNodeAddress optname desc =
