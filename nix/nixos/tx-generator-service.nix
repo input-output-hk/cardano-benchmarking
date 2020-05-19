@@ -29,6 +29,7 @@
         tx_fee          =  intOpt 10000000   "Tx fee, in Lovelace.";
         tps             =  intOpt 100        "Strength of generated load, in TPS.";
         init_cooldown   =  intOpt 100        "Delay between init and main submissions.";
+        single_threaded = boolOpt false      "Force submission via single thread.";
 
         nodeConfig      = attrOpt {}         "Node-style config, overrides the default.";
         keyGen          =  strOpt null       "Signing key: generator";
@@ -67,6 +68,8 @@
             "--signing-key"            keyGen
             "--delegation-certificate" delegCert
           ] ++
+          optional single_threaded
+            "--single-threaded" ++
           __attrValues
             (__mapAttrs (name: { ip, port }: "--target-node '(\"${ip}\",${toString port})'")
               targetNodes);

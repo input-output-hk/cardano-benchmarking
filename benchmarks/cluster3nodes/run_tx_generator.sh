@@ -28,6 +28,7 @@ run 'cardano-tx-generator' \
   --outputs-per-tx $outputstx \
   --tx-fee $txfee \
   --tps $tps \
+  --single-threaded \
   --sig-key ${CONFIGDIR}/genesis/delegate-keys.000.key \
   --sig-key ${CONFIGDIR}/genesis/delegate-keys.001.key \
   --sig-key ${CONFIGDIR}/genesis/delegate-keys.002.key \

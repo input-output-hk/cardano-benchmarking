@@ -161,6 +161,7 @@ genesisBenchmarkRunner
   -> Maybe TxAdditionalSize
   -> Maybe ExplorerAPIEnpoint
   -> [FilePath]
+  -> Bool
   -> ExceptT TxGenError IO ()
 genesisBenchmarkRunner loggingLayer
                        iocp
@@ -175,7 +176,8 @@ genesisBenchmarkRunner loggingLayer
                        initCooldown
                        txAdditionalSize
                        explorerAPIEndpoint
-                       signingKeyFiles = do
+                       signingKeyFiles
+                       singleThreaded = do
   when (length signingKeyFiles < 3) $
     left $ NeedMinimumThreeSigningKeyFiles signingKeyFiles
 
@@ -243,7 +245,9 @@ genesisBenchmarkRunner loggingLayer
                  pInfoConfig
                  sourceKey
                  recipientAddress
-                 targetNodeAddresses
+                 (if singleThreaded
+                   then NE.fromList $ NE.take 1 targetNodeAddresses
+                   else targetNodeAddresses)
                  numOfTxs
                  numOfInsPerTx
                  numOfOutsPerTx

@@ -67,6 +67,7 @@ let
   serviceDeclarationLib = with pkgs.lib; rec {
     opt = type: default: description:
               mkOption { inherit type default description; };
+    boolOpt = opt types.bool;
     intOpt  = opt types.int;
     pathOpt = opt (types.or types.path types.str);
     strOpt  = opt types.str;
