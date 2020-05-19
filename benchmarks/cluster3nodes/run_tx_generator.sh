@@ -31,4 +31,7 @@ run 'cardano-tx-generator' \
   --sig-key ${CONFIGDIR}/genesis/delegate-keys.000.key \
   --sig-key ${CONFIGDIR}/genesis/delegate-keys.001.key \
   --sig-key ${CONFIGDIR}/genesis/delegate-keys.002.key \
+  --sig-key ${CONFIGDIR}/genesis/delegate-keys.003.key \
+  --sig-key ${CONFIGDIR}/genesis/delegate-keys.004.key \
+  --sig-key ${CONFIGDIR}/genesis/delegate-keys.005.key \
   ${TARGETNODES}

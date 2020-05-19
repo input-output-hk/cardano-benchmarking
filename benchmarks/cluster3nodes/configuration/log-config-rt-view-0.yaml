@@ -41,6 +41,11 @@ options:
       - EKGViewBK
       - kind: UserDefinedBK
         name: LiveViewBackend
+    cardano.node.Forge.metrics:
+      - EKGViewBK
+      - kind: UserDefinedBK
+        name: LiveViewBackend
+      - TraceForwarderBK
     cardano.node-metrics:
       - kind: UserDefinedBK
         name: LiveViewBackend
@@ -62,10 +67,8 @@ options:
       - TraceForwarderBK
 
 traceForwardTo:
-  tag: RemoteSocket
-  contents:
-    - "127.0.0.1"
-    - "2997"
+  tag: RemotePipe
+  contents: "/tmp/cluster3nodes-socket/a"
 
 ##########################################################
 ############### Cardano Node Configuration ###############
@@ -161,7 +164,7 @@ TraceLocalTxSubmissionServer: True
 TraceMempool: True
 
 # Trace Mux Events
-TraceMux: True
+TraceMux: False
 
 # Trace TxSubmission server (inbound transactions).
 TraceTxInbound: True

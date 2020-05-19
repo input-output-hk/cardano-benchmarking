@@ -17,26 +17,24 @@ defaultBackends:
   - KatipBK
 
 # if wanted, the GUI is listening on this port:
-#hasGUI: 12872
+#hasGUI: 12871
 
 # if wanted, the EKG interface is listening on this port:
-#hasEKG: 12782
+#hasEKG: 12781
 
 # here we set up outputs of logging in 'katip':
 setupScribes:
   - scKind: FileSK
-    scName: "logs/node-1.json"
+    scName: "logs/node-3.json"
     scFormat: ScJson
 
 # if not indicated otherwise, then log output is directed to this:
 defaultScribes:
   - - FileSK
-    - "logs/node-1.json"
+    - "logs/node-3.json"
 
 # more options which can be passed as key-value pairs:
 options:
-  cfokey:
-    value: "Release-1.0.0"
   mapSubtrace:
     'cardano.epoch-validation.utxo-stats':
       # Change the `subtrace` value to `Neutral` in order to log
@@ -74,7 +72,7 @@ options:
 
 traceForwardTo:
   tag: RemotePipe
-  contents: "/tmp/cluster3nodes-socket/b"
+  contents: "/tmp/cluster3nodes-socket/d"
 
 ##########################################################
 ############### Cardano Node Configuration ###############
