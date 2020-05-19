@@ -16,7 +16,6 @@ import           Cardano.Prelude hiding (option)
 import           Control.Monad.Trans.Except.Extra
                     ( firstExceptT )
 
-import qualified Ouroboros.Consensus.Cardano as Consensus
 import           Ouroboros.Network.Block (MaxSlotNo (..))
 import           Ouroboros.Network.NodeToClient
                     ( IOManager
@@ -30,12 +29,11 @@ import           Cardano.Config.Logging
 import           Cardano.Config.Byron.Protocol
                     ( ByronProtocolInstantiationError(..)
                     , mkConsensusProtocolRealPBFT )
-import           Cardano.Config.Protocol (SomeConsensusProtocol(..))
 import           Cardano.Config.Types
                     ( DbFile(..), ConfigError(..), ConfigYamlFilePath(..)
-                    , CardanoEnvironment(..), CLISocketPath(..)
-                    , LastKnownBlockVersion(..), ProtocolFilepaths(..)
-                    , NodeAddress(..), NodeCLI(..), NodeConfiguration(..)
+                    , CardanoEnvironment(..), LastKnownBlockVersion(..)
+                    , ProtocolFilepaths(..), NodeAddress(..), NodeCLI(..)
+                    , NodeConfiguration(..), NodeHostAddress(..)
                     , NodeProtocolMode(..), Protocol, SigningKeyFile(..)
                     , TopologyFile(..), Update(..), parseNodeConfigurationFP
                     )
@@ -79,11 +77,11 @@ runCommand (GenerateTxs logConfigFp
   withIOManagerE $ \iocp -> do
     let ncli = NodeCLI
                { nodeMode = RealProtocolMode
-               , nodeAddr = NodeAddress Nothing 19999
+               , nodeAddr = NodeAddress (NodeHostAddress Nothing) 19999
                , configFile = ConfigYamlFilePath logConfigFp
                , topologyFile = TopologyFile "" -- Tx generator doesn't use topology
                , databaseFile = DbFile ""       -- Tx generator doesn't use database
-               , socketFile = Just $ CLISocketPath socketFp
+               , socketFile = Just socketFp
                , protocolFiles = ProtocolFilepaths {
                     byronCertFile = Just delegCert
                   , byronKeyFile = Just signingKey
@@ -109,7 +107,7 @@ runCommand (GenerateTxs logConfigFp
                                  NoEnvironment
                                  ncli
 
-    (SomeConsensusProtocol proto @Consensus.ProtocolRealPBFT{}) <- firstExceptT GenerateTxsError $
+    protocol <- firstExceptT GenerateTxsError $
         firstExceptT FromProtocolError $
             mkConsensusProtocolRealPBFT
                 updatedConfiguration
@@ -121,7 +119,7 @@ runCommand (GenerateTxs logConfigFp
                 loggingLayer
                 iocp
                 socketFp
-                proto
+                protocol
                 targetNodeAddresses
                 numOfTxs
                 numOfInsPerTx

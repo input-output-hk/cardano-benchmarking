@@ -111,8 +111,8 @@ parseTargetNodeAddress optname desc =
       <> metavar "(HOST,PORT)"
       <> help desc
 
-parseHostAddress :: String -> Maybe NodeHostAddress
-parseHostAddress = Just . NodeHostAddress .
+parseHostAddress :: String -> NodeHostAddress
+parseHostAddress = NodeHostAddress . Just .
   maybe (panic "Bad host of target node") identity . readMaybe
 
 parsePort :: Word16 -> PortNumber
@@ -169,7 +169,7 @@ parseFilePath optname desc =
 
 parseSocketPath :: String -> String -> Parser SocketPath
 parseSocketPath optname desc =
-  SocketFile <$> parseFilePath optname desc
+  SocketPath <$> parseFilePath optname desc
 
 parseConfigFile :: String -> String -> Parser FilePath
 parseConfigFile = parseFilePath
