@@ -29,7 +29,7 @@ type ValLeader = (NodeId, Timestamp)
 type HMLeader = HM.HashMap KeyLeader ValLeader
 
 type KeyAdopted = SlotNum
-type ValAdopted = (NodeId, Timestamp)
+type ValAdopted = (NodeId, Timestamp, Int)
 type HMAdopted = HM.HashMap KeyAdopted ValAdopted
 
 type KeyChain = (NodeId, SlotNum)
@@ -103,20 +103,21 @@ reconstruct_leader _ (Just v@(n,ts)) = do
   TLIO.putStrLn $ TL.pack (show n) <> " lead     " <> (indent n) <> formatTS ts
   return v
 reconstruct_adopt:: Handle -> SlotNum -> ValLeader -> Maybe ValAdopted -> IO ValAdopted
-reconstruct_adopt _ _ _ Nothing = pure (-1, time0)
-reconstruct_adopt h sn (nl, tsl) (Just v@(n,ts)) = do
+reconstruct_adopt _ _ _ Nothing = pure (-1, time0, 0)
+reconstruct_adopt h sn (nl, tsl) (Just v@(n,ts,numtx)) = do
   let nsrc = TL.pack (show nl)
       ntgt = TL.pack (show n)
+      ntx = TL.pack (show numtx)
       slot = TL.pack (show sn)
       tdiff = diffUTCTime ts tsl
       tdiffms = round (tdiff * 1000.0) :: Int
   TLIO.putStrLn $ ntgt <> " adopt    " <> (indent n) <> formatTS ts
   TLIO.putStrLn $ nsrc <> "->" <> ntgt <> " creation t   " <> (indent n) <> (TL.pack . show) tdiff
-  TLIO.hPutStrLn h $ TL.intercalate "," [slot, nsrc, ntgt, "adopted", (TL.pack . show) tdiffms]
+  TLIO.hPutStrLn h $ TL.intercalate "," [slot, nsrc, ntgt, "adopted", (TL.pack . show) tdiffms, ntx]
   return v
 reconstruct_chain :: Handle -> SlotNum -> ValAdopted -> NodeId -> Maybe ValChain -> IO ()
 reconstruct_chain _ _ _ _ Nothing = pure ()
-reconstruct_chain h sn (na, tsa) n (Just ts) = do
+reconstruct_chain h sn (na, tsa, _ntx) n (Just ts) = do
   let nsrc = TL.pack (show na)
       ntgt = TL.pack (show n)
       slot = TL.pack (show sn)
@@ -148,11 +149,11 @@ collect_chain ((AddToChain.AddToChain n sn ts _m) : cs) hm =
 
 collect_adopt :: [Adopted.Adopted] -> HMAdopted -> HMAdopted
 collect_adopt [] hm = hm
-collect_adopt ((Adopted.Adopted n sn ts _m _bh _ntx) : as) hm =
+collect_adopt ((Adopted.Adopted n sn ts _m _bh ntx) : as) hm =
     collect_adopt as $
       case HM.lookup sn hm of
           Just _ -> hm -- error $ "Adopted already defined! " ++ (show sn)
-          Nothing -> HM.insert sn (n,ts) hm
+          Nothing -> HM.insert sn (n,ts,ntx) hm
 
 collect_leader :: [Leader.Leader] -> HMLeader -> HMLeader
 collect_leader [] hm = hm
