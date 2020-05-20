@@ -18,10 +18,10 @@ op_analyse_losses() {
         rfrom=$(head -n1 analysis/rtx_rtime.2 | sed 's_^.*T\(.*\)Z.*$_\1_')
         rto=$(tail   -n1 analysis/rtx_rtime.2 | sed 's_^.*T\(.*\)Z.*$_\1_')
 
-        tys_explorer=$(grep -F 'txid'  ./log-explorer.json |
+        tys_explorer=$(grep -F 'txid'  ./logs-explorer/node-*.json |
                        ../tools/msgtypes.sh |
                        jq 'map (.kind) | join (" ")' --raw-output --slurp)
-        tys_generator=$(grep -F 'txid' ./generator.json |
+        tys_generator=$(grep -F 'txid' ./logs-explorer/generator.json |
                        ../tools/msgtypes.sh |
                        jq 'map (.kind) | join (" ")' --raw-output --slurp)
         cat <<EOF
@@ -33,10 +33,12 @@ Message kinds mentioning 'txid':
 
   explorer node:  ${tys_explorer}
 $(for ty in ${tys_explorer}
-  do echo -e "    ${ty}:  $(op_msgtype_timespan ${ty} ./log-explorer.json)"; done)
+  do echo -e "    ${ty}:  $(op_msgtype_timespan ${ty} \
+                             ./logs-explorer/node-*.json)"; done)
 
   generator:      ${tys_generator}
 $(for ty in ${tys_generator}
-  do echo -e "    ${ty}:  $(op_msgtype_timespan ${ty} ./generator.json)"; done)
+  do echo -e "    ${ty}:  $(op_msgtype_timespan ${ty} \
+                             ./logs-explorer/generator.json)"; done)
 EOF
 }
