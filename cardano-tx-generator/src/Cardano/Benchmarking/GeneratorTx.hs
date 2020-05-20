@@ -185,11 +185,11 @@ genesisBenchmarkRunner loggingLayer
   when (tps < 0.05) $
     left $ TooSmallTPSRate tps
 
-  let ( benchTracer
-       , connectTracer
-       , submitMuxTracer
-       , lowLevelSubmitTracer
-       , submitTracer) = createTracers loggingLayer
+  let (benchTracer,
+       connectTracer,
+       submitMuxTracer,
+       lowLevelSubmitTracer,
+       submitTracer) = createTracers loggingLayer
 
   liftIO . traceWith benchTracer . TraceBenchTxSubDebug
     $ "******* Tx generator, tracers are ready *******"
