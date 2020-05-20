@@ -35,3 +35,5 @@ run 'cardano-tx-generator' \
   --sig-key ${CONFIGDIR}/genesis/delegate-keys.004.key \
   --sig-key ${CONFIGDIR}/genesis/delegate-keys.005.key \
   ${TARGETNODES}
+
+../../scripts/analyse.sh
