@@ -36,10 +36,8 @@ test -n "${TMUX}" || fail "can only be run under 'tmux' control."
 
 genesis_root=${BASEDIR}/configuration/genesis
 
-SOCKETDIR="/tmp/cluster3nodes-socket/"
-if [ ! -d $SOCKETDIR ]; then
-  mkdir $SOCKETDIR
-fi
+SOCKETDIR='/tmp/cluster3nodes-socket'
+mkdir -p "$SOCKETDIR"
 
 ### prep cli arguments
 

@@ -28,6 +28,8 @@ run 'cardano-tx-generator' \
   --outputs-per-tx $outputstx \
   --tx-fee $txfee \
   --tps $tps \
+  --init-cooldown 0 \
+  --single-threaded \
   --sig-key ${CONFIGDIR}/genesis/delegate-keys.000.key \
   --sig-key ${CONFIGDIR}/genesis/delegate-keys.001.key \
   --sig-key ${CONFIGDIR}/genesis/delegate-keys.002.key \
@@ -35,3 +37,5 @@ run 'cardano-tx-generator' \
   --sig-key ${CONFIGDIR}/genesis/delegate-keys.004.key \
   --sig-key ${CONFIGDIR}/genesis/delegate-keys.005.key \
   ${TARGETNODES}
+
+../../scripts/analyse.sh

@@ -1,6 +1,6 @@
 
 # the number of transactions to enter into the chain
-numtx=1000
+numtx=10000
 
 # the transactions are sent to these nodes
 targetnodes="0 1 2"
@@ -18,6 +18,6 @@ outputstx=1
 txfee=1000000
 
 # the transactions per seconds that the generator tries to achieve
-tps=10
+tps=0
 
 

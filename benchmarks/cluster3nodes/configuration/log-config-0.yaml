@@ -107,7 +107,7 @@ LastKnownBlockVersion-Alt: 0
 TracingVerbosity: MaximalVerbosity
 
 TraceBlockFetchClient: True
-TraceBlockFetchDecisions: False
+TraceBlockFetchDecisions: True
 TraceBlockFetchProtocol: True
 TraceBlockFetchProtocolSerialised: False
 TraceBlockFetchServer: False
@@ -119,7 +119,7 @@ TraceChainSyncProtocol: False
 TraceDNSResolver: False
 TraceDNSSubscription: False
 TraceErrorPolicy: False
-TraceForge: False
+TraceForge: True
 TraceIpSubscription: False
 TraceLocalChainSyncProtocol: True
 TraceLocalTxSubmissionProtocol: True

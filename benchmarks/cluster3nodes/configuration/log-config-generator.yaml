@@ -87,7 +87,7 @@ RequiresNetworkMagic: RequiresMagic
 PBftSignatureThreshold:
 TurnOnLogging: True
 ViewMode: SimpleView
-TurnOnLogMetrics: True
+TurnOnLogMetrics: False
 SocketPath:
 
 
