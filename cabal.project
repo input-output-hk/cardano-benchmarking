@@ -3,7 +3,7 @@ index-state: 2020-04-01T00:00:00Z
 packages:
     cardano-rt-view
     cardano-tx-generator
-    -- bm-timeline
+    bm-timeline
     --ext/cardano-node.git/cardano-api
     --ext/cardano-node.git/cardano-cli
     --ext/cardano-node.git/cardano-node

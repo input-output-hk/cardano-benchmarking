@@ -5,15 +5,17 @@
 
 ## analyse timeline of run
 
+LOGPATH=logs
+NNODES=3
 OUTDIR=timeline-42
 mkdir ${OUTDIR}
-for N in 0 1 2 3 4 5; do
-  ../../scripts/nodeisleader.sh logs/node-${N}-* | sed -e 's/^\(.*\)$/'${N}',\1/' - > ${OUTDIR}/leader-${N}.csv
-  ../../scripts/addedtocurrentchain.sh logs/node-${N}-* | sed -e 's/^\(.*\)$/'${N}',\1/' - > ${OUTDIR}/addtochain-${N}.csv
-  ../../scripts/adoptedblock.sh logs/node-${N}-* | sed -e 's/^\(.*\)$/'${N}',\1/' - > ${OUTDIR}/adopted-${N}.csv
+for N in $(seq 0 $((NNODES - 1))); do
+  ../../scripts/nodeisleader.sh ${LOGPATH}/node-${N}-* | sed -e 's/^\(.*\)$/'${N}',\1/' - > ${OUTDIR}/leader-${N}.csv
+  ../../scripts/addedtocurrentchain.sh ${LOGPATH}/node-${N}-* | sed -e 's/^\(.*\)$/'${N}',\1/' - > ${OUTDIR}/addtochain-${N}.csv
+  ../../scripts/adoptedblock.sh ${LOGPATH}/node-${N}-* | sed -e 's/^\(.*\)$/'${N}',\1/' - > ${OUTDIR}/adopted-${N}.csv
 done
 
-stack --nix run reconstruct-timeline -- 6 ${OUTDIR}
+stack --nix run reconstruct-timeline -- ${NNODES} ${OUTDIR}
 
 
 

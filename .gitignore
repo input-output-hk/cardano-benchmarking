@@ -12,12 +12,10 @@ tags
 /bin
 /dist
 /dist-newstyle
-/.stack-work
+.stack-work/
 
 .ghc.environment.*
 stack.yaml.lock
-/cardano-rt-view/.stack-work
-/cardano-tx-generator/.stack-work
 
 ## Runtime artifacts
 ##
