@@ -5,7 +5,7 @@ set -e
 
 # generator_log_prefix="${1:-generator/tx-gen}"
 # explorer_log_prefix="${2:-node-on-explorer/node}"
-generator_log_prefix="${1:-logs/generator}"
+generator_log_prefix="${1:-logs/generator.}"
 explorer_log_prefix="${2:-logs/node}"
 extra_prefix="${3}"
 
@@ -31,14 +31,15 @@ receiver_logs=($(ls ../"${explorer_log_prefix}"*json))
 #   -- ^ Request for @tx@ recieved from `TxSubmit.TxSubmission` protocol
 #   --   peer.
 extract_sends() {
+        local msgty=$1; shift
         jq '
-          select (.data.kind == "TraceBenchTxSubServReq")
+          select (.data.kind == "'"${msgty}"'")
         | .at as $at       # bind timestamp
         | .data.txIds      # narrow to the txid list
         | map ( .[5:]          # cut the "txid: txid: " prefix
               | "\(.);\($at)") # produce the resulting string
         | .[]              # merge string lists over all messages
-        ' $1 |
+        ' "$@" |
         tr -d '"'
 }
 
@@ -77,7 +78,22 @@ extract_recvs() {
 ##  blk - block number
 
 # extract tx;timestamp pairs from generator, sort by TxId
-extract_sends "${sender_logs[@]}" |
+extract_sends 'TraceBenchTxSubServAnn' "${sender_logs[@]}" |
+        sort -k 1 -t ';'                   > atx_atime.1
+        sort -k 2 -t ';'                   > atx_atime.2     < atx_atime.1
+count_annced="$(cat atx_atime.1 | wc -l)"
+
+extract_sends 'TraceBenchTxSubServAck' "${sender_logs[@]}" |
+        sort -k 1 -t ';'                   > ktx_ktime.1
+        sort -k 2 -t ';'                   > ktx_ktime.2     < ktx_ktime.1
+count_acked="$(cat ktx_ktime.1 | wc -l)"
+
+extract_sends 'TraceBenchTxSubServDrop' "${sender_logs[@]}" |
+        sort -k 1 -t ';'                   > dtx_dtime.1
+        sort -k 2 -t ';'                   > dtx_dtime.2     < dtx_dtime.1
+count_dropped="$(cat dtx_dtime.1 | wc -l)"
+
+extract_sends 'TraceBenchTxSubServReq' "${sender_logs[@]}" |
         sort -k 1 -t ';'                   > stx_stime.1
         sort -k 2 -t ';'                   > stx_stime.2     < stx_stime.1
 count_sent="$(cat stx_stime.1 | wc -l)"
@@ -94,9 +110,15 @@ count_recvd="$(cat rtx_rtime.1 | wc -l)"
 #count_recvd_dups="$(($(cat rtx_rtime-with-dups,1 | wc -l) - count_recvd))"
 
 cat <<EOF
+-- Txs announced:        ${count_annced}
 -- Txs sent:             ${count_sent}
+-- Txs acked:            ${count_acked}
+-- Txs dropped:          ${count_dropped}
 -- Unique Txs received:  ${count_recvd}
+-- Announces:            analysis/atx_atime.1
 -- Sends:                analysis/stx_stime.1
+-- Acks:                 analysis/ktx_ktime.1
+-- Drops:                analysis/dtx_dtime.1
 -- Receipts:             analysis/rtx_rtime.1
 EOF
 
@@ -110,7 +132,7 @@ then join -1 1       -2 1 -v 1 -t ";" \
      then rm -f rtx_*-missing.*
      else cat <<EOF
 -- Lost Txs:             ${count_missing}: or $(((count_missing * 100 / count_sent)))% of sent
--- Missing sends:        ${extra_prefix}/analysis/rtx_stime-missing.1 ${extra_prefix}/analysis/rtx_stime-missing.2
+-- Missing sends:        ${extra_prefix}analysis/rtx_stime-missing.1 ${extra_prefix}analysis/rtx_stime-missing.2
 EOF
      fi
 
