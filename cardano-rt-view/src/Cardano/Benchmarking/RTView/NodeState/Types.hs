@@ -38,9 +38,12 @@ data NodeState = NodeState
   } deriving Show
 
 data PeerInfo = PeerInfo
-  { piEndpoint    :: !String
-  , piSlotNumber  :: !String
-  , piBlockNumber :: !String
+  { piEndpoint   :: !String
+  , piBytesInF   :: !String
+  , piReqsInF    :: !String
+  , piBlocksInF  :: !String
+  , piSlotNumber :: !String
+  , piStatus     :: !String
   } deriving (Eq, Show)
 
 data NodeError = NodeError

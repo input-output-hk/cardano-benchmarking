@@ -235,19 +235,43 @@ mkNodeWidget = do
   peersTabContent
     <- UI.div #. "tab-container" # hideIt #+
          [ UI.div #. "w3-row" #+
-             [ UI.div #. "w3-third w3-theme" #+
+             [ UI.div #. "w3-col w3-theme" # set UI.style [("width", "32%")] #+
+                 [ UI.span # set UI.html "&nbsp;" #+ [] ]
+             , UI.div #. "w3-rest w3-theme" #+
+                 [ UI.div #. "in-flight" #+
+                     [ UI.div #. "" #+ [string "In Flight"]
+                     ]
+                 ]
+             ]
+         , UI.div #. "w3-row" #+
+             [ UI.div #. "w3-col w3-theme" # set UI.style [("width", "16%")] #+
                  [ UI.div #. "node-info-values" #+
                      [ UI.div #. "" #+ [string "Endpoint"]
                      ]
                  ]
-             , UI.div #. "w3-third w3-theme" #+
+             , UI.div #. "w3-col w3-theme" # set UI.style [("width", "16%")] #+
                  [ UI.div #. "node-info-values" #+
                      [ UI.div #. "" #+ [string "Slot No."]
                      ]
                  ]
-             , UI.div #. "w3-third w3-theme" #+
+             , UI.div #. "w3-col w3-theme" # set UI.style [("width", "10%")] #+
+                 [ UI.div #. "in-flight-values" #+
+                     [ UI.div #. "" #+ [string "Bytes"]
+                     ]
+                 ]
+             , UI.div #. "w3-col w3-theme" # set UI.style [("width", "10%")] #+
+                 [ UI.div #. "in-flight-values" #+
+                     [ UI.div #. "" #+ [string "Reqs"]
+                     ]
+                 ]
+             , UI.div #. "w3-col w3-theme" # set UI.style [("width", "16%")] #+
+                 [ UI.div #. "in-flight-values" #+
+                     [ UI.div #. "" #+ [string "Blocks"]
+                     ]
+                 ]
+             , UI.div #. "w3-rest w3-theme" #+
                  [ UI.div #. "node-info-values" #+
-                     [ UI.div #. "" #+ [string "Block No."]
+                     [ UI.div #. "" #+ [string "Status"]
                      ]
                  ]
              ]

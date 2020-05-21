@@ -177,11 +177,20 @@ updatePeersList
   -> Element
   -> UI Element
 updatePeersList peersInfo peersList = do
-  peersItems <- forM peersInfo $ \(PeerInfo endpoint slotNo blockNo) ->
+  peersItems <- forM peersInfo $ \pI ->
     UI.div #. "w3-row" #+
-      [ UI.div #. "w3-third w3-theme" #+ [UI.div #. "" #+ [UI.string endpoint]]
-      , UI.div #. "w3-third w3-theme" #+ [UI.div #. "" #+ [UI.string slotNo]]
-      , UI.div #. "w3-third w3-theme" #+ [UI.div #. "" #+ [UI.string blockNo]]
+      [ UI.div #. "w3-col w3-theme" # set style [("width", "16%")] #+
+          [ UI.div #. "" #+ [UI.string $ piEndpoint pI] ]
+      , UI.div #. "w3-col w3-theme" # set style [("width", "16%")] #+
+          [ UI.div #. "" #+ [UI.string $ piSlotNumber pI] ]
+      , UI.div #. "w3-col w3-theme" # set style [("width", "16%")] #+
+          [ UI.div #. "" #+ [UI.string $ piBytesInF pI] ]
+      , UI.div #. "w3-col w3-theme" # set style [("width", "16%")] #+
+          [ UI.div #. "" #+ [UI.string $ piReqsInF pI] ]
+      , UI.div #. "w3-col w3-theme" # set style [("width", "16%")] #+
+          [ UI.div #. "" #+ [UI.string $ piBlocksInF pI] ]
+      , UI.div #. "w3-col w3-theme" # set style [("width", "16%")] #+
+          [ UI.div #. "" #+ [UI.string $ piStatus pI] ]
       ]
   element peersList # set children peersItems
 

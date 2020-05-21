@@ -10,10 +10,8 @@ import           Prelude
                    ( String )
 
 import qualified Data.Aeson as A
-import           Data.Char
-                   ( isDigit )
 import           Data.List
-                   ( (!!), findIndex )
+                   ( (!!) )
 import qualified Data.Map.Strict as Map
 import           Data.Map.Strict
                    ( (!?) )
@@ -44,10 +42,10 @@ import           Cardano.BM.Trace
                    )
 
 import           Cardano.Benchmarking.RTView.NodeState.Parsers
-                   ( extractPeersInfo, updateCurrentPeersInfo )
+                   ( extractPeersInfo )
 import           Cardano.Benchmarking.RTView.NodeState.Types
                    ( NodesState, NodeState (..), NodeInfo (..)
-                   , NodeMetrics (..), NodeError (..), PeerInfo (..)
+                   , NodeMetrics (..), NodeError (..)
                    )
 
 -- | This function is running in a separate thread.
@@ -97,6 +95,11 @@ updateNodesState nsMVar loggerName (LogObject aName aMeta aContent) = do
       Just ns ->
         if | itIsErrorMessage aMeta ->
               nodesStateWith $ updateNodeErrors ns aMeta aContent
+           | "cardano.node.metrics.peersFromNodeKernel" `T.isInfixOf` aName ->
+            case aContent of
+              LogStructured peersInfo ->
+                nodesStateWith $ updatePeersInfo ns peersInfo
+              _ -> return currentNodesState
            | "cardano.node.metrics" `T.isInfixOf` aName ->
             case aContent of
               LogValue "upTime" (Nanoseconds upTimeInNs) ->
@@ -153,20 +156,10 @@ updateNodesState nsMVar loggerName (LogObject aName aMeta aContent) = do
               LogValue "RTS.gcMajorNum" (PureI gcMajorNum) ->
                 nodesStateWith $ updateGcMajorNum ns gcMajorNum now
               _ -> return currentNodesState
-           | "cardano.node.BlockFetchDecision.peersList" `T.isInfixOf` aName ->
-            case aContent of
-              LogStructured peersInfo ->
-                nodesStateWith $ updatePeersInfo ns peersInfo
-              _ -> return currentNodesState
            | "cardano.node.BlockFetchDecision" `T.isInfixOf` aName ->
             case aContent of
               LogValue "connectedPeers" (PureI peersNum) ->
                 nodesStateWith $ updatePeersNumber ns peersNum
-              _ -> return currentNodesState
-           | "cardano.node.ChainSyncProtocol" `T.isInfixOf` aName ->
-            case aContent of
-              LogMessage traceLabelPeer ->
-                nodesStateWith $ updatePeerInfo ns traceLabelPeer
               _ -> return currentNodesState
            | "cardano.node.release" `T.isInfixOf` aName ->
             case aContent of
@@ -253,47 +246,9 @@ updateNodeErrors ns (LOMeta timeStamp _ _ sev _) aContent = ns { nsInfo = newNi 
 updatePeersInfo :: NodeState -> A.Object -> NodeState
 updatePeersInfo ns peersInfo = ns { nsInfo = newNi }
  where
-  newNi = currentNi { niPeersInfo = updatedPeersInfo }
-  currentNi = nsInfo ns
-  currentPeersInfo = niPeersInfo currentNi
-  newPeersInfo = extractPeersInfo peersInfo
-  updatedPeersInfo = updateCurrentPeersInfo currentPeersInfo newPeersInfo
-
-updatePeerInfo :: NodeState -> Text -> NodeState
-updatePeerInfo ns peerInfo = ns { nsInfo = newNi }
- where
   newNi = currentNi { niPeersInfo = newPeersInfo }
   currentNi = nsInfo ns
-  currentPeers = niPeersInfo currentNi
-  newPeersInfo = map (\pI@(PeerInfo ep _ _) ->
-                       if ep == endpoint && slotAndPortAreNew
-                         then PeerInfo ep slotNo blockNo
-                         else pI)
-                     currentPeers
-  endpoint = getValueOf "remoteAddress" endpointOnly $ T.words info
-  slotNo   = getValueOf "unSlotNo" numbersOnly tipInfo'
-  blockNo  = getValueOf "unBlockNo" numbersOnly tipInfo'
-  slotAndPortAreNew = (not . null $ slotNo) && (not . null $ blockNo)
-  (info, tipInfo) = T.breakOn "Tip" peerInfo
-  tipInfo' = T.words tipInfo
-
-getValueOf
-  :: Text
-  -> (Text -> Text)
-  -> [Text]
-  -> String
-getValueOf elemName aFilter parts =
-  case findIndex (\n -> elemName `T.isInfixOf` n) parts of
-    Just i  -> T.unpack . aFilter $ parts !! (i + 2) -- Skip '=' mark.
-    Nothing -> ""
-
-endpointOnly :: Text -> Text
-endpointOnly = T.filter (\c -> isDigit c || c == '.' || c == ':')
-
-numbersOnly :: Text -> Text
-numbersOnly = T.filter isDigit
-
----
+  newPeersInfo = extractPeersInfo peersInfo
 
 updateNodeRelease :: NodeState -> Text -> NodeState
 updateNodeRelease ns release = ns { nsInfo = newNi }
