@@ -9,21 +9,18 @@ help:
 	@echo
 	@echo "Available targets:"
 	@echo
-	@echo "  build build-* run run-* clean clean-*"
-	@echo
-	@echo "Build targets:"
+	@echo "Build:"
 	@echo
 	@echo "  build-stack"
 	@echo
-	@echo "Run targets:"
+	@echo "Run:"
 	@echo
-	@echo "  run-cluster3nodes"
+	@echo "  cluster3nodes (+ aliases: nix cabal stack cabal-in-nix-shell)"
+	@echo "  analyse"
 	@echo
-	@echo "Clean targets:"
+	@echo "Clean:"
 	@echo
-	@echo "  clean-all"
-	@echo "  clean-stack"
-	@echo "  clean-runtime"
+	@echo "  clean clean-all clean-cabal clean-stack clean-runtime"
 	@echo
 
 ###
@@ -37,20 +34,35 @@ build-stack:
 ###
 ###
 ###
-run: run-cluster3nodes
+nix:                      MODE=nix
+cabal:                    MODE=cabal
+stack:                    MODE=stack
+cabal-in-nix-shell cabsh: MODE=cabal
+cabal-in-nix-shell cabsh: PRELUDE=sed -ni '1,/--- 8< ---/ p' "$$(git rev-parse --show-toplevel)"/cabal.project
+nix cabal stack cabsh cabal-in-shell run-cluster3nodes run: cluster3nodes
 
-run-cluster3nodes:
-	cd benchmarks/cluster3nodes && ./start.sh
+cluster3nodes:
+	$(or ${PRELUDE},true)
+	./benchmarks/cluster3nodes/start.sh --${MODE}
+
+analyse:
+	cd benchmarks/cluster3nodes && ../../scripts/analyse.sh
 
 ###
 ###
 ###
 clean: clean-all
 
-clean-all: clean-stack clean-runtime
+clean-all: clean-cabal clean-stack clean-runtime
+
+clean-cabal:
+	cabal clean
 
 clean-stack:
 	stack clean
 
 clean-runtime:
-	rm -rf db db-* logs
+	rm -rf db db-* logs logs-*
+
+cls:
+	echo -en "\ec"
