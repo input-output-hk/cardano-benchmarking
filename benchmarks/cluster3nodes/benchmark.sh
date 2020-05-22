@@ -4,6 +4,8 @@
 BASEDIR="$(realpath "$(dirname "$0")")"
 . "$(realpath "${BASEDIR}"/../../scripts/common.sh)"
 
+set -e
+
 export IGNOREEOF=2
 
 ### parameters
@@ -21,11 +23,7 @@ run_tx_generator=1
 ### >>>>>> do not change anything below this point
 
 ## Oh the absolute, sheer horrors of 'tmux'..
-prebuild 'cardano-tx-generator'
-prebuild 'cardano-rt-view-service'
-prebuild 'cardano-node'
-prebuild 'cardano-db-sync'
-prebuild 'cardano-cli'
+## NOTE:  this inherits the eval caches from 'start.sh'
 TMUX_ENV_PASSTHROUGH=(
          "export SCRIPTS_LIB_SH_MODE=${SCRIPTS_LIB_SH_MODE};"
          "export __COMMON_SRCROOT=${__COMMON_SRCROOT};"
@@ -37,23 +35,12 @@ TMUX_ENV_PASSTHROUGH=(
 ## ^^ Keep in sync with run-3node-cluster.sh
 
 # clean
-for x in db db-* logs socket
-do test -d ./"$x" && rm -rf ./"$x"
-done
-
-
-# mk dirs
-mkdir -p db logs
-
+rm -rf ./db/ ./db-*/ ./logs/ ./socket/
+mkdir -p logs socket
 
 # 1) generate new genesis
 if [ $create_new_genesis -eq 1 ]; then
   ./genesis.sh
-  read -p "Continue? (y|n)" answ
-  case $answ in
-    [Nn]) exit 1;;
-    * ) echo continuing;;
-  esac
 fi
 set -x
 
