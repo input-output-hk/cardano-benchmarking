@@ -45,6 +45,11 @@ fprint() {
 }
 export -f fprint
 
+fail() {
+        fprint "$@"
+        exit 1
+}
+
 prebuild() {
         local exe="$1"
         vprint "prebuilding the \"${exe}\" executable in \"${SCRIPTS_LIB_SH_MODE}\" mode.."
@@ -207,11 +212,15 @@ actually_run()
                     CMD=(stack           ${toolargs} ${rob} --nix $exe ${dash2});;
         * ) echo "INTERNAL ERROR: unknown mode:  $SCRIPTS_LIB_SH_MODE" >&2; return 1;;
         esac
-        if test -n "${PATH_SHADOWABLE}" -a -n "$(command -v "$exe")"
-        then vprint "Using $exe from PATH:  $(command -v "$exe")"
-             CMD=($exe)
+        if test -z "${build_only}"
+        then if test -n "${PATH_SHADOWABLE}" -a -n "$(command -v "$exe")"
+             then vprint "Using $exe from PATH:  $(command -v "$exe")"
+                  CMD=($exe)
+             fi
+             CMD+=(${rtsopts} "${ARGS[@]}")
+        elif test -n "${PATH_SHADOWABLE}" && command -v "$exe"
+        then return 0
         fi
-        CMD+=(${rtsopts} "${ARGS[@]}")
 
         vprint "${CMD[@]}"
         "${CMD[@]}"
