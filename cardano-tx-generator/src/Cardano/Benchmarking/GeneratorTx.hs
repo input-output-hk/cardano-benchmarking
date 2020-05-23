@@ -75,12 +75,7 @@ import           Cardano.Benchmarking.GeneratorTx.NodeToNode (BenchmarkTxSubmitT
                      SendRecvConnect,
                      SendRecvTxSubmission,
                      benchmarkConnectTxSubmit)
-import           Cardano.Benchmarking.GeneratorTx.Submission (ROEnv (..),
-                     TraceBenchTxSubmit (..),
-                     TraceLowLevelSubmit (..),
-                     bulkSubmission,
-                     submitTx,
-                     txSubmissionClient)
+import           Cardano.Benchmarking.GeneratorTx.Submission
 import           Cardano.Benchmarking.GeneratorTx.Tx (toCborTxAux, txSpendGenesisUTxOByronPBFT,
                      normalByronTxToGenTx)
 
@@ -179,7 +174,11 @@ genesisBenchmarkRunner loggingLayer
   when (tps < 0.05) $
     left $ TooSmallTPSRate tps
 
-  let (benchTracer, connectTracer, submitTracer, lowLevelSubmitTracer) = createTracers loggingLayer
+  let (benchTracer,
+       connectTracer,
+       submitMuxTracer,
+       lowLevelSubmitTracer,
+       submitTracer) = createTracers loggingLayer
 
   liftIO . traceWith benchTracer . TraceBenchTxSubDebug
     $ "******* Tx generator, tracers are ready *******"
@@ -227,8 +226,9 @@ genesisBenchmarkRunner loggingLayer
   when (rawNumOfTxs > 0) $
     runBenchmark benchTracer
                  connectTracer
-                 submitTracer
+                 submitMuxTracer
                  lowLevelSubmitTracer
+                 submitTracer
                  iocp
                  socketFp
                  pInfoConfig
@@ -286,9 +286,10 @@ createTracers
      , Tracer IO SendRecvConnect
      , Tracer IO (SendRecvTxSubmission ByronBlock)
      , Tracer IO TraceLowLevelSubmit
+     , Tracer IO NodeToNodeSubmissionTrace
      )
 createTracers loggingLayer =
-  (benchTracer, connectTracer, submitTracer, lowLevelSubmitTracer)
+  (benchTracer, connectTracer, submitTracer, lowLevelSubmitTracer, n2nSubmitTracer)
  where
   basicTr :: Trace IO Text
   basicTr = llBasicTrace loggingLayer
@@ -310,6 +311,9 @@ createTracers loggingLayer =
 
   lowLevelSubmitTracer :: Tracer IO TraceLowLevelSubmit
   lowLevelSubmitTracer = toLogObjectVerbose (appendName "llSubmit" tr')
+
+  n2nSubmitTracer :: Tracer IO NodeToNodeSubmissionTrace
+  n2nSubmitTracer = toLogObjectVerbose (appendName "submit2" tr')
 
 -----------------------------------------------------------------------------------------
 -- | Prepare signing keys and addresses for transactions.
@@ -646,6 +650,7 @@ runBenchmark
   -> Tracer IO SendRecvConnect
   -> Tracer IO (SendRecvTxSubmission ByronBlock)
   -> Tracer IO TraceLowLevelSubmit
+  -> Tracer IO NodeToNodeSubmissionTrace
   -> IOManager
   -> SocketPath
   -> TopLevelConfig ByronBlock
@@ -663,8 +668,9 @@ runBenchmark
   -> ExceptT TxGenError IO ()
 runBenchmark benchTracer
              connectTracer
-             submitTracer
+             submitMuxTracer
              lowLevelSubmitTracer
+             submitTracer
              iocp
              socketFp
              pInfoConfig
@@ -702,7 +708,7 @@ runBenchmark benchTracer
   let benchmarkTracers :: BenchmarkTxSubmitTracers IO ByronBlock
       benchmarkTracers = BenchmarkTracers
                            { trSendRecvConnect      = connectTracer
-                           , trSendRecvTxSubmission = submitTracer
+                           , trSendRecvTxSubmission = submitMuxTracer
                            }
 
   let localAddr :: Maybe Network.Socket.AddrInfo
@@ -740,7 +746,7 @@ runBenchmark benchTracer
   -- List of 'TMVar's with lists of transactions for submitting.
   -- The number of these lists corresponds to the number of target nodes.
   txsListsForTargetNodes :: MSTM.TMVar IO [MSTM.TMVar IO [CC.UTxO.ATxAux ByteString]]
-    <- liftIO $ STM.newTMVarIO []
+    <- liftIO $ STM.newEmptyTMVarIO
 
   -- Run generator.
   txGenerator benchTracer
@@ -756,9 +762,6 @@ runBenchmark benchTracer
               fundsWithSufficientCoins
               txsListsForTargetNodes
 
-  liftIO . traceWith benchTracer . TraceBenchTxSubDebug
-    $ "******* Tx generator, launch submission threads... *******"
-
   -- TVar for termination.
   txSubmissionTerm :: MSTM.TVar IO Bool <- liftIO $ STM.newTVarIO False
 
@@ -771,6 +774,8 @@ runBenchmark benchTracer
       -- to the target nodes via 'ouroboros-network'.
       liftIO $ do
         let targetNodesAddrsAndTxsLists = zip (NE.toList remoteAddresses) txsLists
+        liftIO . traceWith benchTracer . TraceBenchTxSubDebug
+            $ "******* Tx generator, launching Tx peers:  " ++ show (length targetNodesAddrsAndTxsLists) ++ " of them"
         allAsyncs <- forM targetNodesAddrsAndTxsLists $ \(remoteAddr, txsList) -> do
           -- Launch connection and submission threads for a peer
           -- (corresponding to one target node).
@@ -780,8 +785,9 @@ runBenchmark benchTracer
 
           txsListGeneral :: MSTM.TMVar IO [GenTx ByronBlock] <- liftIO $ STM.newTMVarIO generalTxs
 
-          launchTxPeer benchTracer
+          r <- launchTxPeer benchTracer
                        benchmarkTracers
+                       submitTracer
                        iocp
                        txSubmissionTerm
                        pInfoConfig
@@ -789,6 +795,11 @@ runBenchmark benchTracer
                        remoteAddr
                        updROEnv
                        txsListGeneral
+          liftIO . traceWith benchTracer . TraceBenchTxSubDebug
+            $ "******* Tx generator, launched a submission peer for " <> show remoteAddr
+          pure r
+        liftIO . traceWith benchTracer . TraceBenchTxSubDebug
+            $ "******* Tx generator, all " ++ show (length targetNodesAddrsAndTxsLists) ++ " peers started"
         let allAsyncs' = intercalate [] [[c, s] | (c, s) <- allAsyncs]
         -- Just wait for all threads to complete.
         mapM_ (void . wait) allAsyncs'
@@ -1021,16 +1032,17 @@ txGenerator benchTracer
             txsListsForTargetNodes = do
   liftIO . traceWith benchTracer . TraceBenchTxSubDebug
     $ " Prepare to generate, total number of transactions " ++ show numOfTransactions
+      ++ ", for " ++ show numOfTargetNodes ++ " peers"
 
   -- Generator is producing transactions and writes them in the list.
   -- Later sumbitter is reading and submitting these transactions.
-  txsForSubmission :: MSTM.TMVar IO [CC.UTxO.ATxAux ByteString] <- liftIO $ STM.newTMVarIO []
+  txsForSubmission :: [MSTM.TMVar IO [CC.UTxO.ATxAux ByteString]] <-
+    liftIO $ replicateM numOfTargetNodes $ STM.newTMVarIO []
 
   -- Prepare a number of lists for transactions, for all target nodes.
   -- Later we'll write generated transactions in these lists,
   -- and they will be received and submitted by 'bulkSubmission' function.
-  forM_ [1 .. numOfTargetNodes] $ \_ ->
-    liftIO $ addTxsListForTargetNode txsListsForTargetNodes txsForSubmission
+  liftIO $ STM.atomically $ STM.putTMVar txsListsForTargetNodes txsForSubmission
 
   txs <- createMainTxs numOfTransactions numOfInsPerTx fundsWithSufficientCoins
 
@@ -1136,18 +1148,6 @@ divListToSublists l  d =
 -- Txs for submission.
 ---------------------------------------------------------------------------------------------------
 
-
--- | Adds a list for transactions, for particular target node.
-addTxsListForTargetNode
-  :: MSTM.TMVar IO [MSTM.TMVar IO [CC.UTxO.ATxAux ByteString]]
-  -> MSTM.TMVar IO [CC.UTxO.ATxAux ByteString]
-  -> IO ()
-addTxsListForTargetNode txsListsForTargetNodes listForOneTargetNode = STM.atomically $
-  STM.tryTakeTMVar txsListsForTargetNodes >>=
-    \case
-      Nothing      -> STM.putTMVar txsListsForTargetNodes [listForOneTargetNode]
-      Just curList -> STM.putTMVar txsListsForTargetNodes $ curList ++ [listForOneTargetNode]
-
 -- | Writes list of generated transactions to the list, for particular target node.
 --   For example, if we have 3 target nodes and write txs to the list 0,
 --   these txs will later be sent to the first target node.
@@ -1184,6 +1184,7 @@ launchTxPeer
   -- tracer for lower level connection and details of
   -- protocol interactisn, intended for debugging
   -- associated issues.
+  -> Tracer IO NodeToNodeSubmissionTrace
   -> IOManager
   -- ^ associate a file descriptor with IO completion port
   -> MSTM.TVar IO Bool
@@ -1201,7 +1202,7 @@ launchTxPeer
   -- give this peer 1 or more transactions, empty list
   -- signifies stop this peer
   -> IO (Async (), Async ())
-launchTxPeer tr1 tr2 iocp termTM nc localAddr remoteAddr updROEnv txInChan = do
+launchTxPeer tr1 tr2 tr3 iocp termTM nc localAddr remoteAddr updROEnv txInChan = do
   tmv <- MSTM.newEmptyTMVarM
-  (,) <$> (async $ benchmarkConnectTxSubmit iocp tr2 nc localAddr remoteAddr (txSubmissionClient tmv))
+  (,) <$> (async $ benchmarkConnectTxSubmit iocp tr2 nc localAddr remoteAddr (txSubmissionClient tr3 tmv))
       <*> (async $ bulkSubmission updROEnv tr1 termTM txInChan tmv)
