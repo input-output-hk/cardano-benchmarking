@@ -34,6 +34,7 @@ run 'cardano-tx-generator' \
   --sig-key ${CONFIGDIR}/genesis/delegate-keys.003.key \
   --sig-key ${CONFIGDIR}/genesis/delegate-keys.004.key \
   --sig-key ${CONFIGDIR}/genesis/delegate-keys.005.key \
+  --init-cooldown 20 \
   ${TARGETNODES}
 
 ../../scripts/analyse.sh

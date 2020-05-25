@@ -13,6 +13,7 @@ module Cardano.Benchmarking.GeneratorTx
   ( NumberOfTxs(..)
   , NumberOfInputsPerTx(..)
   , NumberOfOutputsPerTx(..)
+  , InitCooldown(..)
   , FeePerTx(..)
   , TPSRate(..)
   , TxAdditionalSize(..)
@@ -112,6 +113,12 @@ newtype TPSRate =
   TPSRate Float
   deriving (Eq, Ord, Show)
 
+-- | How long wait before starting the main submission phase,
+--   after the init Tx batch was submitted.
+newtype InitCooldown =
+  InitCooldown Int
+  deriving (Eq, Ord, Show)
+
 -- | This parameter specifies additional size (in bytes) of transaction.
 --   Since 1 transaction is ([input] + [output] + attributes), its size
 --   is defined by its inputs and outputs. We want to have an ability to
@@ -150,6 +157,7 @@ genesisBenchmarkRunner
   -> NumberOfOutputsPerTx
   -> FeePerTx
   -> TPSRate
+  -> InitCooldown
   -> Maybe TxAdditionalSize
   -> Maybe ExplorerAPIEnpoint
   -> [FilePath]
@@ -164,6 +172,7 @@ genesisBenchmarkRunner loggingLayer
                        numOfOutsPerTx
                        txFee
                        tpsRate@(TPSRate tps)
+                       initCooldown
                        txAdditionalSize
                        explorerAPIEndpoint
                        signingKeyFiles = do
@@ -240,6 +249,7 @@ genesisBenchmarkRunner loggingLayer
                  numOfOutsPerTx
                  txFee
                  tpsRate
+                 initCooldown
                  txAdditionalSize
                  explorerAPIEndpoint
                  fundsWithGenesisMoney
@@ -662,6 +672,7 @@ runBenchmark
   -> NumberOfOutputsPerTx
   -> FeePerTx
   -> TPSRate
+  -> InitCooldown
   -> Maybe TxAdditionalSize
   -> Maybe ExplorerAPIEnpoint
   -> AvailableFunds
@@ -682,6 +693,7 @@ runBenchmark benchTracer
              numOfOutsPerTx
              txFee
              tpsRate
+             (InitCooldown initCooldown)
              txAdditionalSize
              explorerAPIEndpoint
              fundsWithGenesisMoney = do
@@ -700,8 +712,9 @@ runBenchmark benchTracer
                           fundsWithGenesisMoney
                           explorerAPIEndpoint
 
-  -- sleep for 20 s; subsequent txs enter new block
-  liftIO $ threadDelay (20*1000*1000)
+  liftIO . traceWith benchTracer . TraceBenchTxSubDebug
+    $ "******* Tx generator: waiting " ++ show initCooldown ++ "s *******"
+  liftIO $ threadDelay (initCooldown*1000*1000)
 
   liftIO . traceWith benchTracer . TraceBenchTxSubDebug
     $ "******* Tx generator, phase 2: pay to recipients *******"
