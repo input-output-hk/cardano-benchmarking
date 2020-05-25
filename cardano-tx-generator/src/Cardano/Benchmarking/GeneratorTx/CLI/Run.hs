@@ -78,7 +78,7 @@ runCommand (GenerateTxs logConfigFp
   withIOManagerE $ \iocp -> do
     let ncli = NodeCLI
                { nodeMode = RealProtocolMode
-               , nodeAddr = NodeAddress (NodeHostAddress Nothing) 19999
+               , nodeAddr = Nothing
                , configFile = ConfigYamlFilePath logConfigFp
                , topologyFile = TopologyFile "" -- Tx generator doesn't use topology
                , databaseFile = DbFile ""       -- Tx generator doesn't use database
