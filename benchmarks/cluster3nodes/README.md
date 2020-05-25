@@ -1,10 +1,10 @@
 ## run the benchmark using 'stack'
 
-./start.sh --stack-nix
+`./start.sh --stack-nix`
 
 
 ## analyse timeline of run
-
+```
 LOGPATH=logs
 NNODES=3
 OUTDIR=timeline-42
@@ -14,10 +14,13 @@ for N in $(seq 0 $((NNODES - 1))); do
   ../../scripts/addedtocurrentchain.sh ${LOGPATH}/node-${N}-* | sed -e 's/^\(.*\)$/'${N}',\1/' - > ${OUTDIR}/addtochain-${N}.csv
   ../../scripts/adoptedblock.sh ${LOGPATH}/node-${N}-* | sed -e 's/^\(.*\)$/'${N}',\1/' - > ${OUTDIR}/adopted-${N}.csv
 done
+```
 
-stack --nix run reconstruct-timeline -- ${NNODES} ${OUTDIR}
-
-
+reconstruct timeline:
+```
+stack --nix run reconstruct-timeline -- ${NNODES} ${OUTDIR} | tee -a ${OUTDIR}/timeline.txt
+cp timeline.csv ${OUTDIR}/
+```
 
 ## preparation for the explorer
 
