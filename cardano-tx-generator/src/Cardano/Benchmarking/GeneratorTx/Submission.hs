@@ -208,7 +208,7 @@ bulkSubmission updEnv tr termVar txIn rpcIn =
   getTxId = Mempool.txId
 
   getTxSize :: tx -> TxSizeInBytes
-  getTxSize = nodeTxSize --nodeTxInBlockSize
+  getTxSize = nodeTxInBlockSize
 
   processOp :: ROEnv txid tx -> StateT (RWEnv IO txid tx) IO ()
   processOp env = do
