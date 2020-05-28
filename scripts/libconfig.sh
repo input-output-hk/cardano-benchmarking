@@ -25,7 +25,7 @@ CABALEXE_TO_CABALPKG=(
         [cardano-db-sync]='cardano-db-sync'
         [cardano-node]='cardano-node'
         [cardano-rt-view-service]='cardano-rt-view'
-        [cardano-tx-generator]='cardano-tx-generator'
+        [cardano-tx-generator-byron]='cardano-tx-generator'
 )
 
 declare -A CABALEXE_TO_LIBOPTS

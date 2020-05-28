@@ -30,4 +30,4 @@ main = do
   txGenInfo :: ParserInfo GenerateTxs
   txGenInfo =
     info (parseCommand <**> helper)
-         (fullDesc <> header "cardano-tx-generator - the transaction generator for cardano node.")
+         (fullDesc <> header "cardano-tx-generator-byron - the transaction generator for Cardano's Byron node.")

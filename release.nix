@@ -60,8 +60,8 @@ let
     native = mapTestOn (__trace (__toJSON (packagePlatforms project)) (packagePlatforms project));
   } // (mkRequiredJob (
       [
-        jobs.native.cardano-tx-generator.x86_64-darwin
-        jobs.native.cardano-tx-generator.x86_64-linux
+        jobs.native.cardano-tx-generator-byron.x86_64-darwin
+        jobs.native.cardano-tx-generator-byron.x86_64-linux
         jobs.native.cardano-rt-view-service.x86_64-darwin
         jobs.native.cardano-rt-view-service.x86_64-linux
       ]));

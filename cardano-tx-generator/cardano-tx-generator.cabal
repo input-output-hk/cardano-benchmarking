@@ -79,9 +79,9 @@ library
                        -Wpartial-fields
                        -Wcompat
 
-executable cardano-tx-generator
+executable cardano-tx-generator-byron
   hs-source-dirs:      app
-  main-is:             cardano-tx-generator.hs
+  main-is:             cardano-tx-generator-byron.hs
   default-language:    Haskell2010
   ghc-options:         -threaded
                        -Wall
