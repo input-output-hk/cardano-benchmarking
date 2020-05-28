@@ -30,7 +30,7 @@ let
 
     # Grab the executable component of our package.
     inherit (haskellPackages.cardano-tx-generator.components.exes)
-      cardano-tx-generator;
+      cardano-tx-generator-byron;
     inherit (haskellPackages.cardano-rt-view.components.exes)
       cardano-rt-view-service;
 

@@ -17,7 +17,7 @@
                 or pkgs.cardano-tx-generator;
               ## TODO:  that's actually a bit ugly and could be improved.
       ## This exe has to be available in the selected package.
-      exeName = "cardano-tx-generator";
+      exeName = "cardano-tx-generator-byron";
 
       extraOptionDecls = {
         ## TODO: the defaults should be externalised to a file.

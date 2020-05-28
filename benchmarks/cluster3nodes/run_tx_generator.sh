@@ -16,7 +16,7 @@ TARGETNODES=`for N in $targetnodes; do echo -n "--target-node (\"127.0.0.1\",$((
 
 echo "$TARGETNODES"
 
-run 'cardano-tx-generator' \
+run 'cardano-tx-generator-byron' \
   --config ${CONFIGFILE} \
   --signing-key ${CONFIGDIR}/genesis/delegate-keys.000.key \
   --delegation-certificate ${CONFIGDIR}/genesis/delegation-cert.000.json \
