@@ -235,7 +235,7 @@ mkNodeWidget = do
   peersTabContent
     <- UI.div #. "tab-container" # hideIt #+
          [ UI.div #. "w3-row" #+
-             [ UI.div #. "w3-col w3-theme" # set UI.style [("width", "32%")] #+
+             [ UI.div #. "w3-col w3-theme" # set UI.style [("width", "44%")] #+
                  [ UI.span # set UI.html "&nbsp;" #+ [] ]
              , UI.div #. "w3-rest w3-theme" #+
                  [ UI.div #. "in-flight" #+
@@ -244,27 +244,27 @@ mkNodeWidget = do
                  ]
              ]
          , UI.div #. "w3-row" #+
-             [ UI.div #. "w3-col w3-theme" # set UI.style [("width", "16%")] #+
+             [ UI.div #. "w3-col w3-theme" # set UI.style [("width", "32%")] #+
                  [ UI.div #. "node-info-values" #+
                      [ UI.div #. "" #+ [string "Endpoint"]
                      ]
                  ]
-             , UI.div #. "w3-col w3-theme" # set UI.style [("width", "16%")] #+
+             , UI.div #. "w3-col w3-theme" # set UI.style [("width", "12%")] #+
                  [ UI.div #. "node-info-values" #+
                      [ UI.div #. "" #+ [string "Slot No."]
                      ]
                  ]
-             , UI.div #. "w3-col w3-theme" # set UI.style [("width", "10%")] #+
+             , UI.div #. "w3-col w3-theme" # set UI.style [("width", "12%")] #+
                  [ UI.div #. "in-flight-values" #+
                      [ UI.div #. "" #+ [string "Bytes"]
                      ]
                  ]
-             , UI.div #. "w3-col w3-theme" # set UI.style [("width", "10%")] #+
+             , UI.div #. "w3-col w3-theme" # set UI.style [("width", "12%")] #+
                  [ UI.div #. "in-flight-values" #+
                      [ UI.div #. "" #+ [string "Reqs"]
                      ]
                  ]
-             , UI.div #. "w3-col w3-theme" # set UI.style [("width", "16%")] #+
+             , UI.div #. "w3-col w3-theme" # set UI.style [("width", "12%")] #+
                  [ UI.div #. "in-flight-values" #+
                      [ UI.div #. "" #+ [string "Blocks"]
                      ]
@@ -468,7 +468,7 @@ mkNodeWidget = do
          [ UI.div #. "" #+
              [ UI.div #. "w3-container" #+
                  [ UI.div #. "w3-row" #+
-                     [ UI.div #. "w3-half w3-theme" #+ [string "RTS memory"]
+                     [ UI.div #. "w3-half w3-theme" #+ [string "RTS live memory"]
                      , UI.div #. "w3-half w3-theme w3-right-align" #+
                          [ element elRTSMemoryAllocated
                          , UI.span #. "value-unit" #+ [string "MB"]
@@ -481,10 +481,10 @@ mkNodeWidget = do
              , UI.div #. "w3-row" #+
                  [ UI.div #. "w3-third w3-theme" #+
                      [ UI.div #. "" #+
-                         [ UI.div #. "" #+ [string "GC CPU:"]
-                         , UI.div #. "" #+ [string "GC Elapsed:"]
-                         , UI.div #. "" #+ [string "GC Number:"]
-                         , UI.div #. "" #+ [string "GC Major Number:"]
+                         [ UI.div #. "" #+ [string "GC CPU time:"]
+                         , UI.div #. "" #+ [string "GC time elapsed:"]
+                         , UI.div #. "" #+ [string "Number of GC runs:"]
+                         , UI.div #. "" #+ [string "Major GC runs:"]
                          ]
                      ]
                  , UI.div #. "w3-third w3-theme" #+

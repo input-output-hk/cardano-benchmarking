@@ -93,7 +93,7 @@ updateNodesState nsMVar loggerName (LogObject aName aMeta aContent) = do
 
     case currentNodesState !? nameOfNode of
       Just ns ->
-        if | itIsErrorMessage aMeta ->
+        if | isErrorMessage aMeta ->
               nodesStateWith $ updateNodeErrors ns aMeta aContent
            | "cardano.node.metrics.peersFromNodeKernel" `T.isInfixOf` aName ->
             case aContent of
@@ -143,9 +143,9 @@ updateNodesState nsMVar loggerName (LogObject aName aMeta aContent) = do
               _ -> return currentNodesState
            | "cardano.node-metrics" `T.isInfixOf` aName ->
             case aContent of
-              LogValue "RTS.bytesAllocated" (Bytes bytesAllocated) ->
+              LogValue "RTS.liveBytes" (Bytes bytesAllocated) ->
                 nodesStateWith $ updateRTSBytesAllocated ns bytesAllocated now
-              LogValue "RTS.usedMemBytes" (Bytes usedMemBytes) ->
+              LogValue "RTS.gcLiveBytes" (Bytes usedMemBytes) ->
                 nodesStateWith $ updateRTSBytesUsed ns usedMemBytes now
               LogValue "RTS.gcCpuNs" (Nanoseconds gcCpuNs) ->
                 nodesStateWith $ updateGcCpuNs ns gcCpuNs now
@@ -193,14 +193,11 @@ updateNodesState nsMVar loggerName (LogObject aName aMeta aContent) = do
         return currentNodesState
 
 -- | If this is an error message, it will be shown in "Errors" tab in GUI.
-itIsErrorMessage :: LOMeta -> Bool
-itIsErrorMessage aMeta =
-  case severity aMeta of
-    Warning   -> True
-    Error     -> True
-    Alert     -> True
-    Emergency -> True
-    _         -> False
+isErrorMessage :: LOMeta -> Bool
+isErrorMessage aMeta =
+    sev >= Warning && sev < Critical
+  where
+    sev = severity aMeta
     -- 'Critical' is skipped because many non-error metrics have this severity.
 
 -- Updaters for particular node state's fields.
@@ -216,32 +213,23 @@ updateNodeUpTime ns upTimeInNs now = ns { nsInfo = newNi }
   currentNi = nsInfo ns
 
 updateNodeErrors :: Show a => NodeState -> LOMeta -> LOContent a -> NodeState
-updateNodeErrors ns (LOMeta timeStamp _ _ sev _) aContent = ns { nsInfo = newNi }
+updateNodeErrors ns (LOMeta timeStamp _ _ sev _) aContent = ns'
  where
-  newNi = currentNi { niNodeErrors = currentErrors ++ newError }
+  ns' = if errorMessage == ""
+        then ns
+        else ns { nsInfo = newNi }
+  newNi = currentNi { niNodeErrors = NodeError timeStamp sev errorMessage : currentErrors }
   currentNi = nsInfo ns
   currentErrors = niNodeErrors currentNi
-  newError =
-    case errorMessage of
-      "" -> []
-      _  -> [NodeError timeStamp sev errorMessage]
   errorMessage =
     case aContent of
       LogMessage msg -> show msg
       LogError eMsg -> T.unpack eMsg
-      LogValue msg measurable -> T.unpack msg <> ", " <> prepared measurable
+      LogValue msg measurable -> T.unpack msg <> ", " <> show measurable
       LogStructured obj -> show obj
       MonitoringEffect (MonitorAlert msg) -> "Monitor alert: " <> T.unpack msg
       MonitoringEffect _ -> ""
       _ -> ""
-  prepared :: Measurable -> String
-  prepared (Microseconds v) = show v <> " mcs"
-  prepared (Nanoseconds v)  = show v <> " ns"
-  prepared (Seconds v)      = show v <> " s"
-  prepared (Bytes v)        = show v <> " bytes"
-  prepared (PureD v)        = show v
-  prepared (PureI v)        = show v
-  prepared _                = ""
 
 updatePeersInfo :: NodeState -> A.Object -> NodeState
 updatePeersInfo ns peersInfo = ns { nsInfo = newNi }
