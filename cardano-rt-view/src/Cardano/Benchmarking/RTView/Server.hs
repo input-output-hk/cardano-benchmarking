@@ -5,8 +5,12 @@ module Cardano.Benchmarking.RTView.Server
     ( launchServer
     ) where
 
-import           Cardano.Prelude
+import           Cardano.Prelude hiding ( readMVar )
 
+import           Control.Concurrent.MVar.Strict
+                   ( MVar
+                   , readMVar
+                   )
 import qualified Graphics.UI.Threepenny as UI
 import           Graphics.UI.Threepenny.Core
                    ( UI

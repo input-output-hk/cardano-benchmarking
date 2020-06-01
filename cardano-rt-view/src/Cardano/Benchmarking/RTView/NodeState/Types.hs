@@ -1,3 +1,5 @@
+{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
@@ -14,6 +16,8 @@ module Cardano.Benchmarking.RTView.NodeState.Types
 import           Cardano.Prelude
 import           Prelude
                    ( String )
+import           Control.DeepSeq
+                   ( NFData (..) )
 import qualified Data.Map.Strict as Map
 import           Data.Map.Strict
                    ( Map )
@@ -35,7 +39,7 @@ type NodesState = Map Text NodeState
 data NodeState = NodeState
   { nsInfo    :: !NodeInfo
   , nsMetrics :: !NodeMetrics
-  } deriving Show
+  } deriving (Generic, NFData, Show)
 
 data PeerInfo = PeerInfo
   { piEndpoint   :: !String
@@ -44,13 +48,16 @@ data PeerInfo = PeerInfo
   , piBlocksInF  :: !String
   , piSlotNumber :: !String
   , piStatus     :: !String
-  } deriving (Eq, Show)
+  } deriving (Eq, Generic, NFData, Show)
+
+-- Severity type already has Generic instance.
+instance NFData Severity
 
 data NodeError = NodeError
   { eTimestamp :: !UTCTime
   , eSeverity  :: !Severity
   , eMessage   :: !String
-  } deriving Show
+  } deriving (Generic, NFData, Show)
 
 data NodeInfo = NodeInfo
   { niNodeRelease                   :: !String
@@ -82,7 +89,7 @@ data NodeInfo = NodeInfo
   , niTraceAcceptorHost             :: !String
   , niTraceAcceptorPort             :: !String
   , niNodeErrors                    :: ![NodeError]
-  } deriving Show
+  } deriving (Generic, NFData, Show)
 
 data NodeMetrics = NodeMetrics
   { nmMempoolTxsNumber          :: !Word64
@@ -142,7 +149,7 @@ data NodeMetrics = NodeMetrics
   , nmRTSGcNumLastUpdate        :: !Word64
   , nmRTSGcMajorNum             :: !Integer
   , nmRTSGcMajorNumLastUpdate   :: !Word64
-  } deriving Show
+  } deriving (Generic, NFData, Show)
 
 defaultNodesState
   :: Configuration

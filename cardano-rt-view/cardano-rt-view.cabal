@@ -41,11 +41,13 @@ library
                      , cardano-prelude
                      , containers
                      , contra-tracer
+                     , deepseq
                      , formatting
                      , iohk-monitoring
                      , lobemo-backend-trace-acceptor
                      , network
                      , optparse-applicative
+                     , strict-concurrency
                      , text
                      , time
                      , threepenny-gui

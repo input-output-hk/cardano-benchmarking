@@ -1,3 +1,5 @@
+{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Cardano.Benchmarking.RTView.GUI.Elements
@@ -10,6 +12,8 @@ module Cardano.Benchmarking.RTView.GUI.Elements
 import           Cardano.Prelude
 import           Prelude
                    ( String )
+import           Control.DeepSeq
+                   ( NFData (..) )
 import           Data.Map.Strict
                    ( Map )
 
@@ -113,10 +117,11 @@ data ElementName
   | ElNetworkOutProgressBox
   | ElRTSMemoryProgress
   | ElRTSMemoryProgressBox
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Generic, NFData, Ord, Show)
 
 data ElementValue
-  = ElementInteger Integer
-  | ElementWord64  Word64
-  | ElementDouble  Double
-  | ElementString  String
+  = ElementInteger !Integer
+  | ElementWord64  !Word64
+  | ElementDouble  !Double
+  | ElementString  !String
+  deriving (Generic, NFData)
