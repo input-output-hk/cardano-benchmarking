@@ -15,18 +15,20 @@ data Adopted = Adopted {
      timestamp :: Timestamp,
      msg :: Text,
      blockhash :: Text,
-     ntx :: Int
+     ntx :: Int,
+     bsz :: Int
   } deriving (Show)
 
 instance Lineparser Adopted where
     -- example:
     -- 0,"21","2020-05-13 08:06:45.01","TraceAddBlockEvent.AddedToCurrentChain"
 
-    itemFromArray [n, sn, ts, m, bh, numtx] = Adopted
+    itemFromArray [n, sn, ts, m, bh, numtx, blocksize] = Adopted
                                     (read . unpack $ n)
                                     (read . unpack $ sn)
                                     (parseTS (remquotes ts))
                                     (remquotes m)
                                     (remquotes bh)
                                     (read . unpack $ numtx)
-    itemFromArray _ = Adopted (-1) (-1) time0 "error" "" 0
+                                    (read . unpack $ blocksize)
+    itemFromArray _ = Adopted (-1) (-1) time0 "error" "" 0 0
