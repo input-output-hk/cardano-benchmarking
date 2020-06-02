@@ -52,8 +52,10 @@ import           Cardano.BM.Data.Tracer (emptyObject, mkObject, trStructured)
 import           Control.Tracer (Tracer, traceWith)
 
 import           Ouroboros.Consensus.Byron.Ledger (ByronBlock (..))
+import           Ouroboros.Consensus.Byron.Ledger.Mempool as Mempool (GenTx)
 import           Ouroboros.Consensus.Config (TopLevelConfig(..))
-import           Ouroboros.Consensus.Mempool (ApplyTxErr, GenTx, GenTxId, TxId, txId)
+import           Ouroboros.Consensus.Ledger.SupportsMempool as Mempool
+                   ( ApplyTxErr, GenTxId, HasTxId, TxId, txId)
 import           Ouroboros.Consensus.Network.NodeToClient
 import           Ouroboros.Consensus.Node.NetworkProtocolVersion
                   (HasNetworkProtocolVersion (..))
@@ -62,7 +64,7 @@ import qualified Ouroboros.Consensus.Node.Run as Node
 import qualified Ouroboros.Consensus.Mempool as Mempool
 
 import           Ouroboros.Network.Mux
-                   ( AppType(..), OuroborosApplication(..),
+                   ( MuxMode(..), OuroborosApplication(..),
                      MuxPeer(..), RunMiniProtocol(..) )
 import           Ouroboros.Network.Driver (runPeer)
 import qualified Ouroboros.Network.Protocol.LocalTxSubmission.Client as LocalTxSub
@@ -577,7 +579,7 @@ localInitiatorNetworkApplication
   -> TopLevelConfig blk
   -> GenTx blk
   -> Versions NodeToClient.NodeToClientVersion NodeToClient.DictVersion
-              (NodeToClient.LocalConnectionId -> OuroborosApplication InitiatorApp ByteString m () Void)
+              (NodeToClient.LocalConnectionId -> OuroborosApplication InitiatorMode ByteString m () Void)
 localInitiatorNetworkApplication tracer cfg tx =
   foldMapVersions
     (\v ->
@@ -593,7 +595,7 @@ localInitiatorNetworkApplication tracer cfg tx =
     versionData = NodeToClientVersionData (Node.nodeNetworkMagic cfg)
 
     protocols :: NodeToClientVersion blk
-              -> NodeToClient.NodeToClientProtocols InitiatorApp ByteString m () Void
+              -> NodeToClient.NodeToClientProtocols InitiatorMode ByteString m () Void
     protocols byronClientVersion  =
         NodeToClient.NodeToClientProtocols {
           NodeToClient.localChainSyncProtocol =

@@ -29,6 +29,7 @@ library
                      , base >=4.12 && <5
                      , bytestring
                      , cardano-config
+                     , cardano-client
                      , cardano-crypto-wrapper
                      , cardano-ledger
                      -- , cardano-node
