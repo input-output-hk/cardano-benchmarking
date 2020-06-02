@@ -5,10 +5,14 @@ module Cardano.Benchmarking.RTView.NodeState.Updater
     ( launchNodeStateUpdater
     ) where
 
-import           Cardano.Prelude
+import           Cardano.Prelude hiding ( modifyMVar_ )
 import           Prelude
                    ( String )
 
+import           Control.Concurrent.MVar.Strict
+                   ( MVar
+                   , modifyMVar_
+                   )
 import qualified Data.Aeson as A
 import           Data.List
                    ( (!!) )

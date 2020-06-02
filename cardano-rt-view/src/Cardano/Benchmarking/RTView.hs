@@ -5,11 +5,11 @@ module Cardano.Benchmarking.RTView
     ( runCardanoRTView
     ) where
 
-import           Cardano.Prelude
+import           Cardano.Prelude hiding ( newMVar )
 
 import           Control.Concurrent.Async
                    ( async, waitAnyCancel )
-import           Control.Concurrent.MVar
+import           Control.Concurrent.MVar.Strict
                    ( MVar
                    , newMVar
                    )

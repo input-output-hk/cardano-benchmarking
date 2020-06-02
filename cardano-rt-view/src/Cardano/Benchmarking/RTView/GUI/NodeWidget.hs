@@ -18,12 +18,12 @@ import           Graphics.UI.Threepenny.Core
                    )
 
 import           Cardano.Benchmarking.RTView.GUI.Elements
-                   ( ElementName (..)
-                   , NodeStateElements
+                   ( ElementName (..), NodeStateElements
+                   , PeerInfoItem (..), PeerInfoElements (..)
                    )
 
 mkNodeWidget
-  :: UI (Element, NodeStateElements)
+  :: UI (Element, NodeStateElements, [PeerInfoItem])
 mkNodeWidget = do
   -- Create |Element|s containing node state (info, metrics).
   -- These elements will be part of the complete page,
@@ -229,8 +229,35 @@ mkNodeWidget = do
              ]
          ]
 
-  -- List of items corresponding to each peer, it will be changed dynamically!
-  elPeersList <- UI.div #. "" #+ []
+  -- List of items corresponding to each peer. To avoid dynamic changes of DOM
+  -- (unfortunately, it can be a reason of space leak), we create 20 (hidden) rows
+  -- corresponding to 20 connected peers. Theoretically, the number of connected
+  -- peers can be bigger, but the policy of ouroboros-network is about 20 hot peers
+  -- (or less).
+  let supportedPeersNum = 20 :: Int -- TODO: Probably cardano-node cab trace this number?
+  peersList :: [(UI Element, PeerInfoItem)]
+    <- forM [1..supportedPeersNum] $ const $ do
+         endpoint   <- string ""
+         slotNumber <- string ""
+         bytesInF   <- string ""
+         reqsInF    <- string ""
+         blocksInF  <- string ""
+         status     <- string ""
+
+         peerItem <- UI.div #. "w3-row" # set UI.style [("display", "none")] #+
+                       [ UI.div #. "w3-col w3-theme" # set UI.style [("width", "32%")] #+ [ element endpoint ]
+                       , UI.div #. "w3-col w3-theme" # set UI.style [("width", "16%")] #+ [ element slotNumber ]
+                       , UI.div #. "w3-col w3-theme" # set UI.style [("width", "16%")] #+ [ element bytesInF ]
+                       , UI.div #. "w3-col w3-theme" # set UI.style [("width", "10%")] #+ [ element reqsInF ]
+                       , UI.div #. "w3-col w3-theme" # set UI.style [("width", "10%")] #+ [ element blocksInF ]
+                       , UI.div #. "w3-col w3-theme" # set UI.style [("width", "16%")] #+ [ element status ]
+                       ]
+         return ( element peerItem
+                , PeerInfoItem
+                    peerItem
+                    (PeerInfoElements endpoint bytesInF reqsInF blocksInF slotNumber status)
+                )
+  let (elPeersList, peerInfoItems) = unzip peersList
 
   peersTabContent
     <- UI.div #. "tab-container" # hideIt #+
@@ -275,7 +302,7 @@ mkNodeWidget = do
                      ]
                  ]
              ]
-         , element elPeersList
+         , UI.div #. "" #+ elPeersList
          ]
 
   blockchainTabContent
@@ -608,7 +635,6 @@ mkNodeWidget = do
           , (ElForksCreatedNumber,      elForksCreatedNumber)
           , (ElTxsProcessed,            elTxsProcessed)
           , (ElPeersNumber,             elPeersNumber)
-          , (ElPeersList,               elPeersList)
           , (ElTraceAcceptorHost,       elTraceAcceptorHost)
           , (ElTraceAcceptorPort,       elTraceAcceptorPort)
           , (ElNodeErrors,              elNodeErrorsList)
@@ -676,7 +702,7 @@ mkNodeWidget = do
           , (ElRTSMemoryProgressBox,    elRTSMemoryProgressBox)
           ]
 
-  return (nodeWidget, nodeStateElems)
+  return (nodeWidget, nodeStateElems, peerInfoItems)
 
 ---
 
