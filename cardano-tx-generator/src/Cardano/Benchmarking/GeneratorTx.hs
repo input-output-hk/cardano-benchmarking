@@ -3,6 +3,7 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
@@ -92,6 +93,8 @@ import qualified Ouroboros.Consensus.Mempool as Mempool
 import           Ouroboros.Consensus.Byron.Ledger (ByronBlock (..),
                                                    GenTx (..),
                                                    byronProtocolMagicId)
+import           Ouroboros.Consensus.Ledger.SupportsMempool as Mempool
+                   ( ApplyTxErr, GenTxId, HasTxId, TxId, txId, txInBlockSize)
 
 newtype NumberOfTxs =
   NumberOfTxs Word64
@@ -150,7 +153,7 @@ genesisBenchmarkRunner
   :: LoggingLayer
   -> IOManager
   -> SocketPath
-  -> Consensus.Protocol ByronBlock Consensus.ProtocolRealPBFT
+  -> Consensus.Protocol IO ByronBlock Consensus.ProtocolRealPBFT
   -> NonEmpty NodeAddress
   -> NumberOfTxs
   -> NumberOfInputsPerTx
