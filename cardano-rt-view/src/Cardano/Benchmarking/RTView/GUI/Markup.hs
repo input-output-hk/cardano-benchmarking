@@ -19,7 +19,9 @@ import           Graphics.UI.Threepenny.Core
 import           Cardano.BM.Data.Configuration
                    ( RemoteAddrNamed (..) )
 import           Cardano.Benchmarking.RTView.GUI.Elements
-                   ( NodeStateElements, NodesStateElements )
+                   ( NodeStateElements, NodesStateElements
+                   , PeerInfoItem
+                   )
 import           Cardano.Benchmarking.RTView.GUI.NodeWidget
                    ( mkNodeWidget )
 
@@ -31,12 +33,12 @@ mkPageBody window acceptors = do
   -- Create widgets for each node (corresponding to acceptors).
   nodeWidgetsWithElems
     <- forM acceptors $ \(RemoteAddrNamed nameOfNode _) -> do
-         (widget, nodeStateElems) <- mkNodeWidget
-         return (nameOfNode, widget, nodeStateElems)
+         (widget, nodeStateElems, peerInfoItems) <- mkNodeWidget
+         return (nameOfNode, widget, nodeStateElems, peerInfoItems)
 
   -- Create widgets areas on the page.
   widgetsAreas
-    <- forM nodeWidgetsWithElems $ \(_, widget, _) ->
+    <- forM nodeWidgetsWithElems $ \(_, widget, _, _) ->
          return $ UI.div #. "w3-col l6 m12 s12" #+ [element widget]
 
   -- Register clickable selector for nodes (to be able to show only one or all of them).
@@ -70,8 +72,8 @@ mkPageBody window acceptors = do
          ]
 
   nodesStateElems
-    <- forM nodeWidgetsWithElems $ \(nameOfNode, _, nodeStateElems) ->
-         return (nameOfNode, nodeStateElems)
+    <- forM nodeWidgetsWithElems $ \(nameOfNode, _, nodeStateElems, peerInfoItems) ->
+         return (nameOfNode, nodeStateElems, peerInfoItems)
 
   return (body, nodesStateElems)
 
@@ -96,10 +98,10 @@ topNavigation nodesSelector = do
 --   to choose only one of them.
 showOnlyOneWidget
   :: Text
-  -> [(Text, Element, NodeStateElements)]
+  -> [(Text, Element, NodeStateElements, [PeerInfoItem])]
   -> UI ()
 showOnlyOneWidget nameOfNode nodeWidgetsWithElems =
-  forM_ nodeWidgetsWithElems $ \(aName, widget, _) ->
+  forM_ nodeWidgetsWithElems $ \(aName, widget, _, _) ->
     if aName == nameOfNode
       then void $ element widget # showIt
       else void $ element widget # hideIt
@@ -107,10 +109,10 @@ showOnlyOneWidget nameOfNode nodeWidgetsWithElems =
 -- | If user choosed one particular node, it's possible to
 --   show all nodes again without page reload.
 showAllWidgetsAgain
-  :: [(Text, Element, NodeStateElements)]
+  :: [(Text, Element, NodeStateElements, [PeerInfoItem])]
   -> UI ()
 showAllWidgetsAgain nodeWidgetsWithElems =
-  forM_ nodeWidgetsWithElems $ \(_, widget, _) -> do
+  forM_ nodeWidgetsWithElems $ \(_, widget, _, _) -> do
     void $ element widget # showIt
 
 showIt, hideIt :: UI Element -> UI Element

@@ -41,6 +41,7 @@ import           Cardano.Benchmarking.RTView.CLI
 import           Cardano.Benchmarking.RTView.GUI.Elements
                    ( ElementName (..), ElementValue (..)
                    , NodeStateElements, NodesStateElements
+                   , PeerInfoItem (..), PeerInfoElements (..)
                    )
 import           Cardano.Benchmarking.RTView.NodeState.Types
                    ( NodeInfo (..), NodeMetrics (..), NodeError (..)
@@ -56,7 +57,7 @@ updateGUI
   -> NodesStateElements
   -> UI ()
 updateGUI nodesState params acceptors nodesStateElems =
-  forM_ nodesStateElems $ \(nameOfNode, elements) -> do
+  forM_ nodesStateElems $ \(nameOfNode, elements, peerInfoItems) -> do
     let nodeState = nodesState ! nameOfNode
         (acceptorHost, acceptorPort) = findTraceAcceptorNetInfo nameOfNode acceptors
 
@@ -80,7 +81,6 @@ updateGUI nodesState params acceptors nodesStateElems =
     void $ updateElementValue (ElementInteger $ niForksCreated ni)            $ elements ! ElForksCreatedNumber
     void $ updateElementValue (ElementInteger $ niTxsProcessed ni)            $ elements ! ElTxsProcessed
     void $ updateElementValue (ElementInteger $ niPeersNumber ni)             $ elements ! ElPeersNumber
-    void $ updatePeersList    (niPeersInfo ni)                                $ elements ! ElPeersList
     void $ updateElementValue (ElementString  acceptorHost)                   $ elements ! ElTraceAcceptorHost
     void $ updateElementValue (ElementString  acceptorPort)                   $ elements ! ElTraceAcceptorPort
     void $ updateErrorsList   (niNodeErrors ni)                               $ elements ! ElNodeErrors
@@ -110,6 +110,8 @@ updateGUI nodesState params acceptors nodesStateElems =
     void $ updateElementValue (ElementDouble  $ nmRTSGcElapsed nm)            $ elements ! ElRTSGcElapsed
     void $ updateElementValue (ElementInteger $ nmRTSGcNum nm)                $ elements ! ElRTSGcNum
     void $ updateElementValue (ElementInteger $ nmRTSGcMajorNum nm)           $ elements ! ElRTSGcMajorNum
+
+    updatePeersList (niPeersInfo ni) peerInfoItems
 
     void $ updateProgressBar (nmMempoolBytesPercent nm)    $ elements ! ElMempoolBytesProgress
     void $ updateProgressBar (nmMempoolTxsPercent nm)      $ elements ! ElMempoolTxsProgress
@@ -172,27 +174,39 @@ updateNodeUpTime upTimeInNs upTimeLabel =
 
 -- | Since peers list will be changed dynamically, we need it
 --   to update corresponding HTML-murkup dynamically as well.
+--   Please note that we don't change DOM actully (to avoid possible space leak).
 updatePeersList
   :: [PeerInfo]
-  -> Element
-  -> UI Element
-updatePeersList peersInfo peersList = do
-  peersItems <- forM peersInfo $ \pI ->
-    UI.div #. "w3-row" #+
-      [ UI.div #. "w3-col w3-theme" # set style [("width", "32%")] #+
-          [ UI.div #. "" #+ [UI.string $ piEndpoint pI] ]
-      , UI.div #. "w3-col w3-theme" # set style [("width", "12%")] #+
-          [ UI.div #. "" #+ [UI.string $ piSlotNumber pI] ]
-      , UI.div #. "w3-col w3-theme" # set style [("width", "12%")] #+
-          [ UI.div #. "" #+ [UI.string $ piBytesInF pI] ]
-      , UI.div #. "w3-col w3-theme" # set style [("width", "12%")] #+
-          [ UI.div #. "" #+ [UI.string $ piReqsInF pI] ]
-      , UI.div #. "w3-col w3-theme" # set style [("width", "12%")] #+
-          [ UI.div #. "" #+ [UI.string $ piBlocksInF pI] ]
-      , UI.div #. "w3-col w3-theme" # set style [("width", "16%")] #+
-          [ UI.div #. "" #+ [UI.string $ piStatus pI] ]
-      ]
-  element peersList # set children peersItems
+  -> [PeerInfoItem]
+  -> UI ()
+updatePeersList peersInfo' peersInfoItems = do
+  -- The number of connected peers may reduce, so hide all items by default.
+  mapM_ (hideElement . piItem) peersInfoItems
+
+  let peersInfo =
+        if length peersInfo' > length peersInfoItems
+          then
+            -- We prepared peer items for known number of connected peers,
+            -- but the number of connected peers is bigger than prepared items.
+            -- Show only first N items.
+            take (length peersInfoItems) peersInfo'
+          else
+            peersInfo'
+  -- Show N items, corresponding to the number of connected peers,
+  -- and fill them with actual values.
+  let peersInfoWithIndices = zip peersInfo [0 .. length peersInfo - 1]
+  forM_ peersInfoWithIndices $ \(pI, i) -> do
+    let item = peersInfoItems L.!! i
+        internalElems = piItemElems item
+    -- Update internal elements of item using actual values.
+    void $ updateElementValue (ElementString (piEndpoint   pI)) $ pieEndpoint   internalElems
+    void $ updateElementValue (ElementString (piBytesInF   pI)) $ pieBytesInF   internalElems
+    void $ updateElementValue (ElementString (piReqsInF    pI)) $ pieReqsInF    internalElems
+    void $ updateElementValue (ElementString (piBlocksInF  pI)) $ pieBlocksInF  internalElems
+    void $ updateElementValue (ElementString (piSlotNumber pI)) $ pieSlotNumber internalElems
+    void $ updateElementValue (ElementString (piStatus     pI)) $ pieStatus     internalElems
+    -- Make item visible.
+    showElement $ piItem item
 
 updateErrorsList
   :: [NodeError]
@@ -351,14 +365,14 @@ markValueW now lastUpdate lifetime els warnings =
   if now - lastUpdate > lifetime
     then do
       mapM_ (void . markAsOutdated) els
-      mapM_ (void . showWarning) warnings
+      mapM_ (void . showElement) warnings
     else do
       mapM_ (void . markAsUpToDate) els
-      mapM_ (void . hideWarning) warnings
+      mapM_ (void . hideElement) warnings
 
-showWarning, hideWarning :: Element -> UI Element
-showWarning w = element w # set UI.style [("display", "inline")]
-hideWarning w = element w # set UI.style [("display", "none")]
+showElement, hideElement :: Element -> UI Element
+showElement w = element w # set UI.style [("display", "inline")]
+hideElement w = element w # set UI.style [("display", "none")]
 
 markAsOutdated, markAsUpToDate :: Element -> UI Element
 markAsOutdated el = element el # set UI.class_ "outdated-value"
