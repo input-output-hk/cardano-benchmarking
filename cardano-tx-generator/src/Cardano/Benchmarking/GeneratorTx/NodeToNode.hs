@@ -37,11 +37,12 @@ import           Cardano.BM.Data.LogItem (LogObject (..), LOContent (..), mkLOMe
 import           Cardano.BM.Tracing
 import           Cardano.BM.Data.Tracer (emptyObject, mkObject, trStructured)
 import           Ouroboros.Consensus.Byron.Ledger (ByronBlock (..))
+import           Ouroboros.Consensus.Config.SupportsNode (getCodecConfig, getNetworkMagic)
 import           Ouroboros.Consensus.Mempool.API (GenTxId, GenTx)
 import           Ouroboros.Consensus.Node.NetworkProtocolVersion
-import           Ouroboros.Consensus.Node.Run (RunNode, nodeNetworkMagic)
+import           Ouroboros.Consensus.Node.Run (RunNode)
 import           Ouroboros.Consensus.Network.NodeToNode (Codecs(..), defaultCodecs)
-import           Ouroboros.Consensus.Config (TopLevelConfig(..), configCodec)
+import           Ouroboros.Consensus.Config (TopLevelConfig(..))
 
 import           Ouroboros.Network.Codec (AnyMessage (..))
 import           Ouroboros.Network.Driver (TraceSendRecv (..))
@@ -212,7 +213,7 @@ benchmarkConnectTxSubmit iocp trs cfg localAddr remoteAddr myTxSubClient =
  where
   myCodecs :: Codecs blk DeserialiseFailure m
                 ByteString ByteString ByteString ByteString ByteString
-  myCodecs  = defaultCodecs (configCodec cfg) (mostRecentNodeToNodeVersion (Proxy @blk))
+  myCodecs  = defaultCodecs (getCodecConfig $ configBlock cfg) (mostRecentNodeToNodeVersion (Proxy @blk))
 
   peerMultiplex :: Versions NtN.NodeToNodeVersion NtN.DictVersion
                             (NtN.ConnectionId SockAddr ->
@@ -220,7 +221,7 @@ benchmarkConnectTxSubmit iocp trs cfg localAddr remoteAddr myTxSubClient =
   peerMultiplex =
     simpleSingletonVersions
       NtN.NodeToNodeV_1
-      (NtN.NodeToNodeVersionData { NtN.networkMagic = nodeNetworkMagic cfg})
+      (NtN.NodeToNodeVersionData { NtN.networkMagic = getNetworkMagic cfg})
       (NtN.DictVersion NtN.nodeToNodeCodecCBORTerm) $ \_ ->
       NtN.nodeToNodeProtocols NtN.defaultMiniProtocolParameters $
         NtN.NodeToNodeProtocols

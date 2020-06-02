@@ -52,7 +52,7 @@ import           Cardano.BM.Data.Tracer (emptyObject, mkObject, trStructured)
 import           Control.Tracer (Tracer, traceWith)
 
 import           Ouroboros.Consensus.Byron.Ledger (ByronBlock (..))
-import           Ouroboros.Consensus.Config (TopLevelConfig(..), configCodec)
+import           Ouroboros.Consensus.Config (TopLevelConfig(..))
 import           Ouroboros.Consensus.Mempool (ApplyTxErr, GenTx, GenTxId, TxId, txId)
 import           Ouroboros.Consensus.Network.NodeToClient
 import           Ouroboros.Consensus.Node.NetworkProtocolVersion
@@ -628,7 +628,7 @@ localInitiatorNetworkApplication tracer cfg tx =
       Codecs { cChainSyncCodec
              , cTxSubmissionCodec
              , cStateQueryCodec
-             } = defaultCodecs (configCodec cfg) byronClientVersion
+             } = defaultCodecs (getCodecConfig $ configBlock cfg) byronClientVersion
 
 
 -- | A 'LocalTxSubmissionClient' that submits exactly one transaction, and then
