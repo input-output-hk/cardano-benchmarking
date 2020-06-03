@@ -42,7 +42,7 @@ a map `SlotNum -> (NodeId, Timestamp)` which for every slot number defines the p
 
 * block adoption event
 
-a map `SlotNum -> (NodeId, Timestamp, Int)` which for every slot defines the triple of the node's id, the timestamp of the event, and the number of transactions in the block. The event occurs on the node that creates the block and signals the adoption of the block locally.
+a map `SlotNum -> (NodeId, Timestamp, Int, Int)` which for every slot defines the quadruple of the node's id, the timestamp of the event, the number of transactions in the block, and the block's size in bytes. The event occurs on the node that creates the block and signals the adoption of the block locally.
 
 * block added to queue event
 
