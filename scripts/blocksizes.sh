@@ -2,8 +2,9 @@
 
 grep --no-filename -F 'MsgBlock' "$@" |
 jq ' map ( { at:    .at
-           , blkid: .data.msg.blkid
-           , txs:  (.data.msg.txids | length)
+           , blkid: .data.msg."block hash"
+           , blksz: .data.msg."block size"
+           , txs:  (.data.msg."tx ids" | length)
            }
          )
    | sort_by (.at)
