@@ -3,6 +3,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
@@ -29,7 +30,7 @@ import qualified Data.HashMap.Strict as HM
 import           Data.Proxy (Proxy (..))
 import qualified Data.Text as T
 import           Data.Time.Clock (getCurrentTime)
-import           Network.Mux (AppType(InitiatorApp), WithMuxBearer (..))
+import           Network.Mux (MuxMode(InitiatorMode), WithMuxBearer (..))
 import           Network.Socket (AddrInfo (..), SockAddr)
 
 import           Control.Tracer (Tracer (..), nullTracer, traceWith)
@@ -37,11 +38,13 @@ import           Cardano.BM.Data.LogItem (LogObject (..), LOContent (..), mkLOMe
 import           Cardano.BM.Tracing
 import           Cardano.BM.Data.Tracer (emptyObject, mkObject, trStructured)
 import           Ouroboros.Consensus.Byron.Ledger (ByronBlock (..))
-import           Ouroboros.Consensus.Mempool.API (GenTxId, GenTx)
+import           Ouroboros.Consensus.Config.SupportsNode (getCodecConfig, getNetworkMagic)
+import           Ouroboros.Consensus.Byron.Ledger.Mempool (GenTx)
+import           Ouroboros.Consensus.Ledger.SupportsMempool (GenTxId)
 import           Ouroboros.Consensus.Node.NetworkProtocolVersion
-import           Ouroboros.Consensus.Node.Run (RunNode, nodeNetworkMagic)
+import           Ouroboros.Consensus.Node.Run (RunNode)
 import           Ouroboros.Consensus.Network.NodeToNode (Codecs(..), defaultCodecs)
-import           Ouroboros.Consensus.Config (TopLevelConfig(..), configCodec)
+import           Ouroboros.Consensus.Config (TopLevelConfig(..))
 
 import           Ouroboros.Network.Codec (AnyMessage (..))
 import           Ouroboros.Network.Driver (TraceSendRecv (..))
@@ -212,17 +215,15 @@ benchmarkConnectTxSubmit iocp trs cfg localAddr remoteAddr myTxSubClient =
  where
   myCodecs :: Codecs blk DeserialiseFailure m
                 ByteString ByteString ByteString ByteString ByteString
-  myCodecs  = defaultCodecs (configCodec cfg) (mostRecentNodeToNodeVersion (Proxy @blk))
-
+  myCodecs  = defaultCodecs (getCodecConfig $ configBlock cfg) (mostRecentNodeToNodeVersion (Proxy @blk))
   peerMultiplex :: Versions NtN.NodeToNodeVersion NtN.DictVersion
-                            (NtN.ConnectionId SockAddr ->
-                               OuroborosApplication InitiatorApp ByteString m () Void)
+                     (OuroborosApplication InitiatorMode SockAddr ByteString IO () Void)
   peerMultiplex =
     simpleSingletonVersions
       NtN.NodeToNodeV_1
-      (NtN.NodeToNodeVersionData { NtN.networkMagic = nodeNetworkMagic cfg})
-      (NtN.DictVersion NtN.nodeToNodeCodecCBORTerm) $ \_ ->
-      NtN.nodeToNodeProtocols NtN.defaultMiniProtocolParameters $
+      (NtN.NodeToNodeVersionData { NtN.networkMagic = getNetworkMagic $ configBlock cfg})
+      (NtN.DictVersion NtN.nodeToNodeCodecCBORTerm) $
+      NtN.nodeToNodeProtocols NtN.defaultMiniProtocolParameters $ \_ ->
         NtN.NodeToNodeProtocols
           { NtN.chainSyncProtocol = InitiatorProtocolOnly $
                                       MuxPeer

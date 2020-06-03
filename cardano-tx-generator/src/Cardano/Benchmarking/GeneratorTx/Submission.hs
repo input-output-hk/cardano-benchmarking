@@ -5,6 +5,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
@@ -51,9 +52,12 @@ import           Cardano.BM.Tracing
 import           Cardano.BM.Data.Tracer (emptyObject, mkObject, trStructured)
 import           Control.Tracer (Tracer, traceWith)
 
+import           Ouroboros.Consensus.Config.SupportsNode (getCodecConfig, getNetworkMagic)
 import           Ouroboros.Consensus.Byron.Ledger (ByronBlock (..))
-import           Ouroboros.Consensus.Config (TopLevelConfig(..), configCodec)
-import           Ouroboros.Consensus.Mempool (ApplyTxErr, GenTx, GenTxId, TxId, txId)
+import           Ouroboros.Consensus.Byron.Ledger.Mempool as Mempool (GenTx)
+import           Ouroboros.Consensus.Config (TopLevelConfig(..))
+import           Ouroboros.Consensus.Ledger.SupportsMempool as Mempool
+                   ( ApplyTxErr, GenTxId, HasTxId, TxId, txId, txInBlockSize)
 import           Ouroboros.Consensus.Network.NodeToClient
 import           Ouroboros.Consensus.Node.NetworkProtocolVersion
                   (HasNetworkProtocolVersion (..))
@@ -62,7 +66,7 @@ import qualified Ouroboros.Consensus.Node.Run as Node
 import qualified Ouroboros.Consensus.Mempool as Mempool
 
 import           Ouroboros.Network.Mux
-                   ( AppType(..), OuroborosApplication(..),
+                   ( MuxMode(..), OuroborosApplication(..),
                      MuxPeer(..), RunMiniProtocol(..) )
 import           Ouroboros.Network.Driver (runPeer)
 import qualified Ouroboros.Network.Protocol.LocalTxSubmission.Client as LocalTxSub
@@ -208,7 +212,7 @@ bulkSubmission updEnv tr termVar txIn rpcIn =
   getTxId = Mempool.txId
 
   getTxSize :: tx -> TxSizeInBytes
-  getTxSize = nodeTxInBlockSize
+  getTxSize = txInBlockSize
 
   processOp :: ROEnv txid tx -> StateT (RWEnv IO txid tx) IO ()
   processOp env = do
@@ -565,6 +569,7 @@ submitTx iocp sockpath cfg tx tracer =
          (localInitiatorNetworkApplication tracer cfg tx)
          path
 
+
 localInitiatorNetworkApplication
   :: forall blk m .
      ( RunNode blk
@@ -577,7 +582,8 @@ localInitiatorNetworkApplication
   -> TopLevelConfig blk
   -> GenTx blk
   -> Versions NodeToClient.NodeToClientVersion NodeToClient.DictVersion
-              (NodeToClient.LocalConnectionId -> OuroborosApplication InitiatorApp ByteString m () Void)
+              (OuroborosApplication InitiatorMode NodeToClient.LocalAddress ByteString m () Void)
+
 localInitiatorNetworkApplication tracer cfg tx =
   foldMapVersions
     (\v ->
@@ -590,11 +596,12 @@ localInitiatorNetworkApplication tracer cfg tx =
     proxy :: Proxy blk
     proxy = Proxy
 
-    versionData = NodeToClientVersionData (Node.nodeNetworkMagic cfg)
+    versionData = NodeToClientVersionData $ getNetworkMagic $ configBlock cfg
 
     protocols :: NodeToClientVersion blk
-              -> NodeToClient.NodeToClientProtocols InitiatorApp ByteString m () Void
-    protocols byronClientVersion  =
+              -> NodeToClient.ConnectionId NodeToClient.LocalAddress
+              -> NodeToClient.NodeToClientProtocols InitiatorMode ByteString m () Void
+    protocols byronClientVersion _ =
         NodeToClient.NodeToClientProtocols {
           NodeToClient.localChainSyncProtocol =
             InitiatorProtocolOnly $
@@ -628,7 +635,7 @@ localInitiatorNetworkApplication tracer cfg tx =
       Codecs { cChainSyncCodec
              , cTxSubmissionCodec
              , cStateQueryCodec
-             } = defaultCodecs (configCodec cfg) byronClientVersion
+             } = defaultCodecs (getCodecConfig $ configBlock cfg) byronClientVersion
 
 
 -- | A 'LocalTxSubmissionClient' that submits exactly one transaction, and then
@@ -722,4 +729,5 @@ txSubmissionClient tr tmvReq =
         r <- atomically $ takeTMVar resp'
         traceWith tr $ TxList (length r)
         pure $ SendMsgReplyTxs r client
+    , recvMsgKThxBye = return ()
     }

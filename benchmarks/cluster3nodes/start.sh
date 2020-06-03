@@ -13,10 +13,10 @@ set -e
 BASEDIR="$(realpath "$(dirname "$0")")"
 . "$(realpath "${BASEDIR}"/../../scripts/common.sh)"
 
-prebuild 'cardano-tx-generator-byron' || exit 1
-prebuild 'cardano-rt-view-service' || exit 1
+prebuild 'cardano-tx-generator' || exit 1
+prebuild 'cardano-rt-view' || exit 1
 prebuild 'cardano-node' || exit 1
-prebuild 'cardano-db-sync' || exit 1
+#prebuild 'cardano-db-sync' || exit 1
 prebuild 'cardano-cli' || exit 1
 
 cd "${BASEDIR}"
