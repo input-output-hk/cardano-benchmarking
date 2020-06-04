@@ -1,5 +1,16 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+
+#if defined(mingw32_HOST_OS)
+#define WINDOWS
+#endif
+#if defined(linux_HOST_OS)
+#define LINUX
+#endif
+#if defined(darwin_HOST_OS)
+#define DARWIN
+#endif
 
 module Cardano.Benchmarking.RTView.NodeState.Updater
     ( launchNodeStateUpdater
@@ -31,8 +42,8 @@ import           Cardano.BM.Backend.Switchboard
                    ( Switchboard, readLogBuffer )
 import           Cardano.BM.Data.Aggregated
                    ( Measurable (..) )
--- import           Cardano.BM.Data.Counter
---                    ( Platform (..) )
+import           Cardano.BM.Data.Counter
+                   ( Platform (..) )
 import           Cardano.BM.Data.LogItem
                    ( LOContent (..), LOMeta (..), LogObject (..)
                    , MonitorAction (..)
@@ -108,26 +119,30 @@ updateNodesState nsMVar loggerName (LogObject aName aMeta aContent) = do
             case aContent of
               LogValue "upTime" (Nanoseconds upTimeInNs) ->
                 nodesStateWith $ updateNodeUpTime ns upTimeInNs now
-              LogValue "Mem.resident" (PureI pages) ->
-                nodesStateWith $ updateMemoryPages ns pages now
+#ifdef DARWIN
               LogValue "Mem.resident_size" (Bytes bytes) ->    -- Darwin
                 nodesStateWith $ updateMemoryBytes ns bytes now
+              LogValue "Sys.SysUserTime" (Nanoseconds nanosecs) ->    -- Darwin
+                nodesStateWith $ updateCPUSecs ns nanosecs aMeta now
+              LogValue "Net.ifd_0-ibytes" (Bytes inBytes) ->    -- Darwin
+                nodesStateWith $ updateNetworkIn ns inBytes aMeta now
+              LogValue "Net.ifd_0-obytes" (Bytes outBytes) ->    -- Darwin
+                nodesStateWith $ updateNetworkOut ns outBytes aMeta now
+#endif
+#ifdef LINUX
+              LogValue "Mem.resident" (PureI pages) ->
+                nodesStateWith $ updateMemoryPages ns pages now
               LogValue "IO.rchar" (Bytes bytesWereRead) ->
                 nodesStateWith $ updateDiskRead ns bytesWereRead aMeta now
               LogValue "IO.wchar" (Bytes bytesWereWritten) ->
                 nodesStateWith $ updateDiskWrite ns bytesWereWritten aMeta now
               LogValue "Stat.utime" (PureI ticks) ->
                 nodesStateWith $ updateCPUTicks ns ticks aMeta now
-              LogValue "Sys.SysUserTime" (Nanoseconds nanosecs) ->    -- Darwin
-                nodesStateWith $ updateCPUSecs ns nanosecs aMeta now
               LogValue "Net.IpExt:InOctets" (Bytes inBytes) ->
                 nodesStateWith $ updateNetworkIn ns inBytes aMeta now
               LogValue "Net.IpExt:OutOctets" (Bytes outBytes) ->
                 nodesStateWith $ updateNetworkOut ns outBytes aMeta now
-              LogValue "Net.ifd_0-ibytes" (Bytes inBytes) ->    -- Darwin
-                nodesStateWith $ updateNetworkIn ns inBytes aMeta now
-              LogValue "Net.ifd_0-obytes" (Bytes outBytes) ->    -- Darwin
-                nodesStateWith $ updateNetworkOut ns outBytes aMeta now
+#endif
               LogValue "txsInMempool" (PureI txsInMempool) ->
                 nodesStateWith $ updateMempoolTxs ns txsInMempool
               LogValue "mempoolBytes" (PureI mempoolBytes) ->
@@ -142,12 +157,16 @@ updateNodesState nsMVar loggerName (LogObject aName aMeta aContent) = do
                 nodesStateWith $ updateSlotsMissed ns missedSlotsNum now
               LogValue "forksCreatedNum" (PureI createdForksNum) ->
                 nodesStateWith $ updateForksCreated ns createdForksNum now
-              -- LogValue "Sys.Platform" (PureI pfid) ->
-              --   nodesStateWith $ updateNodePlatform ns (fromIntegral pfid)
               _ -> return currentNodesState
            | "cardano.node-metrics" `T.isInfixOf` aName ->
             case aContent of
-              LogValue "RTS.liveBytes" (Bytes bytesAllocated) ->
+#ifdef WINDOWS
+              LogValue "Stat.UserTime" (Nanoseconds nanosecs) ->   -- Windows
+                nodesStateWith $ updateCPUSecs ns (nanosecs `div` 1000000) aMeta now
+#endif
+              LogValue "Sys.Platform" (PureI pfid) ->
+                nodesStateWith $ updateNodePlatform ns (fromIntegral pfid)
+              LogValue "RTS.maxUsedMemBytes" (Bytes bytesAllocated) ->
                 nodesStateWith $ updateRTSBytesAllocated ns bytesAllocated now
               LogValue "RTS.gcLiveBytes" (Bytes usedMemBytes) ->
                 nodesStateWith $ updateRTSBytesUsed ns usedMemBytes now
@@ -264,13 +283,12 @@ updateNodeCommit ns commit = ns { nsInfo = newNi }
       }
   currentNi = nsInfo ns
 
-{-
 updateNodePlatform :: NodeState -> Int -> NodeState
 updateNodePlatform ns platfid = ns { nsInfo = newNi }
  where
   platform = toEnum platfid :: Platform
   newNi = currentNi { niNodePlatform = show platform }
-  currentNi = nsInfo ns -}
+  currentNi = nsInfo ns
 
 updateMemoryPages :: NodeState -> Integer -> Word64 -> NodeState
 updateMemoryPages ns pages now = ns { nsMetrics = newNm }
@@ -400,7 +418,7 @@ updateCPUSecs ns nanosecs meta now = ns { nsMetrics = newNm }
  where
   newNm =
     currentNm
-      { nmCPUPercent    = cpuperc * 100.0
+      { nmCPUPercent    = if cpuperc < 0 then 0 else if cpuperc > 20.0 then nmCPUPercent currentNm else cpuperc * 100.0
       , nmCPULast       = fromIntegral nanosecs
       , nmCPUNs         = tns
       , nmCPULastUpdate = now
@@ -543,7 +561,7 @@ updateRTSBytesUsed ns usedMemBytes now = ns { nsMetrics = newNm }
     currentNm
       { nmRTSMemoryUsed = mBytes
       , nmRTSMemoryUsedPercent =   mBytes
-                                 / (nmRTSMemoryAllocated currentNm)
+                                 / nmRTSMemoryAllocated currentNm
                                  * 100.0
       , nmRTSMemoryLastUpdate = now
       }
