@@ -75,6 +75,7 @@ updateGUI nodesState params acceptors nodesStateElems =
     void $ updateElementValue (ElementInteger $ niSlot ni)                    $ elements ! ElSlot
     void $ updateElementValue (ElementInteger $ niBlocksNumber ni)            $ elements ! ElBlocksNumber
     void $ updateElementValue (ElementInteger $ niBlocksForgedNumber ni)      $ elements ! ElBlocksForgedNumber
+    void $ updateElementValue (ElementInteger $ niNodeCannotLead ni)          $ elements ! ElNodeCannotLead
     void $ updateElementValue (ElementDouble  $ niChainDensity ni)            $ elements ! ElChainDensity
     void $ updateElementValue (ElementInteger $ niNodeIsLeaderNum ni)         $ elements ! ElNodeIsLeaderNumber
     void $ updateElementValue (ElementInteger $ niSlotsMissedNumber ni)       $ elements ! ElSlotsMissedNumber
@@ -278,7 +279,9 @@ markOutdatedElements params ni nm els = do
                                                       [els ! ElSlotOutdateWarning]
   markValueW now (niBlocksNumberLastUpdate ni) bcLife [els ! ElBlocksNumber]
                                                       [els ! ElBlocksNumberOutdateWarning]
-  markValueW now (niBlocksForgedNumberLastUpdate ni) bcLife [els ! ElBlocksForgedNumber]
+  markValueW now (niBlocksForgedNumberLastUpdate ni) bcLife [ els ! ElBlocksForgedNumber
+                                                            , els ! ElNodeCannotLead
+                                                            ]
                                                             [els ! ElBlocksForgedNumberOutdateWarning]
   markValueW now (niChainDensityLastUpdate ni) bcLife [els ! ElChainDensity]
                                                       [els ! ElChainDensityOutdateWarning]

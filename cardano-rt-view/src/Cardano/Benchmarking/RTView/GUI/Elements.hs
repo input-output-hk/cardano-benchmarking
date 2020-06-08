@@ -46,6 +46,7 @@ data ElementName
   | ElSlot
   | ElBlocksNumber
   | ElBlocksForgedNumber
+  | ElNodeCannotLead
   | ElChainDensity
   | ElNodeIsLeaderNumber
   | ElSlotsMissedNumber
