@@ -1,10 +1,20 @@
 CLICMD="stack --nix exec cardano-cli --"
 
 
+# the index of the genesis UTxO to transfer
+NUMUTXO=1
+
+# path to the node's socket for submitting the transaction
+CARDANO_NODE_SOCKET_PATH=logs/sockets/1
+
+# identifier for this testnet genesis
+MAGIC=4242
+
 # address of genesis funds
 
-$CLICMD shelley genesis initial-txin \
-    --verification-key-file $GENESISDIR/utxo-keys/utxo.0.vkey
+TXIN=$($CLICMD shelley genesis initial-txin \
+    --testnet-magic ${MAGIC} \
+    --verification-key-file $GENESISDIR/utxo-keys/utxo${NUMUTXO}.vkey)
 
 ===>>> $TXIN
 
@@ -16,8 +26,9 @@ $CLICMD shelley address key-gen \
     --signing-key-file $GENESISDIR/addr1.skey
 
 
-$CLICMD shelley address build \
-    --payment-verification-key-file  $GENESISDIR/addr1.vkey
+TXOUT=$($CLICMD shelley address build \
+    --testnet-magic ${MAGIC} \
+    --payment-verification-key-file  $GENESISDIR/addr1.vkey)
 
 ===>>> $TXOUT
 
@@ -38,28 +49,28 @@ $CLICMD shelley transaction build-raw \
 
 $CLICMD shelley transaction sign \
   --tx-body-file $GENESISDIR/tx0.txbody \
-  --signing-key-file $GENESISDIR/utxo-keys/utxo.0.skey \
-  --testnet-magic 4242 \
+  --signing-key-file $GENESISDIR/utxo-keys/utxo${NUMUTXO}.skey \
+  --testnet-magic ${MAGIC} \
   --tx-file $GENESISDIR/tx0.tx
 
 
 # submit transaction
 
-CARDANO_NODE_SOCKET_PATH=logs/sockets/0 \
+CARDANO_NODE_SOCKET_PATH=logs/sockets/1 \
     $CLICMD shelley transaction submit \
         --tx-file $GENESISDIR/tx0.tx \
-	--testnet-magic 4242
+        --testnet-magic ${MAGIC}
 
 
 # check UTxO
 
-CARDANO_NODE_SOCKET_PATH=logs/sockets/0 \
+CARDANO_NODE_SOCKET_PATH=logs/sockets/1 \
     $CLICMD shelley query utxo \
-      --testnet-magic 4242 \
+      --testnet-magic ${MAGIC} \
       --address <addr from initialFunds in genesis>
 
-CARDANO_NODE_SOCKET_PATH=logs/sockets/0 \
+CARDANO_NODE_SOCKET_PATH=logs/sockets/1 \
     $CLICMD shelley query utxo \
-      --testnet-magic 4242 \
+      --testnet-magic ${MAGIC} \
       --address ${TXOUT}
 

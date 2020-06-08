@@ -13,7 +13,7 @@ ${CLICMD} shelley genesis create \
      --genesis-dir ${GENESISDIR} \
      --gen-genesis-keys 256 \
      --gen-utxo-keys 256 \
-     --start-time "2020-06-02T15:00:01Z" \
+     --start-time "2020-06-08T06:00:01Z" \
      --testnet-magic 4242 \
      --supply 1000000000
 
