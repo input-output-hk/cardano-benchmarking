@@ -51,7 +51,7 @@ parseRTViewParams =
     <*> parseDiffTime
           "resources-info-life"
           "Lifetime of resources info"
-          8
+          35
     <*> parseDiffTime
           "rts-info-life"
           "Lifetime of GHC RTS info"
