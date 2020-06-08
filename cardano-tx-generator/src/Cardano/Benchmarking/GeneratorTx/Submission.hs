@@ -52,18 +52,17 @@ import           Cardano.BM.Tracing
 import           Cardano.BM.Data.Tracer (emptyObject, mkObject, trStructured)
 import           Control.Tracer (Tracer, traceWith)
 
-import           Ouroboros.Consensus.Config.SupportsNode (getCodecConfig, getNetworkMagic)
+import           Ouroboros.Consensus.Config.SupportsNode (getNetworkMagic)
+import           Ouroboros.Consensus.Block
 import           Ouroboros.Consensus.Byron.Ledger (ByronBlock (..))
 import           Ouroboros.Consensus.Byron.Ledger.Mempool as Mempool (GenTx)
 import           Ouroboros.Consensus.Config (TopLevelConfig(..))
 import           Ouroboros.Consensus.Ledger.SupportsMempool as Mempool
-                   ( ApplyTxErr, GenTxId, HasTxId, TxId, txId, txInBlockSize)
+                   ( GenTxId, HasTxId, txId, txInBlockSize)
 import           Ouroboros.Consensus.Network.NodeToClient
 import           Ouroboros.Consensus.Node.NetworkProtocolVersion
                   (HasNetworkProtocolVersion (..))
 import           Ouroboros.Consensus.Node.Run (RunNode(..))
-import qualified Ouroboros.Consensus.Node.Run as Node
-import qualified Ouroboros.Consensus.Mempool as Mempool
 
 import           Ouroboros.Network.Mux
                    ( MuxMode(..), OuroborosApplication(..),
@@ -549,9 +548,7 @@ instance (MonadIO m) => Transformable Text m TraceLowLevelSubmit where
   Main logic
 -------------------------------------------------------------------------------}
 
-submitTx :: ( RunNode blk
-            , Show (ApplyTxErr blk)
-            )
+submitTx :: ( RunNode blk )
          => IOManager
          -> SocketPath
          -> TopLevelConfig blk
@@ -576,7 +573,6 @@ localInitiatorNetworkApplication
      , MonadST m
      , MonadThrow m
      , MonadTimer m
-     , Show (ApplyTxErr blk)
      )
   => Tracer m TraceLowLevelSubmit
   -> TopLevelConfig blk
