@@ -89,12 +89,11 @@ import           Ouroboros.Consensus.Node.Run (RunNode)
 import           Ouroboros.Consensus.Node.ProtocolInfo (ProtocolInfo (..))
 import qualified Ouroboros.Consensus.Cardano as Consensus
 import           Ouroboros.Consensus.Config (TopLevelConfig (configBlock))
-import qualified Ouroboros.Consensus.Mempool as Mempool
 import           Ouroboros.Consensus.Byron.Ledger (ByronBlock (..),
                                                    GenTx (..),
                                                    byronProtocolMagicId)
 import           Ouroboros.Consensus.Ledger.SupportsMempool as Mempool
-                   ( ApplyTxErr, GenTxId, HasTxId, TxId, txId, txInBlockSize)
+                   ( GenTxId )
 
 newtype NumberOfTxs =
   NumberOfTxs Word64

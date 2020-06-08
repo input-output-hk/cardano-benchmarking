@@ -4,3 +4,7 @@
 [submodule "ext/cardano-node.git"]
 	path = ext/cardano-node.git
 	url = https://github.com/input-output-hk/cardano-node.git
+[submodule "ext/iohk-monitoring-framework.git"]
+	path = ext/iohk-monitoring-framework.git
+	url = https://github.com/input-output-hk/iohk-monitoring-framework.git
+	branch = master

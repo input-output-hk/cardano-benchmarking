@@ -37,8 +37,9 @@ import           Control.Tracer (Tracer (..), nullTracer, traceWith)
 import           Cardano.BM.Data.LogItem (LogObject (..), LOContent (..), mkLOMeta)
 import           Cardano.BM.Tracing
 import           Cardano.BM.Data.Tracer (emptyObject, mkObject, trStructured)
+import           Ouroboros.Consensus.Block
 import           Ouroboros.Consensus.Byron.Ledger (ByronBlock (..))
-import           Ouroboros.Consensus.Config.SupportsNode (getCodecConfig, getNetworkMagic)
+import           Ouroboros.Consensus.Config.SupportsNode (getNetworkMagic)
 import           Ouroboros.Consensus.Byron.Ledger.Mempool (GenTx)
 import           Ouroboros.Consensus.Ledger.SupportsMempool (GenTxId)
 import           Ouroboros.Consensus.Node.NetworkProtocolVersion
@@ -101,6 +102,7 @@ instance ToObject (SendRecvTxSubmission ByronBlock) where
           TS.MsgReplyTxIds (TS.NonBlockingReply _) -> mkObject ["kind" .= String "TxSubmissionSendNBReplyTxIds"]
           TS.MsgRequestTxs _                       -> mkObject ["kind" .= String "TxSubmissionSendRequestTxs"]
           TS.MsgReplyTxs _                         -> mkObject ["kind" .= String "TxSubmissionSendReplyTxs"]
+          TS.MsgKThxBye                            -> mkObject ["kind" .= String "MsgKThxBye"]
           TS.MsgDone                               -> emptyObject -- No useful information.
       TraceRecvMsg (AnyMessage msg) ->
         case msg of
@@ -109,6 +111,7 @@ instance ToObject (SendRecvTxSubmission ByronBlock) where
           TS.MsgReplyTxIds (TS.NonBlockingReply _) -> mkObject ["kind" .= String "TxSubmissionRecvNBReplyTxIds"]
           TS.MsgRequestTxs _                       -> mkObject ["kind" .= String "TxSubmissionRecvRequestTxs"]
           TS.MsgReplyTxs _                         -> mkObject ["kind" .= String "TxSubmissionRecvReplyTxs"]
+          TS.MsgKThxBye                            -> mkObject ["kind" .= String "MsgKThxBye"]
           TS.MsgDone                               -> emptyObject -- No useful information.
 
   toObject MaximalVerbosity t = 
@@ -133,8 +136,9 @@ instance ToObject (SendRecvTxSubmission ByronBlock) where
                      , "txIds" .= toJSON txIds
                      ]
           TS.MsgReplyTxs _ -> -- We shouldn't log a list of whole transactions here.
-            mkObject [ "kind" .= String "TxSubmissionSendReplyTxs"
-                     ]
+            mkObject [ "kind" .= String "TxSubmissionSendReplyTxs" ]
+          TS.MsgKThxBye ->
+            mkObject [ "kind" .= String "MsgKThxBye" ]
           TS.MsgDone -> emptyObject -- No useful information.
 
       TraceRecvMsg (AnyMessage msg) ->
@@ -157,8 +161,9 @@ instance ToObject (SendRecvTxSubmission ByronBlock) where
                      , "txIds" .= toJSON txIds
                      ]
           TS.MsgReplyTxs _ -> -- We shouldn't log a list of whole transactions here.
-            mkObject [ "kind" .= String "TxSubmissionRecvReplyTxs"
-                     ]
+            mkObject [ "kind" .= String "TxSubmissionRecvReplyTxs" ]
+          TS.MsgKThxBye ->
+            mkObject [ "kind" .= String "MsgKThxBye" ]
           TS.MsgDone -> emptyObject -- No useful information.
 
 instance HasSeverityAnnotation (SendRecvTxSubmission ByronBlock)
