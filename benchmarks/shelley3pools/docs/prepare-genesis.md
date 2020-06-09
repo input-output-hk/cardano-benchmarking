@@ -22,7 +22,7 @@ ${CLICMD} shelley genesis create \
      --gen-utxo-keys 3 \
      --start-time "2020-06-09T06:00:01Z" \
      --testnet-magic 42 \
-     --supply 1000000000
+     --supply 1000000002
 
 ## manual genesis: rerun the command below to update the genesis from keys and the spec
 ${CLICMD} shelley genesis create --genesis-dir ${GENESISDIR} --testnet-magic 42

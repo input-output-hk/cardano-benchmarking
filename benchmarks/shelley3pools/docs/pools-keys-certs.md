@@ -12,7 +12,7 @@ CLICMD="stack --nix exec cardano-cli --"
 
 NNODES=3
 for N in $(seq 1 $NNODES); do
-    mkdir -p ${GENESISDIR}/node${N}
+    mkdir -p ${GENESISDIR}/node${N}/cold
 
     ${CLICMD} shelley node key-gen-KES \
       --verification-key-file ${GENESISDIR}/node${N}/kes.vkey \
@@ -21,25 +21,17 @@ for N in $(seq 1 $NNODES); do
       --verification-key-file ${GENESISDIR}/node${N}/vrf.vkey \
       --signing-key-file ${GENESISDIR}/node${N}/vrf.skey
 
+    # cold keys (do not copy to production system)
+    ${CLICMD} shelley node key-gen \
+      --cold-verification-key-file ${GENESISDIR}/node${N}/cold/operator.vkey \
+      --cold-signing-key-file ${GENESISDIR}/node${N}/cold/operator.skey \
+      --operational-certificate-issue-counter-file ${GENESISDIR}/node${N}/cold/operator.counter
+
     # certificate (adapt kes-period for later certs)
     ${CLICMD} shelley node issue-op-cert \
       --hot-kes-verification-key-file ${GENESISDIR}/node${N}/kes.vkey \
-      --cold-signing-key-file ${GENESISDIR}/delegate-keys/delegate${N}.skey \
-      --operational-certificate-issue-counter ${GENESISDIR}/delegate-keys/delegate-opcert${N}.counter \
+      --cold-signing-key-file ${GENESISDIR}/node${N}/cold/operator.skey \
+      --operational-certificate-issue-counter ${GENESISDIR}/node${N}/cold/operator.counter \
       --kes-period 0 \
-      --out-file ${GENESISDIR}/node${N}/cert
+      --out-file ${GENESISDIR}/node${N}/node.cert
 done
-
-
-## run nodes
-N=0
-stack exec cardano-node -- run \
-    --config ${GENESISDIR}/node${N}/configuration.yaml \
-    --topology ${GENESISDIR}/node${N}/topology.json \
-    --database-path ${GENESISDIR}/node${N}/db \
-    --socket-path ${GENESISDIR}/node${N}/node.sock \
-    --shelley-kes-key ${GENESISDIR}/node${N}/kes.skey \
-    --shelley-vrf-key ${GENESISDIR}/node${N}/vrf.skey \
-    --shelley-operational-certificate ${GENESISDIR}/node${N}/cert \
-    --port $((3000 + $N))
-

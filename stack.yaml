@@ -188,12 +188,12 @@ extra-deps:
 allow-newer: true
 
 nix:
-   shell-file: nix/stack-shell.nix
-#  pure: true
-#  packages: [ zlib.dev, zlib.out
-#            , openssl.dev, openssl.out
-#            , haskell.compiler.ghc865
-#            , pkg-config
-#            , systemd.dev
+#   shell-file: nix/stack-shell.nix
+  pure: false
+  packages: [ zlib.dev, zlib.out
+            , openssl.dev, openssl.out
+            , haskell.compiler.ghc865
+            , pkg-config
+            , systemd.dev
 ##            , postgresql
-#            ]
+            ]

@@ -28,9 +28,8 @@ do tmux select-pane -t $((N - 1))
             --config configuration/configuration-node-${N}.yaml \
             --shelley-kes-key ${GENESISDIR}/node${N}/kes.skey \
             --shelley-vrf-key ${GENESISDIR}/node${N}/vrf.skey \
-            --shelley-operational-certificate ${GENESISDIR}/node${N}/cert \
+            --shelley-operational-certificate ${GENESISDIR}/node${N}/node.cert \
             " ${REDIRSTDERR} \
      C-m
 done
 tmux select-pane -t 0
-
