@@ -8,7 +8,7 @@ NUMUTXO=1
 CARDANO_NODE_SOCKET_PATH=logs/sockets/1
 
 # identifier for this testnet genesis
-MAGIC=4242
+MAGIC=42
 
 # address of genesis funds
 
