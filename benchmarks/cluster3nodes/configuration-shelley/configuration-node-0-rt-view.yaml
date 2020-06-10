@@ -90,7 +90,7 @@ hasPrometheus:
 # Example using UNIX pipes:
 traceForwardTo:
    tag: RemotePipe
-   contents: "logs/sockets/pool1"
+   contents: "logs/sockets/0"
 # 
 # Example using Windows named pipes:
 # traceForwardTo:

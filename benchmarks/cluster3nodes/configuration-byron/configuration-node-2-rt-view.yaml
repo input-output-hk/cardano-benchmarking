@@ -72,7 +72,7 @@ options:
 
 traceForwardTo:
   tag: RemotePipe
-  contents: "/tmp/cluster3nodes-socket/c"
+  contents: "logs/sockets/2"
 
 ##########################################################
 ############### Cardano Node Configuration ###############

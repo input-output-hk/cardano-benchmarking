@@ -1,6 +1,6 @@
 
 # the directory of the fresh genesis and keys
-GENESISDIR=configuration/genesis
+GENESISDIR=configuration-shelley/genesis
 
 # the network id for our testnet
 MAGIC=42

@@ -4,10 +4,9 @@
 BASEDIR="$(realpath "$(dirname "$0")")"
 . "$(realpath "${BASEDIR}"/../../scripts/common.sh)"
 
-. "${BASEDIR}"/configuration/parameters
+CONFIGDIR=${BASEDIR}/configuration-$era
 
-CONFIGDIR=${BASEDIR}/configuration
-CONFIGFILE=${CONFIGDIR}/log-config-generator.yaml
+. "${CONFIGDIR}"/parameters
 
 GENESISJSON="${CONFIGDIR}/genesis/genesis.json"
 
@@ -17,11 +16,11 @@ TARGETNODES=`for N in $targetnodes; do echo -n "--target-node (\"127.0.0.1\",$((
 echo "$TARGETNODES"
 
 run 'cardano-tx-generator-byron' \
-  --config ${CONFIGFILE} \
+  --config ${CONFIGDIR}/configuration-generator.yaml \
   --signing-key ${CONFIGDIR}/genesis/delegate-keys.000.key \
   --delegation-certificate ${CONFIGDIR}/genesis/delegation-cert.000.json \
   --genesis-file ${GENESISJSON} \
-  --socket-path /tmp/cluster3nodes-socket/0 \
+  --socket-path $BASEDIR/sockets/0 \
   --num-of-txs $numtx \
   --add-tx-size $addsizetx \
   --inputs-per-tx $inputstx \

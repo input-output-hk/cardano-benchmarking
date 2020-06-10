@@ -2,7 +2,11 @@
 
 BASEDIR="$(realpath "$(dirname "$0")")"
 
-. "${BASEDIR}"/configuration/psql-settings.sh
+era='byron'
+
+CONFIGDIR=${BASEDIR}/configuration-$era
+
+. "${CONFIGDIR}"/psql-settings.sh
 
 components=($(ls "${BASEDIR}"/../../scripts/*.sql))
 
