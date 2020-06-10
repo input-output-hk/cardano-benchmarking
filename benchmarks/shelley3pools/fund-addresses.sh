@@ -1,79 +1,75 @@
-TXIN=$1
-SIGNING_KEY=$2
-NUM_OF_ADDRESSES=$3
-AMOUNT=$4
-WORKDIR=$5
-MAGIC=42
-TTL=5000
-FEE=100000
+# Initial set-up
 
-rm -fr $WORKDIR/txs
-mkdir $WORKDIR/txs
+rm -fr tmp
+mkdir tmp
+mkdir tmp/txs
 
-rm $WORKDIR/protocol.json
-cardano-cli shelley query protocol-parameters \
-    --testnet-magic $MAGIC \
-    --out-file $WORKDIR/protocol.json
+# Fund address from Genesi
+## Get the initial UTxO TxIn
 
-$CLICMD shelley address key-gen \
-    --verification-key-file $WORKDIR/fund.vkey \
-    --signing-key-file $WORKDIR/fund.skey
+cardano-cli shelley genesis initial-txin \
+    --verification-key-file configuration/genesis/utxo-keys/utxo1.vkey > tmp/genesis_utxo
 
-# $CLICMD shelley address build \
-#     --testnet-magic $MAGIC \
-#     --payment-verification-key-file  $WORKDIR/fund.vkey > $WORKDIR/fund.addr
-$CLICMD shelley address build \
-    --verification-key-file  $WORKDIR/fund.vkey > $WORKDIR/fund.addr
+## Set-up the Payer
+### Create the keys and addresses for Payer
+cardano-cli shelley address key-gen \
+    --verification-key-file tmp/payer.vkey \
+    --signing-key-file tmp/payer.skey
 
-$CLICMD shelley transaction build-raw \
-    --tx-in 6abc9cded89953747e8f22609917c3170008dbbca1b97cdf4c5c05bb454c4fd1#0 \
-    --tx-out $(cat $WORKDIR/fund.addr)+333333333 \
-    --ttl $TTL \
+cardano-cli shelley address build \
+    --payment-verification-key-file tmp/payer.vkey > tmp/payer.addr
+
+### Build, Sign, Submit a Genesis UTxO to the Payer
+cardano-cli shelley transaction build-raw \
+    --tx-in  `cat tmp/genesis_utxo`#0 \
+    --tx-out `cat tmp/payer.addr`+333333333 \
+    --ttl 10000 \
     --fee 0 \
-    --tx-body-file $WORKDIR/genesis_tx.txbody
+    --tx-body-file tmp/txs/genesis_to_funding.txbody
 
-$CLICMD shelley transaction sign \
-  --tx-body-file $WORKDIR/genesis_tx.txbody \
-  --signing-key-file $WORKDIR/configuration/genesis/utxo-keys/utxo1.skey \
-  --testnet-magic $MAGIC \
-  --tx-file $WORKDIR/genesis_tx.tx
+cardano-cli shelley transaction sign \
+    --tx-body-file tmp/txs/genesis_to_funding.txbody \
+    --signing-key-file configuration/genesis/utxo-keys/utxo1.skey \
+    --testnet-magic 42 \
+    --tx-file tmp/txs/genesis_to_funding.tx
 
-$CLICMD shelley transaction submit \
-    --tx-file $WORKDIR/genesis_tx.tx \
+cardano-cli shelley transaction submit \
+    --tx-file tmp/txs/genesis_to_funding.tx \
     --testnet-magic 42
 
-for i in $(seq 1 $NUM_OF_ADDRESSES)
+
+# Create n target addresses
+./create-addresses "100" "/tmp"
+
+
+# Build n transactions
+for i in $(seq 1 100)
 do
-    # Get TX-Specific Values
-    # TTL=$(cardano-cli shelley query tip --testnet-magic $MAGIC) + 250
+    cardano-cli shelley transaction build-raw \
+        --tx-in [GET UTXO]#0 \
+        --tx-out `cat tmp/addresses/address_$1`+3000000 \
+        --tx-out `cat tmp/payer.addr`+499398236348 \
+        --ttl 10000 \
+        --fee 300000 \
+        --out-file tmp/txs/tx_$i.raw
+done
 
-    # FEE=$(cardano-cli shelley transaction calculate-min-fee \
-    #         --tx-in-count 1 \
-    #         --tx-out-count 2 \
-    #         --ttl $TTL \
-    #         --testnet-magic $MAGIC \
-    #         --signing-key-file $SIGNING_KEY \
-    #         --protocol-params-file $WORKDIR/protocol.json)
-    
 
-    # Build Transaction
-    $CLICMD shelley transaction build-raw \
-        --tx-in  ${TXIN} \
-        --tx-out ${TXOUT}+${AMOUNT} \
-        --tx-out $(cat payment.addr)+499398236348
-        --ttl $TTL \
-        --fee 0 \
-        --tx-body-file $WORKDIR/txs/tx_$i.txbody
+# Sign n transactions
+for i in $(seq 1 100)
+do
+    cardano-cli shelley transaction sign \
+        --tx-body-file tmp/txs/tx_$i.raw \
+        --signing-key-file tmp/payer.skey \
+        --testnet-magic 42 \
+        --out-file tmp/txs/tx_$i.signed
+done
 
-    # Sign Transaction
-    $CLICMD shelley transaction sign \
-    --tx-body-file $WORKDIR/txs/tx_$i.txbody \
-    --signing-key-file $WORKDIR/utxo-keys/utxo${NUMUTXO}.skey \
-    --testnet-magic ${MAGIC} \
-    --tx-file $WORKDIR/txs/tx_$i.tx
 
-    # Submit Transaction
-    $CLICMD shelley transaction submit \
-        --tx-file $WORKDIR/txs/tx_$i.tx \
-        --testnet-magic $MAGIC
+# Submit n transactions
+for i in $(seq 1 100)
+do
+    cardano-cli shelley transaction submit \
+        --tx-file tmp/txs/tx_$i.signed \
+        --testnet-magic 42
 done
