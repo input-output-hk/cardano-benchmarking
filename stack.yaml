@@ -54,7 +54,7 @@ extra-deps:
   - statistics-linreg-0.3
   - streaming-binary-0.3.0.1
   - tasty-hedgehog-1.0.0.2
-  - terminfo-0.4.1.4
+  #- terminfo-0.4.1.4
   - text-1.2.4.0
   - text-zipper-0.10.1
   - th-lift-0.8.1
@@ -184,5 +184,5 @@ nix:
             , haskell.compiler.ghc865
             , pkg-config
             , systemd.dev
-##            , postgresql
+            #, postgresql
             ]
