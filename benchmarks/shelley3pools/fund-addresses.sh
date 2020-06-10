@@ -4,7 +4,7 @@ rm -fr tmp
 mkdir tmp
 mkdir tmp/txs
 
-# Fund address from Genesi
+# Fund address from Genesis
 ## Get the initial UTxO TxIn
 
 cardano-cli shelley genesis initial-txin \
@@ -41,35 +41,32 @@ cardano-cli shelley transaction submit \
 # Create n target addresses
 ./create-addresses "100" "/tmp"
 
-
-# Build n transactions
 for i in $(seq 1 100)
 do
+    previous_tx_id = `cat tmp/txs/tx_$(expr $i - 1).id`
+
+    # Build n transactions
     cardano-cli shelley transaction build-raw \
-        --tx-in [GET UTXO]#0 \
+        --tx-in previous_tx_id#0 \
         --tx-out `cat tmp/addresses/address_$1`+3000000 \
         --tx-out `cat tmp/payer.addr`+499398236348 \
         --ttl 10000 \
         --fee 300000 \
         --out-file tmp/txs/tx_$i.raw
-done
+    
+    # Get the TxID of the above tx
+    cardano-cli shelley transaction txid --tx-body-file tmp/txs/tx_$i.raw > tmp/txs/tx_$i.id:
 
-
-# Sign n transactions
-for i in $(seq 1 100)
-do
+    # Sign n transactions
     cardano-cli shelley transaction sign \
         --tx-body-file tmp/txs/tx_$i.raw \
         --signing-key-file tmp/payer.skey \
         --testnet-magic 42 \
         --out-file tmp/txs/tx_$i.signed
-done
-
-
-# Submit n transactions
-for i in $(seq 1 100)
-do
+    
+    # Submit n transactions
     cardano-cli shelley transaction submit \
         --tx-file tmp/txs/tx_$i.signed \
         --testnet-magic 42
 done
+
