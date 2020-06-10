@@ -34,6 +34,11 @@ tmux new-window -n TxGen \
              "sleep 5; ./run-tx-generator.sh; $SHELL"
 sleep 1
 
+# 5 send delegation transactions
+tmux select-window -t :0
+tmux new-window -n Delegation \
+             "sleep 45; ./submit_delegation_tx.sh; $SHELL"
+
 tmux select-window -t Nodes
 sleep 1
 $SHELL

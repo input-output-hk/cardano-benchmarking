@@ -1,79 +1,43 @@
-#!/usr/bin/env bash
 
-BASEDIR=$(realpath $(dirname "$0"))
-. ${BASEDIR}/configuration/parameters
+# delegation of funds to a pool and getting rewards
 
-cd ${BASEDIR}
+(from https://github.com/input-output-hk/cardano-node/blob/master/scripts/shelley-from-scratch/mkfiles.sh)
 
-if [ -n "${GENESISDIR}" -a -d ${GENESISDIR} ]; then
-    rm -rf ${GENESISDIR}
-fi
-mkdir -p ${GENESISDIR}
 
+Make some payment and stake addresses
+  user1..n:       will own all the funds in the system, we'll set this up from
+                  initial utxo the
+  pool-owner1..n: will be the owner of the pools and we'll use their reward
+                  account for pool rewards
+
+## settings
 CLICMD="stack --nix exec cardano-cli --"
 
-# === genesis ===
-${CLICMD} shelley genesis create \
-     --genesis-dir ${GENESISDIR} \
-     --gen-genesis-keys 3 \
-     --gen-utxo-keys 3 \
-     --testnet-magic ${MAGIC} \
-     --supply ${SUPPLY}
+GENESISDIR=configuration/genesis
+MAGIC=42
 
-## set parameters in template
-sed -i ${GENESISDIR}/genesis.spec.json \
-    -e 's/"slotLength": .*,/"slotLength": 0.2,/' \
-    -e 's/"activeSlotsCoeff": .*,/"activeSlotsCoeff": 0.1,/' \
-    -e 's/"securityParam": .*,/"securityParam": 10,/' \
-    -e 's/"epochLength": .*,/"epochLength": 1500,/' \
-    -e 's/"decentralisationParam": .*,/"decentralisationParam": 0.7,/'
+USER_ADDRS="user1 user2"
+POOL_ADDRS="pool-owner1 pool-owner2"
 
-## update genesis from template
-${CLICMD} shelley genesis create --genesis-dir ${GENESISDIR} --testnet-magic ${MAGIC} --supply ${SUPPLY}
+POOL_NODES="1 2"
 
-## create KES, VRF, certs per node
-for N in $(seq 1 $NNODES); do
-    mkdir -p ${GENESISDIR}/node${N}/cold
+### user N delegates to pool N
+USER_POOL_N="1 2"
 
-    ${CLICMD} shelley node key-gen-KES \
-      --verification-key-file ${GENESISDIR}/node${N}/kes.vkey \
-      --signing-key-file ${GENESISDIR}/node${N}/kes.skey
-    ${CLICMD} shelley node key-gen-VRF \
-      --verification-key-file ${GENESISDIR}/node${N}/vrf.vkey \
-      --signing-key-file ${GENESISDIR}/node${N}/vrf.skey
 
-    # cold keys (do not copy to production system)
-    # for Release-1.13
-    #${CLICMD} shelley node key-gen \
-    #  --cold-verification-key-file ${GENESISDIR}/node${N}/cold/operator.vkey \
-    #  --cold-signing-key-file ${GENESISDIR}/node${N}/cold/operator.skey \
-    #  --operational-certificate-issue-counter-file ${GENESISDIR}/node${N}/cold/operator.counter
-    # for Release-1.12
-    ln -s ../../delegate-keys/delegate${N}.skey ${GENESISDIR}/node${N}/cold/operator.skey
-    ln -s ../../delegate-keys/delegate${N}.vkey ${GENESISDIR}/node${N}/cold/operator.vkey
-    ln -s ../../delegate-keys/delegate-opcert${N}.counter ${GENESISDIR}/node${N}/cold/operator.counter
+### stake per address
+STAKE=333333334
 
-    # certificate (adapt kes-period for later certs)
-    ${CLICMD} shelley node issue-op-cert \
-      --hot-kes-verification-key-file ${GENESISDIR}/node${N}/kes.vkey \
-      --cold-signing-key-file ${GENESISDIR}/node${N}/cold/operator.skey \
-      --operational-certificate-issue-counter ${GENESISDIR}/node${N}/cold/operator.counter \
-      --kes-period 0 \
-      --out-file ${GENESISDIR}/node${N}/node.cert
-done
-
-# === delegation ===
 
 ## prepare addresses
-mkdir -p ${GENESISDIR}/addresses
 
-USER_ADDRS=$(for N in $STAKEPOOLS; do echo -n "user${N} "; done)
-POOL_ADDRS=$(for N in $STAKEPOOLS; do echo -n "pool-owner${N} "; done)
+mkdir -p ${GENESISDIR}/addresses
 
 ADDRS="${USER_ADDRS} ${POOL_ADDRS}"
 for ADDR in ${ADDRS}; do
 
   echo -n "$ADDR "
+
   ### Payment address keys
   ${CLICMD} shelley address key-gen \
       --verification-key-file ${GENESISDIR}/addresses/${ADDR}.vkey \
@@ -107,7 +71,8 @@ echo
 
 ## create delegation certs
 
-for N in ${STAKEPOOLS}; do
+for N in ${USER_POOL_N}; do
+
   echo -n "user ${N} -> pool ${N}  "
   ### Stake address delegation certs
   ${CLICMD} shelley stake-address delegation-certificate \
@@ -121,9 +86,10 @@ for N in ${STAKEPOOLS}; do
 done
 echo
 
+
 ## make stake pool registration cert
 
-for NODE in ${STAKEPOOLS}; do
+for NODE in ${POOL_NODES}; do
   echo -n "pool ${NODE}  "
   ${CLICMD} shelley stake-pool registration-certificate \
     --testnet-magic ${MAGIC} \
@@ -136,13 +102,19 @@ for NODE in ${STAKEPOOLS}; do
 done
 echo
 
-## prepare delegation transaction
+### Now we'll construct one whopper of a transaction that does everything
+### just to show off that we can, and to make the script shorter
 
-STAKE=$((SUPPLY / NNODES))
-for N in ${STAKEPOOLS}; do
+### We'll transfer all the funds to the user1, which delegates to pool1
+### We'll register certs to:
+###  1. register the pool-owner1 stake address
+###  2. register the stake pool 1
+###  3. register the user1 stake address
+###  4. delegate from the user1 stake address to the stake pool
+
+for N in ${USER_POOL_N}; do
 
     echo "move funds to user ${N}, delegate to pool ${N}"
-    ### build tx
     ${CLICMD} shelley transaction build-raw \
         --ttl 1000 \
         --fee 0 \
@@ -156,7 +128,12 @@ for N in ${STAKEPOOLS}; do
         --certificate-file ${GENESISDIR}/addresses/user${N}-stake.deleg.cert \
         --out-file ${GENESISDIR}/node${N}/tx-delegate${N}.txbody
 
-    ### sign tx
+### So we'll need to sign this with a bunch of keys:
+### 1. the initial utxo spending key, for the funds
+### 2. the user1 stake address key, due to the delegatation cert
+### 3. the pool1 owner key, due to the pool registration cert
+### 3. the pool1 operator key, due to the pool registration cert
+
     ${CLICMD} shelley transaction sign \
         --signing-key-file ${GENESISDIR}/utxo-keys/utxo${N}.skey \
         --signing-key-file ${GENESISDIR}/addresses/user${N}-stake.skey \
@@ -169,3 +146,11 @@ for N in ${STAKEPOOLS}; do
 done
 echo
 
+## submit the delegation transactions
+
+for N in ${USER_POOL_N}; do
+    CARDANO_NODE_SOCKET_PATH=logs/sockets/${N} \
+    ${CLICMD} shelley transaction submit \
+                --tx-file ${GENESISDIR}/node${N}/tx-delegate${N}.tx \
+                --testnet-magic ${MAGIC}"
+done
