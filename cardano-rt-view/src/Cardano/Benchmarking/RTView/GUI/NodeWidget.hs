@@ -37,6 +37,7 @@ mkNodeWidget = do
   elSlot                    <- string "0"
   elBlocksNumber            <- string "0"
   elBlocksForgedNumber      <- string "0"
+  elNodeCannotLead          <- string "0"
   elChainDensity            <- string "0"
   elNodeIsLeaderNumber      <- string "0"
   elSlotsMissedNumber       <- string "0"
@@ -315,6 +316,7 @@ mkNodeWidget = do
                      , UI.div #. "" #+ [string "Forged blocks number:"]
                      , UI.div #. "" #+ [string "Chain density:"]
                      , UI.div #. "" #+ [string "Slot leader, number:"]
+                     , UI.div #. "" #+ [string "Cannot lead, number:"]
                      , UI.div #. "" #+ [string "Missed slots number:"]
                      , UI.div #. "" #+ [string "Created forks number:"]
                      ]
@@ -333,6 +335,7 @@ mkNodeWidget = do
                          , UI.span #. "density-percent" #+ [string "%"]
                          ]
                      , UI.div #. "" #+ [element elNodeIsLeaderNumber]
+                     , UI.div #. "" #+ [element elNodeCannotLead]
                      , UI.div #. "" #+ [element elSlotsMissedNumber]
                      , UI.div #. "" #+ [element elForksCreatedNumber]
                      ]
@@ -629,6 +632,7 @@ mkNodeWidget = do
           , (ElSlot,                    elSlot)
           , (ElBlocksNumber,            elBlocksNumber)
           , (ElBlocksForgedNumber,      elBlocksForgedNumber)
+          , (ElNodeCannotLead,          elNodeCannotLead)
           , (ElChainDensity,            elChainDensity)
           , (ElNodeIsLeaderNumber,      elNodeIsLeaderNumber)
           , (ElSlotsMissedNumber,       elSlotsMissedNumber)

@@ -17,8 +17,6 @@ module Cardano.Benchmarking.RTView.NodeState.Updater
     ) where
 
 import           Cardano.Prelude hiding ( modifyMVar_ )
-import           Prelude
-                   ( String )
 
 import           Control.Concurrent.MVar.Strict
                    ( MVar
@@ -151,6 +149,8 @@ updateNodesState nsMVar loggerName (LogObject aName aMeta aContent) = do
                 nodesStateWith $ updateTxsProcessed ns processedTxsNum
               LogValue "blocksForgedNum" (PureI forgedBlocksNum) ->
                 nodesStateWith $ updateBlocksForged ns forgedBlocksNum now
+              LogValue "nodeCannotLead" (PureI cannotLead) ->
+                nodesStateWith $ updateNodeCannotLead ns cannotLead
               LogValue "nodeIsLeaderNum" (PureI leaderNum) ->
                 nodesStateWith $ updateNodeIsLeader ns leaderNum now
               LogValue "slotsMissedNum" (PureI missedSlotsNum) ->
@@ -510,6 +510,15 @@ updateBlocksForged ns blocksForged now = ns { nsInfo = newNi }
     currentNi
       { niBlocksForgedNumber = blocksForged
       , niBlocksForgedNumberLastUpdate = now
+      }
+  currentNi = nsInfo ns
+
+updateNodeCannotLead :: NodeState -> Integer -> NodeState
+updateNodeCannotLead ns cannotLead = ns { nsInfo = newNi }
+ where
+  newNi =
+    currentNi
+      { niNodeCannotLead = cannotLead
       }
   currentNi = nsInfo ns
 
