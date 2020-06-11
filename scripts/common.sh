@@ -36,6 +36,9 @@ Usage:
     --mnemonic-suffix SUFFIX
                         Profiling output will get an additional suffix
 
+    --shelley           Set era to Shelley.  Default
+    --byron             Set era to Byron
+
     --quiet             Don't print much.  The default
     --verbose           Be verbose about what's going on
     --debug             Be even more verbose
@@ -129,8 +132,9 @@ setup_nix() {
 ##      downstream, case-specific parsing of remaining args.
 ##   3. resolve verbosity and recursion issues
 
-export configuration="${__COMMON_SRCROOT}/configuration"
 export scripts="${__COMMON_SRCROOT}/scripts"
+
+export era=${era:-'shelley'}
 
 export profile=
 export verbose=
@@ -158,6 +162,9 @@ do case "$1" in
            ## Should be moved to lib-node.sh?
            --force-genesis )      force_genesis=t;;
 
+           --shelley )            era='shelley';;
+           --byron )              era='byron';;
+
            --quiet )              verbose=;;
            --verbose )            verbose=t;;
            --debug )              debug=t; verbose=t;;
@@ -166,6 +173,8 @@ do case "$1" in
            --help )               usage; exit 1;;
            * ) break;; esac; shift; done
 export SCRIPTS_LIB_SH_MODE
+
+export configuration="${__COMMON_SRCROOT}/configuration-$era"
 
 setup_recursion_and_verbosity
 setup_executables

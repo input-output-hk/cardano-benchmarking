@@ -4,13 +4,8 @@
 BASEDIR="$(realpath "$(dirname "$0")")"
 . "$(realpath "${BASEDIR}"/../../scripts/common.sh)"
 
-set -e
-
-export IGNOREEOF=2
-
 ### parameters
 
-# process
 create_new_genesis=1
 clean_explorer_db=0
 run_rt_view_service=1
@@ -19,12 +14,30 @@ run_second_cluster=1
 run_explorer=0
 run_tx_generator=1
 
+while test $# -ge 1
+do case "$1" in
+           --no-genesis )        create_new_genesis=0;;
+           --explorer )          clean_explorer_db=1; run_explorer=1;;
+           --no-rtview )         run_rt_view_service=0;;
+           --no-second-cluster ) run_second_cluster=0;;
+           --no-generator )      run_tx_generator=0;;
+           * ) break;; esac; shift; done
+
+case "$era" in
+        shelley )
+                ## For now, those are not supported.
+                run_tx_generator=0
+                run_second_cluster=0;;
+        byron )
+                prebuild 'cardano-tx-generator-'$era || exit 1;;
+esac
 
 ### >>>>>> do not change anything below this point
 
 ## Oh the absolute, sheer horrors of 'tmux'..
 ## NOTE:  this inherits the eval caches from 'start.sh'
 TMUX_ENV_PASSTHROUGH=(
+         "export era=${era}; export DBDIR=${DBDIR}; export SOCKETDIR=${SOCKETDIR};"
          "export SCRIPTS_LIB_SH_MODE=${SCRIPTS_LIB_SH_MODE};"
          "export __COMMON_SRCROOT=${__COMMON_SRCROOT};"
          "export DEFAULT_DEBUG=${DEFAULT_DEBUG};"
@@ -35,12 +48,12 @@ TMUX_ENV_PASSTHROUGH=(
 ## ^^ Keep in sync with run-3node-cluster.sh
 
 # clean
-rm -rf ./db/ ./db-*/ ./logs/ ./socket/
-mkdir -p logs socket
+rm -rf ./db/ ./sockets/ ./logs/
+mkdir -p logs sockets logs/sockets
 
 # 1) generate new genesis
 if [ $create_new_genesis -eq 1 ]; then
-  ./genesis.sh
+  ./genesis-$era.sh
 fi
 set -x
 
@@ -68,7 +81,7 @@ fi
 if [ $run_cluster_nodes -eq 1 ]; then
   tmux select-window -t :0
   tmux new-window -n Nodes1 \
-               "${TMUX_ENV_PASSTHROUGH[*]} ./run-3node-cluster.sh ${node_mode}; $SHELL"
+               "${TMUX_ENV_PASSTHROUGH[*]} ./run-3nodes.sh ${node_mode}; $SHELL"
   sleep 2
 fi
 
@@ -77,7 +90,7 @@ fi
 if [ $run_second_cluster -eq 1 ]; then
   tmux select-window -t :0
   tmux new-window -n Nodes2 \
-               "${TMUX_ENV_PASSTHROUGH[*]} ./run-second-3node-cluster.sh ${node_mode}; $SHELL"
+               "${TMUX_ENV_PASSTHROUGH[*]} export CLUSTER_INDEX_START=3; ./run-3nodes.sh ${node_mode}; $SHELL"
   sleep 2
 fi
 
@@ -99,7 +112,16 @@ if [ $run_explorer -eq 1 ]; then
   sleep 2
 fi
 
+# 7) delegate
+if [ $era = 'shelley' ]; then
+  tmux select-window -t :0
+  tmux new-window -n Delegation \
+               "${TMUX_ENV_PASSTHROUGH[*]} sleep 45; ./submit_delegation_tx.sh; $SHELL"
+fi
 
-tmux select-window -t Nodes
-sleep 1
+if [ $run_tx_generator -eq 1 ]; then
+  tmux select-window -t TxGen
+  sleep 1
+fi
+
 $SHELL

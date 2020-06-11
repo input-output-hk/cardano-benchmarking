@@ -25,13 +25,13 @@ defaultBackends:
 # here we set up outputs of logging in 'katip':
 setupScribes:
   - scKind: FileSK
-    scName: "logs/node-5.json"
+    scName: "logs/node-4.json"
     scFormat: ScJson
 
 # if not indicated otherwise, then log output is directed to this:
 defaultScribes:
   - - FileSK
-    - "logs/node-5.json"
+    - "logs/node-4.json"
 
 # more options which can be passed as key-value pairs:
 options:
@@ -72,7 +72,7 @@ options:
 
 traceForwardTo:
   tag: RemotePipe
-  contents: "/tmp/cluster3nodes-socket/f"
+  contents: "logs/sockets/4"
 
 ##########################################################
 ############### Cardano Node Configuration ###############

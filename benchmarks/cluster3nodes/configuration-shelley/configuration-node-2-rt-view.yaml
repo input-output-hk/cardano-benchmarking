@@ -88,7 +88,7 @@ defaultBackends:
 # Example using UNIX pipes:
 traceForwardTo:
    tag: RemotePipe
-   contents: "logs/sockets/pool3"
+   contents: "logs/sockets/2"
 # 
 # Example using Windows named pipes:
 # traceForwardTo:

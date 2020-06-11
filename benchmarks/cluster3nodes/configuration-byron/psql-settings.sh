@@ -9,5 +9,5 @@ export PGDATABASE=cl3demo
 export PGUSER=cl3demo
 export PGHOST=localhost
 export PGPORT=5432
-export PGPASSFILE=${BASEDIR}/configuration/pgpass
+export PGPASSFILE=${BASEDIR}/configuration-byron/pgpass
 

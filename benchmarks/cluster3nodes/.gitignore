@@ -1,8 +1,9 @@
 /analysis/
-/configuration/pgpass
 /logs/
 /db/
 /db-*/
 /profile/
-/configuration/genesis/
-/configuration/[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]/
+/configuration-*/pgpass
+/configuration-*/genesis/
+/configuration-*/[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]/
+timeline*/

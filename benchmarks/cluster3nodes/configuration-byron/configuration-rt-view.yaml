@@ -1,5 +1,7 @@
 # global filter; messages must have at least this severity to pass:
-minSeverity: Debug
+minSeverity: Info
+
+TurnOnLogMetrics: False
 
 # global file rotation settings:
 rotation:
@@ -23,20 +25,11 @@ setupScribes:
     scName: stdout
     scFormat: ScText
     scRotation: null
-  - scKind: FileSK
-    scFormat: ScJson
-    scName: "logs/acceptor.json"
-    scRotation:
-      rpLogLimitBytes: 25000000
-      rpKeepFilesNum:  3
-      rpMaxAgeHours:   24
 
 # if not indicated otherwise, then log output is directed to this:
 defaultScribes:
   - - StdoutSK
     - stdout
-  - - FileSK
-    - "logs/acceptor.json"
 
 # more options which can be passed as key-value pairs:
 options:
@@ -45,41 +38,27 @@ options:
       - LogBufferBK
 
 traceAcceptAt:
-  - nodeName: "a"
+  - nodeName: "pool1"
     remoteAddr:
       tag: RemotePipe
-      contents: "/tmp/cluster3nodes-socket/a"
-  - nodeName: "b"
+      contents: "logs/sockets/0"
+  - nodeName: "pool2"
     remoteAddr:
       tag: RemotePipe
-      contents: "/tmp/cluster3nodes-socket/b"
-  - nodeName: "c"
+      contents: "logs/sockets/1"
+  - nodeName: "pool3"
     remoteAddr:
       tag: RemotePipe
-      contents: "/tmp/cluster3nodes-socket/c"
-  - nodeName: "d"
+      contents: "logs/sockets/2"
+  - nodeName: "pool4"
     remoteAddr:
       tag: RemotePipe
-      contents: "/tmp/cluster3nodes-socket/d"
-  - nodeName: "e"
+      contents: "logs/sockets/4"
+  - nodeName: "pool5"
     remoteAddr:
       tag: RemotePipe
-      contents: "/tmp/cluster3nodes-socket/e"
-  - nodeName: "f"
+      contents: "logs/sockets/5"
+  - nodeName: "pool6"
     remoteAddr:
       tag: RemotePipe
-      contents: "/tmp/cluster3nodes-socket/f"
-
-# NodeId: 4
-# Protocol: RealPBFT
-# NumCoreNodes: 1
-# RequiresNetworkMagic: RequiresNoMagic
-# PBftSignatureThreshold: 0.5
-# TurnOnLogging: True
-# ViewMode: SimpleView
-TurnOnLogMetrics: False
-# ApplicationName: cardano-sl
-# ApplicationVersion: 1
-# LastKnownBlockVersion-Major: 0
-# LastKnownBlockVersion-Minor: 2
-# LastKnownBlockVersion-Alt: 0
+      contents: "logs/sockets/6"

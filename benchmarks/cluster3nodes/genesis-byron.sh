@@ -6,7 +6,7 @@ set -e
 BASEDIR="$(realpath "$(dirname "$0")")"
 . "$(realpath "${BASEDIR}"/../../scripts/common.sh)"
 
-CONFIGDIR="${BASEDIR}/configuration"
+CONFIGDIR="${BASEDIR}/configuration-byron"
 
 umask 077
 start_time=$(date '+%s')
