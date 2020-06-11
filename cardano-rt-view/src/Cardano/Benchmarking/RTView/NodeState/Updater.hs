@@ -480,10 +480,12 @@ updateMempoolTxs ns txsInMempool = ns { nsMetrics = newNm }
     currentNm
       { nmMempoolTxsNumber  = fromIntegral txsInMempool
       , nmMempoolTxsPercent =   fromIntegral txsInMempool
-                              / fromIntegral (nmMempoolCapacity currentNm)
+                              / fromIntegral maxTxs
                               * 100.0
+      , nmMempoolMaxTxs = maxTxs
       }
   currentNm = nsMetrics ns
+  maxTxs = max txsInMempool (nmMempoolMaxTxs currentNm)
 
 updateMempoolBytes :: NodeState -> Integer -> NodeState
 updateMempoolBytes ns mempoolBytes = ns { nsMetrics = newNm }
@@ -492,10 +494,12 @@ updateMempoolBytes ns mempoolBytes = ns { nsMetrics = newNm }
     currentNm
       { nmMempoolBytes = fromIntegral mempoolBytes
       , nmMempoolBytesPercent =   fromIntegral mempoolBytes
-                                / fromIntegral (nmMempoolCapacityBytes currentNm)
+                                / fromIntegral maxBytes
                                 * 100.0
+      , nmMempoolMaxBytes = maxBytes
       }
   currentNm = nsMetrics ns
+  maxBytes = max mempoolBytes (nmMempoolMaxBytes currentNm)
 
 updateTxsProcessed :: NodeState -> Integer -> NodeState
 updateTxsProcessed ns txsProcessed = ns { nsInfo = newNi }

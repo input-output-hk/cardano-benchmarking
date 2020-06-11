@@ -50,8 +50,8 @@ mkNodeWidget = do
   elMempoolTxsPercent       <- string "0"
   elMempoolBytes            <- string "0"
   elMempoolBytesPercent     <- string "0"
-  elMempoolCapacity         <- string "0"
-  elMempoolCapacityBytes    <- string "0"
+  elMempoolMaxTxs           <- string "0"
+  elMempoolMaxBytes         <- string "0"
   elMemory                  <- string "0"
   elMemoryMax               <- string "0"
   elMemoryMaxTotal          <- string "0"
@@ -384,8 +384,8 @@ mkNodeWidget = do
                        [ UI.div #. "w3-row" #+
                            [ UI.div #. "w3-half w3-theme" #+ [string "Mempool (Bytes)"]
                            , UI.div #. "w3-half w3-theme w3-right-align" #+
-                               [ element elMempoolCapacityBytes
-                               , infoMark "Capacity in bytes"
+                               [ element elMempoolMaxBytes
+                               , infoMark "Maximum in bytes"
                                ]
                            ]
                        , element elMempoolBytesProgressBox
@@ -394,8 +394,8 @@ mkNodeWidget = do
                        [ UI.div #. "w3-row" #+
                            [ UI.div #. "w3-half w3-theme" #+ [string "Mempool (TXs)"]
                            , UI.div #. "w3-half w3-theme w3-right-align" #+
-                               [ element elMempoolCapacity
-                               , infoMark "Capacity"
+                               [ element elMempoolMaxTxs
+                               , infoMark "Maximum in txs"
                                ]
                            ]
                        , element elMempoolTxsProgressBox
@@ -646,8 +646,8 @@ mkNodeWidget = do
           , (ElMempoolTxsPercent,       elMempoolTxsPercent)
           , (ElMempoolBytes,            elMempoolBytes)
           , (ElMempoolBytesPercent,     elMempoolBytesPercent)
-          , (ElMempoolCapacity,         elMempoolCapacity)
-          , (ElMempoolCapacityBytes,    elMempoolCapacityBytes)
+          , (ElMempoolMaxTxs,           elMempoolMaxTxs)
+          , (ElMempoolMaxBytes,         elMempoolMaxBytes)
           , (ElMemory,                  elMemory)
           , (ElMemoryMax,               elMemoryMax)
           , (ElMemoryMaxTotal,          elMemoryMaxTotal)

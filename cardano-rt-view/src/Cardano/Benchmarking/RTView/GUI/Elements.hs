@@ -60,8 +60,8 @@ data ElementName
   | ElMempoolTxsPercent
   | ElMempoolBytes
   | ElMempoolBytesPercent
-  | ElMempoolCapacity
-  | ElMempoolCapacityBytes
+  | ElMempoolMaxTxs
+  | ElMempoolMaxBytes
   | ElMemory
   | ElMemoryMax
   | ElMemoryMaxTotal
