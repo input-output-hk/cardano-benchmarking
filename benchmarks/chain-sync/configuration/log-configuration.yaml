@@ -28,11 +28,16 @@ setupScribes:
   - scKind: FileSK
     scName: "node-0.json"
     scFormat: ScJson
+  - scKind: StdoutSK
+    scName: "stdout"
+    scFormat: ScText
 
 # if not indicated otherwise, then log output is directed to this:
 defaultScribes:
   - - FileSK
     - "node-0.json"
+  - - StdoutSK
+    - "stdout"
 
 # more options which can be passed as key-value pairs:
 options:
@@ -94,7 +99,7 @@ NumCoreNodes: 1
 RequiresNetworkMagic: RequiresNoMagic
 PBftSignatureThreshold:
 TurnOnLogging: True
-ViewMode: LiveView
+ViewMode: SimpleView
 TurnOnLogMetrics: True
 SocketPath:
 
