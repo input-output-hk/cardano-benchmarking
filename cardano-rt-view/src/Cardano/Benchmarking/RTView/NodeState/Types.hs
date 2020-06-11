@@ -97,8 +97,8 @@ data NodeMetrics = NodeMetrics
   , nmMempoolTxsPercent         :: !Double
   , nmMempoolBytes              :: !Word64
   , nmMempoolBytesPercent       :: !Double
-  , nmMempoolCapacity           :: !Word64
-  , nmMempoolCapacityBytes      :: !Word64
+  , nmMempoolMaxTxs             :: !Integer
+  , nmMempoolMaxBytes           :: !Integer
   , nmMemory                    :: !Double
   , nmMemoryMax                 :: !Double
   , nmMemoryMaxTotal            :: !Double
@@ -210,8 +210,8 @@ defaultNodeMetrics = NodeMetrics
   , nmMempoolTxsPercent         = 0.0
   , nmMempoolBytes              = 0
   , nmMempoolBytesPercent       = 0.0
-  , nmMempoolCapacity           = 200
-  , nmMempoolCapacityBytes      = 200 * maxBytesPerTx
+  , nmMempoolMaxTxs             = 0
+  , nmMempoolMaxBytes           = 0
   , nmMemory                    = 0.0
   , nmMemoryMax                 = 0.0
   , nmMemoryMaxTotal            = 200.0
@@ -264,5 +264,3 @@ defaultNodeMetrics = NodeMetrics
   , nmRTSGcMajorNum             = 0
   , nmRTSGcMajorNumLastUpdate   = 0
   }
- where
-  maxBytesPerTx = 4096 :: Word64

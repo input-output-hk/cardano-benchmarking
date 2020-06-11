@@ -89,8 +89,8 @@ updateGUI nodesState params acceptors nodesStateElems =
     void $ updateElementValue (ElementDouble  $ nmMempoolTxsPercent nm)       $ elements ! ElMempoolTxsPercent
     void $ updateElementValue (ElementWord64  $ nmMempoolBytes nm)            $ elements ! ElMempoolBytes
     void $ updateElementValue (ElementDouble  $ nmMempoolBytesPercent nm)     $ elements ! ElMempoolBytesPercent
-    void $ updateElementValue (ElementWord64  $ nmMempoolCapacity nm)         $ elements ! ElMempoolCapacity
-    void $ updateElementValue (ElementWord64  $ nmMempoolCapacityBytes nm)    $ elements ! ElMempoolCapacityBytes
+    void $ updateElementValue (ElementInteger $ nmMempoolMaxTxs nm)           $ elements ! ElMempoolMaxTxs
+    void $ updateElementValue (ElementInteger $ nmMempoolMaxBytes nm)         $ elements ! ElMempoolMaxBytes
     void $ updateElementValue (ElementDouble  $ nmMemory nm)                  $ elements ! ElMemory
     void $ updateElementValue (ElementDouble  $ nmMemoryMax nm)               $ elements ! ElMemoryMax
     void $ updateElementValue (ElementDouble  $ nmMemoryMaxTotal nm)          $ elements ! ElMemoryMaxTotal
