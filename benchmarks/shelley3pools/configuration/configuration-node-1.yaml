@@ -132,7 +132,7 @@ defaultScribes:
 # in the setupScribes above for specific scribes.
 rotation:
   rpLogLimitBytes: 15000000
-  rpKeepFilesNum:  3
+  rpKeepFilesNum:  100
   rpMaxAgeHours:   24
 
 
