@@ -4,11 +4,14 @@
 echo "Starting..."
 echo "Importing and initialising variables..."
 
-. configuration/parameters
+BASEDIR=$(realpath $(dirname "$0"))
+. ${BASEDIR}/../../scripts/common.sh
+. ${BASEDIR}/configuration/parameters
+
+CLICMD=${CLICMD:-"run cardano-cli"}
 
 export CARDANO_NODE_SOCKET_PATH=${CARDANO_NODE_SOCKET_PATH:-"./logs/sockets/1"}
 NUM_OF_ADDRESSES=${NUM_OF_ADDRESSES:-3}
-CLICMD=${CLICMD:-"../../bin/cardano-cli"}
 WORKDIR=./tmp
 
 # Initial set-up
@@ -59,7 +62,7 @@ echo "Waiting for the UTxO to appear on-chain... (this will take ~15 seconds)"
 sleep 15
 
 # Get the initial UTxO
-cardano-cli shelley query utxo \
+${CLICMD} shelley query utxo \
     --address `cat ${WORKDIR}/payer.addr` \
     --testnet-magic ${MAGIC} | grep 0 | cut -f1 -d ' ' | sed 's/$/#0/g' > ${WORKDIR}/payer_utxo_0
 
