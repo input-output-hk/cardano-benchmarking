@@ -42,4 +42,4 @@ txvalue=1000000
 txfee=1000000
 
 # number of transactions for cli benchmarking
-NUM_OF_ADDRESSES=10000
+NUM_OF_ADDRESSES=1000

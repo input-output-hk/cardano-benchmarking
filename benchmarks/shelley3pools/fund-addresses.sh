@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # set -x 
 
+echo "Starting..."
+echo "Importing and initialising variables..."
+
 . configuration/parameters
 
 export CARDANO_NODE_SOCKET_PATH=${CARDANO_NODE_SOCKET_PATH:-"./logs/sockets/1"}
@@ -12,6 +15,8 @@ WORKDIR=./tmp
 if [ -d ${WORKDIR} ]; then rm -rf ./${WORKDIR}; fi
 mkdir -p ./${WORKDIR}/txs
 mkdir -p ./${WORKDIR}/addresses
+
+echo "Creating the payer account..."
 
 # Fund address from Genesis
 ## Get the initial UTxO TxIn
@@ -29,10 +34,12 @@ ${CLICMD} shelley address build \
           --testnet-magic ${MAGIC} \
           --payment-verification-key-file ${WORKDIR}/payer.vkey > ${WORKDIR}/payer.addr
 
+echo "Funding the payer account..."
+
 ### Build, Sign, Submit a Genesis UTxO to the Payer
 ${CLICMD} shelley transaction build-raw \
     --tx-in  `cat ${WORKDIR}/genesis_utxo`#0 \
-    --tx-out `cat ${WORKDIR}/payer.addr`+33333333334 \
+    --tx-out `cat ${WORKDIR}/payer.addr`+$(( ${SUPPLY} / ${NNODES} )) \
     --ttl 10000 \
     --fee 0 \
     --tx-body-file ${WORKDIR}/txs/genesis_to_funding.txbody
@@ -47,12 +54,16 @@ ${CLICMD} shelley transaction submit \
     --tx-file ${WORKDIR}/txs/genesis_to_funding.tx \
     --testnet-magic ${MAGIC}
 
+echo "Waiting for the UTxO to appear on-chain... (this will take ~15 seconds)"
+
 sleep 15
 
 # Get the initial UTxO
 cardano-cli shelley query utxo \
     --address `cat ${WORKDIR}/payer.addr` \
     --testnet-magic ${MAGIC} | grep 0 | cut -f1 -d ' ' | sed 's/$/#0/g' > ${WORKDIR}/payer_utxo_0
+
+echo "Creating ${NUM_OF_ADDRESSES} addresses..."
 
 # Create n target addresses
 ./create-addresses.sh
@@ -61,6 +72,8 @@ cardano-cli shelley query utxo \
 let "payer_ada = ${SUPPLY} / ${utxo_keys}"
 STD_TX=${txvalue}
 STD_FEE=${txfee}
+
+echo "Generating ${NUM_OF_ADDRESSES} transactions..."
 
 for i in $(seq 1 ${NUM_OF_ADDRESSES})
 do
@@ -76,21 +89,34 @@ do
         --ttl 100000 \
         --fee ${STD_FEE} \
         --out-file ${WORKDIR}/txs/tx_${i}.raw
-    
+
     # Sign n transactions
     ${CLICMD} shelley transaction sign \
         --tx-body-file ${WORKDIR}/txs/tx_${i}.raw \
         --signing-key-file ${WORKDIR}/payer.skey \
         --testnet-magic ${MAGIC} \
         --out-file ${WORKDIR}/txs/tx_${i}.signed
-    
+
     # Get the UTxO of the transaction for the input of the subsequent transaction
     ${CLICMD} shelley transaction txid --tx-body-file ${WORKDIR}/txs/tx_${i}.raw | sed 's/$/#1/g'> ${WORKDIR}/payer_utxo_${i}
 
-    cat ${WORKDIR}/payer_utxo_${i}
-    
+    if ! (( ${i} % 100 )); then
+        echo "Generated ${i} transactions."
+    fi
+done
+
+echo "Submitting ${NUM_OF_ADDRESSES} transactions..."
+
+time for i in $(seq 1 ${NUM_OF_ADDRESSES})
+do
     # Submit n transactions
     ${CLICMD} shelley transaction submit \
-        --tx-file ${WORKDIR}/txs/tx_${i}.signed \
-        --testnet-magic ${MAGIC}
+          --tx-file ${WORKDIR}/txs/tx_${i}.signed \
+          --testnet-magic ${MAGIC}
+
+    if ! (( ${i} % 100 )); then
+        echo "Submitted ${i} transactions."
+    fi
 done
+
+echo "Finished!"
