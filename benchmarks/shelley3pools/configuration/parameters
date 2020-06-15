@@ -6,7 +6,7 @@ GENESISDIR=configuration/genesis
 MAGIC=42
 
 # total supply of Lovelaces in genesis (divisible by $NNODES)
-SUPPLY=1000000002
+SUPPLY=100000000002
 
 # how many nodes to start
 NNODES=3
@@ -29,9 +29,6 @@ inputstx=1
 # number of outputs that each tx creates
 outputstx=1
 
-# the transaction fee
-txfee=1000000
-
 # the transactions per seconds that the generator tries to achieve
 tps=10
 
@@ -45,4 +42,4 @@ txvalue=1000000
 txfee=1000000
 
 # number of transactions for cli benchmarking
-NUM_OF_ADDRESSES=100
+NUM_OF_ADDRESSES=10000

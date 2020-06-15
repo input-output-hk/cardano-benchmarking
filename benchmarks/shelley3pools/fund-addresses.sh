@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# set -x 
 
 . configuration/parameters
 
@@ -31,7 +32,7 @@ ${CLICMD} shelley address build \
 ### Build, Sign, Submit a Genesis UTxO to the Payer
 ${CLICMD} shelley transaction build-raw \
     --tx-in  `cat ${WORKDIR}/genesis_utxo`#0 \
-    --tx-out `cat ${WORKDIR}/payer.addr`+333333334 \
+    --tx-out `cat ${WORKDIR}/payer.addr`+33333333334 \
     --ttl 10000 \
     --fee 0 \
     --tx-body-file ${WORKDIR}/txs/genesis_to_funding.txbody
@@ -49,10 +50,6 @@ ${CLICMD} shelley transaction submit \
 sleep 15
 
 # Get the initial UTxO
-cardano-cli shelley query utxo \
-            --address `cat ${WORKDIR}/payer.addr` \
-            --testnet-magic ${MAGIC} 
-
 cardano-cli shelley query utxo \
     --address `cat ${WORKDIR}/payer.addr` \
     --testnet-magic ${MAGIC} | grep 0 | cut -f1 -d ' ' | sed 's/$/#0/g' > ${WORKDIR}/payer_utxo_0
@@ -79,23 +76,21 @@ do
         --ttl 100000 \
         --fee ${STD_FEE} \
         --out-file ${WORKDIR}/txs/tx_${i}.raw
-
+    
     # Sign n transactions
     ${CLICMD} shelley transaction sign \
         --tx-body-file ${WORKDIR}/txs/tx_${i}.raw \
         --signing-key-file ${WORKDIR}/payer.skey \
         --testnet-magic ${MAGIC} \
         --out-file ${WORKDIR}/txs/tx_${i}.signed
-
+    
     # Get the UTxO of the transaction for the input of the subsequent transaction
     ${CLICMD} shelley transaction txid --tx-body-file ${WORKDIR}/txs/tx_${i}.raw | sed 's/$/#1/g'> ${WORKDIR}/payer_utxo_${i}
 
+    cat ${WORKDIR}/payer_utxo_${i}
+    
     # Submit n transactions
     ${CLICMD} shelley transaction submit \
         --tx-file ${WORKDIR}/txs/tx_${i}.signed \
         --testnet-magic ${MAGIC}
-
-    cardano-cli shelley query utxo \
-                --address `cat ${WORKDIR}/payer.addr` \
-                --testnet-magic ${MAGIC}
 done
