@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+# set -x
+
+echo "Starting..."
+echo "Importing and initialising variables..."
 
 . configuration/parameters
 
@@ -11,6 +15,8 @@ WORKDIR=./tmp
 if [ -d ${WORKDIR} ]; then rm -rf ./${WORKDIR}; fi
 mkdir -p ./${WORKDIR}/txs
 mkdir -p ./${WORKDIR}/addresses
+
+echo "Creating the payer account..."
 
 # Fund address from Genesis
 ## Get the initial UTxO TxIn
@@ -28,10 +34,12 @@ ${CLICMD} shelley address build \
           --testnet-magic ${MAGIC} \
           --payment-verification-key-file ${WORKDIR}/payer.vkey > ${WORKDIR}/payer.addr
 
+echo "Funding the payer account..."
+
 ### Build, Sign, Submit a Genesis UTxO to the Payer
 ${CLICMD} shelley transaction build-raw \
     --tx-in  `cat ${WORKDIR}/genesis_utxo`#0 \
-    --tx-out `cat ${WORKDIR}/payer.addr`+333333334 \
+    --tx-out `cat ${WORKDIR}/payer.addr`+$(( ${SUPPLY} / ${NNODES} )) \
     --ttl 10000 \
     --fee 0 \
     --tx-body-file ${WORKDIR}/txs/genesis_to_funding.txbody
@@ -46,36 +54,33 @@ ${CLICMD} shelley transaction submit \
     --tx-file ${WORKDIR}/txs/genesis_to_funding.tx \
     --testnet-magic ${MAGIC}
 
-# TODO: This could be based on $SLOTLENGTH * 2 or something, but need to add that variable
-sleep 11
+echo "Waiting for the UTxO to appear on-chain... (this will take ~15 seconds)"
+
+sleep 15
 
 # Get the initial UTxO
-cardano-cli shelley query utxo \
-            --address `cat ${WORKDIR}/payer.addr` \
-            --testnet-magic ${MAGIC} 
-
 cardano-cli shelley query utxo \
     --address `cat ${WORKDIR}/payer.addr` \
     --testnet-magic ${MAGIC} | grep 0 | cut -f1 -d ' ' | sed 's/$/#0/g' > ${WORKDIR}/payer_utxo_0
 
+echo "Creating ${NUM_OF_ADDRESSES} addresses..."
+
 # Create n target addresses
-./create-addresses.sh
+time ./create-addresses.sh
+echo ""
 
 # Set-up variables for calculating change
 let "payer_ada = ${SUPPLY} / ${utxo_keys}"
 STD_TX=${txvalue}
 STD_FEE=${txfee}
 
-for i in $(seq 1 ${NUM_OF_ADDRESSES})
-do
-    sleep 10
+echo "Generating ${NUM_OF_ADDRESSES} transactions..."
 
+time for i in $(seq 1 ${NUM_OF_ADDRESSES})
+do
     # Calculate change
     let "payer_ada-=${STD_TX}"
     let "payer_ada-=${STD_FEE}"
-
-    # Debug
-    echo "Payer ADA: ${payer_ada}" 
 
     # Build n transactions
     ${CLICMD} shelley transaction build-raw \
@@ -93,18 +98,20 @@ do
         --testnet-magic ${MAGIC} \
         --out-file ${WORKDIR}/txs/tx_${i}.signed
 
+    # Get the UTxO of the transaction for the input of the subsequent transaction
+    ${CLICMD} shelley transaction txid --tx-body-file ${WORKDIR}/txs/tx_${i}.raw | sed 's/$/#1/g'> ${WORKDIR}/payer_utxo_${i}
+done
+
+echo""
+echo "Submitting ${NUM_OF_ADDRESSES} transactions..."
+
+time for i in $(seq 1 ${NUM_OF_ADDRESSES})
+do
     # Submit n transactions
     ${CLICMD} shelley transaction submit \
-        --tx-file ${WORKDIR}/txs/tx_${i}.signed \
-        --testnet-magic ${MAGIC}
-
-    sleep 11
-
-    cardano-cli shelley query utxo \
-                --address `cat ${WORKDIR}/payer.addr` \
-                --testnet-magic ${MAGIC}
-
-    cardano-cli shelley query utxo \
-                --address `cat ${WORKDIR}/payer.addr` \
-                --testnet-magic ${MAGIC} | grep 1 | cut -f1 -d ' ' | sed 's/$/#1/g' > ${WORKDIR}/payer_utxo_${i}
+          --tx-file ${WORKDIR}/txs/tx_${i}.signed \
+          --testnet-magic ${MAGIC}
 done
+
+echo""
+echo "Finished!"
