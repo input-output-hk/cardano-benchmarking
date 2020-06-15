@@ -163,7 +163,7 @@ extra-deps:
         - Win32-network
 
   - git: https://github.com/input-output-hk/iohk-monitoring-framework
-    commit: 71df15f7b888d2671f619cc632080aaaaca48087
+    commit: 88a7e9c62fbb6e00d97898b4b66f68f27173e174
     subdirs:
       - contra-tracer
       - iohk-monitoring
