@@ -38,11 +38,11 @@ tps=10
 # cli benchmarking commands
 utxo_keys=3
 
-# Std tx
+# txvalue for cli benchmarking
 txvalue=1000000
 
-# Std fee
+# txfee for cli benchmarking
 txfee=1000000
 
-# Num of addresses
+# number of transactions for cli benchmarking
 NUM_OF_ADDRESSES=100

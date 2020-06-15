@@ -71,9 +71,6 @@ do
     let "payer_ada-=${STD_TX}"
     let "payer_ada-=${STD_FEE}"
 
-    # Debug
-    echo "Payer ADA: ${payer_ada}" 
-
     # Build n transactions
     ${CLICMD} shelley transaction build-raw \
         --tx-in `cat ${WORKDIR}/payer_utxo_$((${i} - 1))` \
