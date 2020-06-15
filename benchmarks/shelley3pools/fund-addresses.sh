@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# set -x 
+# set -x
 
 echo "Starting..."
 echo "Importing and initialising variables..."
@@ -66,7 +66,8 @@ cardano-cli shelley query utxo \
 echo "Creating ${NUM_OF_ADDRESSES} addresses..."
 
 # Create n target addresses
-./create-addresses.sh
+time ./create-addresses.sh
+echo ""
 
 # Set-up variables for calculating change
 let "payer_ada = ${SUPPLY} / ${utxo_keys}"
@@ -75,7 +76,7 @@ STD_FEE=${txfee}
 
 echo "Generating ${NUM_OF_ADDRESSES} transactions..."
 
-for i in $(seq 1 ${NUM_OF_ADDRESSES})
+time for i in $(seq 1 ${NUM_OF_ADDRESSES})
 do
     # Calculate change
     let "payer_ada-=${STD_TX}"
@@ -99,12 +100,9 @@ do
 
     # Get the UTxO of the transaction for the input of the subsequent transaction
     ${CLICMD} shelley transaction txid --tx-body-file ${WORKDIR}/txs/tx_${i}.raw | sed 's/$/#1/g'> ${WORKDIR}/payer_utxo_${i}
-
-    if ! (( ${i} % 100 )); then
-        echo "Generated ${i} transactions."
-    fi
 done
 
+echo""
 echo "Submitting ${NUM_OF_ADDRESSES} transactions..."
 
 time for i in $(seq 1 ${NUM_OF_ADDRESSES})
@@ -113,10 +111,7 @@ do
     ${CLICMD} shelley transaction submit \
           --tx-file ${WORKDIR}/txs/tx_${i}.signed \
           --testnet-magic ${MAGIC}
-
-    if ! (( ${i} % 100 )); then
-        echo "Submitted ${i} transactions."
-    fi
 done
 
+echo""
 echo "Finished!"
