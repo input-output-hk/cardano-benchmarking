@@ -35,4 +35,14 @@ txfee=1000000
 # the transactions per seconds that the generator tries to achieve
 tps=10
 
+# cli benchmarking commands
+utxo_keys=3
 
+# Std tx
+txvalue=1000000
+
+# Std fee
+txfee=1000000
+
+# Num of addresses
+NUM_OF_ADDRESSES=100

@@ -46,8 +46,7 @@ ${CLICMD} shelley transaction submit \
     --tx-file ${WORKDIR}/txs/genesis_to_funding.tx \
     --testnet-magic ${MAGIC}
 
-# TODO: This could be based on $SLOTLENGTH * 2 or something, but need to add that variable
-sleep 11
+sleep 15
 
 # Get the initial UTxO
 cardano-cli shelley query utxo \
@@ -68,8 +67,6 @@ STD_FEE=${txfee}
 
 for i in $(seq 1 ${NUM_OF_ADDRESSES})
 do
-    sleep 10
-
     # Calculate change
     let "payer_ada-=${STD_TX}"
     let "payer_ada-=${STD_FEE}"
@@ -93,18 +90,15 @@ do
         --testnet-magic ${MAGIC} \
         --out-file ${WORKDIR}/txs/tx_${i}.signed
 
+    # Get the UTxO of the transaction for the input of the subsequent transaction
+    ${CLICMD} shelley transaction txid --tx-body-file ${WORKDIR}/txs/tx_${i}.raw | sed 's/$/#1/g'> ${WORKDIR}/payer_utxo_${i}
+
     # Submit n transactions
     ${CLICMD} shelley transaction submit \
         --tx-file ${WORKDIR}/txs/tx_${i}.signed \
         --testnet-magic ${MAGIC}
 
-    sleep 11
-
     cardano-cli shelley query utxo \
                 --address `cat ${WORKDIR}/payer.addr` \
                 --testnet-magic ${MAGIC}
-
-    cardano-cli shelley query utxo \
-                --address `cat ${WORKDIR}/payer.addr` \
-                --testnet-magic ${MAGIC} | grep 1 | cut -f1 -d ' ' | sed 's/$/#1/g' > ${WORKDIR}/payer_utxo_${i}
 done
