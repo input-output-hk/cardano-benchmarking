@@ -220,7 +220,7 @@ updateNodesState nsMVar loggerName (LogObject aName aMeta aContent) = do
 --   Error-severity.
 isErrorMessage :: LOMeta -> LOContent a -> Bool
 isErrorMessage _                      (LogError _) = True
-isErrorMessage (LOMeta _ _ _ Error _) _            = True
+isErrorMessage (LOMeta _ _ _ sev _) _            = sev >= Error
 isErrorMessage _                      _            = False
 
 -- Updaters for particular node state's fields.
