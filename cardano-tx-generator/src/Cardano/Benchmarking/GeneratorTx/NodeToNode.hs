@@ -220,7 +220,7 @@ benchmarkConnectTxSubmit iocp trs cfg localAddr remoteAddr myTxSubClient =
  where
   myCodecs :: Codecs blk DeserialiseFailure m
                 ByteString ByteString ByteString ByteString ByteString
-  myCodecs  = defaultCodecs (getCodecConfig $ configBlock cfg) (mostRecentNodeToNodeVersion (Proxy @blk))
+  myCodecs  = defaultCodecs (getCodecConfig $ configBlock cfg) (mostRecentSupportedNodeToNode (Proxy @blk))
   peerMultiplex :: Versions NtN.NodeToNodeVersion NtN.DictVersion
                      (OuroborosApplication InitiatorMode SockAddr ByteString IO () Void)
   peerMultiplex =
@@ -228,7 +228,7 @@ benchmarkConnectTxSubmit iocp trs cfg localAddr remoteAddr myTxSubClient =
       NtN.NodeToNodeV_1
       (NtN.NodeToNodeVersionData { NtN.networkMagic = getNetworkMagic $ configBlock cfg})
       (NtN.DictVersion NtN.nodeToNodeCodecCBORTerm) $
-      NtN.nodeToNodeProtocols NtN.defaultMiniProtocolParameters $ \_ ->
+      NtN.nodeToNodeProtocols NtN.defaultMiniProtocolParameters $ \_ _ ->
         NtN.NodeToNodeProtocols
           { NtN.chainSyncProtocol = InitiatorProtocolOnly $
                                       MuxPeer

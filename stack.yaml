@@ -96,7 +96,7 @@ extra-deps:
       - test
 
   #- git: https://github.com/input-output-hk/cardano-node
-  #  commit: 9925ef37dccbe7f423f3ceb81a5e1da3d924393b
+  #  commit: b41f4de42378b2557011e5f4f8c87e8d878a5ae2
   #  subdirs:
   #    - cardano-api
   #    - cardano-config
@@ -126,7 +126,7 @@ extra-deps:
       - cardano-shell
 
   - git: https://github.com/input-output-hk/cardano-ledger-specs
-    commit: 3671fe88f7d62769ed207cda0ee94a0effbb4c7f
+    commit: 036ff8223310ecdaf7f0ed8c211c691cb0dcb8f3
     subdirs:
       # small-steps
       - semantics/executable-spec
@@ -145,7 +145,7 @@ extra-deps:
     commit: 26d35ad52fe9ade3391532dbfeb2f416f07650bc
 
   - git: https://github.com/input-output-hk/ouroboros-network
-    commit: 16bca08140fb37746538edff9fe77220acf91d55
+    commit: f9469fa3885aefdfa852216a66c4e319a0d19c11
     subdirs:
         - io-sim
         - io-sim-classes
@@ -153,6 +153,8 @@ extra-deps:
         - ouroboros-network
         - ouroboros-consensus
         - ouroboros-consensus-byron
+        - ouroboros-consensus-byronspec
+        - ouroboros-consensus-byron-test
         - ouroboros-consensus-cardano
         - ouroboros-consensus/ouroboros-consensus-mock
         - ouroboros-consensus-shelley
