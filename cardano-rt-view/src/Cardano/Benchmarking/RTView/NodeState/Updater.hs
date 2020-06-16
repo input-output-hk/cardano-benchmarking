@@ -118,13 +118,13 @@ updateNodesState nsMVar loggerName (LogObject aName aMeta aContent) = do
               LogValue "upTime" (Nanoseconds upTimeInNs) ->
                 nodesStateWith $ updateNodeUpTime ns upTimeInNs now
 #ifdef DARWIN
-              LogValue "Mem.resident_size" (Bytes bytes) ->    -- Darwin
+              LogValue "Mem.resident_size" (Bytes bytes) ->
                 nodesStateWith $ updateMemoryBytes ns bytes now
-              LogValue "Sys.SysUserTime" (Nanoseconds nanosecs) ->    -- Darwin
+              LogValue "Sys.CPUTime" (Nanoseconds nanosecs) ->
                 nodesStateWith $ updateCPUSecs ns nanosecs aMeta now
-              LogValue "Net.ifd_0-ibytes" (Bytes inBytes) ->    -- Darwin
+              LogValue "Net.ifd_0-ibytes" (Bytes inBytes) ->
                 nodesStateWith $ updateNetworkIn ns inBytes aMeta now
-              LogValue "Net.ifd_0-obytes" (Bytes outBytes) ->    -- Darwin
+              LogValue "Net.ifd_0-obytes" (Bytes outBytes) ->
                 nodesStateWith $ updateNetworkOut ns outBytes aMeta now
 #endif
 #ifdef LINUX
@@ -134,7 +134,7 @@ updateNodesState nsMVar loggerName (LogObject aName aMeta aContent) = do
                 nodesStateWith $ updateDiskRead ns bytesWereRead aMeta now
               LogValue "IO.wchar" (Bytes bytesWereWritten) ->
                 nodesStateWith $ updateDiskWrite ns bytesWereWritten aMeta now
-              LogValue "Stat.utime" (PureI ticks) ->
+              LogValue "Stat.cputicks" (PureI ticks) ->
                 nodesStateWith $ updateCPUTicks ns ticks aMeta now
               LogValue "Net.IpExt:InOctets" (Bytes inBytes) ->
                 nodesStateWith $ updateNetworkIn ns inBytes aMeta now
@@ -161,8 +161,8 @@ updateNodesState nsMVar loggerName (LogObject aName aMeta aContent) = do
            | "cardano.node-metrics" `T.isInfixOf` aName ->
             case aContent of
 #ifdef WINDOWS
-              LogValue "Stat.UserTime" (Nanoseconds nanosecs) ->   -- Windows
-                nodesStateWith $ updateCPUSecs ns (nanosecs `div` 1000000) aMeta now
+              LogValue "Stat.CPUTime" (Microseconds microsecs) ->
+                nodesStateWith $ updateCPUSecs ns (microsecs * 1000) aMeta now
 #endif
               LogValue "Sys.Platform" (PureI pfid) ->
                 nodesStateWith $ updateNodePlatform ns (fromIntegral pfid)
@@ -308,6 +308,7 @@ updateMemoryPages ns pages now = ns { nsMetrics = newNm }
   mBytes      = fromIntegral (pages * pageSize) / 1024 / 1024 :: Double
   pageSize    = 4096 :: Integer
 
+#ifdef DARWIN
 updateMemoryBytes :: NodeState -> Word64 -> Word64 -> NodeState
 updateMemoryBytes ns bytes now = ns { nsMetrics = newNm }
  where
@@ -324,6 +325,7 @@ updateMemoryBytes ns bytes now = ns { nsMetrics = newNm }
   newMax      = max prevMax mBytes
   newMaxTotal = max newMax 200.0
   mBytes      = fromIntegral bytes / 1024 / 1024 :: Double
+#endif
 
 updateDiskRead :: NodeState -> Word64 -> LOMeta -> Word64 -> NodeState
 updateDiskRead ns bytesWereRead meta now = ns { nsMetrics = newNm }
@@ -413,6 +415,7 @@ updateCPUTicks ns ticks meta now = ns { nsMetrics = newNm }
   cpuperc   = (fromIntegral (ticks - nmCPULast currentNm)) / (fromIntegral clktck) / tdiff
   clktck    = 100 :: Integer
 
+#if defined(DARWIN) || defined(WINDOWS)
 updateCPUSecs :: NodeState -> Word64 -> LOMeta -> Word64 -> NodeState
 updateCPUSecs ns nanosecs meta now = ns { nsMetrics = newNm }
  where
@@ -428,6 +431,7 @@ updateCPUSecs ns nanosecs meta now = ns { nsMetrics = newNm }
   tdiff     = max 0.1 $ fromIntegral (tns - nmCPUNs currentNm) / 1000000000 :: Double
   deltacpu  = fromIntegral nanosecs - nmCPULast currentNm
   cpuperc   = fromIntegral deltacpu / 100000000 / tdiff
+#endif
 
 updateNetworkIn :: NodeState -> Word64 -> LOMeta -> Word64 -> NodeState
 updateNetworkIn ns inBytes meta now = ns { nsMetrics = newNm }
