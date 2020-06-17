@@ -6,10 +6,10 @@ packages:
   - cardano-tx-generator
   - bm-timeline
 
-  - ext/cardano-node.git/cardano-api
-  - ext/cardano-node.git/cardano-cli
-  - ext/cardano-node.git/cardano-config
-  - ext/cardano-node.git/cardano-node
+  #- ext/cardano-node.git/cardano-api
+  #- ext/cardano-node.git/cardano-cli
+  #- ext/cardano-node.git/cardano-config
+  #- ext/cardano-node.git/cardano-node
 
   #- ext/cardano-db-sync.git/cardano-db-sync
 
@@ -95,13 +95,13 @@ extra-deps:
       - .
       - test
 
-  #- git: https://github.com/input-output-hk/cardano-node
-  #  commit: b41f4de42378b2557011e5f4f8c87e8d878a5ae2
-  #  subdirs:
-  #    - cardano-api
-  #    - cardano-config
-  #    - cardano-cli
-  #    - cardano-node
+  - git: https://github.com/input-output-hk/cardano-node
+    commit: 5529fcc816cae26fb30fff4424836b0a99d4e9ff
+    subdirs:
+      - cardano-api
+      - cardano-config
+      - cardano-cli
+      - cardano-node
 
   - git: https://github.com/input-output-hk/cardano-db-sync
     commit: a6e99db3e79036526933aced48c1915b924496c0
@@ -165,7 +165,7 @@ extra-deps:
         - Win32-network
 
   - git: https://github.com/input-output-hk/iohk-monitoring-framework
-    commit: 88a7e9c62fbb6e00d97898b4b66f68f27173e174
+    commit: efa4b5ecd7f0a13124616b12679cd42517cd905a
     subdirs:
       - contra-tracer
       - iohk-monitoring
