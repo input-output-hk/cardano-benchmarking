@@ -106,7 +106,7 @@ updateNodesState nsMVar loggerName (LogObject aName aMeta aContent) = do
 
     case currentNodesState !? nameOfNode of
       Just ns ->
-        if | isErrorMessage aMeta ->
+        if | isErrorMessage aMeta aContent ->
               nodesStateWith $ updateNodeErrors ns aMeta aContent
            | "cardano.node.metrics.peersFromNodeKernel" `T.isInfixOf` aName ->
             case aContent of
@@ -216,12 +216,12 @@ updateNodesState nsMVar loggerName (LogObject aName aMeta aContent) = do
         return currentNodesState
 
 -- | If this is an error message, it will be shown in "Errors" tab in GUI.
-isErrorMessage :: LOMeta -> Bool
-isErrorMessage aMeta =
-    sev >= Warning && sev < Critical
-  where
-    sev = severity aMeta
-    -- 'Critical' is skipped because many non-error metrics have this severity.
+--   It's assumed that all errors were sent using LogError-constructor or
+--   Error-severity.
+isErrorMessage :: LOMeta -> LOContent a -> Bool
+isErrorMessage _                      (LogError _) = True
+isErrorMessage (LOMeta _ _ _ sev _) _            = sev >= Error
+isErrorMessage _                      _            = False
 
 -- Updaters for particular node state's fields.
 
@@ -236,11 +236,8 @@ updateNodeUpTime ns upTimeInNs now = ns { nsInfo = newNi }
   currentNi = nsInfo ns
 
 updateNodeErrors :: Show a => NodeState -> LOMeta -> LOContent a -> NodeState
-updateNodeErrors ns (LOMeta timeStamp _ _ sev _) aContent = ns'
+updateNodeErrors ns (LOMeta timeStamp _ _ sev _) aContent = ns { nsInfo = newNi }
  where
-  ns' = if errorMessage == ""
-        then ns
-        else ns { nsInfo = newNi }
   newNi = currentNi { niNodeErrors = NodeError timeStamp sev errorMessage : currentErrors }
   currentNi = nsInfo ns
   currentErrors = niNodeErrors currentNi
