@@ -38,3 +38,4 @@ cat "${TEMPFILE}" | {
   done
 }
 
+exit 0
