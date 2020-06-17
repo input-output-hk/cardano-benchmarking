@@ -32,6 +32,8 @@ for N in $(seq 0 $((NNODES - 1))); do
   ../../scripts/extract_adopted_tx_ids.sh ${N} ${LOGPATH}/node$((N+1))-*.json >> ${OUTDIR}/txadopted.csv
   # transactions added to mempool
   ../../scripts/mempooladdedtx.sh ${N} ${LOGPATH}/node$((N+1))-*.json >> ${OUTDIR}/txmempool.csv
+  # transactions rejected
+  ../../scripts/mempoolrejectedtx.sh ${N} ${LOGPATH}/node$((N+1))-*.json >> ${OUTDIR}/txrejected.csv
 done
 
 #stack --nix run reconstruct-timeline -- ${NNODES} ${OUTDIR} | tee -a ${OUTDIR}/timeline.txt
