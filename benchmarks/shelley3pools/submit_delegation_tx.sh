@@ -4,13 +4,13 @@ BASEDIR=$(realpath $(dirname "$0"))
 . ${BASEDIR}/../../scripts/common.sh
 . ${BASEDIR}/configuration/parameters
 
-CLICMD=${CLICMD:-"stack --nix exec cardano-cli --"}
+CLICMD=${CLICMD:-"run cardano-cli"}
 
 # === submit delegation transactions ===
 
 for N in ${STAKEPOOLS}; do
   if [ -e ${GENESISDIR}/node${N}/tx-delegate${N}.tx ]; then
-    CARDANO_NODE_SOCKET_PATH=logs/sockets/${N} \
+    CARDANO_NODE_SOCKET_PATH=sockets/${N} \
     ${CLICMD} shelley transaction submit \
                 --tx-file ${GENESISDIR}/node${N}/tx-delegate${N}.tx \
                 --testnet-magic ${MAGIC}

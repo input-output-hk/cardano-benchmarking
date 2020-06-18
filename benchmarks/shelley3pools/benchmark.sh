@@ -5,7 +5,7 @@ BASEDIR=$(realpath $(dirname "$0"))
 . "${BASEDIR}"/../../scripts/common.sh
 
 ##prebuild 'cardano-tx-generator' || exit 1
-prebuild 'cardano-rt-view' || exit 1
+prebuild 'cardano-rt-view-service' || exit 1
 prebuild 'cardano-node' || exit 1
 prebuild 'cardano-cli' || exit 1
 
@@ -23,8 +23,8 @@ TMUX_ENV_PASSTHROUGH=(
 
 
 # 0 cleanup
-rm -rf ./db/* ./logs/*
-mkdir -p logs/sockets
+rm -rf ./db/* ./logs/* sockets/
+mkdir -p db logs/sockets sockets
 
 # 1 prepare genesis
 ./prepare_genesis.sh

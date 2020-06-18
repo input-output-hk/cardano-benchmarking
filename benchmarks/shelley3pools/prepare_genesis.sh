@@ -14,7 +14,7 @@ if [ -n "${GENESISDIR}" -a -d ${GENESISDIR} ]; then
 fi
 mkdir -p ${GENESISDIR}
 
-CLICMD=${CLICMD:-"stack --nix exec cardano-cli --"}
+CLICMD=${CLICMD:-'run cardano-cli'}
 
 # === genesis ===
 ${CLICMD} shelley genesis create \

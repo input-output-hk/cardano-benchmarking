@@ -44,7 +44,7 @@ do tmux select-pane -t $((N - 1))
       ${NODECMD} run \
             --topology configuration/topology-node-${N}.json \
             --database-path db/${N} \
-            --socket-path logs/sockets/${N} \
+            --socket-path sockets/${N} \
             --host-addr ${HOSTADDR} --port $((PORTBASE + N - 1)) \
             --config configuration/configuration-node-${N}.yaml \
             --shelley-kes-key ${GENESISDIR}/node${N}/kes.skey \
