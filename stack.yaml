@@ -96,7 +96,7 @@ extra-deps:
       - test
 
   - git: https://github.com/input-output-hk/cardano-node
-    commit: 5529fcc816cae26fb30fff4424836b0a99d4e9ff
+    commit: 67e03c72aea1a40fd280effe6f4543b07175e7af
     subdirs:
       - cardano-api
       - cardano-config

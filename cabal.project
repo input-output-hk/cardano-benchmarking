@@ -15,29 +15,29 @@ packages:
 source-repository-package
   type: git
   location: https://github.com/input-output-hk/cardano-node
-  tag: 5529fcc816cae26fb30fff4424836b0a99d4e9ff
-  --sha256: 02wsxmnskabdf4v60vda0pb7jqmbarvp7b5pngv1v39085l9cddj
+  tag: 67e03c72aea1a40fd280effe6f4543b07175e7af
+  --sha256: 16dhzjiky8l5m233c7bndy8znyvbd97wy7qh8a6b3qvx2d05a0sz
   subdir: cardano-api
 
 source-repository-package
   type: git
   location: https://github.com/input-output-hk/cardano-node
-  tag: 5529fcc816cae26fb30fff4424836b0a99d4e9ff
-  --sha256: 02wsxmnskabdf4v60vda0pb7jqmbarvp7b5pngv1v39085l9cddj
+  tag: 67e03c72aea1a40fd280effe6f4543b07175e7af
+  --sha256: 16dhzjiky8l5m233c7bndy8znyvbd97wy7qh8a6b3qvx2d05a0sz
   subdir: cardano-cli
 
 source-repository-package
   type: git
   location: https://github.com/input-output-hk/cardano-node
-  tag: 5529fcc816cae26fb30fff4424836b0a99d4e9ff
-  --sha256: 02wsxmnskabdf4v60vda0pb7jqmbarvp7b5pngv1v39085l9cddj
+  tag: 67e03c72aea1a40fd280effe6f4543b07175e7af
+  --sha256: 16dhzjiky8l5m233c7bndy8znyvbd97wy7qh8a6b3qvx2d05a0sz
   subdir: cardano-config
 
 source-repository-package
   type: git
   location: https://github.com/input-output-hk/cardano-node
-  tag: 5529fcc816cae26fb30fff4424836b0a99d4e9ff
-  --sha256: 02wsxmnskabdf4v60vda0pb7jqmbarvp7b5pngv1v39085l9cddj
+  tag: 67e03c72aea1a40fd280effe6f4543b07175e7af
+  --sha256: 16dhzjiky8l5m233c7bndy8znyvbd97wy7qh8a6b3qvx2d05a0sz
   subdir: cardano-node
 
 source-repository-package
