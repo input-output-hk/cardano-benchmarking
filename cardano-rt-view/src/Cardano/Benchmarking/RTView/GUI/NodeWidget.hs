@@ -563,7 +563,10 @@ mkNodeWidget = do
          [ UI.div #. "w3-row" #+
              [ UI.div #. "w3-third w3-theme" #+
                  [ UI.div #. "node-info-values" #+
-                     [ UI.div #. "" #+ [string "Timestamp"]
+                     [ UI.div #. "" #+
+                         [ string "Timestamp"
+                         , infoMark "Time in UTC"
+                         ]
                      ]
                  ]
              , UI.div #. "w3-twothird w3-theme" #+

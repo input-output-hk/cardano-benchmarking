@@ -19,6 +19,8 @@ library
                        Cardano.Benchmarking.RTView.CLI
 
                        Cardano.Benchmarking.RTView.Acceptor
+                       
+                       Cardano.Benchmarking.RTView.ErrorBuffer
 
                        Cardano.Benchmarking.RTView.GUI.Elements
                        Cardano.Benchmarking.RTView.GUI.Markup
@@ -47,6 +49,7 @@ library
                      , lobemo-backend-trace-acceptor
                      , network
                      , optparse-applicative
+                     , stm
                      , strict-concurrency
                      , text
                      , time

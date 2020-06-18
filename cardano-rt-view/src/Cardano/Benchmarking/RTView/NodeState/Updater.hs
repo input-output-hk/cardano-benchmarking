@@ -35,7 +35,6 @@ import           Data.Time.Clock
                    )
 import           GHC.Clock
                    ( getMonotonicTimeNSec )
-
 import           Cardano.BM.Backend.Switchboard
                    ( Switchboard, readLogBuffer )
 import           Cardano.BM.Data.Aggregated
@@ -47,13 +46,15 @@ import           Cardano.BM.Data.LogItem
                    , MonitorAction (..)
                    , utc2ns
                    )
-import           Cardano.BM.Data.Severity
-                   ( Severity (..) )
 import           Cardano.BM.Trace
                    ( Trace
                    , logDebug
                    )
 
+import           Cardano.Benchmarking.RTView.ErrorBuffer
+                   ( ErrorBuffer
+                   , readErrorBuffer
+                   )
 import           Cardano.Benchmarking.RTView.NodeState.Parsers
                    ( extractPeersInfo )
 import           Cardano.Benchmarking.RTView.NodeState.Types
@@ -68,16 +69,49 @@ import           Cardano.Benchmarking.RTView.NodeState.Types
 launchNodeStateUpdater
   :: Trace IO Text
   -> Switchboard Text
+  -> ErrorBuffer Text
   -> MVar NodesState
   -> IO ()
-launchNodeStateUpdater tr switchBoard nsMVar = forever $ do
+launchNodeStateUpdater tr switchBoard errBuff nsMVar = forever $ do
   logDebug tr "Try to update nodes' state..."
+  -- Take current |LogObject|s from the |ErrorBuffer|.
+  currentErrLogObjects <- readErrorBuffer errBuff
+  forM_ currentErrLogObjects $ \(loggerName, errLogObject) ->
+    updateNodesStateErrors nsMVar loggerName errLogObject
   -- Take current |LogObject|s from the |LogBuffer|.
   currentLogObjects <- readLogBuffer switchBoard
   forM_ currentLogObjects $ \(loggerName, logObject) ->
     updateNodesState nsMVar loggerName logObject
   -- Check for updates in the |LogBuffer| every second.
   threadDelay 1000000
+
+-- | Update NodeState for particular node based on loggerName.
+--   Please note that this function updates only Error-messages (if errors occurred).
+updateNodesStateErrors
+  :: MVar NodesState
+  -> Text
+  -> LogObject Text
+  -> IO ()
+updateNodesStateErrors nsMVar loggerName (LogObject _ aMeta aContent) = do
+  -- Check the name of the node this logObject came from.
+  -- It is assumed that configuration contains correct names of remote nodes and
+  -- loggers for them, for example:
+  --   1. "a" - name of remote node in getAcceptAt.
+  --   2. "cardano-rt-view.acceptor.a" - name of the logger which receives
+  --        |LogObject|s from that node.
+  -- So currently logger name for metrics has the following format:
+  -- #buffered.cardano-rt-view.acceptor.a.NAME_OF_METRICS_GROUP.NAME_OF_METRIC,
+  -- where "a" is the node name (from TraceAcceptor).
+  let loggerNameParts = filter (not . T.null) $ T.splitOn "." loggerName
+      nameOfNode = loggerNameParts !! 3
+
+  modifyMVar_ nsMVar $ \currentNodesState -> do
+    let nodesStateWith :: NodeState -> IO NodesState
+        nodesStateWith newState = return $ Map.adjust (const newState) nameOfNode currentNodesState
+
+    case currentNodesState !? nameOfNode of
+      Just ns -> nodesStateWith $ updateNodeErrors ns aMeta aContent
+      Nothing -> return currentNodesState
 
 -- | Update NodeState for particular node based on loggerName.
 updateNodesState
@@ -106,9 +140,7 @@ updateNodesState nsMVar loggerName (LogObject aName aMeta aContent) = do
 
     case currentNodesState !? nameOfNode of
       Just ns ->
-        if | isErrorMessage aMeta aContent ->
-              nodesStateWith $ updateNodeErrors ns aMeta aContent
-           | "cardano.node.metrics.peersFromNodeKernel" `T.isInfixOf` aName ->
+        if | "cardano.node.metrics.peersFromNodeKernel" `T.isInfixOf` aName ->
             case aContent of
               LogStructured peersInfo ->
                 nodesStateWith $ updatePeersInfo ns peersInfo
@@ -215,14 +247,6 @@ updateNodesState nsMVar loggerName (LogObject aName aMeta aContent) = do
         -- name of node in getAcceptAt doesn't correspond to the name of loggerName.
         return currentNodesState
 
--- | If this is an error message, it will be shown in "Errors" tab in GUI.
---   It's assumed that all errors were sent using LogError-constructor or
---   Error-severity.
-isErrorMessage :: LOMeta -> LOContent a -> Bool
-isErrorMessage _                      (LogError _) = True
-isErrorMessage (LOMeta _ _ _ sev _) _            = sev >= Error
-isErrorMessage _                      _            = False
-
 -- Updaters for particular node state's fields.
 
 updateNodeUpTime :: NodeState -> Word64 -> Word64 -> NodeState
@@ -245,11 +269,11 @@ updateNodeErrors ns (LOMeta timeStamp _ _ sev _) aContent = ns { nsInfo = newNi 
     case aContent of
       LogMessage msg -> show msg
       LogError eMsg -> T.unpack eMsg
-      LogValue msg measurable -> T.unpack msg <> ", " <> show measurable
       LogStructured obj -> show obj
+      LogStructuredText _ txt -> T.unpack txt
       MonitoringEffect (MonitorAlert msg) -> "Monitor alert: " <> T.unpack msg
       MonitoringEffect _ -> ""
-      _ -> ""
+      _ -> "UNPARSED_ERROR_MESSAGE"
 
 updatePeersInfo :: NodeState -> A.Object -> NodeState
 updatePeersInfo ns peersInfo = ns { nsInfo = newNi }

@@ -214,7 +214,7 @@ updateErrorsList
   -> Element
   -> UI Element
 updateErrorsList nodeErrors errorsList = do
-  errors <- forM nodeErrors $ \(NodeError timeStamp sev msg) -> do
+  errors <- forM nodeErrors $ \(NodeError utcTimeStamp sev msg) -> do
     let className :: String
         className = case sev of
                       Warning   -> "warning-message"
@@ -223,9 +223,10 @@ updateErrorsList nodeErrors errorsList = do
                       Alert     -> "alert-message"
                       Emergency -> "emergency-message"
                       _         -> ""
+    let timeStamp = formatTime defaultTimeLocale "%F %T" utcTimeStamp
 
     UI.div #. "w3-row" #+
-      [ UI.div #. "w3-third w3-theme" #+ [UI.div #. "" #+ [UI.string (show timeStamp)]]
+      [ UI.div #. "w3-third w3-theme" #+ [UI.div #. "" #+ [UI.string timeStamp]]
       , UI.div #. "w3-twothird w3-theme" #+ [UI.div #. className #+ [UI.string msg]]
       ]
   element errorsList # set children errors

@@ -17,12 +17,16 @@ import           Data.List
                    ( nub, nubBy )
 import qualified System.Exit as Ex
 
+import           Cardano.BM.Backend.Switchboard
+                   ( addUserDefinedBackend )
 import           Cardano.BM.Configuration
                    ( Configuration
                    , getAcceptAt, setup
                    )
 import           Cardano.BM.Data.Configuration
                    ( RemoteAddrNamed (..), RemoteAddr (..) )
+import           Cardano.BM.Data.Backend
+                   ( Backend (..) )
 import qualified Cardano.BM.Setup as Setup
 import           Cardano.BM.Trace
                    ( Trace
@@ -35,6 +39,10 @@ import           Cardano.Benchmarking.RTView.CLI
                    ( RTViewParams (..) )
 import           Cardano.Benchmarking.RTView.Acceptor
                    ( launchMetricsAcceptor )
+import           Cardano.Benchmarking.RTView.ErrorBuffer
+                   ( ErrorBuffer
+                   , effectuate, realize, unrealize
+                   )
 import           Cardano.Benchmarking.RTView.NodeState.Types
                    ( NodesState
                    , defaultNodesState
@@ -54,6 +62,13 @@ runCardanoRTView params = do
   (tr :: Trace IO Text, switchBoard) <- Setup.setupTrace_ config "cardano-rt-view"
   let accTr = appendName "acceptor" tr
 
+  -- Initialise own backend (error buffer).
+  be :: ErrorBuffer Text <- realize config
+  let ebBe = MkBackend { bEffectuate = effectuate be
+                       , bUnrealize  = unrealize be
+                       }
+  addUserDefinedBackend switchBoard ebBe "ErrorBufferBK"
+
   logNotice tr "Starting service; hit CTRL-C to terminate..."
 
   initStateOfNodes <- defaultNodesState config
@@ -65,7 +80,7 @@ runCardanoRTView params = do
   --   2. node state updater (it gets metrics from |LogBuffer| and updates NodeState),
   --   3. server (it serves requests from user's browser and shows nodes' metrics in the real time).
   acceptorThr <- async $ launchMetricsAcceptor config accTr switchBoard
-  updaterThr  <- async $ launchNodeStateUpdater tr switchBoard nodesStateMVar
+  updaterThr  <- async $ launchNodeStateUpdater tr switchBoard be nodesStateMVar
   serverThr   <- async $ launchServer nodesStateMVar params acceptors
 
   void $ waitAnyCancel [acceptorThr, updaterThr, serverThr]
