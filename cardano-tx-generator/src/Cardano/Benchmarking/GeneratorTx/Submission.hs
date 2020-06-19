@@ -32,6 +32,7 @@ import           Control.Monad.Class.MonadST (MonadST)
 import           Control.Monad.Class.MonadSTM (MonadSTM, TMVar, TVar,
                    atomically, newEmptyTMVarM, putTMVar, readTVar, retry,
                    takeTMVar, tryTakeTMVar)
+import qualified Control.Monad.Class.MonadSTM
 import           Control.Monad.Class.MonadTime (MonadTime(..), Time, addTime,
                    diffTime, getMonotonicTime)
 import           Control.Monad.Class.MonadTimer (MonadTimer, threadDelay)
@@ -61,12 +62,12 @@ import           Ouroboros.Consensus.Ledger.SupportsMempool as Mempool
                    ( GenTxId, HasTxId, txId, txInBlockSize)
 import           Ouroboros.Consensus.Network.NodeToClient
 import           Ouroboros.Consensus.Node.NetworkProtocolVersion
-                  (HasNetworkProtocolVersion (..))
+                  (HasNetworkProtocolVersion (..), nodeToClientProtocolVersion, supportedNodeToClientVersions)
 import           Ouroboros.Consensus.Node.Run (RunNode(..))
 
 import           Ouroboros.Network.Mux
                    ( MuxMode(..), OuroborosApplication(..),
-                     MuxPeer(..), RunMiniProtocol(..) )
+                     MuxPeer(..), RunMiniProtocol(..), RunOrStop )
 import           Ouroboros.Network.Driver (runPeer)
 import qualified Ouroboros.Network.Protocol.LocalTxSubmission.Client as LocalTxSub
 import           Ouroboros.Network.Protocol.LocalTxSubmission.Type (SubmitResult(..))
@@ -84,6 +85,7 @@ import           Ouroboros.Network.NodeToClient (IOManager,
                                                  foldMapVersions,
                                                  versionedNodeToClientProtocols)
 import qualified Ouroboros.Network.NodeToClient as NodeToClient
+import           Ouroboros.Network.NodeToClient.Version (NodeToClientVersion)
 
 import           Cardano.Config.Types (SocketPath(..))
 
@@ -594,10 +596,11 @@ localInitiatorNetworkApplication tracer cfg tx =
 
     versionData = NodeToClientVersionData $ getNetworkMagic $ configBlock cfg
 
-    protocols :: NodeToClientVersion blk
+    protocols :: BlockNodeToClientVersion blk
               -> NodeToClient.ConnectionId NodeToClient.LocalAddress
+              -> Control.Monad.Class.MonadSTM.STM m RunOrStop
               -> NodeToClient.NodeToClientProtocols InitiatorMode ByteString m () Void
-    protocols byronClientVersion _ =
+    protocols byronClientVersion _ _=
         NodeToClient.NodeToClientProtocols {
           NodeToClient.localChainSyncProtocol =
             InitiatorProtocolOnly $

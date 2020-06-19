@@ -1,5 +1,6 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE RankNTypes #-}
 
 module Cardano.Benchmarking.GeneratorTx.CLI.Run
@@ -27,15 +28,13 @@ import           Cardano.Chain.Update (ApplicationName(..))
 import           Cardano.Config.Logging
                     ( createLoggingFeature )
 import           Cardano.Config.Byron.Protocol
-                    ( ByronProtocolInstantiationError(..)
-                    , mkConsensusProtocolRealPBFT )
 import           Cardano.Config.Types
                     ( DbFile(..), ConfigError(..), ConfigYamlFilePath(..)
-                    , CardanoEnvironment(..), LastKnownBlockVersion(..)
-                    , ProtocolFilepaths(..), NodeAddress(..), NodeCLI(..)
-                    , NodeConfiguration(..), NodeHostAddress(..)
+                    , CardanoEnvironment(..), NodeByronProtocolConfiguration(..)
+                    , ProtocolFilepaths(..), NodeCLI(..)
+                    , NodeConfiguration(..), NodeProtocolConfiguration(..)
                     , NodeProtocolMode(..), Protocol, SigningKeyFile(..)
-                    , TopologyFile(..), Update(..), parseNodeConfigurationFP
+                    , TopologyFile(..), parseNodeConfigurationFP
                     )
 
 import           Cardano.Benchmarking.GeneratorTx.Error
@@ -44,6 +43,8 @@ import           Cardano.Benchmarking.GeneratorTx.CLI.Parsers
                     ( GenerateTxs (..) )
 import           Cardano.Benchmarking.GeneratorTx
                     ( genesisBenchmarkRunner )
+import qualified Ouroboros.Consensus.Cardano as Consensus
+import           Ouroboros.Consensus.Byron.Ledger (ByronBlock)
 
 data RealPBFTError =
     IncorrectProtocolSpecified !Protocol
@@ -95,12 +96,14 @@ runCommand (GenerateTxs logConfigFp
                , shutdownOnSlotSynced = NoMaxSlotNo
                }
     -- Default update value
-    let update = Update (ApplicationName "cardano-tx-generator") 1 $ LastKnownBlockVersion 0 2 0
+    --let update = Update (ApplicationName "cardano-tx-generator") 1 $ LastKnownBlockVersion 0 2 0
     nc <- liftIO . parseNodeConfigurationFP $ ConfigYamlFilePath logConfigFp
-    let updatedConfiguration :: NodeConfiguration
-        updatedConfiguration = nc { ncGenesisFile = genFile
-                                  , ncUpdate = update
-                                  }
+    let NodeProtocolConfigurationByron byroncfg = ncProtocolConfig nc
+        byroncfg' = byroncfg { npcByronGenesisFile = genFile
+                             --, npcByronApplicationName = Update.ApplicationName "cardano-tx-generator-byron"
+                             }
+        updatedConfiguration = byroncfg'
+
     -- Logging layer
     (loggingLayer, _) <- firstExceptT (\(ConfigErrorFileNotFound fp) -> FileNotFoundError fp) $
                              createLoggingFeature
@@ -108,9 +111,9 @@ runCommand (GenerateTxs logConfigFp
                                  NoEnvironment
                                  ncli
 
-    protocol <- firstExceptT GenerateTxsError $
+    protocol :: Consensus.Protocol IO ByronBlock Consensus.ProtocolRealPBFT <- firstExceptT GenerateTxsError $
         firstExceptT FromProtocolError $
-            mkConsensusProtocolRealPBFT
+            mkConsensusProtocolByron
                 updatedConfiguration
                 Nothing
 

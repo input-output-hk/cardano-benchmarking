@@ -6,10 +6,10 @@ packages:
   - cardano-tx-generator
   - bm-timeline
 
-  - ext/cardano-node.git/cardano-api
-  - ext/cardano-node.git/cardano-cli
-  - ext/cardano-node.git/cardano-config
-  - ext/cardano-node.git/cardano-node
+  #- ext/cardano-node.git/cardano-api
+  #- ext/cardano-node.git/cardano-cli
+  #- ext/cardano-node.git/cardano-config
+  #- ext/cardano-node.git/cardano-node
 
   #- ext/cardano-db-sync.git/cardano-db-sync
 
@@ -95,13 +95,13 @@ extra-deps:
       - .
       - test
 
-  #- git: https://github.com/input-output-hk/cardano-node
-  #  commit: 9925ef37dccbe7f423f3ceb81a5e1da3d924393b
-  #  subdirs:
-  #    - cardano-api
-  #    - cardano-config
-  #    - cardano-cli
-  #    - cardano-node
+  - git: https://github.com/input-output-hk/cardano-node
+    commit: 67e03c72aea1a40fd280effe6f4543b07175e7af
+    subdirs:
+      - cardano-api
+      - cardano-config
+      - cardano-cli
+      - cardano-node
 
   - git: https://github.com/input-output-hk/cardano-db-sync
     commit: a6e99db3e79036526933aced48c1915b924496c0
@@ -126,7 +126,7 @@ extra-deps:
       - cardano-shell
 
   - git: https://github.com/input-output-hk/cardano-ledger-specs
-    commit: 3671fe88f7d62769ed207cda0ee94a0effbb4c7f
+    commit: 036ff8223310ecdaf7f0ed8c211c691cb0dcb8f3
     subdirs:
       # small-steps
       - semantics/executable-spec
@@ -145,7 +145,7 @@ extra-deps:
     commit: 26d35ad52fe9ade3391532dbfeb2f416f07650bc
 
   - git: https://github.com/input-output-hk/ouroboros-network
-    commit: 16bca08140fb37746538edff9fe77220acf91d55
+    commit: f9469fa3885aefdfa852216a66c4e319a0d19c11
     subdirs:
         - io-sim
         - io-sim-classes
@@ -153,6 +153,8 @@ extra-deps:
         - ouroboros-network
         - ouroboros-consensus
         - ouroboros-consensus-byron
+        - ouroboros-consensus-byronspec
+        - ouroboros-consensus-byron-test
         - ouroboros-consensus-cardano
         - ouroboros-consensus/ouroboros-consensus-mock
         - ouroboros-consensus-shelley
@@ -163,7 +165,7 @@ extra-deps:
         - Win32-network
 
   - git: https://github.com/input-output-hk/iohk-monitoring-framework
-    commit: 88a7e9c62fbb6e00d97898b4b66f68f27173e174
+    commit: efa4b5ecd7f0a13124616b12679cd42517cd905a
     subdirs:
       - contra-tracer
       - iohk-monitoring
