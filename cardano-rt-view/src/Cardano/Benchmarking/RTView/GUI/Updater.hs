@@ -79,7 +79,6 @@ updateGUI nodesState params acceptors nodesStateElems =
     void $ updateElementValue (ElementDouble  $ niChainDensity ni)            $ elements ! ElChainDensity
     void $ updateElementValue (ElementInteger $ niNodeIsLeaderNum ni)         $ elements ! ElNodeIsLeaderNumber
     void $ updateElementValue (ElementInteger $ niSlotsMissedNumber ni)       $ elements ! ElSlotsMissedNumber
-    void $ updateElementValue (ElementInteger $ niForksCreated ni)            $ elements ! ElForksCreatedNumber
     void $ updateElementValue (ElementInteger $ niTxsProcessed ni)            $ elements ! ElTxsProcessed
     void $ updateElementValue (ElementInteger $ niPeersNumber ni)             $ elements ! ElPeersNumber
     void $ updateElementValue (ElementString  acceptorHost)                   $ elements ! ElTraceAcceptorHost
@@ -290,8 +289,6 @@ markOutdatedElements params ni nm els = do
                                                            [els ! ElSlotsMissedNumberOutdateWarning]
   markValueW now (niNodeIsLeaderNumLastUpdate ni) bcLife [els ! ElNodeIsLeaderNumber]
                                                          [els ! ElNodeIsLeaderNumberOutdateWarning]
-  markValueW now (niForksCreatedLastUpdate ni) bcLife [els ! ElForksCreatedNumber]
-                                                      [els ! ElForksCreatedNumberOutdateWarning]
 
   markValueW now (nmRTSGcCpuLastUpdate nm)      rtsLife [els ! ElRTSGcCpu]
                                                         [els ! ElRTSGcCpuOutdateWarning]

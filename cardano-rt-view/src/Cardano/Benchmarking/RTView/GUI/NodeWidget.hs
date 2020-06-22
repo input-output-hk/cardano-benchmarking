@@ -41,7 +41,6 @@ mkNodeWidget = do
   elChainDensity            <- string "0"
   elNodeIsLeaderNumber      <- string "0"
   elSlotsMissedNumber       <- string "0"
-  elForksCreatedNumber      <- string "0"
   elTxsProcessed            <- string "0"
   elPeersNumber             <- string "0"
   elTraceAcceptorHost       <- string "0"
@@ -318,7 +317,6 @@ mkNodeWidget = do
                      , UI.div #. "" #+ [string "Slot leader, number:"]
                      , UI.div #. "" #+ [string "Cannot lead, number:"]
                      , UI.div #. "" #+ [string "Missed slots number:"]
-                     , UI.div #. "" #+ [string "Created forks number:"]
                      ]
                  ]
              , UI.div #. "w3-third w3-theme" #+
@@ -337,7 +335,6 @@ mkNodeWidget = do
                      , UI.div #. "" #+ [element elNodeIsLeaderNumber]
                      , UI.div #. "" #+ [element elNodeCannotLead]
                      , UI.div #. "" #+ [element elSlotsMissedNumber]
-                     , UI.div #. "" #+ [element elForksCreatedNumber]
                      ]
                  ]
              , UI.div #. "w3-third w3-theme" #+
@@ -639,7 +636,6 @@ mkNodeWidget = do
           , (ElChainDensity,            elChainDensity)
           , (ElNodeIsLeaderNumber,      elNodeIsLeaderNumber)
           , (ElSlotsMissedNumber,       elSlotsMissedNumber)
-          , (ElForksCreatedNumber,      elForksCreatedNumber)
           , (ElTxsProcessed,            elTxsProcessed)
           , (ElPeersNumber,             elPeersNumber)
           , (ElTraceAcceptorHost,       elTraceAcceptorHost)
