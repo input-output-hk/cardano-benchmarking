@@ -7,6 +7,23 @@ BASEDIR=$(realpath $(dirname "$0"))
 . ${BASEDIR}/../../scripts/common.sh
 . ${BASEDIR}/configuration/parameters
 
+# check parameter availability
+if [ -z "${GEN_SLOTLENGTH}" ]; then
+  echo "missing \$GEN_SLOTLENGTH"; exit 1
+fi
+if [ -z "${GEN_ACTIVESLOTSCOEFF}" ]; then
+  echo "missing \$GEN_ACTIVESLOTSCOEFF"; exit 1
+fi
+if [ -z "${GEN_SECURITYPARAM}" ]; then
+  echo "missing \$GEN_SECURITYPARAM"; exit 1
+fi
+if [ -z "${GEN_EPOCHLENGTH}" ]; then
+  echo "missing \$GEN_EPOCHLENGTH"; exit 1
+fi
+if [ -z "${GEN_DECENTRALISATIONPARAM}" ]; then
+  echo "missing \$GEN_DECENTRALISATIONPARAM"; exit 1
+fi
+
 cd ${BASEDIR}
 
 if [ -n "${GENESISDIR}" -a -d ${GENESISDIR} ]; then
@@ -26,12 +43,12 @@ ${CLICMD} shelley genesis create \
 
 ## set parameters in template
 sed -i ${GENESISDIR}/genesis.spec.json \
-    -e 's/"slotLength": .*,/"slotLength": 0.2,/' \
-    -e 's/"activeSlotsCoeff": .*,/"activeSlotsCoeff": 0.1,/' \
-    -e 's/"securityParam": .*,/"securityParam": 10,/' \
-    -e 's/"securityParam": [0-9]\+/"securityParam": 10/' \
-    -e 's/"epochLength": .*,/"epochLength": 1500,/' \
-    -e 's/"decentralisationParam": .*,/"decentralisationParam": 0.5,/'
+    -e 's/"slotLength": .*,/"slotLength": '${GEN_SLOTLENGTH}',/' \
+    -e 's/"activeSlotsCoeff": .*,/"activeSlotsCoeff": '${GEN_ACTIVESLOTSCOEFF}',/' \
+    -e 's/"securityParam": .*,/"securityParam": '${GEN_SECURITYPARAM}',/' \
+    -e 's/"securityParam": [0-9]\+/"securityParam": '${GEN_SECURITYPARAM}'/' \
+    -e 's/"epochLength": .*,/"epochLength": '${GEN_EPOCHLENGTH}',/' \
+    -e 's/"decentralisationParam": .*,/"decentralisationParam": '${GEN_DECENTRALISATIONPARAM}',/'
 
 ## update genesis from template
 ${CLICMD} shelley genesis create --genesis-dir ${GENESISDIR} --testnet-magic ${MAGIC} --supply ${SUPPLY}
