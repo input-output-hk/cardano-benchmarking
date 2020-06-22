@@ -2,6 +2,13 @@
 # the directory of the fresh genesis and keys
 GENESISDIR=configuration/genesis
 
+# genesis parameters
+GEN_SLOTLENGTH="0.2"
+GEN_ACTIVESLOTSCOEFF="0.1"
+GEN_SECURITYPARAM="10"
+GEN_EPOCHLENGTH="1500"
+GEN_DECENTRALISATIONPARAM="0.5"
+
 # the network id for our testnet
 MAGIC=42
 

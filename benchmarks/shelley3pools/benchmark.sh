@@ -21,6 +21,7 @@ TMUX_ENV_PASSTHROUGH=(
          "$(nix_cache_passthrough)"
 )
 
+set -e
 
 # 0 cleanup
 rm -rf ./db/* ./logs/*

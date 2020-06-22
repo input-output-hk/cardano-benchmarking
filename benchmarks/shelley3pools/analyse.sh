@@ -14,10 +14,10 @@ NNODES=${NNODES:- 3}
 OUTDIR=${OUTDIR:-"timeline-${TSTAMP}"}
 if [ -d "${OUTDIR}" ]; then
   echo "already exists output directory: ${OUTDIR}"
-  exit 1
+else
+  mkdir -v ${OUTDIR}
 fi
 
-mkdir ${OUTDIR}
 for N in $(seq 0 $((NNODES - 1))); do
   echo "analysing logs of node ${N}"
   ../../scripts/nodeisleader.sh ${LOGPATH}/node$((N+1))-*.json | sed -e 's/^\(.*\)$/'${N}',\1/' - > ${OUTDIR}/leader-${N}.csv
@@ -34,6 +34,14 @@ for N in $(seq 0 $((NNODES - 1))); do
   ../../scripts/mempooladdedtx.sh ${N} ${LOGPATH}/node$((N+1))-*.json >> ${OUTDIR}/txmempool.csv
   # transactions rejected
   ../../scripts/mempoolrejectedtx.sh ${N} ${LOGPATH}/node$((N+1))-*.json >> ${OUTDIR}/txrejected.csv
+  # memory usage, CPU usage
+  ../../scripts/grep-cpu.sh ${LOGPATH}/node$((N+1))-*.json > ${OUTDIR}/cpu-${N}.csv
+  ../../scripts/grep-mem.sh ${LOGPATH}/node$((N+1))-*.json > ${OUTDIR}/mem-${N}.csv
+  # parameters in genesis.json
+  GENESIS=$(find ${LOGPATH}/.. -name "genesis.json" | head -1)
+  if [ -e $GENESIS ]; then
+    jq '[ "activeSlotsCoeff", .activeSlotsCoeff, "slotLength", .slotLength, "securityParam", .securityParam, "epochLength", .epochLength, "decentralisationParam", .protocolParams.decentralisationParam ] | @csv' ${GENESIS} > ${OUTDIR}/genesis_parameters.csv
+  fi
 done
 
 #stack --nix run reconstruct-timeline -- ${NNODES} ${OUTDIR} | tee -a ${OUTDIR}/timeline.txt
