@@ -82,8 +82,6 @@ data NodeInfo = NodeInfo
   , niNodeCannotLead                :: !Integer
   , niChainDensity                  :: !Double
   , niChainDensityLastUpdate        :: !Word64
-  , niForksCreated                  :: !Integer
-  , niForksCreatedLastUpdate        :: !Word64
   , niTxsProcessed                  :: !Integer
   , niPeersNumber                   :: !Integer
   , niPeersInfo                     :: ![PeerInfo]
@@ -194,8 +192,6 @@ defaultNodeInfo = NodeInfo
   , niNodeCannotLead                = 0
   , niChainDensity                  = 0.0
   , niChainDensityLastUpdate        = 0
-  , niForksCreated                  = 0
-  , niForksCreatedLastUpdate        = 0
   , niTxsProcessed                  = 0
   , niPeersNumber                   = 0
   , niPeersInfo                     = []

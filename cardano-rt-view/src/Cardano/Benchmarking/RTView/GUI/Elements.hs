@@ -50,7 +50,6 @@ data ElementName
   | ElChainDensity
   | ElNodeIsLeaderNumber
   | ElSlotsMissedNumber
-  | ElForksCreatedNumber
   | ElTxsProcessed
   | ElPeersNumber
   | ElTraceAcceptorHost

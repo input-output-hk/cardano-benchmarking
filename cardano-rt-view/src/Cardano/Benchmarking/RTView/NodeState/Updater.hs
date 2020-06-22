@@ -187,8 +187,6 @@ updateNodesState nsMVar loggerName (LogObject aName aMeta aContent) = do
                 nodesStateWith $ updateNodeIsLeader ns leaderNum now
               LogValue "slotsMissedNum" (PureI missedSlotsNum) ->
                 nodesStateWith $ updateSlotsMissed ns missedSlotsNum now
-              LogValue "forksCreatedNum" (PureI createdForksNum) ->
-                nodesStateWith $ updateForksCreated ns createdForksNum now
               _ -> return currentNodesState
            | "cardano.node-metrics" `T.isInfixOf` aName ->
             case aContent of
@@ -568,16 +566,6 @@ updateSlotsMissed ns slotsMissed now = ns { nsInfo = newNi }
     currentNi
       { niSlotsMissedNumber = slotsMissed
       , niSlotsMissedNumberLastUpdate = now
-      }
-  currentNi = nsInfo ns
-
-updateForksCreated :: NodeState -> Integer -> Word64 -> NodeState
-updateForksCreated ns forksCreated now = ns { nsInfo = newNi }
- where
-  newNi =
-    currentNi
-      { niForksCreated = forksCreated
-      , niForksCreatedLastUpdate = now
       }
   currentNi = nsInfo ns
 
