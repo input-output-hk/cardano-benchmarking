@@ -1,5 +1,8 @@
-﻿body {
-    font-size: 19px;
+﻿@import url('http://fonts.googleapis.com/css?family=Roboto Condensed');
+
+body {
+    font-family: 'Roboto Condensed', sans-serif;
+    font-size: 20px;
     background-color: whitesmoke;
 }
 
@@ -14,12 +17,63 @@
     margin-right: 6px;
 }
 
-.node-name {
-    font-weight: bold;
+.top-bar {
+    background-color: #000;
+    color: whitesmoke;
+    padding-top: 18px;
+    padding-bottom: 15px;
+}
+
+.top-bar .w3-dropdown-hover {
+    padding-top: 10px;
+    font-size: 110%;
+}
+
+.top-bar .w3-dropdown-hover .w3-button:hover {
+    color: rgb(239, 19, 29) !important;
+}
+
+.w3-dropdown-hover:hover > .w3-button:first-child {
+    color: rgb(239, 19, 29) !important;
+    background-color: #000 !important;
+}
+
+.select-node-button:hover {
+    color: rgb(239, 19, 29) !important;
+    background-color: #000 !important;
+}
+
+.service-name {
+    font-size: 120%;
+    color: #ccc !important;
+    padding-top: 14px;
+    padding-right: 18px;
+}
+
+.node-name-area {
     font-size: 110%;
     padding-top: 10px;
     padding-bottom: 10px;
-    color: #3f51b5;
+    color: #555;
+}
+
+.node-name {
+    font-weight: bold;
+    color: #333;
+}
+
+.node-bar {
+    background-color: #333 !important;
+    color: whitesmoke !important;
+}
+
+.node-bar .w3-button:hover {
+    color: rgb(239, 19, 29) !important;
+}
+
+.active-tab {
+    color: rgb(239, 19, 29) !important;
+    font-weight: bold;
 }
 
 .tab-container {
@@ -55,7 +109,7 @@
 }
 
 .node-container {
-    min-height: 420px;
+    min-height: 428px;
     background-color: #eee;
 }
 
@@ -71,13 +125,16 @@
 }
 
 .iohk-logo {
-    max-width: 135px;
+    max-width: 214px;
 }
 
 .info-mark {
     padding-left: 5px;
-    color: indigo;
     cursor: help;
+}
+
+.info-mark-img {
+    max-width: 18px;
 }
 
 .cardano-name {
@@ -96,6 +153,10 @@
 .value-unit {
     color: #666;
     padding-left: 5px;
+}
+
+.value-unit-percent {
+    color: #666;
 }
 
 .bar-value-unit {
@@ -157,7 +218,7 @@ a:visited:hover {
 }
 
 .ElRTSMemoryProgress {
-    background-color: #009688;
+    background-color: #007000;
     color: white;
 }
 
@@ -167,7 +228,7 @@ a:visited:hover {
 }
 
 .ElRTSMemoryProgressBox {
-    background-color: #8bc34a;
+    background-color: #6cca6c;
 }
 
 .ElRTSMemoryProgressBox-outdated {
@@ -176,7 +237,7 @@ a:visited:hover {
 }
 
 .ElMemoryProgress {
-    background-color: #009688;
+    background-color: #007000;
     color: white;
 }
 
@@ -186,7 +247,7 @@ a:visited:hover {
 }
 
 .ElMemoryProgressBox {
-    background-color: #8bc34a;
+    background-color: #6cca6c;
     color: white;
 }
 
@@ -196,7 +257,7 @@ a:visited:hover {
 }
 
 .ElMempoolBytesProgress {
-    background-color: #009688;
+    background-color: #007000;
     color: white;
 }
 
@@ -206,7 +267,7 @@ a:visited:hover {
 }
 
 .ElMempoolBytesProgressBox {
-    background-color: #8bc34a;
+    background-color: #6cca6c;
     color: white;
 }
 
@@ -216,7 +277,7 @@ a:visited:hover {
 }
 
 .ElMempoolTxsProgress {
-    background-color: #009688;
+    background-color: #007000;
     color: white;
 }
 
@@ -226,7 +287,7 @@ a:visited:hover {
 }
 
 .ElMempoolTxsProgressBox {
-    background-color: #8bc34a;
+    background-color: #6cca6c;
     color: white;
 }
 
@@ -236,7 +297,7 @@ a:visited:hover {
 }
 
 .ElCPUProgress {
-    background-color: #3f51b5;
+    background-color: #007000;
     color: white;
 }
 
@@ -246,7 +307,7 @@ a:visited:hover {
 }
 
 .ElCPUProgressBox {
-    background-color: #00bcd4;
+    background-color: #6cca6c;
     color: white;
 }
 
@@ -256,7 +317,7 @@ a:visited:hover {
 }
 
 .ElDiskReadProgress {
-    background-color: #ff5722;
+    background-color: #007000;
     color: white;
 }
 
@@ -266,7 +327,7 @@ a:visited:hover {
 }
 
 .ElDiskReadProgressBox {
-    background-color: #ffc107;
+    background-color: #6cca6c;
     color: white;
 }
 
@@ -276,7 +337,7 @@ a:visited:hover {
 }
 
 .ElDiskWriteProgress {
-    background-color: #ff5722;
+    background-color: #007000;
     color: white;
 }
 
@@ -286,7 +347,7 @@ a:visited:hover {
 }
 
 .ElDiskWriteProgressBox {
-    background-color: #ffc107;
+    background-color: #6cca6c;
     color: white;
 }
 
@@ -296,7 +357,7 @@ a:visited:hover {
 }
 
 .ElNetworkInProgress {
-    background-color: #9c27b0;
+    background-color: #007000;
     color: white;
 }
 
@@ -306,7 +367,7 @@ a:visited:hover {
 }
 
 .ElNetworkInProgressBox {
-    background-color: #ffdddd;
+    background-color: #6cca6c;
     color: white;
 }
 
@@ -316,7 +377,7 @@ a:visited:hover {
 }
 
 .ElNetworkOutProgress {
-    background-color: #9c27b0;
+    background-color: #007000;
     color: white;
 }
 
@@ -326,7 +387,7 @@ a:visited:hover {
 }
 
 .ElNetworkOutProgressBox {
-    background-color: #ffdddd;
+    background-color: #6cca6c;
     color: white;
 }
 
@@ -342,6 +403,5 @@ a:visited:hover {
 
 .in-flight-values {
     color: #444;
-    font-weight: bold;
     font-style: italic;
 }

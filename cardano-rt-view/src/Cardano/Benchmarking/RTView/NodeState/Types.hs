@@ -170,11 +170,11 @@ defaultNodeState = NodeState
 
 defaultNodeInfo :: NodeInfo
 defaultNodeInfo = NodeInfo
-  { niNodeRelease                   = "-"
-  , niNodeVersion                   = "-"
-  , niNodeCommit                    = "-"
-  , niNodeShortCommit               = "-"
-  , niNodePlatform                  = "?"
+  { niNodeRelease                   = "—"
+  , niNodeVersion                   = "—"
+  , niNodeCommit                    = "—"
+  , niNodeShortCommit               = "—"
+  , niNodePlatform                  = "—"
   , niUpTime                        = 0
   , niUpTimeLastUpdate              = 0
   , niEpoch                         = 0

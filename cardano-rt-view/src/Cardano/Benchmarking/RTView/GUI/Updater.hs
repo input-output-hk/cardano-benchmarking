@@ -138,7 +138,7 @@ updateProgressBar
   :: Double
   -> Element
   -> UI Element
-updateProgressBar percents bar =
+updateProgressBar percents bar = do
   element bar # set style [("width", showWith1DecPlace preparedPercents <> "%")]
  where
   -- Sometimes (for CPU usage) percents can be bigger than 100%,
