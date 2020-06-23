@@ -613,15 +613,16 @@ localInitiatorNetworkApplication tracer cfg tx =
             InitiatorProtocolOnly $
               MuxPeerRaw $ \channel -> do
                 traceWith tracer TraceLowLevelSubmitting
-                result <- runPeer
-                            nullTracer -- (contramap show tracer)
-                            cTxSubmissionCodec
-                            channel
-                            (LocalTxSub.localTxSubmissionClientPeer
-                               (txSubmissionClientSingle tx))
+                (result, maybs) <- runPeer
+                                     nullTracer -- (contramap show tracer)
+                                     cTxSubmissionCodec
+                                     channel
+                                     (LocalTxSub.localTxSubmissionClientPeer
+                                       (txSubmissionClientSingle tx))
                 case result of
                   SubmitSuccess -> traceWith tracer TraceLowLevelAccepted
                   SubmitFail msg -> traceWith tracer (TraceLowLevelRejected $ show msg)
+                return ((), maybs)
 
         , NodeToClient.localStateQueryProtocol =
             InitiatorProtocolOnly $
