@@ -2,17 +2,17 @@
   "Producers": [
     {
       "addr": "127.0.0.1",
-      "port": 3003,
-      "valency": 1
-    },
-    {
-      "addr": "127.0.0.1",
-      "port": 3002,
+      "port": 3000,
       "valency": 1
     },
     {
       "addr": "127.0.0.1",
       "port": 3001,
+      "valency": 1
+    },
+    {
+      "addr": "127.0.0.1",
+      "port": 3002,
       "valency": 1
     }
   ]
