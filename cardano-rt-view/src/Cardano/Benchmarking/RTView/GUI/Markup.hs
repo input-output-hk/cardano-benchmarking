@@ -81,16 +81,16 @@ topNavigation
   :: [UI Element]
   -> UI Element
 topNavigation nodesSelector = do
-  UI.div #. "w3-bar w3-large w3-indigo" #+
+  UI.div #. "w3-bar w3-large top-bar" #+
     [ UI.anchor #. "w3-bar-item" # set UI.href "https://iohk.io/" #+
         [ UI.img #. "iohk-logo" # set UI.src "/static/images/iohk-logo.png" #+ []
         ]
     , UI.div #. "w3-dropdown-hover" #+
-        [ UI.button #. "w3-button" #+ [string "Select node..."]
+        [ UI.button #. "w3-button select-node-button" #+ [string "Select node ▾"]
         , UI.div #. "w3-dropdown-content w3-bar-block w3-card-4" #+ nodesSelector
         ]
-    , UI.anchor #. "w3-bar-item w3-button w3-right" # set UI.href "#" #+
-        [ string "Cardano Real-time View"
+    , UI.span #. "w3-right service-name" #+
+        [ string "Cardano Node Real-time View"
         ]
     ]
 
