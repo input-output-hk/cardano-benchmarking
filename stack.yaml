@@ -1,4 +1,4 @@
-resolver: https://raw.githubusercontent.com/input-output-hk/cardano-prelude/e0257be9d745a04f85ab8287a48a9c193acafec8/snapshot.yaml
+resolver: https://raw.githubusercontent.com/input-output-hk/cardano-prelude/316c854d1d3089f480708ad5cd5ecf8a74423ddd/snapshot.yaml
 compiler: ghc-8.6.5
 
 packages:
@@ -6,10 +6,8 @@ packages:
   - cardano-tx-generator
   - bm-timeline
 
-  #- ext/cardano-node.git/cardano-api
-  #- ext/cardano-node.git/cardano-cli
-  #- ext/cardano-node.git/cardano-config
-  #- ext/cardano-node.git/cardano-node
+  - ext/cardano-node.git/cardano-cli
+  - ext/cardano-node.git/cardano-node
 
   #- ext/cardano-db-sync.git/cardano-db-sync
 
@@ -26,6 +24,9 @@ packages:
 local-bin-path: bin
 
 extra-deps:
+  - ext/cardano-node.git/cardano-api
+  - ext/cardano-node.git/cardano-config
+
   #- ext/cardano-db-sync.git/cardano-db
 
   - QuickCheck-2.12.6.1
@@ -90,31 +91,35 @@ extra-deps:
     commit: dba4b563dac99ff52328db916d99d928bc4a80fb
 
   - git: https://github.com/input-output-hk/cardano-prelude
-    commit: e0257be9d745a04f85ab8287a48a9c193acafec8
+    commit: 316c854d1d3089f480708ad5cd5ecf8a74423ddd
     subdirs:
       - .
       - test
 
-  - git: https://github.com/input-output-hk/cardano-node
-    commit: 67e03c72aea1a40fd280effe6f4543b07175e7af
-    subdirs:
-      - cardano-api
-      - cardano-config
-      - cardano-cli
-      - cardano-node
+  #- git: https://github.com/input-output-hk/cardano-node
+  #  commit: 46f296f8a9f3f497d9bd41e20c8398d2b5730c86
+  #  subdirs:
+  #    - cardano-api
+  #    - cardano-config
+  #    - cardano-cli
+  #    - cardano-node
 
-  - git: https://github.com/input-output-hk/cardano-db-sync
-    commit: a6e99db3e79036526933aced48c1915b924496c0
-    subdirs:
-      - cardano-db
-      - cardano-db-sync
+  #- git: https://github.com/input-output-hk/cardano-db-sync
+  #  commit: 538fce2c9cb711e853cf15f22f37f55a73e4f1b4
+  #  subdirs:
+  #    - cardano-db
+  #    - cardano-db-sync
+  # needed by cardano-db-sync:
+  #- http-client-0.5.14
+
 
   - git: https://github.com/input-output-hk/cardano-base
-    commit: 4a457f44e68132ce2bd978ab45a3188e64327abc
+    commit: 5e0b8bc8c7862be12da6989440f8644ba7c1e1cf
     subdirs:
       - binary
       - binary/test
       - cardano-crypto-class
+      - cardano-crypto-praos
       - slotting
 
   - git: https://github.com/input-output-hk/cardano-crypto
@@ -126,14 +131,16 @@ extra-deps:
       - cardano-shell
 
   - git: https://github.com/input-output-hk/cardano-ledger-specs
-    commit: 036ff8223310ecdaf7f0ed8c211c691cb0dcb8f3
+    commit: ee92681752dc1a27ac77cb3466af8dca4ade997f
     subdirs:
       # small-steps
       - semantics/executable-spec
       # cs-ledger
       - byron/ledger/executable-spec
       - byron/ledger/impl
+      - byron/ledger/impl/test
       - byron/crypto
+      - byron/crypto/test
       # cs-blockchain
       - byron/chain/executable-spec
       - shelley/chain-and-ledger/dependencies/non-integer
@@ -145,23 +152,26 @@ extra-deps:
     commit: 26d35ad52fe9ade3391532dbfeb2f416f07650bc
 
   - git: https://github.com/input-output-hk/ouroboros-network
-    commit: f9469fa3885aefdfa852216a66c4e319a0d19c11
+    commit: ceafa31844e6e9883d5d5634544045eab9c5f2e9
     subdirs:
         - io-sim
         - io-sim-classes
         - network-mux
         - ouroboros-network
         - ouroboros-consensus
+        - ouroboros-consensus/ouroboros-consensus-test-infra
         - ouroboros-consensus-byron
         - ouroboros-consensus-byronspec
         - ouroboros-consensus-byron-test
         - ouroboros-consensus-cardano
         - ouroboros-consensus/ouroboros-consensus-mock
         - ouroboros-consensus-shelley
+        - ouroboros-consensus-shelley-test
         - typed-protocols
         - typed-protocols-examples
         - ouroboros-network-testing
         - ouroboros-network-framework
+        - cardano-client
         - Win32-network
 
   - git: https://github.com/input-output-hk/iohk-monitoring-framework
@@ -190,10 +200,14 @@ extra-deps:
         - serialise
 
     # Includes a windows build fix (https://github.com/snoyberg/http-client/pull/430)
-#  - git: https://github.com/snoyberg/http-client.git
-#    commit: 1a75bdfca014723dd5d40760fad854b3f0f37156
-#    subdirs:
-#        - http-client
+  #- git: https://github.com/snoyberg/http-client.git
+  #  commit: 1a75bdfca014723dd5d40760fad854b3f0f37156
+  #  subdirs:
+  #      - http-client
+
+flags:
+  cardano-crypto-praos:
+    external-libsodium-vrf: false
 
 # should be reconsidered from time to time
 allow-newer: false
@@ -203,6 +217,7 @@ nix:
   pure: false
   packages: [ zlib.dev, zlib.out
             , openssl.dev, openssl.out
+            , libsodium.dev, libsodium.out
             , haskell.compiler.ghc865
             , pkg-config
             , systemd.dev
