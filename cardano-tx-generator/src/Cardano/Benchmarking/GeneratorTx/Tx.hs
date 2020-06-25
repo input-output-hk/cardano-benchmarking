@@ -55,7 +55,7 @@ txSpendGenesisUTxOByronPBFT gc sk genAddr outs =
   where
     tx = UnsafeTx (pure txIn) outs txattrs
 
-    wit = signTxId (configProtocolMagicId gc) sk (Crypto.hash tx)
+    wit = signTxId (configProtocolMagicId gc) sk (Crypto.serializeCborHash tx)
 
     txIn :: UTxO.TxIn
     txIn  = genesisUTxOTxIn gc (Crypto.toVerification sk) genAddr

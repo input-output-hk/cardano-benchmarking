@@ -99,7 +99,7 @@ extra-deps:
       - test
 
   - git: https://github.com/input-output-hk/cardano-node
-    commit: 46f296f8a9f3f497d9bd41e20c8398d2b5730c86
+    commit: f8a2da1edc2d1c5389c41d069ae9e2d8e848958a
     subdirs:
       - cardano-api
       - cardano-config
@@ -196,7 +196,7 @@ extra-deps:
 
     # Includes updated pretty printing function
   - git: https://github.com/well-typed/cborg.git
-    commit: 6886be5f7ca98fa44750ed5d44be6b84227aae67
+    commit: 42a83192749774268337258f4f94c97584b80ca6
     subdirs:
         - cborg
         - serialise

@@ -9,7 +9,7 @@ import           Prelude (String)
 import           Options.Applicative
                     ( Parser
                     , bashCompleter, completer, help, long, metavar
-                    , auto, option, strOption
+                    , auto, flag, option, strOption
                     )
 import qualified Control.Arrow as Arr
 import           Network.Socket (PortNumber)
@@ -38,8 +38,8 @@ data GenerateTxs =
               TPSRate
               InitCooldown
               (Maybe TxAdditionalSize)
-              (Maybe ExplorerAPIEnpoint)
               [SigningKeyFile]
+              Bool
 
 parseCommand :: Parser GenerateTxs
 parseCommand =
@@ -85,19 +85,25 @@ parseCommand =
             "add-tx-size"
             "Additional size of transaction, in bytes."
         )
-    <*> optional (
-          parseExplorerAPIEndpoint
-            "submit-to-api"
-            "Explorer's API endpoint to submit transaction."
-        )
     <*> parseSigningKeysFiles
           "sig-key"
           "Path to signing key file, for genesis UTxO using by generator."
+
+    <*> parseFlag
+          "single-threaded"
+          "Single-threaded submission."
 
 defaultInitCooldown :: InitCooldown
 defaultInitCooldown = InitCooldown 100
 
 ----------------------------------------------------------------
+
+parseFlag :: String -> String -> Parser Bool
+parseFlag = parseFlag' False True
+
+parseFlag' :: a -> a -> String -> String -> Parser a
+parseFlag' def active optname desc =
+  flag def active $ long optname <> help desc
 
 parseTargetNodeAddress :: String -> String -> Parser NodeAddress
 parseTargetNodeAddress optname desc =
@@ -131,16 +137,13 @@ parseFeePerTx :: String -> String -> Parser FeePerTx
 parseFeePerTx opt desc = FeePerTx <$> parseIntegral opt desc
 
 parseTPSRate :: String -> String -> Parser TPSRate
-parseTPSRate opt desc = TPSRate <$> parseFloat opt desc
+parseTPSRate opt desc = TPSRate <$> parseDouble opt desc
 
 parseInitCooldown :: String -> String -> Parser InitCooldown
 parseInitCooldown opt desc = InitCooldown <$> parseIntegral opt desc
 
 parseTxAdditionalSize :: String -> String -> Parser TxAdditionalSize
 parseTxAdditionalSize opt desc = TxAdditionalSize <$> parseIntegral opt desc
-
-parseExplorerAPIEndpoint :: String -> String -> Parser ExplorerAPIEnpoint
-parseExplorerAPIEndpoint opt desc = ExplorerAPIEnpoint <$> parseUrl opt desc
 
 parseSigningKeyFile :: String -> String -> Parser FilePath
 parseSigningKeyFile opt desc = parseFilePath opt desc
@@ -157,6 +160,10 @@ parseIntegral optname desc = option (fromInteger <$> auto)
 parseFloat :: String -> String -> Parser Float
 parseFloat optname desc = option (auto)
   $ long optname <> metavar "FLOAT" <> help desc
+
+parseDouble :: String -> String -> Parser Double
+parseDouble optname desc = option (auto)
+  $ long optname <> metavar "DOUBLE" <> help desc
 
 parseUrl :: String -> String -> Parser String
 parseUrl optname desc =
