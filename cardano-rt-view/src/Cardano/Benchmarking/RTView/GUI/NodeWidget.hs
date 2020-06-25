@@ -9,6 +9,7 @@ import           Cardano.Prelude
 import           Prelude
                    ( String )
 import qualified Data.Map.Strict as Map
+import qualified Data.Text as T
 
 import qualified Graphics.UI.Threepenny as UI
 import           Graphics.UI.Threepenny.Core
@@ -23,8 +24,9 @@ import           Cardano.Benchmarking.RTView.GUI.Elements
                    )
 
 mkNodeWidget
-  :: UI (Element, NodeStateElements, [PeerInfoItem])
-mkNodeWidget = do
+  :: Text
+  -> UI (Element, NodeStateElements, [PeerInfoItem])
+mkNodeWidget nameOfNode = do
   -- Create |Element|s containing node state (info, metrics).
   -- These elements will be part of the complete page,
   -- later they will be updated by acceptor thread.
@@ -398,7 +400,37 @@ mkNodeWidget = do
              ]
          ]
 
-  performanceTabContent
+  resourcesTabContentCharts
+    <- UI.div #. "tab-container" # hideIt #+
+         [ UI.div #. "w3-container" #+
+             [ UI.div #. "w3-row" #+
+                 [ UI.div #. "w3-half" #+
+                     [ UI.canvas # set UI.id_ ("memoryUsageChart-" <> T.unpack nameOfNode)
+                                 #. "memory-usage-chart"
+                                 #+ []
+                     ]
+                 , UI.div #. "w3-half" #+
+                     [ UI.canvas # set UI.id_ ("cpuUsageChart-" <> T.unpack nameOfNode)
+                                 #. "cpu-usage-chart"
+                                 #+ []
+                     ]
+                 ]
+             , UI.div #. "w3-row" #+
+                 [ UI.div #. "w3-half" #+
+                     [ UI.canvas # set UI.id_ ("diskUsageChart-" <> T.unpack nameOfNode)
+                                 #. "disk-usage-chart"
+                                 #+ []
+                     ]
+                 , UI.div #. "w3-half" #+
+                     [ UI.canvas # set UI.id_ ("networkUsageChart-" <> T.unpack nameOfNode)
+                                 #. "network-usage-chart"
+                                 #+ []
+                     ]
+                 ]
+             ]
+         ]
+
+  resourcesTabContentBars
     <- UI.div #. "tab-container" # hideIt #+
          [ UI.div #. "w3-row" #+
              [ UI.div #. "w3-container" #+
@@ -524,7 +556,7 @@ mkNodeWidget = do
                      ]
                  ]
              ]
-         ]
+         ] 
 
   -- List of node errors, it will be changed dynamically!
   elNodeErrorsList <- UI.div #. "" #+ []
@@ -544,23 +576,33 @@ mkNodeWidget = do
          ]
 
   -- Tabs for corresponding sections.
-  nodeTab        <- UI.button #. "w3-bar-item w3-button" # makeItActive #+ [string "Node"]
-  peersTab       <- UI.button #. "w3-bar-item w3-button" #+ [string "Peers"]
-  blockchainTab  <- UI.button #. "w3-bar-item w3-button" #+ [string "Blockchain"]
-  mempoolTab     <- UI.button #. "w3-bar-item w3-button" #+ [string "Mempool"]
-  performanceTab <- UI.button #. "w3-bar-item w3-button" #+ [string "Resources"]
-  ghcRTSTab      <- UI.button #. "w3-bar-item w3-button" #+ [string "GHC RTS"]
-  errorsTab      <- UI.button #. "w3-bar-item w3-button" #+ [string "Errors"]
+  nodeTab       <- UI.button #. "w3-bar-item w3-button" # makeItActive #+ [string "Node"]
+  peersTab      <- UI.button #. "w3-bar-item w3-button" #+ [string "Peers"]
+  blockchainTab <- UI.button #. "w3-bar-item w3-button" #+ [string "Blockchain"]
+  mempoolTab    <- UI.button #. "w3-bar-item w3-button" #+ [string "Mempool"]
+  barsViewTab   <- UI.anchor #. "w3-bar-item w3-button" # set UI.href "#" #+ [UI.string "Bars view"]
+  chartsViewTab <- UI.anchor #. "w3-bar-item w3-button" # set UI.href "#" #+ [UI.string "Charts view"]
+  resourcesTab  <- UI.div #. "w3-dropdown-hover" #+
+                     [ UI.button #. "w3-button select-node-button" #+
+                         [ string "Resources ▾" ]
+                     , UI.div #. "w3-dropdown-content w3-bar-block w3-card-4" #+
+                         [ element barsViewTab
+                         , element chartsViewTab
+                         ]
+                     ]
+  ghcRTSTab     <- UI.button #. "w3-bar-item w3-button" #+ [string "GHC RTS"]
+  errorsTab     <- UI.button #. "w3-bar-item w3-button" #+ [string "Errors"]
 
   let tabs :: [(Element, Element, String)]
       tabs =
-        [ (nodeTab,        nodeTabContent,        "Node")
-        , (peersTab,       peersTabContent,       "Peers")
-        , (blockchainTab,  blockchainTabContent,  "Blockchain")
-        , (mempoolTab,     mempoolTabContent,     "Mempool")
-        , (performanceTab, performanceTabContent, "Resources")
-        , (errorsTab,      errorsTabContent,      "Errors")
-        , (ghcRTSTab,      ghcRTSTabContent,      "GHC RTS")
+        [ (nodeTab,       nodeTabContent,            "Node")
+        , (peersTab,      peersTabContent,           "Peers")
+        , (blockchainTab, blockchainTabContent,      "Blockchain")
+        , (mempoolTab,    mempoolTabContent,         "Mempool")
+        , (barsViewTab,   resourcesTabContentBars,   "Bars view")
+        , (chartsViewTab, resourcesTabContentCharts, "Charts view")
+        , (errorsTab,     errorsTabContent,          "Errors")
+        , (ghcRTSTab,     ghcRTSTabContent,          "GHC RTS")
         ]
 
   registerClicksOnTabs tabs
@@ -577,7 +619,7 @@ mkNodeWidget = do
           , element peersTab
           , element blockchainTab
           , element mempoolTab
-          , element performanceTab
+          , element resourcesTab
           , element errorsTab
           , element ghcRTSTab
           ]
@@ -585,7 +627,8 @@ mkNodeWidget = do
       , element peersTabContent
       , element blockchainTabContent
       , element mempoolTabContent
-      , element performanceTabContent
+      , element resourcesTabContentBars
+      , element resourcesTabContentCharts
       , element errorsTabContent
       , element ghcRTSTabContent
       ]
