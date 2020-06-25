@@ -1,7 +1,9 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Cardano.Benchmarking.GeneratorTx.CLI.Run
   ( runCommand
@@ -10,10 +12,12 @@ module Cardano.Benchmarking.GeneratorTx.CLI.Run
 import           Data.Version
                     ( showVersion )
 import           Data.Text
-                    ( pack )
+                    ( Text, pack )
 import           Paths_cardano_tx_generator
                     ( version )
 import           Cardano.Prelude hiding (option)
+import           Control.Monad
+                    ( fail )
 import           Control.Monad.Trans.Except.Extra
                     ( firstExceptT )
 
@@ -24,18 +28,13 @@ import           Ouroboros.Network.NodeToClient
                     )
 
 import qualified Cardano.Chain.Genesis as Genesis
-import           Cardano.Chain.Update (ApplicationName(..))
 import           Cardano.Config.Logging
                     ( createLoggingFeature )
-import           Cardano.Config.Byron.Protocol
 import           Cardano.Config.Types
-                    ( DbFile(..), ConfigError(..), ConfigYamlFilePath(..)
-                    , CardanoEnvironment(..), NodeByronProtocolConfiguration(..)
-                    , ProtocolFilepaths(..), NodeCLI(..)
-                    , NodeConfiguration(..), NodeProtocolConfiguration(..)
-                    , NodeProtocolMode(..), Protocol, SigningKeyFile(..)
-                    , TopologyFile(..), parseNodeConfigurationFP
-                    )
+import           Cardano.Node.Protocol
+import           Cardano.Node.Protocol.Byron
+import           Cardano.Node.Protocol.Shelley
+import           Cardano.Shell.Types (CardanoFeature (..))
 
 import           Cardano.Benchmarking.GeneratorTx.Error
                     ( TxGenError )
@@ -43,18 +42,16 @@ import           Cardano.Benchmarking.GeneratorTx.CLI.Parsers
                     ( GenerateTxs (..) )
 import           Cardano.Benchmarking.GeneratorTx
                     ( genesisBenchmarkRunner )
-import qualified Ouroboros.Consensus.Cardano as Consensus
-import           Ouroboros.Consensus.Byron.Ledger (ByronBlock)
 
-data RealPBFTError =
-    IncorrectProtocolSpecified !Protocol
-  | FromProtocolError !ByronProtocolInstantiationError
+data ProtocolError =
+    IncorrectProtocolSpecified  !Protocol
+  | ProtocolInstantiationError  !Text
   | GenesisBenchmarkRunnerError !TxGenError
   deriving Show
 
 data CliError =
     GenesisReadError !FilePath !Genesis.GenesisDataError
-  | GenerateTxsError !RealPBFTError
+  | GenerateTxsError !ProtocolError
   | FileNotFoundError !FilePath
   deriving Show
 
@@ -74,8 +71,8 @@ runCommand (GenerateTxs logConfigFp
                         tps
                         initCooldown
                         txAdditionalSize
-                        explorerAPIEndpoint
-                        sigKeysFiles) =
+                        sigKeysFiles
+                        singleThreaded) =
   withIOManagerE $ \iocp -> do
     let ncli = NodeCLI
                { nodeMode = RealProtocolMode
@@ -95,45 +92,50 @@ runCommand (GenerateTxs logConfigFp
                , shutdownIPC = Nothing
                , shutdownOnSlotSynced = NoMaxSlotNo
                }
-    -- Default update value
-    --let update = Update (ApplicationName "cardano-tx-generator") 1 $ LastKnownBlockVersion 0 2 0
-    nc <- liftIO . parseNodeConfigurationFP $ ConfigYamlFilePath logConfigFp
-    let NodeProtocolConfigurationByron byroncfg = ncProtocolConfig nc
-        byroncfg' = byroncfg { npcByronGenesisFile = genFile
-                             --, npcByronApplicationName = Update.ApplicationName "cardano-tx-generator-byron"
-                             }
-        updatedConfiguration = byroncfg'
 
     -- Logging layer
-    (loggingLayer, _) <- firstExceptT (\(ConfigErrorFileNotFound fp) -> FileNotFoundError fp) $
-                             createLoggingFeature
-                                 (pack $ showVersion version)
-                                 NoEnvironment
-                                 ncli
+    (loggingLayer, loggingFeature)
+      <- firstExceptT (\(ConfigErrorFileNotFound fp) -> FileNotFoundError fp) $
+         createLoggingFeature (pack $ showVersion version) NoEnvironment ncli
 
-    protocol :: Consensus.Protocol IO ByronBlock Consensus.ProtocolRealPBFT <- firstExceptT GenerateTxsError $
-        firstExceptT FromProtocolError $
-            mkConsensusProtocolByron
-                updatedConfiguration
-                Nothing
+    nc <- liftIO . parseNodeConfigurationFP $ ConfigYamlFilePath logConfigFp
+
+    protocol -- :: Consensus.Protocol IO blk p
+        <- firstExceptT GenerateTxsError $
+            case ncProtocolConfig nc of
+              NodeProtocolConfigurationByron config -> do
+                let config' = config { npcByronGenesisFile = genFile }
+                firstExceptT (ProtocolInstantiationError . pack . show) $
+                  mkSomeConsensusProtocolByron config' Nothing
+              NodeProtocolConfigurationShelley config -> do
+                let config' = config { npcShelleyGenesisFile = genFile }
+                firstExceptT (ProtocolInstantiationError . pack . show) $
+                  mkSomeConsensusProtocolShelley config' Nothing
+              x -> fail $ "Unsupported protocol: " <> show x
 
     firstExceptT GenerateTxsError $
         firstExceptT GenesisBenchmarkRunnerError $
-            genesisBenchmarkRunner
-                loggingLayer
-                iocp
-                socketFp
-                protocol
-                targetNodeAddresses
-                numOfTxs
-                numOfInsPerTx
-                numOfOutsPerTx
-                feePerTx
-                tps
-                initCooldown
-                txAdditionalSize
-                explorerAPIEndpoint
-                [fp | SigningKeyFile fp <- sigKeysFiles]
+            case protocol of
+              SomeConsensusProtocol p ->
+                genesisBenchmarkRunner
+                  loggingLayer
+                  iocp
+                  socketFp
+                  p
+                  targetNodeAddresses
+                  numOfTxs
+                  numOfInsPerTx
+                  numOfOutsPerTx
+                  feePerTx
+                  tps
+                  initCooldown
+                  txAdditionalSize
+                  [fp | SigningKeyFile fp <- sigKeysFiles]
+                  singleThreaded
+
+    liftIO $ do
+      threadDelay (200*1000) -- Let the logging layer print out everything.
+      featureShutdown loggingFeature
 
 ----------------------------------------------------------------------------
 

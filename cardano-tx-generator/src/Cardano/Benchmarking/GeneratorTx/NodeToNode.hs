@@ -7,9 +7,8 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE TypeSynonymInstances #-}
 
-{-# OPTIONS_GHC -fno-warn-orphans -Wno-unticked-promoted-constructors #-}
+{-# OPTIONS_GHC -fno-warn-orphans -Wno-unticked-promoted-constructors -Wno-all-missed-specialisations #-}
 
 module Cardano.Benchmarking.GeneratorTx.NodeToNode
   ( BenchmarkTxSubmitTracers (..)
@@ -36,12 +35,11 @@ import           Network.Socket (AddrInfo (..), SockAddr)
 import           Control.Tracer (Tracer (..), nullTracer, traceWith)
 import           Cardano.BM.Data.LogItem (LogObject (..), LOContent (..), mkLOMeta)
 import           Cardano.BM.Tracing
-import           Cardano.BM.Data.Tracer (emptyObject, mkObject, trStructured)
+import           Cardano.BM.Data.Tracer (emptyObject, mkObject)
 import           Ouroboros.Consensus.Block
-import           Ouroboros.Consensus.Byron.Ledger (ByronBlock (..))
 import           Ouroboros.Consensus.Config.SupportsNode (getNetworkMagic)
 import           Ouroboros.Consensus.Byron.Ledger.Mempool (GenTx)
-import           Ouroboros.Consensus.Ledger.SupportsMempool (GenTxId)
+import           Ouroboros.Consensus.Ledger.SupportsMempool (GenTxId, TxId)
 import           Ouroboros.Consensus.Node.NetworkProtocolVersion
 import           Ouroboros.Consensus.Node.Run (RunNode)
 import           Ouroboros.Consensus.Network.NodeToNode (Codecs(..), defaultCodecs)
@@ -67,31 +65,13 @@ type SendRecvConnect = WithMuxBearer
                                            NtN.NodeToNodeVersion
                                            CBOR.Term))
 
-instance ToObject SendRecvConnect where
-  toObject MinimalVerbosity _ = emptyObject -- do not log
-  toObject NormalVerbosity (WithMuxBearer _ _) =
-    mkObject ["kind" .= String "SendRecvConnect"]
-  toObject MaximalVerbosity (WithMuxBearer connId _) =
-    mkObject [ "kind"   .= String "SendRecvConnect"
-             , "connId" .= String (T.pack . show $ connId)
-             ]
-
-instance HasSeverityAnnotation SendRecvConnect
-
-instance HasPrivacyAnnotation SendRecvConnect
-
-instance forall m . (m ~ IO) => Transformable Text m SendRecvConnect where
-  -- transform to JSON Object
-  trTransformer = trStructured
-
 --------------------------------------------------------------------------------------
 
 type SendRecvTxSubmission blk = TraceSendRecv (TS.TxSubmission (GenTxId blk) (GenTx blk))
 
-instance ToJSON (GenTxId ByronBlock) where
-  toJSON txId = String (T.pack $ show txId)
-
-instance ToObject (SendRecvTxSubmission ByronBlock) where
+instance ( Show (GenTxId blk)
+         , ToJSON (TxId (GenTx blk)))
+ => ToObject (SendRecvTxSubmission blk) where
   toObject MinimalVerbosity _ = emptyObject -- do not log
   toObject NormalVerbosity t =
     case t of
@@ -114,7 +94,7 @@ instance ToObject (SendRecvTxSubmission ByronBlock) where
           TS.MsgKThxBye                            -> mkObject ["kind" .= String "MsgKThxBye"]
           TS.MsgDone                               -> emptyObject -- No useful information.
 
-  toObject MaximalVerbosity t = 
+  toObject MaximalVerbosity t =
     case t of
       TraceSendMsg (AnyMessage msg) ->
         case msg of
@@ -166,11 +146,13 @@ instance ToObject (SendRecvTxSubmission ByronBlock) where
             mkObject [ "kind" .= String "MsgKThxBye" ]
           TS.MsgDone -> emptyObject -- No useful information.
 
-instance HasSeverityAnnotation (SendRecvTxSubmission ByronBlock)
+instance HasSeverityAnnotation (SendRecvTxSubmission blk)
 
-instance HasPrivacyAnnotation (SendRecvTxSubmission ByronBlock)
+instance HasPrivacyAnnotation (SendRecvTxSubmission blk)
 
-instance Transformable Text IO (SendRecvTxSubmission ByronBlock) where
+instance ( Show (GenTxId blk)
+         , ToJSON (TxId (GenTx blk)))
+ => Transformable Text IO (SendRecvTxSubmission blk) where
   -- transform to JSON Object
   trTransformer verb tr = Tracer $ \arg -> do
     currentTime <- getCurrentTime
