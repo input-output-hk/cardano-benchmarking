@@ -6,8 +6,10 @@ packages:
   - cardano-tx-generator
   - bm-timeline
 
-  - ext/cardano-node.git/cardano-cli
-  - ext/cardano-node.git/cardano-node
+  # references to git submodules only in development
+
+  #- ext/cardano-node.git/cardano-cli
+  #- ext/cardano-node.git/cardano-node
 
   #- ext/cardano-db-sync.git/cardano-db-sync
 
@@ -24,8 +26,8 @@ packages:
 local-bin-path: bin
 
 extra-deps:
-  - ext/cardano-node.git/cardano-api
-  - ext/cardano-node.git/cardano-config
+  #- ext/cardano-node.git/cardano-api
+  #- ext/cardano-node.git/cardano-config
 
   #- ext/cardano-db-sync.git/cardano-db
 
@@ -96,13 +98,13 @@ extra-deps:
       - .
       - test
 
-  #- git: https://github.com/input-output-hk/cardano-node
-  #  commit: 46f296f8a9f3f497d9bd41e20c8398d2b5730c86
-  #  subdirs:
-  #    - cardano-api
-  #    - cardano-config
-  #    - cardano-cli
-  #    - cardano-node
+  - git: https://github.com/input-output-hk/cardano-node
+    commit: 46f296f8a9f3f497d9bd41e20c8398d2b5730c86
+    subdirs:
+      - cardano-api
+      - cardano-config
+      - cardano-cli
+      - cardano-node
 
   #- git: https://github.com/input-output-hk/cardano-db-sync
   #  commit: 538fce2c9cb711e853cf15f22f37f55a73e4f1b4
@@ -206,6 +208,8 @@ extra-deps:
   #      - http-client
 
 flags:
+  # do not include the external, patched libsodium,
+  # but have the integrated C code compiled instead.
   cardano-crypto-praos:
     external-libsodium-vrf: false
 
