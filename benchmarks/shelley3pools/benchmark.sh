@@ -4,8 +4,8 @@
 BASEDIR=$(realpath $(dirname "$0"))
 . "${BASEDIR}"/../../scripts/common.sh
 
-##prebuild 'cardano-tx-generator' || exit 1
-prebuild 'cardano-rt-view' || exit 1
+prebuild 'cardano-tx-generator' || exit 1
+prebuild 'cardano-rt-view-service' || exit 1
 prebuild 'cardano-node' || exit 1
 prebuild 'cardano-cli' || exit 1
 
@@ -25,7 +25,7 @@ set -e
 
 # 0 cleanup
 rm -rf ./db/* ./logs/*
-mkdir -p logs/sockets
+mkdir -p db logs/sockets
 
 # 1 prepare genesis
 ./prepare_genesis.sh
@@ -42,10 +42,15 @@ tmux new-window -n Nodes \
              "${TMUX_ENV_PASSTHROUGH[*]} ./run-3pools.sh; $SHELL"
 sleep 2
 
+tmux select-window -t :0
+echo -n "Waiting for node socket to appear ($BASEDIR/logs/sockets/1): "
+while test ! -e $BASEDIR/logs/sockets/1
+do echo -n "."; sleep 1; done; echo
+
 # 4 run tx-gen
 tmux select-window -t :0
 tmux new-window -n TxGen \
-             "sleep 7; ${TMUX_ENV_PASSTHROUGH[*]} ./run-tx-generator.sh; $SHELL"
+             "${TMUX_ENV_PASSTHROUGH[*]} ./run-tx-generator.sh; $SHELL"
 sleep 1
 
 # 5 send delegation transactions

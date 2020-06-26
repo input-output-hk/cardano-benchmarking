@@ -24,6 +24,9 @@ STAKEPOOLS="1 2"
 # the number of transactions to enter into the chain
 numtx=1000
 
+# inter-phase cooldown, seconds
+init_cooldown=5
+
 # the transactions are sent to these nodes
 targetnodes="0 1 2"
 
