@@ -31,6 +31,7 @@ TMUX_ENV_PASSTHROUGH=(
 tmux split-window -v
 tmux split-window -h
 
+mkdir -p logs
 for N in 1 2 3
 do tmux select-pane -t $((N - 1))
    tmux send-keys \
@@ -39,6 +40,7 @@ do tmux select-pane -t $((N - 1))
       cd '${BASEDIR}';
       . ${__COMMON_SRCROOT}/scripts/lib.sh;
       . ${__COMMON_SRCROOT}/scripts/lib-cli.sh;
+      . ${__COMMON_SRCROOT}/scripts/lib-nix.sh;
       . ${__COMMON_SRCROOT}/scripts/lib-node.sh;
 
       ${NODECMD} run \

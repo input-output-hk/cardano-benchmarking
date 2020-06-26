@@ -148,7 +148,7 @@ TraceBlockFetchClient: False
 TraceBlockFetchDecisions: True
 
 # Trace BlockFetch protocol messages.
-TraceBlockFetchProtocol: False
+TraceBlockFetchProtocol: True
 
 # Serialised Trace BlockFetch protocol messages.
 TraceBlockFetchProtocolSerialised: False

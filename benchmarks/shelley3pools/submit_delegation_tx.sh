@@ -4,7 +4,7 @@ BASEDIR=$(realpath $(dirname "$0"))
 . ${BASEDIR}/../../scripts/common.sh
 . ${BASEDIR}/configuration/parameters
 
-CLICMD=${CLICMD:-"stack --nix exec cardano-cli --"}
+CLICMD=${CLICMD:-"run cardano-cli"}
 
 # === submit delegation transactions ===
 

@@ -3,7 +3,7 @@
 . configuration/parameters
 
 NUM_OF_ADDRESSES=${NUM_OF_ADDRESSES:-3}
-CLICMD="../../bin/cardano-cli"
+CLICMD=${CLICMD:-"run cardano-cli"}
 
 WORKDIR=./tmp
 
