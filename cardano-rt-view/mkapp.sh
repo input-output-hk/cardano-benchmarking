@@ -49,22 +49,12 @@ patchelf --set-rpath lib/ ${PROGNAME}
 # copy resources
 cp ../resources/cardano-rt-view.desktop .
 cp ../resources/cardano-rt-view.png .
-cp ../resources/rt-view.yaml .
+cp ../resources/rt-view.yaml0 .
 
 cp -rv ../static .
 
-# create start script
-
-cat - > AppRun <<EOF
-#!/bin/sh
-
-cd "$(dirname "$0")"
-exec ./cardano-rt-view-service --port 8024 \
-  --config rt-view.yaml \
-  --static static
-EOF
-
-chmod 755 AppRun
+cp ../resources/AppRun .
+chmod 700 AppRun
 
 # create appimage
 cd ..
