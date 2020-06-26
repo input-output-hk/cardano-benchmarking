@@ -112,19 +112,19 @@ traceForwardTo:
 # be specified in the defaults below or overidden on a per-scribe basis here.
 setupScribes:
   - scKind: FileSK
-    scName: "logs/node3.json"
+    scName: "logs/node-3.json"
     scFormat: ScJson
   - scKind: FileSK
-    scName: "logs/node3.log"
+    scName: "logs/node-3.log"
     scFormat: ScText
 
 # For the Katip logging backend this specifies the default scribes that trace
 # output is sent to if it is not configured to be sent to other scribes.
 defaultScribes:
   - - FileSK
-    - "logs/node3.json"
+    - "logs/node-3.json"
   - - FileSK
-    - "logs/node3.log"
+    - "logs/node-3.log"
 
 # The default file rotation settings for katip scribes, unless overridden
 # in the setupScribes above for specific scribes.
@@ -266,7 +266,7 @@ options:
   # type and its name, separated by "::":
   mapScribes:
     cardano.node-metrics:
-      - "FileSK::logs/node3.json"
+      - "FileSK::logs/node-3.json"
 
   # apply a filter on message severity on messages in a specific named context.
   # this filter is applied additionally to the global 'minSeverity' and thus

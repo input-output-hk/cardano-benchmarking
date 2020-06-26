@@ -2,8 +2,11 @@
 # the number of transactions to enter into the chain
 numtx=1000
 
+# inter-phase cooldown, seconds
+init_cooldown=20
+
 # the transactions are sent to these nodes
-targetnodes="0 1 2"
+targetnodes="1 2 3"
 
 # add bytes of data to every transaction
 addsizetx=0
@@ -19,5 +22,3 @@ txfee=1000000
 
 # the transactions per seconds that the generator tries to achieve
 tps=10
-
-

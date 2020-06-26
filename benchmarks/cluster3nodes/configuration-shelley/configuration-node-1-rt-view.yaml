@@ -75,12 +75,14 @@ defaultBackends:
 # EKG is a simple metrics monitoring system. Uncomment the following to enable
 # this backend and listen on the given local port and point your web browser to
 # http://localhost:12788/
-# hasEKG: 12788
+hasEKG: 12788
 
 # The Prometheus monitoring system exports EKG metrics. Uncomment the following
 # to listen on the given port. Output is provided on
-# http://localhost:12789/metrics
-# hasPrometheus: 12789
+# http://localhost:12798/metrics
+hasPrometheus:
+  - "127.0.0.1"
+  - 12798
 
 # To enable the 'TraceForwarder' backend, uncomment the following setting. Log
 # items are then forwarded based on an entry in 'mapBackends' to a separate
@@ -112,14 +114,14 @@ traceForwardTo:
 # be specified in the defaults below or overidden on a per-scribe basis here.
 setupScribes:
   - scKind: FileSK
-    scName: "logs/node2.json"
+    scName: "logs/node-1.json"
     scFormat: ScJson
 
 # For the Katip logging backend this specifies the default scribes that trace
 # output is sent to if it is not configured to be sent to other scribes.
 defaultScribes:
   - - FileSK
-    - "logs/node2.json"
+    - "logs/node-1.json"
 
 # The default file rotation settings for katip scribes, unless overridden
 # in the setupScribes above for specific scribes.
@@ -136,14 +138,14 @@ rotation:
 # efficient at filtering out unwanted trace output.
 
 # Trace BlockFetch client.
-TraceBlockFetchClient: False
+TraceBlockFetchClient: True
 
 # Trace BlockFetch decisions made by the BlockFetch client.
 # needed to display "peers" and their block height in LiveView
 TraceBlockFetchDecisions: True
 
 # Trace BlockFetch protocol messages.
-TraceBlockFetchProtocol: False
+TraceBlockFetchProtocol: True
 
 # Serialised Trace BlockFetch protocol messages.
 TraceBlockFetchProtocolSerialised: False
@@ -212,8 +214,7 @@ TraceTxInbound: False
 TraceTxOutbound: False
 
 # Trace TxSubmission protocol messages.
-TraceTxSubmissionProtocol: False
-
+TraceTxSubmissionProtocol: True
 
 ##### Fine grained logging control #####
 
@@ -261,7 +262,7 @@ options:
   # type and its name, separated by "::":
   mapScribes:
     cardano.node-metrics:
-      - "FileSK::logs/node2.json"
+      - "FileSK::logs/node-1.json"
 
   # apply a filter on message severity on messages in a specific named context.
   # this filter is applied additionally to the global 'minSeverity' and thus

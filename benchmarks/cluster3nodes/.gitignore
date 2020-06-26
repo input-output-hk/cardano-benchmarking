@@ -6,4 +6,5 @@
 /configuration-*/pgpass
 /configuration-*/genesis/
 /configuration-*/[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]/
+/tmp/
 timeline*/

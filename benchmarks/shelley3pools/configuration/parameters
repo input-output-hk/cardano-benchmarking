@@ -13,7 +13,7 @@ GEN_DECENTRALISATIONPARAM="0.5"
 MAGIC=42
 
 # total supply of Lovelaces in genesis (divisible by $NNODES)
-SUPPLY=100000000002
+SUPPLY=1000000000002
 
 # how many nodes to start
 NNODES=3
@@ -22,7 +22,7 @@ NNODES=3
 STAKEPOOLS="1 2"
 
 # the number of transactions to enter into the chain
-numtx=1000
+numtx=20000
 
 # inter-phase cooldown, seconds
 init_cooldown=5

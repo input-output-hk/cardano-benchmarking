@@ -33,7 +33,6 @@ PORTBASE=3000
 HOSTADDR=127.0.0.1
 
 ### prep cli arguments
-
 function nodeargs_common () {
         mkdir -p "${DBDIR}/$1" "${SOCKETDIR}"
         printf -- "--topology ${CONFIGDIR}/topology-node-$1.json "
@@ -46,14 +45,14 @@ function nodeargs_common () {
 
 function nodeargs_byron () {
         nodeargs_common "$1"
-        printf -- "--signing-key            ${GENESISDIR}/delegate-keys.%03d.key " "$1"
+        printf -- "--signing-key            ${GENESISDIR}/delegate-keys.%03d.key "    "$1"
         printf -- "--delegation-certificate ${GENESISDIR}/delegation-cert.%03d.json " "$1"
 }
 
 function nodeargs_shelley () {
         nodeargs_common "$1"
+        printf -- "--shelley-vrf-key ${GENESISDIR}/delegate-keys/delegate$1.vrf.skey "
         printf -- "--shelley-kes-key ${GENESISDIR}/node$1/kes.skey "
-        printf -- "--shelley-vrf-key ${GENESISDIR}/node$1/vrf.skey "
         printf -- "--shelley-operational-certificate ${GENESISDIR}/node$1/node.cert "
 }
 
@@ -69,8 +68,8 @@ TMUX_ENV_PASSTHROUGH=(
 tmux split-window -v
 tmux split-window -h
 
-for i in $(seq ${CLUSTER_INDEX_START:-0} $((${CLUSTER_INDEX_START:-0} + 2)))
-do tmux select-pane -t $((i - ${CLUSTER_INDEX_START:-0}))
+for i in $(seq ${CLUSTER_INDEX_START:-1} $((${CLUSTER_INDEX_START:-1} + 2)))
+do tmux select-pane -t $((i - ${CLUSTER_INDEX_START:-1}))
    tmux send-keys \
      "${TMUX_ENV_PASSTHROUGH[*]}
 

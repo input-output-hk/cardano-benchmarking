@@ -23,8 +23,13 @@ stack.yaml.lock
 /db
 /logs
 /profile
+*.eventlog
+*.hp
+*.prof
+*.stats
 
 benchmark-results.log
 launch_node
 result*
 state-*
+exec.log

@@ -40,7 +40,6 @@ ApplicationVersion: 1
 # uses standard output, optionally with log output. The LiveView is a text
 # console on Linux and Mac OSX with a live view of various node metrics.
 # When LiveView is used logging output to 'stdout' is automatically disabled.
-#ViewMode: SimpleView
 ViewMode: LiveView
 
 # Enble or disable logging overall
@@ -64,13 +63,11 @@ TracingVerbosity: MaximalVerbosity
 # configuration below. The logging backend is called Katip.
 setupBackends:
   - KatipBK
-  - TraceForwarderBK
 
 # This specifies the default backends that trace output is sent to if it
 # is not specifically configured to be sent to other backends.
 defaultBackends:
   - KatipBK
-  - TraceForwarderBK
 
 # EKG is a simple metrics monitoring system. Uncomment the following to enable
 # this backend and listen on the given local port and point your web browser to
@@ -86,10 +83,10 @@ defaultBackends:
 # items are then forwarded based on an entry in 'mapBackends' to a separate
 # process running a 'TraceAcceptor'.
 # Example using UNIX pipes:
-traceForwardTo:
-   tag: RemotePipe
-   contents: "logs/sockets/pool2"
-# 
+# traceForwardTo:
+#    tag: RemotePipe
+#    contents: "logs/sockets/3"
+
 # Example using Windows named pipes:
 # traceForwardTo:
 #   tag: RemotePipe
@@ -112,25 +109,25 @@ traceForwardTo:
 # be specified in the defaults below or overidden on a per-scribe basis here.
 setupScribes:
   - scKind: FileSK
-    scName: "logs/node-2.json"
+    scName: "logs/node-3.json"
     scFormat: ScJson
-  - scKind: FileSK
-    scName: "logs/node-2.log"
-    scFormat: ScText
+  - scKind: StdoutSK
+    scName: "stdout"
+    scFormat: ScJson
 
 # For the Katip logging backend this specifies the default scribes that trace
 # output is sent to if it is not configured to be sent to other scribes.
 defaultScribes:
   - - FileSK
-    - "logs/node-2.json"
-  - - FileSK
-    - "logs/node-2.log"
+    - "logs/node-3.json"
+  - - StdoutSK
+    - "stdout"
 
 # The default file rotation settings for katip scribes, unless overridden
 # in the setupScribes above for specific scribes.
 rotation:
   rpLogLimitBytes: 15000000
-  rpKeepFilesNum:  100
+  rpKeepFilesNum:  3
   rpMaxAgeHours:   24
 
 
@@ -266,7 +263,7 @@ options:
   # type and its name, separated by "::":
   mapScribes:
     cardano.node-metrics:
-      - "FileSK::logs/node-2.json"
+      - "FileSK::logs/node-3.json"
 
   # apply a filter on message severity on messages in a specific named context.
   # this filter is applied additionally to the global 'minSeverity' and thus

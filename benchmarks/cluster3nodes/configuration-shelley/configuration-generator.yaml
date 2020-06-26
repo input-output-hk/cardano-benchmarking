@@ -24,18 +24,19 @@ defaultBackends:
 # here we set up outputs of logging in 'katip':
 setupScribes:
   - scKind: FileSK
-    scName: "logs/node-0.json"
+    scName: "logs/generator.json"
     scFormat: ScJson
   - scKind: StdoutSK
-    scName: "stdout"
-    scFormat: ScJson
+    scName: stdout
+    scFormat: ScText
+    scRotation: null
 
 # if not indicated otherwise, then log output is directed to this:
 defaultScribes:
   - - FileSK
-    - "logs/node-0.json"
-  # - - StdoutSK
-  #   - "stdout"
+    - "logs/generator.json"
+  - - StdoutSK
+    - stdout
 
 # more options which can be passed as key-value pairs:
 options:
@@ -79,13 +80,13 @@ options:
 
 
 NodeId:
-Protocol: RealPBFT
+Protocol: TPraos
 GenesisFile: genesis/genesis.json
 NumCoreNodes: 1
 RequiresNetworkMagic: RequiresMagic
 PBftSignatureThreshold:
 TurnOnLogging: True
-ViewMode: LiveView
+ViewMode: SimpleView
 TurnOnLogMetrics: False
 SocketPath:
 
@@ -104,28 +105,76 @@ LastKnownBlockVersion-Alt: 0
 # MinimalVerbosity: Minimal level of the rendering of captured items
 # MaximalVerbosity: Maximal level of the rendering of captured items
 # NormalVerbosity: the default level of the rendering of captured items
-TracingVerbosity: MaximalVerbosity
+TracingVerbosity: NormalVerbosity
 
-TraceBlockFetchClient: True
-TraceBlockFetchDecisions: True
-TraceBlockFetchProtocol: True
+# Trace BlockFetch client.
+TraceBlockFetchClient: False
+
+# Trace BlockFetch decisions made by the BlockFetch client.
+TraceBlockFetchDecisions: False
+
+# Trace BlockFetch protocol messages.
+TraceBlockFetchProtocol: False
+
+# Serialised Trace BlockFetch protocol messages.
 TraceBlockFetchProtocolSerialised: False
+
+# Trace BlockFetch server.
 TraceBlockFetchServer: False
-TraceChainDb: True
+
+# Verbose tracer of ChainDB
+TraceChainDb: False
+
+# Trace ChainSync client.
 TraceChainSyncClient: False
+
+# Trace ChainSync server (blocks).
 TraceChainSyncBlockServer: False
+
+# Trace ChainSync server (headers)
 TraceChainSyncHeaderServer: False
+
+# Trace ChainSync protocol messages.
 TraceChainSyncProtocol: False
+
+# Trace DNS Resolver messages.
 TraceDNSResolver: False
+
+# Trace DNS Subscription messages.
 TraceDNSSubscription: False
+
+# Trace error policy resolution.
 TraceErrorPolicy: False
-TraceForge: True
+
+# Trace local error policy resolution.
+TraceLocalErrorPolicy: True
+
+# Trace block forging.
+TraceForge: False
+
+# Trace IP Subscription messages.
 TraceIpSubscription: False
-TraceLocalChainSyncProtocol: True
-TraceLocalTxSubmissionProtocol: True
-TraceLocalTxSubmissionServer: True
-TraceMempool: True
+
+# Trace local ChainSync protocol messages.
+TraceLocalChainSyncProtocol: False
+
+# Trace local TxSubmission protocol messages.
+TraceLocalTxSubmissionProtocol: False
+
+# Trace local TxSubmission server.
+TraceLocalTxSubmissionServer: False
+
+# Trace mempool.
+TraceMempool: False
+
+# Trace Mux Events
 TraceMux: False
-TraceTxInbound: True
-TraceTxOutbound: True
-TraceTxSubmissionProtocol: True
+
+# Trace TxSubmission server (inbound transactions).
+TraceTxInbound: False
+
+# Trace TxSubmission client (outbound transactions).
+TraceTxOutbound: False
+
+# Trace TxSubmission protocol messages.
+TraceTxSubmissionProtocol: False

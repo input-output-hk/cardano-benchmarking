@@ -29,6 +29,12 @@ nix_exe_cache_var() {
         echo nix_executable_cache_${pkg//-/_}_${exe//-/_}
 }
 
+nix_cache_drop() {
+        for cache_var in ${!nix_executable_cache_*}
+        do unset ${nix_cache_write_ref}
+        done
+}
+
 nix_cache_passthrough() {
         local cache_var
         for cache_var in ${!nix_executable_cache_*}

@@ -54,8 +54,8 @@ extract_sends() {
 extract_recvs() {
         jq '
           select (.data.kind == "Recv" and .data.msg.kind == "MsgBlock")
-        | .at as $at       # bind timestamp
-        | .data.msg.txids  # narrow to the txid list
+        | .at as $at           # bind timestamp
+        | .data.msg."tx ids"   # narrow to the txid list
         | map ( .[5:]          # cut the "txid: txid: " prefix
               | "\(.);\($at)") # produce the resulting string
         | .[]              # merge string lists over all messages
@@ -93,6 +93,11 @@ extract_sends 'TraceBenchTxSubServDrop' "${sender_logs[@]}" |
         sort -k 2 -t ';'                   > dtx_dtime.2     < dtx_dtime.1
 count_dropped="$(cat dtx_dtime.1 | wc -l)"
 
+extract_sends 'TraceBenchTxSubServUnav' "${sender_logs[@]}" |
+        sort -k 1 -t ';'                   > utx_utime.1
+        sort -k 2 -t ';'                   > utx_utime.2     < utx_utime.1
+count_unav="$(cat utx_utime.1 | wc -l)"
+
 extract_sends 'TraceBenchTxSubServReq' "${sender_logs[@]}" |
         sort -k 1 -t ';'                   > stx_stime.1
         sort -k 2 -t ';'                   > stx_stime.2     < stx_stime.1
@@ -114,6 +119,7 @@ cat <<EOF
 -- Txs sent:             ${count_sent}
 -- Txs acked:            ${count_acked}
 -- Txs dropped:          ${count_dropped}
+-- Txs unavailable:      ${count_unav}
 -- Unique Txs received:  ${count_recvd}
 -- Announces:            analysis/atx_atime.1
 -- Sends:                analysis/stx_stime.1
@@ -153,6 +159,8 @@ jq > tx-stats.json --null-input '
 , "tx_seen_in_blocks": '${count_recvd}'
 , "tx_missing":        '${count_missing}'
 , "tx_martian":        '${count_martian}'
+, "tx_dropped":        '${count_dropped}'
+, "tx_unavailable":    '${count_unav}'
 }'
 
 # count distinct tx receipt stamps -- which essentially translates to blocks nos

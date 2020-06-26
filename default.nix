@@ -25,6 +25,7 @@ let
     inherit
       haskellPackages
       cardanoBenchmarkingHaskellPackages
+      cardanoBenchmarkingProfiledHaskellPackages
       cardanoDbSyncHaskellPackages cardanoDbSync
       cardanoNodeHaskellPackages cardanoNode;
 

@@ -41,15 +41,15 @@ traceAcceptAt:
   - nodeName: "pool1"
     remoteAddr:
       tag: RemotePipe
-      contents: "logs/sockets/0"
+      contents: "logs/sockets/1"
   - nodeName: "pool2"
     remoteAddr:
       tag: RemotePipe
-      contents: "logs/sockets/1"
+      contents: "logs/sockets/2"
   - nodeName: "pool3"
     remoteAddr:
       tag: RemotePipe
-      contents: "logs/sockets/2"
+      contents: "logs/sockets/3"
   - nodeName: "pool4"
     remoteAddr:
       tag: RemotePipe

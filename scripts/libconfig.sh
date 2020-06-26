@@ -28,7 +28,6 @@ CABALEXE_TO_CABALPKG=(
         [cardano-rt-view]='cardano-rt-view'
         [cardano-rt-view-service]='cardano-rt-view'
         [cardano-tx-generator]='cardano-tx-generator'
-        [cardano-tx-generator-byron]='cardano-tx-generator'
         [bm-timeline]='bm-timeline'
         [reconstruct-timeline]='bm-timeline'
 )
@@ -36,3 +35,16 @@ CABALEXE_TO_CABALPKG=(
 declare -A CABALEXE_TO_LIBOPTS
 CABALEXE_TO_LIBOPTS=(
 )
+
+## Handle switching to profiled scenarios.
+libconfig_profiling_hook() {
+        oprint "WARNING:  not all package sets available in profiled variant, see 'libconfig.sh'"
+        CABALPKG_TO_HASKELLNIX_PKGSET['cardano-tx-generator']='cardanoBenchmarkingProfiledHaskellPackages'
+}
+
+## Allow exception tracing.
+libconfig_xc_hook() {
+        libconfig_profiling_hook
+
+        CABALEXE_TO_LIBOPTS['cardano-tx-generator']='--xc'
+}

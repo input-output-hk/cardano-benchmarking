@@ -1,4 +1,5 @@
-MODE ?= stack
+MODE ?= cabal
+ERA ?= shelley
 
 all: help
 
@@ -15,8 +16,7 @@ help:
 	@echo
 	@echo "Run:"
 	@echo
-	@echo "  cluster3nodes (+ aliases: nix cabal stack cabal-in-nix-shell)"
-	@echo "  analyse"
+	@echo "  byron shelley"
 	@echo
 	@echo "Clean:"
 	@echo
@@ -37,13 +37,24 @@ build-stack:
 nix:                      MODE=nix
 cabal:                    MODE=cabal
 stack:                    MODE=stack
-cabal-in-nix-shell cabsh: MODE=cabal
-cabal-in-nix-shell cabsh: PRELUDE=sed -ni '1,/--- 8< ---/ p' "$$(git rev-parse --show-toplevel)"/cabal.project
-nix cabal stack cabsh cabal-in-shell run-cluster3nodes run: cluster3nodes
+cabal-in-nix-shell cabsh byron shelley: MODE=cabal
+byron:                    ERA=byron
+shelley:                  ERA=shelley
+
+cabal-in-nix-shell cabsh: PRELUDE=${NIX_CABAL_SETUP}
+nix cabal stack cabsh cabal-in-shell byron shelley: cluster3nodes
 
 cluster3nodes:
 	$(or ${PRELUDE},true)
-	./benchmarks/cluster3nodes/start.sh --${MODE}
+	./benchmarks/cluster3nodes/start.sh --${MODE} --${ERA}
+
+NIX_CABAL_SETUP := sed -ni '1,/--- 8< ---/ p' "$$(git rev-parse --show-toplevel)"/cabal.project
+
+cabal-nix-setup:
+	${NIX_CABAL_SETUP}
+
+cabal-restore:
+	git checkout HEAD "$$(git rev-parse --show-toplevel)"/cabal.project
 
 analyse:
 	cd benchmarks/cluster3nodes && ../../scripts/analyse.sh

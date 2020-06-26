@@ -13,23 +13,25 @@ run_cluster_nodes=1
 run_second_cluster=1
 run_explorer=0
 run_tx_generator=1
+do_delegate=0
 
 while test $# -ge 1
 do case "$1" in
            --no-genesis )        create_new_genesis=0;;
            --explorer )          clean_explorer_db=1; run_explorer=1;;
+           --rtview )            run_rt_view_service=1;;
            --no-rtview )         run_rt_view_service=0;;
+           --second-cluster )    run_second_cluster=1;;
            --no-second-cluster ) run_second_cluster=0;;
            --no-generator )      run_tx_generator=0;;
+           --delegate )          do_delegate=1;;
+           --no-delegate )       do_delegate=0;;
            * ) break;; esac; shift; done
 
 case "$era" in
         shelley )
                 ## For now, those are not supported.
-                run_tx_generator=0
                 run_second_cluster=0;;
-        byron )
-                prebuild 'cardano-tx-generator-'$era || exit 1;;
 esac
 
 ### >>>>>> do not change anything below this point
@@ -43,6 +45,8 @@ TMUX_ENV_PASSTHROUGH=(
          "export DEFAULT_DEBUG=${DEFAULT_DEBUG};"
          "export DEFAULT_VERBOSE=${DEFAULT_VERBOSE};"
          "export DEFAULT_TRACE=${DEFAULT_TRACE};"
+         "export debug=${debug} verbose=${verbose} trace=${trace};"
+         "export profile=${profile} xc=${xc};"
          "$(nix_cache_passthrough)"
 )
 ## ^^ Keep in sync with run-3node-cluster.sh
@@ -51,13 +55,14 @@ TMUX_ENV_PASSTHROUGH=(
 rm -rf ./db/ ./sockets/ ./logs/
 mkdir -p logs sockets logs/sockets
 
-# 1) generate new genesis
+# Generate new genesis
 if [ $create_new_genesis -eq 1 ]; then
-  ./genesis-$era.sh
-fi
-set -x
+  if ! ./genesis-$era.sh
+  then echo -e "--( FATAL:  genesis generation failed\nPress Enter to exit."
+       read
+       exit 1; fi; fi
 
-# 2) prepare SQL database
+# Prepare SQL database
 # (assuming db user has been defined in the database system)
 
 if [ $clean_explorer_db -eq 1 ]; then
@@ -66,7 +71,7 @@ fi
 
 node_mode=local
 
-# 3) run rt-view service. If it enabled, it should be launched BEFORE
+# Run rt-view service. If it enabled, it should be launched BEFORE
 # the cluster, to avoid TraceForwarderConnectionError.
 if [ $run_rt_view_service -eq 1 ]; then
   node_mode=rt-view
@@ -77,46 +82,49 @@ if [ $run_rt_view_service -eq 1 ]; then
 fi
 
 
-# 4a) run cluster in tmux
+# Run cluster in tmux
 if [ $run_cluster_nodes -eq 1 ]; then
   tmux select-window -t :0
   tmux new-window -n Nodes1 \
                "${TMUX_ENV_PASSTHROUGH[*]} ./run-3nodes.sh ${node_mode}; $SHELL"
-  sleep 2
 fi
 
 
-# 4b) run cluster in tmux
+# Run cluster in tmux
 if [ $run_second_cluster -eq 1 ]; then
+  sleep 1
   tmux select-window -t :0
   tmux new-window -n Nodes2 \
-               "${TMUX_ENV_PASSTHROUGH[*]} export CLUSTER_INDEX_START=3; ./run-3nodes.sh ${node_mode}; $SHELL"
-  sleep 2
+               "${TMUX_ENV_PASSTHROUGH[*]} export CLUSTER_INDEX_START=4; ./run-3nodes.sh ${node_mode}; $SHELL"
 fi
 
+sleep 1
+tmux select-window -t :0
+echo -n "Waiting for node socket to appear ($BASEDIR/sockets/1): "
+while test ! -e $BASEDIR/sockets/1
+do echo -n "."; sleep 1; done; echo
 
-# 5) run transaction generator
+# Delegate
+if [ $era = 'shelley' -a $do_delegate -eq 1 ]; then
+  tmux select-window -t :0
+  tmux new-window -n Delegation \
+               "${TMUX_ENV_PASSTHROUGH[*]} ./submit_delegation_tx.sh; $SHELL"
+  sleep 5
+fi
+
+# Run transaction generator
 if [ $run_tx_generator -eq 1 ]; then
   tmux select-window -t :0
   tmux new-window -n TxGen \
-               "${TMUX_ENV_PASSTHROUGH[*]} sleep 5; ./run_tx_generator.sh; $SHELL"
-  sleep 6
+               "${TMUX_ENV_PASSTHROUGH[*]} ./run_tx_generator.sh 2>&1 | tee $BASEDIR/logs/generator.stderr; $SHELL"
 fi
 
-
-# 6) run explorer
+# Run explorer
 if [ $run_explorer -eq 1 ]; then
   tmux select-window -t :0
   tmux new-window -n Explorer \
-               "${TMUX_ENV_PASSTHROUGH[*]} sleep 1; ./run_explorer.sh; $SHELL"
+               "sleep 1; ${TMUX_ENV_PASSTHROUGH[*]} ./run_explorer.sh; $SHELL"
   sleep 2
-fi
-
-# 7) delegate
-if [ $era = 'shelley' ]; then
-  tmux select-window -t :0
-  tmux new-window -n Delegation \
-               "${TMUX_ENV_PASSTHROUGH[*]} sleep 45; ./submit_delegation_tx.sh; $SHELL"
 fi
 
 if [ $run_tx_generator -eq 1 ]; then

@@ -40,7 +40,6 @@ ApplicationVersion: 1
 # uses standard output, optionally with log output. The LiveView is a text
 # console on Linux and Mac OSX with a live view of various node metrics.
 # When LiveView is used logging output to 'stdout' is automatically disabled.
-#ViewMode: SimpleView
 ViewMode: LiveView
 
 # Enble or disable logging overall
@@ -64,32 +63,32 @@ TracingVerbosity: MaximalVerbosity
 # configuration below. The logging backend is called Katip.
 setupBackends:
   - KatipBK
-  - TraceForwarderBK
 
 # This specifies the default backends that trace output is sent to if it
 # is not specifically configured to be sent to other backends.
 defaultBackends:
   - KatipBK
-  - TraceForwarderBK
 
 # EKG is a simple metrics monitoring system. Uncomment the following to enable
 # this backend and listen on the given local port and point your web browser to
 # http://localhost:12788/
-# hasEKG: 12788
+hasEKG: 12788
 
 # The Prometheus monitoring system exports EKG metrics. Uncomment the following
 # to listen on the given port. Output is provided on
-# http://localhost:12789/metrics
-# hasPrometheus: 12789
+# http://localhost:12798/metrics
+hasPrometheus:
+  - "127.0.0.1"
+  - 12798
 
 # To enable the 'TraceForwarder' backend, uncomment the following setting. Log
 # items are then forwarded based on an entry in 'mapBackends' to a separate
 # process running a 'TraceAcceptor'.
 # Example using UNIX pipes:
-traceForwardTo:
-   tag: RemotePipe
-   contents: "logs/sockets/pool2"
-# 
+# traceForwardTo:
+#    tag: RemotePipe
+#    contents: "logs/sockets/1"
+#
 # Example using Windows named pipes:
 # traceForwardTo:
 #   tag: RemotePipe
@@ -112,25 +111,25 @@ traceForwardTo:
 # be specified in the defaults below or overidden on a per-scribe basis here.
 setupScribes:
   - scKind: FileSK
-    scName: "logs/node-2.json"
+    scName: "logs/node-1.json"
     scFormat: ScJson
-  - scKind: FileSK
-    scName: "logs/node-2.log"
-    scFormat: ScText
+  - scKind: StdoutSK
+    scName: "stdout"
+    scFormat: ScJson
 
 # For the Katip logging backend this specifies the default scribes that trace
 # output is sent to if it is not configured to be sent to other scribes.
 defaultScribes:
   - - FileSK
-    - "logs/node-2.json"
-  - - FileSK
-    - "logs/node-2.log"
+    - "logs/node-1.json"
+  - - StdoutSK
+    - "stdout"
 
 # The default file rotation settings for katip scribes, unless overridden
 # in the setupScribes above for specific scribes.
 rotation:
   rpLogLimitBytes: 15000000
-  rpKeepFilesNum:  100
+  rpKeepFilesNum:  3
   rpMaxAgeHours:   24
 
 
@@ -217,8 +216,7 @@ TraceTxInbound: False
 TraceTxOutbound: False
 
 # Trace TxSubmission protocol messages.
-TraceTxSubmissionProtocol: False
-
+TraceTxSubmissionProtocol: True
 
 ##### Fine grained logging control #####
 
@@ -246,7 +244,7 @@ options:
         name: LiveViewBackend
     cardano.node.metrics:
       - TraceForwarderBK
-      - EKGViewBK  
+      - EKGViewBK
       - kind: UserDefinedBK
         name: LiveViewBackend
     cardano.node.Forge.metrics:
@@ -266,7 +264,7 @@ options:
   # type and its name, separated by "::":
   mapScribes:
     cardano.node-metrics:
-      - "FileSK::logs/node-2.json"
+      - "FileSK::logs/node-1.json"
 
   # apply a filter on message severity on messages in a specific named context.
   # this filter is applied additionally to the global 'minSeverity' and thus
@@ -274,4 +272,3 @@ options:
   mapSeverity:
     cardano.node.ChainDB: Info
     cardano.node.DnsSubscription: Info
-

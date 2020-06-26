@@ -15,7 +15,7 @@
 ##
 
 oprint() {
-        echo "--( $*" >&2
+        echo -e "--( $*" >&2
 }
 export -f oprint
 oprint_top() {
@@ -25,7 +25,7 @@ oprint_top() {
 export -f oprint_top
 
 vprint() {
-        if test -n "${verbose}${debug}"; then echo "-- $*" >&2; fi
+        if test -n "${verbose}${debug}"; then echo -e "-- $*" >&2; fi
 }
 export -f vprint
 vprint_top() {
@@ -36,12 +36,12 @@ vprint_top() {
 export -f vprint_top
 
 dprint() {
-        if test -n "${debug}"; then echo "-- $*" >&2; fi
+        if test -n "${debug}"; then echo -e "-- $*" >&2; fi
 }
 export -f dprint
 
 fprint() {
-        echo "-- FATAL:  $*" >&2
+        echo -e "-- FATAL:  $*" >&2
 }
 export -f fprint
 
@@ -53,9 +53,14 @@ fail() {
 prebuild() {
         local exe="$1"
         vprint "prebuilding the \"${exe}\" executable in \"${SCRIPTS_LIB_SH_MODE}\" mode.."
-        run --build-only "${exe}"
+        run --build-only ${profile:+--profile $profile} "${exe}"
 }
 export -f prebuild
+
+run_noxc() {
+        local args=("${@/--xc}")
+        run "${args[@]}"
+}
 
 run() {
         if test -n "${verbose}"
@@ -109,6 +114,7 @@ actually_run()
         dprint "actually_run:  ${ARGS[@]@Q}"
         local toolargs=
         local profile= profile_suffix= user_suffix= profile_prefix= profile_file=
+        local xc=
         local profile_root='./profile'
         local profmode=
         local rtsopts=
@@ -122,8 +128,11 @@ actually_run()
         do ## oprint "args:   ${ARGS[@]@Q}"
            case "${ARGS[0]}" in
            --build-extra )       extra="${ARGS[1]}";        ARGS=("${ARGS[@]:1}");;
-           --profile )           profile=${ARGS[1]};        ARGS=("${ARGS[@]:1}");;
            --profile-suffix )    user_suffix=.${ARGS[1]};   ARGS=("${ARGS[@]:1}");;
+           --profile )           libconfig_profiling_hook
+                                 profile=${ARGS[1]};        ARGS=("${ARGS[@]:1}");;
+           --xc )                libconfig_xc_hook
+                                 profile='time'; xc='t';;
            --stats )             stats=t;;
            --no-stats )          stats=;;
            --build-only )        build_only=t;;
@@ -131,7 +140,6 @@ actually_run()
                            git-head | HEAD ) tag="$(git symbolic-ref HEAD | sed 's,.*/,,g')";;
                            * )               tag=${ARGS[1]};; esac
                    ARGS=("${ARGS[@]:1}");;
-           --* ) fprint "actually_run:  unhandled arg '${ARGS[0]}'"; return 1;;
            * ) if test -n "${main_args_processed}"
                then break; else main_args_processed=t; fi
 
@@ -181,6 +189,9 @@ actually_run()
         if test -n "${stats}"
         then rtsopts+=" --machine-readable -t${profile_prefix}.stats"
         fi
+        if test -n "${xc}"
+        then rtsopts+=" -xc"
+        fi
         if test -n "${profile}"
         then profile_file="${profile_prefix}${profile_suffix}"
              # rtsopts="+RTS --machine-readable -l -t${profile_prefix}.stats -po${profile_prefix} -ol ${profile_prefix}.eventlog ";
@@ -223,6 +234,8 @@ actually_run()
         fi
 
         vprint "${CMD[@]}"
+        if test -n "$verbose"
+        then echo "${CMD[@]@Q}" >>exec.log; fi
         "${CMD[@]}"
         local status=$?
 

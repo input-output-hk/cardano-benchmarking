@@ -35,6 +35,7 @@ Usage:
        time space space-module space-closure space-type space-retainer space-bio
     --mnemonic-suffix SUFFIX
                         Profiling output will get an additional suffix
+    --xc                Profiled build with +RTS -xc -RTS
 
     --shelley           Set era to Shelley.  Default
     --byron             Set era to Byron
@@ -43,6 +44,7 @@ Usage:
     --verbose           Be verbose about what's going on
     --debug             Be even more verbose
     --trace             Trace every shell statement
+    --eval EXPR         Eval EXPR within the script environment
 
     --help              Print this common help
     --app-help          Print application help (if available)
@@ -136,9 +138,11 @@ export scripts="${__COMMON_SRCROOT}/scripts"
 
 export era=${era:-'shelley'}
 
-export profile=
-export verbose=
-export debug=
+export profile=${profile:-}
+export verbose=${verbose:-}
+export debug=${debug:-}
+export xc=${xc:-}
+eval=
 
 default_mode='nix'
 
@@ -156,9 +160,6 @@ do case "$1" in
 
            --cls )                echo -en "\ec";;
 
-           --profile )            profile=$2; shift;;
-           --mnemonic-suffix )    mnemonic_suffix=$2; shift;;
-
            ## Should be moved to lib-node.sh?
            --force-genesis )      force_genesis=t;;
 
@@ -169,6 +170,12 @@ do case "$1" in
            --verbose )            verbose=t;;
            --debug )              debug=t; verbose=t;;
            --trace )              debug=t; verbose=t; trace=t; set -x;;
+           --eval )               shift; eval=("$@");;
+           --profile )            libconfig_profiling_hook
+                                  export profile=$2; shift;;
+           --xc )                 libconfig_xc_hook
+                                  export profile='time'; export xc='t';;
+           --mnemonic-suffix )    mnemonic_suffix=$2; shift;;
 
            --help )               usage; exit 1;;
            * ) break;; esac; shift; done
@@ -183,3 +190,7 @@ vprint_top "git commit:  $(git rev-parse HEAD)"
 vprint_top "process group id (PGID): $$"
 vprint_top "to list the process tree:  pstree -Tulap $$"
 vprint_top "..or, interactively:       watch --interval=1 \"pstree -Tulap $$\""
+
+if test -n "${eval[*]}"
+then dprint "evaluating expression:\n${eval[*]}" >&2
+     eval "${eval[@]}"; exit $?; fi

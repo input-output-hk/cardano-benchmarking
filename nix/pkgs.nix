@@ -8,4 +8,14 @@ pkgs: _: with pkgs; {
       buildPackages
       ;
   };
+  cardanoBenchmarkingProfiledHaskellPackages = import ./haskell.nix {
+    inherit
+      lib
+      stdenv
+      haskell-nix
+      buildPackages
+    ;
+    config = config // { profiling = true; };
+    profiling = true;
+  };
 }

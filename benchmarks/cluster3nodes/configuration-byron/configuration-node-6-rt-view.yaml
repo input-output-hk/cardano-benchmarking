@@ -25,22 +25,27 @@ defaultBackends:
 # here we set up outputs of logging in 'katip':
 setupScribes:
   - scKind: FileSK
-    scName: "logs/node-1.json"
+    scName: "logs/node-6.json"
     scFormat: ScJson
 
 # if not indicated otherwise, then log output is directed to this:
 defaultScribes:
   - - FileSK
-    - "logs/node-1.json"
+    - "logs/node-6.json"
 
 # more options which can be passed as key-value pairs:
 options:
+  mapSubtrace:
+    'cardano.epoch-validation.utxo-stats':
+      # Change the `subtrace` value to `Neutral` in order to log
+      # `UTxO`-related messages during epoch validation.
+      subtrace: NoTrace
   mapBackends:
     cardano.node.ChainDB.metrics:
-      - TraceForwarderBK
       - EKGViewBK
       - kind: UserDefinedBK
         name: LiveViewBackend
+      - TraceForwarderBK
     cardano.node.Forge.metrics:
       - EKGViewBK
       - kind: UserDefinedBK
@@ -51,14 +56,13 @@ options:
         name: LiveViewBackend
       - TraceForwarderBK
     cardano.node.metrics:
-      - TraceForwarderBK
-      - EKGViewBK
       - kind: UserDefinedBK
         name: LiveViewBackend
+      - TraceForwarderBK
     cardano.node.BlockFetchDecision.peers:
-      - TraceForwarderBK
       - kind: UserDefinedBK
         name: LiveViewBackend
+      - TraceForwarderBK
     cardano.node.release:
       - TraceForwarderBK
     cardano.node.version:
@@ -68,7 +72,7 @@ options:
 
 traceForwardTo:
   tag: RemotePipe
-  contents: "logs/sockets/1"
+  contents: "logs/sockets/6"
 
 ##########################################################
 ############### Cardano Node Configuration ###############
