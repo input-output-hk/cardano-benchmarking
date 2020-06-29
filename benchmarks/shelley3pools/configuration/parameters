@@ -13,10 +13,10 @@ GEN_DECENTRALISATIONPARAM="0.5"
 MAGIC=42
 
 # total supply of Lovelaces in genesis (divisible by $NNODES)
-SUPPLY=100000000002
+SUPPLY=1000000000000
 
 # how many nodes to start
-NNODES=3
+NNODES=4
 
 # nodes that act as stakepools
 STAKEPOOLS="1 2"
@@ -28,7 +28,7 @@ numtx=1000
 init_cooldown=5
 
 # the transactions are sent to these nodes
-targetnodes="0 1 2"
+targetnodes="0 1 2 3"
 
 # add bytes of data to every transaction
 addsizetx=0
@@ -43,7 +43,8 @@ outputstx=1
 tps=10
 
 # cli benchmarking commands
-utxo_keys=3
+genesis_keys=4
+utxo_keys=4
 
 # txvalue for cli benchmarking
 txvalue=1000000
@@ -53,3 +54,5 @@ txfee=1000000
 
 # number of transactions for cli benchmarking
 NUM_OF_ADDRESSES=1000
+
+PORTBASE=3000

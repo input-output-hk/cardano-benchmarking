@@ -7,7 +7,7 @@ NODECMD="../../bin/cardano-node"
 HOSTADDR=127.0.0.1
 
 # the nodes will listen on ports starting with:
-PORTBASE=3000
+PORTBASE=${PORTBASE:-3000}
 
 GENESISDIR=configuration/genesis
 

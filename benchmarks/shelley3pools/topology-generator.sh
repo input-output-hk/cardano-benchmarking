@@ -27,9 +27,11 @@ END_COMMENT
 . ./configuration/parameters
 
 NNODES=${NNODES:-3}
+PORTBASE=${PORTBASE:-3}
 
-for current_port in $(seq 3000 $(( 3000 + NNODES - 1 )))
+for node in $(seq 0 $(( NNODES - 1 )))
 do
+    current_port=$(( node + PORTBASE ))
     echo $(echo '
 {
     "Producers": ['
@@ -37,7 +39,7 @@ do
     i="0"
     while [ $i -le $(( NNODES - 1 )) ]
     do
-        port=$(( 3000 + $i ))
+        port=$(( PORTBASE + $i ))
 
         if [ $port -ne $current_port ]; then
 
@@ -55,5 +57,5 @@ do
     echo '      
     ]
 }
-') | sed -zr 's/,([^,]*$)/\1/' > ./configuration/topology-node-$((current_port-3000+1)).json
+') | sed -zr 's/,([^,]*$)/\1/' > ./configuration/topology-node-$(( node + 1 )).json
 done
