@@ -51,7 +51,6 @@ library
                      , iproute
                      , network
                      , network-mux
-                     , optics
                      , optparse-applicative
                      , ouroboros-consensus
                      , ouroboros-consensus-byron

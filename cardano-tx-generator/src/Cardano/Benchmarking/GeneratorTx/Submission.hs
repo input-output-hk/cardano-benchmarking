@@ -1,3 +1,4 @@
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
@@ -15,7 +16,6 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE ViewPatterns #-}
 
@@ -53,8 +53,6 @@ module Cardano.Benchmarking.GeneratorTx.Submission
 
 import           Prelude (fail)
 import           Cardano.Prelude hiding (ByteString, atomically, retry, threadDelay)
-import           Optics.Setter
-import           Optics.TH (makeFieldLabelsWith, noPrefixFieldLabels)
 
 import           Control.Arrow ((&&&))
 import           Control.Concurrent (threadDelay)
@@ -674,7 +672,6 @@ data SubmissionThreadReport
     , strThreadIndex   :: !Natural
     , strEndOfProtocol :: !UTCTime
     }
-makeFieldLabelsWith noPrefixFieldLabels ''SubmissionThreadStats
 
 mkSubmissionSummary
   :: MonadIO m
@@ -801,7 +798,7 @@ txSubmissionClient
    client :: Bool -> UnAcked tx -> SubmissionThreadStats
           -- The () return type is forced by Ouroboros.Network.NodeToNode.connectTo
           -> ClientStIdle (TxId (GenTx block)) (GenTx block) m ()
-   client done unAcked stats = ClientStIdle
+   client done unAcked (!stats) = ClientStIdle
     { recvMsgRequestTxIds = \blocking (protoToAck -> ack) (protoToReq -> req)
        -> do
         traceWith tr $ reqIdsTrace ack req blocking
@@ -822,7 +819,8 @@ txSubmissionClient
         traceWith bmtr $ TraceBenchTxSubServAck  (txId <$> acked)
         traceWith bmtr $ TraceBenchTxSubServOuts (txId <$> outs)
 
-        let newStats = stats & over #stsAcked (+ ack)
+        let newStats = stats { stsAcked =
+                               stsAcked stats + ack }
 
         case (NE.nonEmpty annNow, blocking) of
           (Nothing, TokBlocking) -> do
@@ -856,8 +854,10 @@ txSubmissionClient
           traceWith bmtr $ TraceBenchTxSubServUnav missIds
         pure $ SendMsgReplyTxs toSend
           (client done unAcked $
-            stats & over #stsSent        (+ (Sent $ length toSend))
-                  & over #stsUnavailable (+ (Unav $ length missIds)))
+            stats { stsSent =
+                    stsSent stats + Sent (length toSend)
+                  , stsUnavailable =
+                    stsUnavailable stats + Unav (length missIds)})
     , recvMsgKThxBye = do
         traceWith tr KThxBye
         void $ submitThreadReport stats
