@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 
-. ./configuration/parameters
-NODECMD="../../bin/cardano-node"
+BASEDIR=$(realpath $(dirname "$0"))
+. ${BASEDIR}/../../scripts/common.sh
+. ${BASEDIR}/configuration/parameters
+
+NODECMD=${NODECMD:-"run cardano-node"}
 
 # the host address and interface the node listens:
 HOSTADDR=127.0.0.1
@@ -28,7 +31,7 @@ tmux split-window -h
 tmux select-pane -t 0
 tmux split-window -h
 
-for N in $(seq 1 ${NNODES})
+for N in $(seq 1 "${NNODES}")
 do tmux select-pane -t $((N - 1))
    tmux send-keys \
      "${TMUX_ENV_PASSTHROUGH[*]}

@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 
-. configuration/parameters
+BASEDIR=$(realpath $(dirname "$0"))
+. ${BASEDIR}/../../scripts/common.sh
+. ${BASEDIR}/configuration/parameters
 
 ID=$1
 

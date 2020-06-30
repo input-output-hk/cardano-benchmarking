@@ -27,7 +27,7 @@ rm -rf ./db/* ./logs/*
 mkdir -p logs/sockets
 
 # 1 prepare genesis
-./prepare_genesis.sh
+./prepare_genesis-generic.sh
 
 # 2 run rt-view
 tmux select-window -t :0

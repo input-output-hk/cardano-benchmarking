@@ -3,8 +3,9 @@
 
 echo "Importing and initialising variables..."
 
-. ./configuration/parameters
-CLICMD="../../bin/cardano-cli"
+BASEDIR=$(realpath $(dirname "$0"))
+. ${BASEDIR}/../../scripts/common.sh
+. ${BASEDIR}/configuration/parameters
 
 ID=$1
 UTXO_ID=$2
