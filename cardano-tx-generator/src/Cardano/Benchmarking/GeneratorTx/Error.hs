@@ -15,4 +15,5 @@ data TxGenError =
   -- ^ TPS is less than lower limit.
   | SecretKeyDeserialiseError !Text
   | SecretKeyReadError !Text
+  | SplittingSubmissionError !Text
   deriving Show

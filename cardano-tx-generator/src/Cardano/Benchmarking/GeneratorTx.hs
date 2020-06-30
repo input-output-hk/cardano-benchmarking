@@ -26,7 +26,7 @@ module Cardano.Benchmarking.GeneratorTx
   ) where
 
 import           Cardano.Prelude
-import           Prelude (String, error)
+import           Prelude (String, error, fail)
 
 import           Codec.CBOR.Read (deserialiseFromBytes)
 import           Control.Concurrent (threadDelay)
@@ -303,11 +303,6 @@ genesisBenchmarkRunner loggingLayer
 -------------------------------------------------------------------------------}
 
 -- | The store of the unspent funds (available transaction outputs)
-data AvailableFunds
-  = FundsByron   !(Set TxDetailsByron)
-  | FundsShelley !(Set TxDetailsShelley)
-  deriving Show
-
 type TxDetailsByron   = TxDetails ByronBlock
 type TxDetailsShelley = TxDetails ShelleyBlock
 
@@ -327,11 +322,6 @@ deriving instance (Ord  Lovelace)
 deriving instance (Eq   (TxDetails blk))
 deriving instance (Ord  (TxDetails blk))
 deriving instance (Show (TxDetails blk))
-
--- txdTxIn :: TxDetails blk -> TxIn
--- txdTxIn (TxDetailsByron (CC.UTxO.TxInUtxo h txix, _)) =
---   TxIn (TxId (Crypto.UnsafeHash (toRawHash (Proxy @ByronBlock) h))) (fromIntegral txix)
--- txdTxIn (TxDetailsShelley (txin, _)) = txin
 
 fromByronLovelace :: CC.Common.Lovelace -> Lovelace
 fromByronLovelace = Lovelace . fromIntegral . CC.Common.unsafeGetLovelace
@@ -505,11 +495,11 @@ prepareInitialFundsByron
   => Params blk
   -> IOManager
   -> SocketPath
-  -> (TxDetailsByron, SigningKey)
+  -> (TxDetails blk, SigningKey)
   -> Address
   -> Address
   -> FeePerTx
-  -> IO AvailableFunds
+  -> IO (Set (TxDetails blk))
 prepareInitialFundsByron
   p@(ParamsByron
       TopLevelConfig
@@ -523,7 +513,7 @@ prepareInitialFundsByron
     submitTx' p iocp socketFp genesisTxGeneral
 
     -- Form availableFunds with a single value, it will be used for further (splitting) transactions.
-    return . FundsByron $ Set.singleton (TxDetailsByron (txDetIn, txDetOut))
+    return $ Set.singleton (TxDetailsByron (txDetIn, txDetOut))
 
   where
    txDetIn  = CC.UTxO.TxInUtxo (getTxIdFromGenTxByron genesisTxGeneral) 0
@@ -557,13 +547,14 @@ toByronTxOut (TxOut (AddressByron addr) value) =
   CC.UTxO.TxOut addr (toByronLovelace value)
 
 prepareInitialFundsShelley
-  :: Params ShelleyBlock
+  :: (blk ~ ShelleyBlock)
+  => Params blk
   -> SocketPath
-  -> (TxDetailsShelley, SigningKey)
+  -> (TxDetails blk, SigningKey)
   -> Address
   -> Address
   -> FeePerTx
-  -> IO AvailableFunds
+  -> IO (Set (TxDetails blk))
 prepareInitialFundsShelley
   p@ParamsShelley{}
   socketFp
@@ -575,7 +566,7 @@ prepareInitialFundsShelley
     liftIO . traceWith (trTxSubmit p) . TraceBenchTxSubDebug
       $ "******* Genesis funds move submission result: " <> show r
 
-    pure . FundsShelley $ Set.singleton (TxDetailsShelley (txDetIn, txDetOut))
+    pure $ Set.singleton (TxDetailsShelley (txDetIn, txDetOut))
 
  where
    txDetIn  = fromShelleyTxIn $
@@ -853,7 +844,7 @@ runBenchmark
   -> TPSRate
   -> InitCooldown
   -> Maybe TxAdditionalSize
-  -> AvailableFunds
+  -> Set (TxDetails blk)
   -> ExceptT TxGenError IO ()
 runBenchmark p
              iocp
@@ -971,8 +962,8 @@ createMoreFundCoins
   -> FeePerTx
   -> NumberOfTxs
   -> NumberOfInputsPerTx
-  -> AvailableFunds
-  -> ExceptT TxGenError IO AvailableFunds
+  -> Set (TxDetails blk)
+  -> ExceptT TxGenError IO (Set (TxDetails blk))
 createMoreFundCoins p@ParamsByron{}
                     iocp
                     socketFp
@@ -980,7 +971,7 @@ createMoreFundCoins p@ParamsByron{}
                     (FeePerTx txFee)
                     (NumberOfTxs numOfTxs)
                     (NumberOfInputsPerTx numOfInsPerTx)
-                    (FundsByron fundsWithGenesisMoney) = do
+                    fundsWithGenesisMoney = do
   let Lovelace feeRaw = Lovelace . fromIntegral $ txFee
       -- The number of splitting txout entries (corresponds to the number of all inputs we will need).
       numSplittingTxOuts    = numOfTxs * fromIntegral numOfInsPerTx
@@ -1071,10 +1062,10 @@ createMoreFundCoins p@ParamsByron{}
                                    txOut
                                    ((genTx, txDetailsList) : acc)
   reCreateAvailableFunds
-    :: [(GenTx ByronBlock, [TxDetailsByron])]
-    -> AvailableFunds
+    :: [(GenTx blk, [TxDetails blk])]
+    -> Set (TxDetails blk)
   reCreateAvailableFunds =
-    FundsByron . Set.fromList . concat . map snd
+    Set.fromList . concat . map snd
 
 createMoreFundCoins p@ParamsShelley{}
                     _iocp
@@ -1083,7 +1074,7 @@ createMoreFundCoins p@ParamsShelley{}
                     (FeePerTx txFee)
                     (NumberOfTxs numOfTxs)
                     (NumberOfInputsPerTx numOfInsPerTx)
-                    (FundsShelley fundsWithGenesisMoney) = do
+                    fundsWithGenesisMoney = do
   let Lovelace feeRaw = Lovelace . fromIntegral $ txFee
       -- The number of splitting txout entries (corresponds to the number of all inputs we will need).
       numSplittingTxOuts    = numOfTxs * fromIntegral numOfInsPerTx
@@ -1116,12 +1107,12 @@ createMoreFundCoins p@ParamsShelley{}
       network :: Network
       network = paramsNetwork p
   -- Submit all splitting transactions sequentially.
-  liftIO $ forM_ (zip splittingTxs [(0 :: Int) ..]) $
+  forM_ (zip splittingTxs [(0 :: Int) ..]) $
     \((Shelley.ShelleyTx _ tx, _), i) -> do
-      r <- submitTx network socketFp (TxSignedShelley tx)
+      r <- liftIO $ submitTx network socketFp (TxSignedShelley tx)
       case r of
         TxSubmitSuccess -> pure ()
-        x -> panic $ mconcat
+        x -> left . SplittingSubmissionError $ mconcat
              ["Coin splitting submission failed (", show i :: Text
              , "/", show (numOfTxs - 1) :: Text
              , "): ", show x :: Text]
@@ -1178,10 +1169,10 @@ createMoreFundCoins p@ParamsShelley{}
                                    txOut
                                    ((genTx, txDetailsList) : acc)
   reCreateAvailableFunds
-    :: [(GenTx ShelleyBlock, [TxDetailsShelley])]
-    -> AvailableFunds
+    :: [(GenTx blk, [TxDetails blk])]
+    -> Set (TxDetails blk)
   reCreateAvailableFunds =
-    FundsShelley . Set.fromList . concat . map snd
+    Set.fromList . concat . map snd
 
 -----------------------------------------------------------------------------------------
 -- | Work with tx generator thread (for Phase 2).
@@ -1197,9 +1188,9 @@ txGenerator
   -> NumberOfInputsPerTx
   -> NumberOfOutputsPerTx
   -> Maybe TxAdditionalSize
-  -> AvailableFunds
+  -> Set (TxDetails blk)
   -> ExceptT TxGenError IO [GenTx blk]
-txGenerator p@ParamsByron{}
+txGenerator p
             recipientAddress
             sourceKey
             (FeePerTx txFee)
@@ -1234,12 +1225,12 @@ txGenerator p@ParamsByron{}
   createMainTxs
     :: Word64
     -> Int
-    -> AvailableFunds
-    -> ExceptT TxGenError IO [GenTx ByronBlock]
+    -> Set (TxDetails blk)
+    -> ExceptT TxGenError IO [GenTx blk]
   createMainTxs 0 _ _ = right []
   createMainTxs txsNum insNumPerTx funds = do
     (txInputs, updatedFunds) <- getTxInputs insNumPerTx funds
-    let (_, _, _, txAux :: GenTx ByronBlock) =
+    let (_, _, _, txAux :: GenTx blk) =
           mkTransaction
             p
             (NE.fromList txInputs)
@@ -1252,9 +1243,9 @@ txGenerator p@ParamsByron{}
   -- Get inputs for one main transaction, using available funds.
   getTxInputs
     :: Int
-    -> AvailableFunds
-    -> ExceptT TxGenError IO ( [(TxDetailsByron, SigningKey)]
-                             , AvailableFunds
+    -> Set (TxDetails blk)
+    -> ExceptT TxGenError IO ( [(TxDetails blk, SigningKey)]
+                             , Set (TxDetails blk)
                              )
   getTxInputs 0 funds = right ([], funds)
   getTxInputs insNumPerTx funds = do
@@ -1265,95 +1256,17 @@ txGenerator p@ParamsByron{}
   -- Find a source of available funds, removing it from the availableFunds
   -- for preventing of double spending.
   findAvailableFunds
-    :: AvailableFunds          -- funds we are trying to find in
+    :: Set (TxDetails blk)     -- funds we are trying to find in
     -> Lovelace                -- with at least this associated value
-    -> ExceptT TxGenError IO (TxDetailsByron, AvailableFunds)
-  findAvailableFunds (FundsByron funds) valueThreshold =
-    case find predTxD (Set.toList funds) of
+    -> ExceptT TxGenError IO (TxDetails blk, Set (TxDetails blk))
+  findAvailableFunds funds thresh =
+    case find (predTxD thresh) funds of
       Nothing    -> left InsufficientFundsForRecipientTx
-      Just found -> right (found, FundsByron $ Set.delete found funds)
-   where
-    -- Find the first tx output that contains sufficient amount of money.
-    predTxD :: TxDetailsByron -> Bool
-    predTxD txd = txdTxOutValue txd >= valueThreshold
+      Just found -> right (found, Set.delete found funds)
 
-txGenerator p@ParamsShelley{}
-            recipientAddress
-            sourceKey
-            (FeePerTx txFee)
-            numOfTargetNodes
-            (NumberOfTxs numOfTransactions)
-            (NumberOfInputsPerTx numOfInsPerTx)
-            (NumberOfOutputsPerTx numOfOutsPerTx)
-            txAdditionalSize
-            fundsWithSufficientCoins = do
-  liftIO . traceWith (trTxSubmit p) . TraceBenchTxSubDebug
-    $ " Generating " ++ show numOfTransactions
-      ++ " transactions, for " ++ show numOfTargetNodes ++ " peers"
-  txs <- createMainTxs numOfTransactions numOfInsPerTx fundsWithSufficientCoins
-  liftIO . traceWith (trTxSubmit p) . TraceBenchTxSubDebug
-    $ " Done, " ++ show numOfTransactions ++ " were generated."
-  pure txs
- where
-  -- Num of recipients is equal to 'numOuts', so we think of
-  -- recipients as the people we're going to pay to.
-  recipients = Set.fromList $ zip [initRecipientIndex .. initRecipientIndex + numOfOutsPerTx - 1]
-                                  (repeat txOut)
-  initRecipientIndex = 0 :: Int
-  -- The same output for all transactions.
-  !txOut = TxOut recipientAddress valueForRecipient
-  valueForRecipient = Lovelace 10000 -- 100 ADA, discuss this value.
-  totalValue = valueForRecipient `addLovelace'` txFeeInLovelaces
-  txFeeInLovelaces = Lovelace $ fromIntegral txFee
-  -- Send possible change to the same 'recipientAddress'.
-  addressForChange = recipientAddress
-
-  -- Create all main transactions, using available funds.
-  createMainTxs
-    :: Word64
-    -> Int
-    -> AvailableFunds
-    -> ExceptT TxGenError IO [GenTx ShelleyBlock]
-  createMainTxs 0 _ _ = right []
-  createMainTxs txsNum insNumPerTx funds = do
-    (txInputs, updatedFunds) <- getTxInputs insNumPerTx funds
-    let (_, _, _, txAux :: GenTx ShelleyBlock) =
-          mkTransaction
-            p
-            (NE.fromList txInputs)
-            (Just addressForChange)
-            recipients
-            txAdditionalSize
-            txFee
-    (txAux :) <$> createMainTxs (txsNum - 1) insNumPerTx updatedFunds
-
-  -- Get inputs for one main transaction, using available funds.
-  getTxInputs
-    :: Int
-    -> AvailableFunds
-    -> ExceptT TxGenError IO ( [(TxDetailsShelley, SigningKey)]
-                             , AvailableFunds
-                             )
-  getTxInputs 0 funds = right ([], funds)
-  getTxInputs insNumPerTx funds = do
-    (found, updatedFunds) <- findAvailableFunds funds totalValue
-    (inputs, updatedFunds') <- getTxInputs (insNumPerTx - 1) updatedFunds
-    right ((found, sourceKey) : inputs, updatedFunds')
-
-  -- Find a source of available funds, removing it from the availableFunds
-  -- for preventing of double spending.
-  findAvailableFunds
-    :: AvailableFunds          -- funds we are trying to find in
-    -> Lovelace                -- with at least this associated value
-    -> ExceptT TxGenError IO (TxDetailsShelley, AvailableFunds)
-  findAvailableFunds (FundsShelley funds) valueThreshold =
-    case find predTxD (Set.toList funds) of
-      Nothing    -> left InsufficientFundsForRecipientTx
-      Just found -> right (found, FundsShelley $ Set.delete found funds)
-   where
-    -- Find the first tx output that contains sufficient amount of money.
-    predTxD :: TxDetailsShelley -> Bool
-    predTxD txd = txdTxOutValue txd >= valueThreshold
+  -- Find the first tx output that contains sufficient amount of money.
+  predTxD :: Lovelace -> TxDetails blk -> Bool
+  predTxD valueThreshold txd = txdTxOutValue txd >= valueThreshold
 
 ---------------------------------------------------------------------------------------------------
 -- Txs for submission.
