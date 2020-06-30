@@ -19,7 +19,7 @@ stack.yaml.lock
 
 ## Runtime artifacts
 ##
-/analysis
+analysis
 /db
 /logs
 /profile
