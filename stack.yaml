@@ -4,6 +4,7 @@ compiler: ghc-8.6.5
 packages:
   - cardano-rt-view
   - cardano-tx-generator
+  - tx-generator-shelley
   - bm-timeline
 
   # references to git submodules only in development
