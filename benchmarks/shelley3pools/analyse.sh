@@ -6,6 +6,7 @@ BASEDIR=$(realpath $(dirname "$0"))
 set -e
 
 prebuild 'bmtimeline' || exit 1
+prebuild 'bmtime2block' || exit 1
 
 TSTAMP=$(TZ=UTC date --iso-8601=seconds)
 
@@ -53,6 +54,9 @@ done
 
 run bmtimeline 'stub' ${NNODES} ${OUTDIR} | tee -a ${OUTDIR}/timeline.txt
 cp timeline.csv ${OUTDIR}/
+
+run bmtime2block ${OUTDIR}
+cp time2block.csv ${OUTDIR}/
 
 if test -n "$(command -v libreoffice)" &&
    test -n "$(command -v ssconvert)"

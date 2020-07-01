@@ -6,6 +6,7 @@ module Cardano.BM.Common
     , NodeId
     , SlotNum
     , Timestamp
+    , TxId
     , remquotes
     , parseTS
     , formatTS
@@ -21,6 +22,7 @@ import qualified Data.Text.Lazy as TL
 type NodeId = Int
 type SlotNum = Int
 type Timestamp = UTCTime
+type TxId = Text
 
 
 class Lineparser a where

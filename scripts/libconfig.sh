@@ -30,6 +30,8 @@ CABALEXE_TO_CABALPKG=(
         [cardano-tx-generator]='cardano-tx-generator'
         [cardano-tx-generator-byron]='cardano-tx-generator'
         [bmtimeline]='bm-timeline'
+        [bmtime2block]='bm-timeline'
+        [reconstruct-timeline]='bm-timeline'
 )
 
 declare -A CABALEXE_TO_LIBOPTS
