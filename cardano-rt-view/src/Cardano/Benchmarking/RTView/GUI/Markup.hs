@@ -18,6 +18,11 @@ import           Graphics.UI.Threepenny.Core
 
 import           Cardano.BM.Data.Configuration
                    ( RemoteAddrNamed (..) )
+import           Cardano.Benchmarking.RTView.GUI.Charts
+                   ( cpuUsageChartJS, diskUsageChartJS
+                   , memoryUsageChartJS, networkUsageChartJS
+                   , prepareChartsJS
+                   )
 import           Cardano.Benchmarking.RTView.GUI.Elements
                    ( NodeStateElements, NodesStateElements
                    , PeerInfoItem
@@ -33,7 +38,7 @@ mkPageBody window acceptors = do
   -- Create widgets for each node (corresponding to acceptors).
   nodeWidgetsWithElems
     <- forM acceptors $ \(RemoteAddrNamed nameOfNode _) -> do
-         (widget, nodeStateElems, peerInfoItems) <- mkNodeWidget
+         (widget, nodeStateElems, peerInfoItems) <- mkNodeWidget nameOfNode
          return (nameOfNode, widget, nodeStateElems, peerInfoItems)
 
   -- Create widgets areas on the page.
@@ -70,6 +75,14 @@ mkPageBody window acceptors = do
          [ topNavigation allSelectors
          , UI.div #. "w3-row" #+ widgetsAreas
          ]
+
+  UI.runFunction $ UI.ffi prepareChartsJS
+  forM_ acceptors $ \(RemoteAddrNamed nameOfNode _) -> do
+    -- Charts for different metrics.
+    UI.runFunction $ UI.ffi memoryUsageChartJS  ("memoryUsageChart-"  <> nameOfNode)
+    UI.runFunction $ UI.ffi cpuUsageChartJS     ("cpuUsageChart-"     <> nameOfNode)
+    UI.runFunction $ UI.ffi diskUsageChartJS    ("diskUsageChart-"    <> nameOfNode)
+    UI.runFunction $ UI.ffi networkUsageChartJS ("networkUsageChart-" <> nameOfNode)
 
   nodesStateElems
     <- forM nodeWidgetsWithElems $ \(nameOfNode, _, nodeStateElems, peerInfoItems) ->

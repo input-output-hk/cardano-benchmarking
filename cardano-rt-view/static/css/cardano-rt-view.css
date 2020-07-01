@@ -109,7 +109,7 @@ body {
 }
 
 .node-container {
-    min-height: 428px;
+    min-height: 500px;
     background-color: #eee;
 }
 
@@ -404,4 +404,20 @@ a:visited:hover {
 .in-flight-values {
     color: #444;
     font-style: italic;
+}
+
+.cpu-usage-chart {
+    max-height: 190px;
+}
+
+.memory-usage-chart {
+    max-height: 190px;
+}
+
+.disk-usage-chart {
+    max-height: 190px;
+}
+
+.network-usage-chart {
+    max-height: 190px;
 }

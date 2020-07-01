@@ -38,6 +38,10 @@ import           Cardano.BM.Data.Severity
                    ( Severity (..) )
 import           Cardano.Benchmarking.RTView.CLI
                    ( RTViewParams (..) )
+import           Cardano.Benchmarking.RTView.GUI.Charts
+                   ( updateCPUUsageChartJS, updateDiskUsageChartJS
+                   , updateMemoryUsageChartJS, updateNetworkUsageChartJS
+                   )
 import           Cardano.Benchmarking.RTView.GUI.Elements
                    ( ElementName (..), ElementValue (..)
                    , NodeStateElements, NodesStateElements
@@ -56,7 +60,7 @@ updateGUI
   -> [RemoteAddrNamed]
   -> NodesStateElements
   -> UI ()
-updateGUI nodesState params acceptors nodesStateElems =
+updateGUI nodesState params acceptors nodesStateElems = do
   forM_ nodesStateElems $ \(nameOfNode, elements, peerInfoItems) -> do
     let nodeState = nodesState ! nameOfNode
         (acceptorHost, acceptorPort) = findTraceAcceptorNetInfo nameOfNode acceptors
@@ -64,6 +68,8 @@ updateGUI nodesState params acceptors nodesStateElems =
     let ni = nsInfo nodeState
         nm = nsMetrics nodeState
         activeNodeMark = unpack nameOfNode
+
+    updateCharts nameOfNode ni nm
 
     void $ updateElementValue (ElementString  $ niNodeRelease ni)             $ elements ! ElNodeRelease
     void $ updateElementValue (ElementString  $ niNodeVersion ni)             $ elements ! ElNodeVersion
@@ -413,3 +419,27 @@ markProgressBar now lastUpdate lifetime els (barName, barBoxName) labelsNames =
     void $ element barBox # set UI.class_ barBoxClass
                           # set UI.title__ ""
     forM_ labelsNames $ \name -> void . markAsUpToDate $ els ! name
+
+updateCharts
+  :: Text
+  -> NodeInfo
+  -> NodeMetrics
+  -> UI ()
+updateCharts nameOfNode ni nm = do
+  UI.runFunction $ UI.ffi updateMemoryUsageChartJS  mN ts (nmMemory nm)
+  UI.runFunction $ UI.ffi updateCPUUsageChartJS     cN ts (nmCPUPercent nm)
+  UI.runFunction $ UI.ffi updateDiskUsageChartJS    dN ts (nmDiskUsageR nm)     (nmDiskUsageW nm)
+  UI.runFunction $ UI.ffi updateNetworkUsageChartJS nN ts (nmNetworkUsageIn nm) (nmNetworkUsageOut nm)
+ where
+  ts :: String
+  ts = formatTime defaultTimeLocale "%M:%S" time
+  time = addUTCTime timeDiff (UTCTime (ModifiedJulianDay 0) 0)
+  timeDiff :: NominalDiffTime
+  timeDiff = fromInteger $ round timeInSec
+  timeInSec :: Double
+  timeInSec = fromIntegral (niUpTime ni) / 1000000000
+
+  mN = "memoryUsageChart-"  <> nameOfNode
+  cN = "cpuUsageChart-"     <> nameOfNode
+  dN = "diskUsageChart-"    <> nameOfNode
+  nN = "networkUsageChart-" <> nameOfNode

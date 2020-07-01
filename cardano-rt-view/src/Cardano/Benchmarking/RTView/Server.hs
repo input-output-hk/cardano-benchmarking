@@ -14,7 +14,7 @@ import           Control.Concurrent.MVar.Strict
 import qualified Graphics.UI.Threepenny as UI
 import           Graphics.UI.Threepenny.Core
                    ( UI
-                   , (#), onEvent, set
+                   , (#), (#+), onEvent, set
                    )
 import           Graphics.UI.Threepenny.Timer
                    ( start, tick, timer, interval )
@@ -58,15 +58,27 @@ mainPage nsMVar params acceptors window = do
   UI.addStyleSheet window "w3.css"
   UI.addStyleSheet window "cardano-rt-view.css"
 
+  -- It is assumed that JS files are available at 'pathToStatic/js/'.
+  addJavaScript window "chart.js"
+
   -- Make page's body (HTML markup).
   (pageBody, nodesStateElems) <- mkPageBody window acceptors
 
   -- Start the timer for GUI update. Every second it will
   -- call a function which updates node state elements on the page.
-  guiUpdateTimer <- timer # set interval 600 -- Every 0.6 s.
+  guiUpdateTimer <- timer # set interval 2000 -- Every 2 s.
   void $ onEvent (tick guiUpdateTimer) $ \_ -> do
     newState <- liftIO $ readMVar nsMVar
     updateGUI newState params acceptors nodesStateElems
   start guiUpdateTimer
 
   void $ UI.element pageBody
+
+-- | ...
+addJavaScript
+  :: UI.Window
+  -> FilePath
+  -> UI ()
+addJavaScript w filename = void $ do
+  el <- UI.mkElement "script" # set UI.src ("/static/js/" ++ filename)
+  UI.getHead w #+ [UI.element el]
