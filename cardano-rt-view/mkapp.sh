@@ -7,9 +7,13 @@ BASEPATH=$(realpath $(dirname $0))
 PROGNAME=cardano-rt-view-service
 EXE=${BASEPATH}/../bin/${PROGNAME}
 
-# necessary on NixOS:
-APPIMGRUN="appimage-run"
-APPIMGRUN=
+if [[ $(uname -a) == *"NixOS"* ]]; then
+  # We're on NixOS, so appimage-run program need to run AppImage,
+  # please make sure you installed it (nix-env -iA nixos.appimage-run).
+  APPIMGRUN="appimage-run"
+else
+  APPIMGRUN=
+fi
 
 # if FUSE is not an option, we can still extract the AppImage and run it directly
 # appimagetool-x86_64.AppImage --appimage-extract && mv squashfs-root 
