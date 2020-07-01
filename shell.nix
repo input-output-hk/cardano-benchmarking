@@ -29,7 +29,9 @@ let
       cabal-install
       stack
       ghcid
+      gnumeric
       hlint
+      libreoffice
       weeder
       nix
       niv
