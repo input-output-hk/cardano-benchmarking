@@ -5,7 +5,7 @@ BASEDIR=$(realpath $(dirname "$0"))
 
 set -e
 
-prebuild 'bm-timeline' || exit 1
+prebuild 'bmtimeline' || exit 1
 
 TSTAMP=$(TZ=UTC date --iso-8601=seconds)
 
@@ -47,10 +47,14 @@ for N in $(seq 0 $((NNODES - 1))); do
   # parameters in genesis.json
   GENESIS=$(find ${LOGPATH}/.. -name "genesis.json" | head -1)
   if [ -e $GENESIS ]; then
-    jq '[ "activeSlotsCoeff", .activeSlotsCoeff, "slotLength", .slotLength, "securityParam", .securityParam, "epochLength", .epochLength, "decentralisationParam", .protocolParams.decentralisationParam ] | @csv' ${GENESIS} > ${OUTDIR}/genesis_parameters.csv
+    jq '[ "activeSlotsCoeff", .activeSlotsCoeff, "slotLength", .slotLength, "securityParam", .securityParam, "epochLength", .epochLength, "decentralisationParam", .protocolParams.decentralisationParam ] | @csv' --raw-output ${GENESIS} > ${OUTDIR}/genesis_parameters.csv
   fi
 done
 
-run reconstruct-timeline ${NNODES} ${OUTDIR} | tee -a ${OUTDIR}/timeline.txt
+run bmtimeline 'stub' ${NNODES} ${OUTDIR} | tee -a ${OUTDIR}/timeline.txt
 cp timeline.csv ${OUTDIR}/
 
+if test -n "$(command -v libreoffice)" &&
+   test -n "$(command -v ssconvert)"
+then ./report.sh "${OUTDIR}"
+fi

@@ -24,7 +24,9 @@ analysis
 /logs
 /profile
 
+*.csv
 benchmark-results.log
 launch_node
 result*
 state-*
+timeline-*
