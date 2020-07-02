@@ -2,21 +2,38 @@
 
 # cardano-benchmarking
 
-## preparation
+This repository contains two important tools for `cardano-node` benchmarking:
+
+1. [cardano-tx-generator](https://github.com/input-output-hk/cardano-benchmarking/tree/master/cardano-tx-generator)
+2. [cardano-rt-view-service](https://github.com/input-output-hk/cardano-benchmarking/tree/master/cardano-rt-view)
+
+The first one is a generator of transactions, both for Byron and Shelley. For more details please [see the project](https://github.com/input-output-hk/cardano-benchmarking/tree/master/cardano-tx-generator).
+
+The second one is a service that allows to see the state of running `cardano-node` processes in the real time. For more details please [see the project](https://github.com/input-output-hk/cardano-benchmarking/tree/master/cardano-rt-view).
+
+[![RTView screenshot](https://github.com/input-output-hk/cardano-benchmarking/blob/master/cardano-rt-view/screenshot-small.png)](https://github.com/input-output-hk/cardano-benchmarking/tree/master/cardano-rt-view)
+
+## Preparation
 
 After first checkout of the repository, update the submodules:
-`git submodule update --init`
 
+```
+$ git submodule update --init
+```
 
-## building
+## Building
+
+The following commands will compile the project and copy the binaries to the directory `./bin/`.
 
 ### 1 using `stack`
 
-`stack --nix build --copy-bins`
-will compile the project and copy the binaries to the directory ./bin/
+```
+$ stack --nix build --copy-bins
+```
 
 ### 2 using `cabal` (version >= 3)
 
-`cabal v2-build all`
-
-`cabal v2-install ext/cardano-node.git/cardano-node:exe:cardano-node --install-method=copy --installdir=./bin`
+```
+$ cabal build all
+$ cabal install ext/cardano-node.git/cardano-node:exe:cardano-node --install-method=copy --installdir=./bin
+```
