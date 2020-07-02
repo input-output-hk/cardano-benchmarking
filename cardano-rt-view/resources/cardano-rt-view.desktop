@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=Cardano RTview
+Type=Application
+Terminal=true
+NoDisplay=true
+Exec=cardano-rt-view-service
+Icon=cardano-rt-view
+Categories=X-Blockchain;
+X-AppImage-Integrate=false
+
