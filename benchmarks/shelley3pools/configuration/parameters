@@ -13,7 +13,7 @@ GEN_DECENTRALISATIONPARAM="0.5"
 MAGIC=42
 
 # total supply of Lovelaces in genesis (divisible by $NNODES)
-SUPPLY=100000000002
+SUPPLY=1000000000002
 
 # how many nodes to start
 NNODES=3
