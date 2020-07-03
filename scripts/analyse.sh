@@ -93,6 +93,11 @@ extract_sends 'TraceBenchTxSubServDrop' "${sender_logs[@]}" |
         sort -k 2 -t ';'                   > dtx_dtime.2     < dtx_dtime.1
 count_dropped="$(cat dtx_dtime.1 | wc -l)"
 
+extract_sends 'TraceBenchTxSubServUnav' "${sender_logs[@]}" |
+        sort -k 1 -t ';'                   > utx_utime.1
+        sort -k 2 -t ';'                   > utx_utime.2     < utx_utime.1
+count_unavailable="$(cat utx_utime.1 | wc -l)"
+
 extract_sends 'TraceBenchTxSubServReq' "${sender_logs[@]}" |
         sort -k 1 -t ';'                   > stx_stime.1
         sort -k 2 -t ';'                   > stx_stime.2     < stx_stime.1
@@ -114,11 +119,13 @@ cat <<EOF
 -- Txs sent:             ${count_sent}
 -- Txs acked:            ${count_acked}
 -- Txs dropped:          ${count_dropped}
+-- Txs unavailable:      ${count_unavailable}
 -- Unique Txs received:  ${count_recvd}
 -- Announces:            analysis/atx_atime.1
 -- Sends:                analysis/stx_stime.1
 -- Acks:                 analysis/ktx_ktime.1
 -- Drops:                analysis/dtx_dtime.1
+-- Unavailables:         analysis/utx_utime.1
 -- Receipts:             analysis/rtx_rtime.1
 EOF
 
@@ -149,7 +156,11 @@ EOF
 fi
 
 jq > tx-stats.json --null-input '
-{ "tx_generated":      '${count_sent}'
+{ "tx_announced":      '${count_annced}'
+, "tx_sent":           '${count_sent}'
+, "tx_acked":          '${count_acked}'
+, "tx_dropped":        '${count_dropped}'
+, "tx_unavailable":    '${count_unavailable}'
 , "tx_seen_in_blocks": '${count_recvd}'
 , "tx_missing":        '${count_missing}'
 , "tx_martian":        '${count_martian}'
@@ -178,3 +189,7 @@ ln -s stx_stime_rtime_blk.2 timetoblock.lst
 
 # clean stamps
 sed -e 's/\([.0-9]\+\)Z/\1/g;s/\([0-9]\+\)T\([0-9]\+:\)/\1 \2/g;' timetoblock.lst > timetoblock.csv
+
+grep -Fv 'block time' < timetoblock.csv |
+        sed 's/^\([^;,]*\)[;,]\([^;,]*\)[;,]\([^;,]*\)[;,]\([^;,]*\)$/{ "txid": "\1", "sent_t": "\2", "block_t": "\3", "block_no": \4 }/' |
+        jq --compact-output . > timetoblock.json
