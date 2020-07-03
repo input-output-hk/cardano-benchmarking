@@ -1,33 +1,18 @@
 #!/usr/bin/env bash
 
-: <<'END_COMMENT'
-Example 3-node topology file:
-
-{
-  "Producers": [
-    {
-      "addr": "127.0.0.1",
-      "port": 3000,
-      "valency": 1
-    },
-    {
-      "addr": "127.0.0.1",
-      "port": 3001,
-      "valency": 1
-    },
-    {
-      "addr": "127.0.0.1",
-      "port": 3003,
-      "valency": 1
-    }
-  ]
-}
-END_COMMENT
+if [ -z "${WORKINGDIRECTORY}" ]; then
+  echo "missing \$WORKINGDIRECTORY."
+  exit 1
+fi
 
 . ./configuration/parameters
 
-NNODES=${NNODES:-3}
-PORTBASE=${PORTBASE:-3}
+if [ -z "$NNODES" ]; then
+  echo "missing \$NNODES in configuration/parameters"; exit 1
+fi
+if [ -z "$PORTBASE" ]; then
+  echo "missing \$PORTBASE in configuration/parameters"; exit 1
+fi
 
 for node in $(seq 0 $(( NNODES - 1 )))
 do
@@ -57,5 +42,5 @@ do
     echo '      
     ]
 }
-') | sed -zr 's/,([^,]*$)/\1/' > ./configuration/topology-node-$(( node + 1 )).json
+') | sed -zr 's/,([^,]*$)/\1/' > ${WORKINGDIRECTORY}/topology-node-$(( node + 1 )).json
 done

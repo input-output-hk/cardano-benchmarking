@@ -1,14 +1,22 @@
 #!/usr/bin/env bash
 
+exit 0
+
 BASEDIR=$(realpath $(dirname "$0"))
 . ${BASEDIR}/../../scripts/common.sh
+. ${BASEDIR}/configuration/parameters
+
+if [ -z "$targetnodes" ]; then
+  echo "missing \$targetnodes in configuration/parameters"; exit 1
+fi
+if [ -z "$PORTBASE" ]; then
+  echo "missing \$PORTBASE in configuration/parameters"; exit 1
+fi
 
 CONFIGDIR=${BASEDIR}/configuration
 
-. "${CONFIGDIR}"/parameters
-
 # arguments
-TARGETNODES=`for N in $targetnodes; do echo -n "--target-node (\"127.0.0.1\",$((3000 + $N))) "; done`
+TARGETNODES=`for N in $targetnodes; do echo -n "--target-node (\"127.0.0.1\",$((BASEPORT + $N))) "; done`
 
 localsock=$BASEDIR/logs/sockets/1
 
@@ -44,6 +52,9 @@ args_shelley=(
 
 echo "starting submission to:  $TARGETNODES"
 
+if [ -z "$era" ]; then
+  era=shelley
+fi
 case $era in
 byron )
         run 'cardano-tx-generator' "${args_common[@]}" "${args_byron[@]}";;

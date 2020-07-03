@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
 
+if [ -z "${WORKINGDIRECTORY}" ]; then
+  echo "missing \$WORKINGDIRECTORY."
+  exit 1
+fi
+
 BASEDIR=$(realpath $(dirname "$0"))
 . ${BASEDIR}/../../scripts/common.sh
 . ${BASEDIR}/configuration/parameters
@@ -9,8 +14,9 @@ NODECMD=${NODECMD:-"run cardano-node"}
 # the host address and interface the node listens:
 HOSTADDR=127.0.0.1
 
-# the nodes will listen on ports starting with:
-PORTBASE=${PORTBASE:-3000}
+if [ -z "$PORTBASE" ]; then
+  echo "missing \$PORTBASE in configuration/parameters"; exit 1
+fi
 
 GENESISDIR=configuration/genesis
 
@@ -41,12 +47,15 @@ do tmux select-pane -t $((N - 1))
       . ${__COMMON_SRCROOT}/scripts/lib-cli.sh;
       . ${__COMMON_SRCROOT}/scripts/lib-node.sh;
 
+      grep -q -e '^ViewMode: *LiveView' ${WORKINGDIRECTORY}/configuration-node-${N}.yaml &&
+        REDIRSTDERR='2>/dev/null'
+
       ${NODECMD} run \
-            --topology configuration/topology-node-${N}.json \
+            --topology ${WORKINGDIRECTORY}/topology-node-${N}.json \
             --database-path db/${N} \
             --socket-path logs/sockets/${N} \
             --host-addr ${HOSTADDR} --port $((PORTBASE + N - 1)) \
-            --config configuration/configuration-node-${N}.yaml \
+            --config ${WORKINGDIRECTORY}/configuration-node-${N}.yaml \
             --shelley-kes-key ${GENESISDIR}/node${N}/kes.skey \
             --shelley-vrf-key ${GENESISDIR}/node${N}/vrf.skey \
             --shelley-operational-certificate ${GENESISDIR}/node${N}/node.cert \

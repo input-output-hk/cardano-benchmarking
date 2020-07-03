@@ -39,16 +39,15 @@ options:
 
 # accepting incoming traces and naming them
 traceAcceptAt:
-  - nodeName: "pool1"
-    remoteAddr:
-      tag: RemotePipe
-      contents: "logs/sockets/pool1"
-  - nodeName: "pool2"
-    remoteAddr:
-      tag: RemotePipe
-      contents: "logs/sockets/pool2"
-  - nodeName: "pool3"
-    remoteAddr:
-      tag: RemotePipe
-      contents: "logs/sockets/pool3"
-
+#  - nodeName: "pool1"
+#    remoteAddr:
+#      tag: RemotePipe
+#      contents: "logs/sockets/pool1"
+#  - nodeName: "pool2"
+#    remoteAddr:
+#      tag: RemotePipe
+#      contents: "logs/sockets/pool2"
+#  - nodeName: "pool3"
+#    remoteAddr:
+#      tag: RemotePipe
+#      contents: "logs/sockets/pool3"

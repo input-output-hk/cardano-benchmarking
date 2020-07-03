@@ -55,4 +55,5 @@ txfee=1000000
 # number of transactions for cli benchmarking
 NUM_OF_ADDRESSES=1000
 
+# the nodes will listen on ports starting with
 PORTBASE=3000

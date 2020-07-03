@@ -5,7 +5,7 @@ BASEDIR=$(realpath $(dirname "$0"))
 . "${BASEDIR}"/../../scripts/common.sh
 
 prebuild 'cardano-tx-generator' || exit 1
-prebuild 'cardano-rt-view-service' || exit 1
+prebuild 'cardano-rt-view' || exit 1
 prebuild 'cardano-node' || exit 1
 prebuild 'cardano-cli' || exit 1
 
@@ -28,18 +28,19 @@ rm -rf ./db/* ./logs/*
 mkdir -p db logs/sockets
 
 # 1 prepare genesis
-./prepare_genesis.sh
+${BASEDIR}/prepare_genesis.sh
+
 
 # 2 run rt-view
 tmux select-window -t :0
 tmux new-window -n RTview \
-             "${TMUX_ENV_PASSTHROUGH[*]} ./run-rt-view.sh; $SHELL"
+             "${TMUX_ENV_PASSTHROUGH[*]} ${BASEDIR}/run-rt-view.sh; $SHELL"
 sleep 1
 
 # 3 run pools
 tmux select-window -t :0
 tmux new-window -n Nodes \
-             "${TMUX_ENV_PASSTHROUGH[*]} ./run-3pools.sh; $SHELL"
+             "${TMUX_ENV_PASSTHROUGH[*]} ${BASEDIR}/run-Npools.sh; $SHELL"
 sleep 2
 
 tmux select-window -t :0
@@ -50,13 +51,13 @@ do echo -n "."; sleep 1; done; echo
 # 4 run tx-gen
 tmux select-window -t :0
 tmux new-window -n TxGen \
-             "${TMUX_ENV_PASSTHROUGH[*]} ./run-tx-generator.sh; $SHELL"
+             "${TMUX_ENV_PASSTHROUGH[*]} ${BASEDIR}/run-tx-generator.sh; $SHELL"
 sleep 1
 
 # 5 send delegation transactions
 tmux select-window -t :0
 tmux new-window -n Delegation \
-             "sleep 5; ${TMUX_ENV_PASSTHROUGH[*]} ./submit_delegation_tx.sh; $SHELL"
+             "sleep 5; ${TMUX_ENV_PASSTHROUGH[*]} ${BASEDIR}/submit_delegation_tx.sh; $SHELL"
 
 tmux select-window -t Nodes
 sleep 1

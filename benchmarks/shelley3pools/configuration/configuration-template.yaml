@@ -1,8 +1,3 @@
-##########################################################
-###############          Mainnet                 #########
-############### Cardano Byron Node Configuration #########
-##########################################################
-
 
 ##### Locations #####
 
@@ -64,33 +59,33 @@ TracingVerbosity: MaximalVerbosity
 # configuration below. The logging backend is called Katip.
 setupBackends:
   - KatipBK
-#  - TraceForwarderBK
+  - TraceForwarderBK
 
 # This specifies the default backends that trace output is sent to if it
 # is not specifically configured to be sent to other backends.
 defaultBackends:
   - KatipBK
-#  - TraceForwarderBK
+  - TraceForwarderBK
 
 # EKG is a simple metrics monitoring system. Uncomment the following to enable
 # this backend and listen on the given local port and point your web browser to
 # http://localhost:12788/
-hasEKG: 12788
+#hasEKG: 12788
 
 # The Prometheus monitoring system exports EKG metrics. Uncomment the following
 # to listen on the given port. Output is provided on
 # http://localhost:12798/metrics
-hasPrometheus:
-  - "127.0.0.1"
-  - 12798
+#hasPrometheus:
+#  - "127.0.0.1"
+#  - 12798
 
 # To enable the 'TraceForwarder' backend, uncomment the following setting. Log
 # items are then forwarded based on an entry in 'mapBackends' to a separate
 # process running a 'TraceAcceptor'.
 # Example using UNIX pipes:
-#traceForwardTo:
-#   tag: RemotePipe
-#   contents: "logs/sockets/pool1"
+traceForwardTo:
+   tag: RemotePipe
+   contents: "logs/sockets/pool<CHANGE_ME_TO_NODE_ID>"
 # 
 # Example using Windows named pipes:
 # traceForwardTo:

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
-# for debugging
-# set -x
+# for debugging: set -xe
+set -e
 
 BASEDIR=$(realpath $(dirname "$0"))
 . ${BASEDIR}/../../scripts/common.sh
@@ -23,6 +23,39 @@ fi
 if [ -z "${GEN_DECENTRALISATIONPARAM}" ]; then
   echo "missing \$GEN_DECENTRALISATIONPARAM"; exit 1
 fi
+if [ -z "${genesis_keys}" ]; then
+  echo "missing \$genesis_keys"; exit 1
+fi
+if [ -z "${utxo_keys}" ]; then
+  echo "missing \$utxo_keys"; exit 1
+fi
+
+## set variables
+for N in $(seq -s ' ' 1 $NNODES); do Pools[$N]=1; done
+nStakePools=0
+maxStakePoolId=0
+for N in ${STAKEPOOLS}; do
+  Pools[$N]=2
+  nStakePools=$((nStakePools + 1))
+  if [ $N -gt $maxStakePoolId ]; then
+    maxStakePoolId=$N
+  fi
+done
+
+# check for enough UTxO funds for delegation
+if [ $nStakePools -gt $NNODES ]; then
+  echo "more stakepools requested than available nodes."
+  exit 1
+fi
+if [ $maxStakePoolId -ge $NNODES ]; then
+  echo "a stakepool node id (${maxStakePoolId}) is larger than the maximum node id available: $((NNODES - 1))"
+  exit 1
+fi
+if [ $maxStakePoolId -ge $utxo_keys ]; then
+  echo "a stakepool node id (${maxStakePoolId}) is referring to unavailable delegation funds (max: ${utxo_keys})"
+  exit 1
+fi
+
 
 cd ${BASEDIR}
 
@@ -36,10 +69,15 @@ CLICMD=${CLICMD:-'run cardano-cli'}
 # === genesis ===
 ${CLICMD} shelley genesis create \
      --genesis-dir ${GENESISDIR} \
-     --gen-genesis-keys 3 \
-     --gen-utxo-keys 3 \
+     --gen-genesis-keys ${genesis_keys} \
+     --gen-utxo-keys ${utxo_keys} \
      --testnet-magic ${MAGIC} \
      --supply ${SUPPLY}
+
+if [ ! -e ${GENESISDIR}/genesis.spec.json ]; then
+  echo "missing ${GENESISDIR}/genesis.spec.json"
+  exit 1
+fi
 
 ## set parameters in template
 sed -i ${GENESISDIR}/genesis.spec.json \
@@ -52,10 +90,6 @@ sed -i ${GENESISDIR}/genesis.spec.json \
 
 ## update genesis from template
 ${CLICMD} shelley genesis create --genesis-dir ${GENESISDIR} --testnet-magic ${MAGIC} --supply ${SUPPLY}
-
-## set variables
-for N in $(seq -s ' ' 1 $NNODES); do Pools[$N]=1; done
-for N in ${STAKEPOOLS}; do Pools[$N]=2; done
 
 ## create KES, VRF, certs per node
 for N in $(seq 1 $NNODES); do
