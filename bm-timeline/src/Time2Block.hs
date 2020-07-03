@@ -61,9 +61,9 @@ process basep = do
       -- TLIO.putStrLn . TL.pack . show $ length txadopted
       -- TLIO.putStrLn . TL.pack . show $ length time2block
       let cdf = calc_cdf time2block
-      TLIO.putStrLn . TL.pack . show $ cdf
+      -- TLIO.putStrLn . TL.pack . show $ cdf
       let boxplot = calc_boxplot time2block
-      TLIO.putStrLn . TL.pack . show $ boxplot
+      -- TLIO.putStrLn . TL.pack . show $ boxplot
       output_csv h $ named_columns [ (["milliseconds", "fraction"], pairs_in_columns(cdf))
                                    , (["min","q1","median","q3","max"], list_to_columns(boxplot))]
   return ()

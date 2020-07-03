@@ -42,8 +42,8 @@ cabal_package_to_haskellnix_package_set_name() {
         local nix_pkgset="${CABALPKG_TO_HASKELLNIX_PKGSET[${cabal_package}]}"
         if test -n "${nix_pkgset}"
         then echo -n "${nix_pkgset}"
-        else fprint "Cabal exe '${cabal_exe}' unknown:  update CABALEXE_TO_CABALPKG in scripts/lib-changes.sh"
-             fprint "Cabal package '${cabal_package}' unknown.\nTo fix, add an entry to CABALPKG_TO_HASKELLNIX_PKGSET in scripts/lib-changes.sh"
+        else fprint "Cabal exe '${cabal_exe}' unknown:  update CABALEXE_TO_CABALPKG in scripts/libconfig.sh"
+             fprint "Cabal package '${cabal_package}' unknown.\nTo fix, add an entry to CABALPKG_TO_HASKELLNIX_PKGSET in scripts/libconfig.sh"
              return 1
         fi
 }

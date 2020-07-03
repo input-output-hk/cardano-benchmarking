@@ -5,6 +5,7 @@ module Cardano.BM.Csv
       output_csv
     , named_columns
     , pairs_in_columns
+    , timestamp_with_list
     , list_to_columns
     , Range
     )
@@ -47,6 +48,9 @@ named_columns ls =
 
 pairs_in_columns :: (Show a, Show b) => [(a,b)] -> Range
 pairs_in_columns = map (\(a,b) -> [textify a, textify b])
+
+timestamp_with_list :: Show a => [(Text,[a])] -> Range
+timestamp_with_list = map (\(a,b) -> a : (map textify b))
 
 list_to_columns :: Show a => [a] -> Range
 list_to_columns ls = [ map textify ls ]

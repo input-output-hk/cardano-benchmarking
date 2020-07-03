@@ -1,5 +1,13 @@
 #!/usr/bin/env bash
 
+# usage:
+# indicate path to log files in environment variable: LOGPATH (default: logs)
+# set number of nodes in benchmarking run in env. var.: NNODES (default: 3)
+# indicate output directory for analysed data in env. var.: OUTDIR (default: timeline-${TSTAMP})
+#
+# then, call this script
+
+
 BASEDIR=$(realpath $(dirname "$0"))
 . ${BASEDIR}/../../scripts/common.sh
 
@@ -7,6 +15,7 @@ set -e
 
 prebuild 'bmtimeline' || exit 1
 prebuild 'bmtime2block' || exit 1
+prebuild 'bmresources' || exit 1
 
 TSTAMP=$(TZ=UTC date --iso-8601=seconds)
 
@@ -57,6 +66,9 @@ cp timeline.csv ${OUTDIR}/
 
 run bmtime2block ${OUTDIR}
 cp time2block.csv ${OUTDIR}/
+
+run bmresources ${NNODES} ${OUTDIR}
+cp resources.csv ${OUTDIR}/
 
 if test -n "$(command -v libreoffice)" &&
    test -n "$(command -v ssconvert)"

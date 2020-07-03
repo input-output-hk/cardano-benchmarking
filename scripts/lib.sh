@@ -95,7 +95,7 @@ cabal_exe_to_cabal_pkg() {
         local cabal_pkg="${CABALEXE_TO_CABALPKG[${cabal_exe}]}"
         if test -n "${cabal_pkg}"
         then echo -n "${cabal_pkg}"
-        else fprint "Cabal exe '${cabal_exe}' unknown.\nTo fix, add an entry to CABALEXE_TO_CABALPKG in scripts/lib-changes.sh"
+        else fprint "Cabal exe '${cabal_exe}' unknown.\nTo fix, add an entry to CABALEXE_TO_CABALPKG in scripts/libconfig.sh"
              return 1
         fi
 }
@@ -139,7 +139,7 @@ actually_run()
                pkg="$(cabal_exe_to_cabal_pkg "${exe}")"
                test -n "${pkg}" || return 1
 
-               ## Handle per-executable extra options -- see lib-changes.sh
+               ## Handle per-executable extra options -- see libconfig.sh
                ## This effectively adds a second round of args processing.
                ##
                ## Note, this complication is because we can't possibly know the
@@ -196,8 +196,9 @@ actually_run()
 
         ## Handle --build-only (ugh..)
         if test -n "${build_only}"
-        then local rob='build' dash2=
-        else local rob='run'   dash2=--; fi
+        then local rob='build' dash2= stackprep="$pkg:exe:"
+        else local rob='run'   dash2="--" stackprep=
+        fi
 
         local PATH_SHADOWABLE= CMD=()
         case ${SCRIPTS_LIB_SH_MODE} in
@@ -207,9 +208,9 @@ actually_run()
         cabal )     PATH_SHADOWABLE=t
                     CMD=(cabal v2-${rob} ${toolargs}     $pkg:exe:$exe ${dash2});;
         stack )     PATH_SHADOWABLE=t
-                    CMD=(stack           ${toolargs} ${rob}       $exe ${dash2});;
+                    CMD=(stack           ${toolargs} ${rob}       ${stackprep}$exe ${dash2});;
         stack-nix ) PATH_SHADOWABLE=t
-                    CMD=(stack           ${toolargs} ${rob} --nix $exe ${dash2});;
+                    CMD=(stack           ${toolargs} ${rob} --nix ${stackprep}$exe ${dash2});;
         * ) echo "INTERNAL ERROR: unknown mode:  $SCRIPTS_LIB_SH_MODE" >&2; return 1;;
         esac
         if test -z "${build_only}"
