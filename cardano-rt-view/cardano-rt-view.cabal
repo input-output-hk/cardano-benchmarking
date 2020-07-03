@@ -79,6 +79,8 @@ executable cardano-rt-view-service
   ghc-options:         -threaded
                        -Wall
                        -rtsopts
+                       -optl-static
+                       -optl-pthread
                        "-with-rtsopts=-T"
   build-depends:       base >=4.12 && <5
                      , cardano-prelude

@@ -20,7 +20,7 @@
 , supportedSystems ? [ "x86_64-linux" "x86_64-darwin" ]
 
 # The systems used for cross-compiling
-, supportedCrossSystems ? [ "x86_64-linux" ]
+, supportedCrossSystems ? [ "x86_64-linux" "x86_64-linux-musl" ]
 
 # A Hydra option
 , scrubJobs ? true
