@@ -3,6 +3,8 @@
 # for debugging
 # set -x
 
+set -e
+
 BASEDIR=$(realpath $(dirname "$0"))
 . ${BASEDIR}/../../scripts/common.sh
 . ${BASEDIR}/configuration/parameters
@@ -36,7 +38,7 @@ CLICMD=${CLICMD:-'run cardano-cli'}
 # === genesis ===
 ${CLICMD} shelley genesis create \
      --genesis-dir ${GENESISDIR} \
-     --gen-genesis-keys 3 \
+     --gen-genesis-keys 1 \
      --gen-utxo-keys 3 \
      --testnet-magic ${MAGIC} \
      --supply ${SUPPLY}
@@ -75,11 +77,18 @@ for N in $(seq 1 $NNODES); do
         --cold-signing-key-file ${GENESISDIR}/node${N}/cold/operator.skey \
         --operational-certificate-issue-counter-file ${GENESISDIR}/node${N}/cold/operator.counter
     else ## BFT node
-        ln -s ../../delegate-keys/delegate${N}.skey    ${GENESISDIR}/node${N}/cold/operator.skey
-        ln -s ../../delegate-keys/delegate${N}.vkey    ${GENESISDIR}/node${N}/cold/operator.vkey
-        ln -s ../../delegate-keys/delegate${N}.counter ${GENESISDIR}/node${N}/cold/operator.counter
-        ln -s ../delegate-keys/delegate${N}.vrf.skey   ${GENESISDIR}/node${N}/vrf.skey
-        ln -s ../delegate-keys/delegate${N}.vrf.vkey   ${GENESISDIR}/node${N}/vrf.vkey
+        SRCN=1
+        ln -s ../../delegate-keys/delegate${SRCN}.skey    ${GENESISDIR}/node${N}/cold/operator.skey
+        ln -s ../../delegate-keys/delegate${SRCN}.vkey    ${GENESISDIR}/node${N}/cold/operator.vkey
+        ln -s ../../delegate-keys/delegate${SRCN}.counter ${GENESISDIR}/node${N}/cold/operator.counter
+        ln -s ../delegate-keys/delegate${SRCN}.vrf.skey   ${GENESISDIR}/node${N}/vrf.skey
+        ln -s ../delegate-keys/delegate${SRCN}.vrf.vkey   ${GENESISDIR}/node${N}/vrf.vkey
+        cat <<EOF                                         >${GENESISDIR}/node${N}/cold/operator.counter
+type: Node operational certificate issue counter
+title: Next certificate issue number: 0
+cbor-hex:
+ 00
+EOF
     fi
 
     # certificate (adapt kes-period for later certs)
