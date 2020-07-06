@@ -100,7 +100,7 @@ extra-deps:
       - test
 
   - git: https://github.com/input-output-hk/cardano-node
-    commit: 9cfe6fc4236ca38cfa7245ffd70feb161badd79a
+    commit: 9260a99143cff5fc7e4a5e4fb93244f10fb86e7e
     subdirs:
       - cardano-api
       - cardano-config
@@ -134,7 +134,7 @@ extra-deps:
       - cardano-shell
 
   - git: https://github.com/input-output-hk/cardano-ledger-specs
-    commit: c4cce950ff1539a077ef527341b20f21fe4793e6
+    commit: 12b13f390d64df6af6054b0d33bb3767756da041
     subdirs:
       # small-steps
       - semantics/executable-spec
@@ -155,7 +155,7 @@ extra-deps:
     commit: 26d35ad52fe9ade3391532dbfeb2f416f07650bc
 
   - git: https://github.com/input-output-hk/ouroboros-network
-    commit: 7971422035c0c9e3e35358559b0d441baa24d1d2
+    commit: 542e29d3ee0616bb688c8cea77af0bc3543b8bdd
     subdirs:
         - io-sim
         - io-sim-classes
