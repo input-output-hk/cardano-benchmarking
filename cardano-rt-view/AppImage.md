@@ -28,7 +28,27 @@ To be able to run `AppImage`s, you need `appimage-run` program as well, install 
 $ nix-env -iA nixos.appimage-run
 ```
 
-## Create AppImage using [appimagetool](https://github.com/AppImage/AppImageKit)
+## NixOS: Static Compilation
+
+By default, `cardano-rt-view-service` executable is built with dynamic dependencies
+(you can check it using `ldd` command). To simplify distribution of `AppImage`, it is
+highly recommended to compile `cardano-rt-view-service` with static linking. In this case
+all dependencies will be a part of executable, so `ldd` command returns nothing.
+
+Use this command:
+
+```
+$ cd path/to/cardano-benchmarking/
+$ nix build -L -f static.nix cardano-rt-view.components.exes.cardano-rt-view-service
+```
+
+Then copy executable in `bin` directory:
+
+```
+$ cp result/bin/cardano-rt-view-service bin/
+```
+
+## Recommended: Create AppImage using [appimagetool](https://github.com/AppImage/AppImageKit)
 
 First, download `appimatetool` from this [AppImageKit/Releases](https://github.com/AppImage/AppImageKit/releases).
 For example, `appimagetool-x86_64.AppImage` file.
@@ -51,7 +71,7 @@ As a result, you'll see a directory like `appdir-2020-07-01T16_01_43`. Correspon
 in `/tmp` directory, for example:
 
 ```
-$ ls -al /tmp/Cardano_RTview-x86_64.AppImage 
+$ ls -al /tmp/Cardano_RTview-x86_64.AppImage
 -rwxr-xr-x 1 denis users 7356392 Jul  1 21:13 /tmp/Cardano_RTview-x86_64.AppImage
 ```
 

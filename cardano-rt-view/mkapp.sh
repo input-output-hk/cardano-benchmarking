@@ -29,26 +29,8 @@ mkdir ${OUTDIR}
 
 cd ${OUTDIR}
 
-# copy libraries to local lib folder
-if [ -d lib ]; then
-  rm -ivr lib
-fi
-mkdir lib
-
-LIBS=$(ldd ${EXE}  | sed -ne 's/.* => \([^ ]\+\) .*/\1/p')
-
-for L in $LIBS; do
-  cp -iv ${L} ./lib/
-done
-
-# hack hack
-export LD_LIBRARY_PATH="$(pwd)/lib":$LD_LIBRARY_PATH
-
-# copy binary and change library search path
+# copy binary
 cp -iv ${EXE} .
-
-patchelf --remove-rpath ${PROGNAME}
-patchelf --set-rpath lib/ ${PROGNAME}
 
 # copy resources
 cp ../resources/cardano-rt-view.desktop .

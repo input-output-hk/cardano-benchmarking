@@ -73,10 +73,9 @@ if [ "${CONN}" = "P" ]; then
   echo "nodes will need to write to the pipes created in: ${PIPELOC}"
 fi
 
-
 ## prepare configuration
 
-sed -e '/##ACCEPTORS##/q' rt-view.yaml0 > rt-view.yaml
+sed -e '/##ACCEPTORS##/q' ${APPDIR}/rt-view.yaml0 > /tmp/rt-view.yaml
 
 {
   echo
@@ -98,7 +97,7 @@ sed -e '/##ACCEPTORS##/q' rt-view.yaml0 > rt-view.yaml
       fi
       echo
   done
-} >> rt-view.yaml
+} >> /tmp/rt-view.yaml
 
 
 ## start service
@@ -106,7 +105,7 @@ sed -e '/##ACCEPTORS##/q' rt-view.yaml0 > rt-view.yaml
 echo
 echo "Starting RTview on http://localhost:${WEBPORT}"
 
-exec ./cardano-rt-view-service --port ${WEBPORT} \
-  --config rt-view.yaml \
-  --static static
+exec ${APPDIR}/cardano-rt-view-service --port ${WEBPORT} \
+  --config /tmp/rt-view.yaml \
+  --static ${APPDIR}/static
 
