@@ -28,7 +28,7 @@ rm -rf ./db/* ./logs/*
 mkdir -p db logs/sockets
 
 # 1 prepare genesis
-./prepare_genesis.sh
+./prepare_genesis_staked.sh
 
 # 2 run rt-view
 tmux select-window -t :0
@@ -52,11 +52,6 @@ tmux select-window -t :0
 tmux new-window -n TxGen \
              "${TMUX_ENV_PASSTHROUGH[*]} ./run-tx-generator.sh; $SHELL"
 sleep 1
-
-# 5 send delegation transactions
-tmux select-window -t :0
-tmux new-window -n Delegation \
-             "sleep 5; ${TMUX_ENV_PASSTHROUGH[*]} ./submit_delegation_tx.sh; $SHELL"
 
 tmux select-window -t Nodes
 sleep 1

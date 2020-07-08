@@ -12,8 +12,11 @@ GEN_DECENTRALISATIONPARAM="0.5"
 # the network id for our testnet
 MAGIC=42
 
-# total supply of Lovelaces in genesis (divisible by $NNODES)
-SUPPLY=1000000000002
+# total supply of Lovelaces in genesis
+TOTAL_SUPPLY=1000000000000
+
+# supply of pool-delegated Lovelaces in genesis
+POOL_SUPPLY=$((TOTAL_SUPPLY / 2))
 
 # how many nodes to start
 NNODES=3
