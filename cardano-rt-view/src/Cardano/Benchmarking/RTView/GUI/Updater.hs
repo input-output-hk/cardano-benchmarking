@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
@@ -38,10 +39,7 @@ import           Cardano.BM.Data.Severity
                    ( Severity (..) )
 import           Cardano.Benchmarking.RTView.CLI
                    ( RTViewParams (..) )
-import           Cardano.Benchmarking.RTView.GUI.Charts
-                   ( updateCPUUsageChartJS, updateDiskUsageChartJS
-                   , updateMemoryUsageChartJS, updateNetworkUsageChartJS
-                   )
+import qualified Cardano.Benchmarking.RTView.GUI.Charts as Chart
 import           Cardano.Benchmarking.RTView.GUI.Elements
                    ( ElementName (..), ElementValue (..)
                    , NodeStateElements, NodesStateElements
@@ -55,12 +53,28 @@ import           Cardano.Benchmarking.RTView.NodeState.Types
 -- | This function is calling by the timer. It updates the node' state elements
 --   on the page automatically, because threepenny-gui is based on websockets.
 updateGUI
-  :: NodesState
+  :: UI.Window
+  -> NodesState
+  -> RTViewParams
+  -> [RemoteAddrNamed]
+  -> (NodesStateElements, NodesStateElements)
+  -> UI ()
+updateGUI window nodesState params acceptors (nodesStateElems, gridNodesStateElems) = do
+  -- Only one GUI mode can be active now, so check it and update it.
+  UI.getElementById window "viewModeButton" >>= \case
+    Just btn -> UI.get UI.value btn >>= \case
+      "paneMode" -> updatePaneGUI window nodesState params acceptors nodesStateElems
+      _ ->          updateGridGUI window nodesState params acceptors gridNodesStateElems
+    Nothing -> return ()
+
+updatePaneGUI
+  :: UI.Window
+  -> NodesState
   -> RTViewParams
   -> [RemoteAddrNamed]
   -> NodesStateElements
   -> UI ()
-updateGUI nodesState params acceptors nodesStateElems = do
+updatePaneGUI window nodesState params acceptors nodesStateElems = do
   forM_ nodesStateElems $ \(nameOfNode, elements, peerInfoItems) -> do
     let nodeState = nodesState ! nameOfNode
         (acceptorHost, acceptorPort) = findTraceAcceptorNetInfo nameOfNode acceptors
@@ -69,7 +83,7 @@ updateGUI nodesState params acceptors nodesStateElems = do
         nm = nsMetrics nodeState
         activeNodeMark = unpack nameOfNode
 
-    updateCharts nameOfNode ni nm
+    updateCharts window nameOfNode ni nm
 
     void $ updateElementValue (ElementString  $ niNodeRelease ni)             $ elements ! ElNodeRelease
     void $ updateElementValue (ElementString  $ niNodeVersion ni)             $ elements ! ElNodeVersion
@@ -130,6 +144,46 @@ updateGUI nodesState params acceptors nodesStateElems = do
     void $ updateProgressBar (nmRTSMemoryUsedPercent nm)   $ elements ! ElRTSMemoryProgress
 
     markOutdatedElements params ni nm elements
+
+updateGridGUI
+  :: UI.Window
+  -> NodesState
+  -> RTViewParams
+  -> [RemoteAddrNamed]
+  -> NodesStateElements
+  -> UI ()
+updateGridGUI window nodesState _params acceptors gridNodesStateElems =
+  forM_ gridNodesStateElems $ \(nameOfNode, elements, _) -> do
+    let nodeState = nodesState ! nameOfNode
+        acceptorEndpoint = mkTraceAcceptorEndpoint nameOfNode acceptors
+
+    let ni = nsInfo nodeState
+        nm = nsMetrics nodeState
+
+    updateCharts window nameOfNode ni nm
+
+    void $ updateElementValue (ElementString  acceptorEndpoint)          $ elements ! ElTraceAcceptorEndpoint
+    void $ updateElementValue (ElementString  $ niNodeRelease ni)        $ elements ! ElNodeRelease
+    void $ updateElementValue (ElementString  $ niNodeVersion ni)        $ elements ! ElNodeVersion
+    void $ updateElementValue (ElementString  $ niNodePlatform ni)       $ elements ! ElNodePlatform
+    void $ updateNodeCommit   (niNodeCommit ni) (niNodeShortCommit ni)   $ elements ! ElNodeCommitHref
+    void $ updateElementValue (ElementInteger $ niPeersNumber ni)        $ elements ! ElPeersNumber
+    void $ updateNodeUpTime   (niUpTime ni)                              $ elements ! ElUptime
+    void $ updateElementValue (ElementInteger $ niEpoch ni)              $ elements ! ElEpoch
+    void $ updateElementValue (ElementInteger $ niSlot ni)               $ elements ! ElSlot
+    void $ updateElementValue (ElementInteger $ niBlocksNumber ni)       $ elements ! ElBlocksNumber
+    void $ updateElementValue (ElementInteger $ niBlocksForgedNumber ni) $ elements ! ElBlocksForgedNumber
+    void $ updateElementValue (ElementInteger $ niNodeCannotLead ni)     $ elements ! ElNodeCannotLead
+    void $ updateElementValue (ElementDouble  $ niChainDensity ni)       $ elements ! ElChainDensity
+    void $ updateElementValue (ElementInteger $ niNodeIsLeaderNum ni)    $ elements ! ElNodeIsLeaderNumber
+    void $ updateElementValue (ElementInteger $ niSlotsMissedNumber ni)  $ elements ! ElSlotsMissedNumber
+    void $ updateElementValue (ElementInteger $ niTxsProcessed ni)       $ elements ! ElTxsProcessed
+    void $ updateElementValue (ElementWord64  $ nmMempoolTxsNumber nm)   $ elements ! ElMempoolTxsNumber
+    void $ updateElementValue (ElementWord64  $ nmMempoolBytes nm)       $ elements ! ElMempoolBytes
+    void $ updateElementValue (ElementDouble  $ nmRTSGcCpu nm)           $ elements ! ElRTSGcCpu
+    void $ updateElementValue (ElementDouble  $ nmRTSGcElapsed nm)       $ elements ! ElRTSGcElapsed
+    void $ updateElementValue (ElementInteger $ nmRTSGcNum nm)           $ elements ! ElRTSGcNum
+    void $ updateElementValue (ElementInteger $ nmRTSGcMajorNum nm)      $ elements ! ElRTSGcMajorNum
 
 updateElementValue
   :: ElementValue
@@ -247,6 +301,18 @@ findTraceAcceptorNetInfo nameOfNode acceptors =
     Just (RemoteAddrNamed _ (RemoteSocket host port)) -> (host, port)
     Just (RemoteAddrNamed _ (RemotePipe _)) -> ("-", "-")
     Nothing -> ("-", "-")
+ where
+  maybeActiveNode = flip L.find acceptors $ \(RemoteAddrNamed name _) -> name == nameOfNode
+
+mkTraceAcceptorEndpoint
+  :: Text
+  -> [RemoteAddrNamed]
+  -> String
+mkTraceAcceptorEndpoint nameOfNode acceptors =
+  case maybeActiveNode of
+    Just (RemoteAddrNamed _ (RemoteSocket host port)) -> host <> ":" <> port
+    Just (RemoteAddrNamed _ (RemotePipe pipePath)) -> pipePath
+    Nothing -> "-"
  where
   maybeActiveNode = flip L.find acceptors $ \(RemoteAddrNamed name _) -> name == nameOfNode
 
@@ -421,15 +487,21 @@ markProgressBar now lastUpdate lifetime els (barName, barBoxName) labelsNames =
     forM_ labelsNames $ \name -> void . markAsUpToDate $ els ! name
 
 updateCharts
-  :: Text
+  :: UI.Window
+  -> Text
   -> NodeInfo
   -> NodeMetrics
   -> UI ()
-updateCharts nameOfNode ni nm = do
-  UI.runFunction $ UI.ffi updateMemoryUsageChartJS  mN ts (nmMemory nm)
-  UI.runFunction $ UI.ffi updateCPUUsageChartJS     cN ts (nmCPUPercent nm)
-  UI.runFunction $ UI.ffi updateDiskUsageChartJS    dN ts (nmDiskUsageR nm)     (nmDiskUsageW nm)
-  UI.runFunction $ UI.ffi updateNetworkUsageChartJS nN ts (nmNetworkUsageIn nm) (nmNetworkUsageOut nm)
+updateCharts window nameOfNode ni nm = do
+  mcId <- ifM (elementExists mN) (pure mN) (pure mGN)
+  ccId <- ifM (elementExists cN) (pure cN) (pure cGN)
+  dcId <- ifM (elementExists dN) (pure dN) (pure dGN)
+  ncId <- ifM (elementExists nN) (pure nN) (pure nGN)
+
+  UI.runFunction $ UI.ffi Chart.updateMemoryUsageChartJS  mcId ts (nmMemory nm)
+  UI.runFunction $ UI.ffi Chart.updateCPUUsageChartJS     ccId ts (nmCPUPercent nm)
+  UI.runFunction $ UI.ffi Chart.updateDiskUsageChartJS    dcId ts (nmDiskUsageR nm)     (nmDiskUsageW nm)
+  UI.runFunction $ UI.ffi Chart.updateNetworkUsageChartJS ncId ts (nmNetworkUsageIn nm) (nmNetworkUsageOut nm)
  where
   ts :: String
   ts = formatTime defaultTimeLocale "%M:%S" time
@@ -443,3 +515,10 @@ updateCharts nameOfNode ni nm = do
   cN = "cpuUsageChart-"     <> nameOfNode
   dN = "diskUsageChart-"    <> nameOfNode
   nN = "networkUsageChart-" <> nameOfNode
+
+  mGN = "grid-memoryUsageChart-"  <> nameOfNode
+  cGN = "grid-cpuUsageChart-"     <> nameOfNode
+  dGN = "grid-diskUsageChart-"    <> nameOfNode
+  nGN = "grid-networkUsageChart-" <> nameOfNode
+
+  elementExists anId = isJust <$> UI.getElementById window (unpack anId)

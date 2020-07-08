@@ -19,11 +19,12 @@ library
                        Cardano.Benchmarking.RTView.CLI
 
                        Cardano.Benchmarking.RTView.Acceptor
-                       
+
                        Cardano.Benchmarking.RTView.ErrorBuffer
 
                        Cardano.Benchmarking.RTView.GUI.Charts
                        Cardano.Benchmarking.RTView.GUI.Elements
+                       Cardano.Benchmarking.RTView.GUI.Grid
                        Cardano.Benchmarking.RTView.GUI.Markup
                        Cardano.Benchmarking.RTView.GUI.NodeWidget
                        Cardano.Benchmarking.RTView.GUI.Updater
