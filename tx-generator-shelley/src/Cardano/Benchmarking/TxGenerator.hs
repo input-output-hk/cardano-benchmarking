@@ -21,7 +21,7 @@ import           Control.Monad.Trans.Except.Extra
 import qualified Data.List.NonEmpty as NE
 import           Network.Socket (AddrInfo)
 
-import           Cardano.Config.Logging (LoggingLayer (..))
+import           Cardano.Node.Logging (LoggingLayer (..))
 
 import           Cardano.Benchmarking.TxGenerator.Error (TxGenError (..))
 import           Cardano.Benchmarking.TxGenerator.NodeToNode (BenchmarkTxSubmitTracers (..),

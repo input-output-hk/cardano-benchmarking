@@ -15,10 +15,11 @@ import           Cardano.Benchmarking.TxGenerator.Submission
 import           Cardano.Benchmarking.TxGenerator.Types as T
 
 import           Cardano.Api as Api
+import qualified Cardano.Api.Typed as TApi
 
 runPhase1 :: P.GenerateTxs -> NE.NonEmpty a0 -> ExceptT TxGenError IO [Producer]
 runPhase1 args remoteAddresses = do
-  skey    <- withExceptT CardanoApiError $ newExceptT $ readSigningKey keyFile
+  skey    <- readKey keyFile
   utxoIn  <- withExceptT UTxOParseError $ hoistEither $ parseTxIn $ Text.pack utxo
   srcAddr <- withExceptT AddrParseError $ hoistEither $ addressFromHex $ Text.pack address
   let initialFund = Producer.Producer
@@ -43,3 +44,12 @@ runPhase1 args remoteAddresses = do
     mapSubmitError e = case e of
       TxSubmitSuccess -> Right ()
       err             -> Left $ TxSubmitError $ show err
+
+readKey :: FilePath -> ExceptT TxGenError IO SigningKey
+readKey keyFile
+  = do
+    k <- withExceptT TxFileError $ newExceptT $ TApi.readFileTextEnvelopeAnyOf fileTypes keyFile
+    return $ castKey k
+  where
+    fileTypes = [ TApi.FromSomeType (TApi.AsSigningKey TApi.AsPaymentKey) id ]
+    castKey (TApi.PaymentSigningKey typedK) = SigningKeyShelley typedK
