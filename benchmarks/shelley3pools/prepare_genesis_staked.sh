@@ -182,7 +182,7 @@ do
     deleg_staking=$($cli shelley stake-address key-hash \
                     --stake-verification-key-file "$gendir"/addresses/pool-owner${N}-stake.vkey)
     initial_addr=$($cli shelley address info --address $(cat "$gendir"/addresses/pool-owner$N.addr) |
-                   grep 'Base16:' | sed 's_Base16: __')
+                   jq '.base16' --raw-output)
     params=(
     --arg      poolId          "$pool_id"
     --arg      vrf             "$pool_vrf"
@@ -235,7 +235,7 @@ initial_addr_non_pool_bech32=$($cli shelley address build \
                                --payment-verification-key-file "$gendir"/utxo-keys/utxo1.vkey \
                                --testnet-magic ${MAGIC})
 initial_addr_non_pool_base16=$($cli shelley address info --address "$initial_addr_non_pool_bech32" |
-                               grep 'Base16:' | sed 's_Base16: __')
+                               jq '.base16' --raw-output)
 
 params=(--argjson pools                   "$pools_json"
         --argjson stake                   "$stake_json"
@@ -256,3 +256,6 @@ jq '. +
    ' "${params[@]}" \
  < "$gendir"/genesis.json > "$gendir"/genesis.json.
 mv "$gendir"/genesis.json.  "$gendir"/genesis.json
+
+## Fix up the key, so the generator can read it:
+sed -i 's_PaymentSigningKeyShelley_SigningKeyShelley_' $GENESISDIR/utxo-keys/utxo1.skey

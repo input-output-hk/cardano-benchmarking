@@ -17,6 +17,7 @@ library
   exposed-modules:     Cardano.Benchmarking.GeneratorTx
                        Cardano.Benchmarking.GeneratorTx.Error
                        Cardano.Benchmarking.GeneratorTx.NodeToNode
+                       Cardano.Benchmarking.GeneratorTx.Params
                        Cardano.Benchmarking.GeneratorTx.Tx
                        Cardano.Benchmarking.GeneratorTx.Submission
                        Cardano.Benchmarking.GeneratorTx.CLI.Parsers

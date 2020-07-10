@@ -11,177 +11,42 @@
 {-# OPTIONS_GHC -fno-warn-orphans -Wno-unticked-promoted-constructors -Wno-all-missed-specialisations #-}
 
 module Cardano.Benchmarking.GeneratorTx.NodeToNode
-  ( BenchmarkTxSubmitTracers (..)
-  , SendRecvConnect
-  , SendRecvTxSubmission
-  , benchmarkConnectTxSubmit
+  ( benchmarkConnectTxSubmit
   ) where
 
 import           Prelude
-import           Cardano.Prelude (Text, Void, forever)
+import           Cardano.Prelude (Void, forever)
 
-import qualified Codec.CBOR.Term as CBOR
 import           Codec.Serialise (DeserialiseFailure)
 import           Control.Monad.Class.MonadTimer (MonadTimer, threadDelay)
-import           Data.Aeson ((.=), ToJSON (..), Value (..), toJSON)
 import           Data.ByteString.Lazy (ByteString)
-import qualified Data.HashMap.Strict as HM
 import           Data.Proxy (Proxy (..))
-import qualified Data.Text as T
-import           Data.Time.Clock (getCurrentTime)
-import           Network.Mux (MuxMode(InitiatorMode), WithMuxBearer (..))
+import           Network.Mux (MuxMode(InitiatorMode))
 import           Network.Socket (AddrInfo (..), SockAddr)
 
-import           Control.Tracer (Tracer (..), nullTracer, traceWith)
-import           Cardano.BM.Data.LogItem (LogObject (..), LOContent (..), mkLOMeta)
-import           Cardano.BM.Tracing
-import           Cardano.BM.Data.Tracer (emptyObject, mkObject)
-import           Ouroboros.Consensus.Block
-import           Ouroboros.Consensus.Config.SupportsNode (getNetworkMagic)
+import           Control.Tracer (nullTracer)
 import           Ouroboros.Consensus.Byron.Ledger.Mempool (GenTx)
-import           Ouroboros.Consensus.Ledger.SupportsMempool (GenTxId, TxId)
+import           Ouroboros.Consensus.Ledger.SupportsMempool (GenTxId)
 import           Ouroboros.Consensus.Node.NetworkProtocolVersion
 import           Ouroboros.Consensus.Node.Run (RunNode)
 import           Ouroboros.Consensus.Network.NodeToNode (Codecs(..), defaultCodecs)
-import           Ouroboros.Consensus.Config (TopLevelConfig(..))
 
-import           Ouroboros.Network.Codec (AnyMessage (..))
-import           Ouroboros.Network.Driver (TraceSendRecv (..))
 import           Ouroboros.Network.Mux
                    (OuroborosApplication(..), MuxPeer(..), RunMiniProtocol(..))
 import           Ouroboros.Network.NodeToNode (NetworkConnectTracers (..))
 import qualified Ouroboros.Network.NodeToNode as NtN
-import           Ouroboros.Network.NodeToClient (IOManager, chainSyncPeerNull)
+import           Ouroboros.Network.NodeToClient (chainSyncPeerNull)
 import           Ouroboros.Network.Protocol.BlockFetch.Client (BlockFetchClient(..), blockFetchClientPeer)
-import           Ouroboros.Network.Protocol.Handshake.Type (Handshake)
 import           Ouroboros.Network.Protocol.Handshake.Version (Versions, simpleSingletonVersions)
 import           Ouroboros.Network.Protocol.TxSubmission.Client (TxSubmissionClient, txSubmissionClientPeer)
-import qualified Ouroboros.Network.Protocol.TxSubmission.Type as TS
 import           Ouroboros.Network.Snocket (socketSnocket)
 
-type SendRecvConnect = WithMuxBearer
-                         NtN.RemoteConnectionId
-                         (TraceSendRecv (Handshake
-                                           NtN.NodeToNodeVersion
-                                           CBOR.Term))
+import           Cardano.Benchmarking.GeneratorTx.Params
 
---------------------------------------------------------------------------------------
-
-type SendRecvTxSubmission blk = TraceSendRecv (TS.TxSubmission (GenTxId blk) (GenTx blk))
-
-instance ( Show (GenTxId blk)
-         , ToJSON (TxId (GenTx blk)))
- => ToObject (SendRecvTxSubmission blk) where
-  toObject MinimalVerbosity _ = emptyObject -- do not log
-  toObject NormalVerbosity t =
-    case t of
-      TraceSendMsg (AnyMessage msg) ->
-        case msg of
-          TS.MsgRequestTxIds _ _ _                 -> mkObject ["kind" .= String "TxSubmissionSendRequestTxIds"]
-          TS.MsgReplyTxIds (TS.BlockingReply _)    -> mkObject ["kind" .= String "TxSubmissionSendBReplyTxIds"]
-          TS.MsgReplyTxIds (TS.NonBlockingReply _) -> mkObject ["kind" .= String "TxSubmissionSendNBReplyTxIds"]
-          TS.MsgRequestTxs _                       -> mkObject ["kind" .= String "TxSubmissionSendRequestTxs"]
-          TS.MsgReplyTxs _                         -> mkObject ["kind" .= String "TxSubmissionSendReplyTxs"]
-          TS.MsgKThxBye                            -> mkObject ["kind" .= String "MsgKThxBye"]
-          TS.MsgDone                               -> emptyObject -- No useful information.
-      TraceRecvMsg (AnyMessage msg) ->
-        case msg of
-          TS.MsgRequestTxIds _ _ _                 -> mkObject ["kind" .= String "TxSubmissionRecvRequestTxIds"]
-          TS.MsgReplyTxIds (TS.BlockingReply _)    -> mkObject ["kind" .= String "TxSubmissionRecvBReplyTxIds"]
-          TS.MsgReplyTxIds (TS.NonBlockingReply _) -> mkObject ["kind" .= String "TxSubmissionRecvNBReplyTxIds"]
-          TS.MsgRequestTxs _                       -> mkObject ["kind" .= String "TxSubmissionRecvRequestTxs"]
-          TS.MsgReplyTxs _                         -> mkObject ["kind" .= String "TxSubmissionRecvReplyTxs"]
-          TS.MsgKThxBye                            -> mkObject ["kind" .= String "MsgKThxBye"]
-          TS.MsgDone                               -> emptyObject -- No useful information.
-
-  toObject MaximalVerbosity t =
-    case t of
-      TraceSendMsg (AnyMessage msg) ->
-        case msg of
-          TS.MsgRequestTxIds _ ackNumber reqNumber ->
-            mkObject [ "kind"   .= String "TxSubmissionSendRequestTxIds"
-                     , "ackNum" .= Number (fromIntegral ackNumber)
-                     , "reqNum" .= Number (fromIntegral reqNumber)
-                     ]
-          TS.MsgReplyTxIds (TS.BlockingReply txIds) ->
-            mkObject [ "kind"  .= String "TxSubmissionSendBReplyTxIds"
-                     , "txIds" .= toJSON txIds
-                     ]
-          TS.MsgReplyTxIds (TS.NonBlockingReply txIds) ->
-            mkObject [ "kind"  .= String "TxSubmissionSendNBReplyTxIds"
-                     , "txIds" .= toJSON txIds
-                     ]
-          TS.MsgRequestTxs txIds ->
-            mkObject [ "kind"  .= String "TxSubmissionSendRequestTxs"
-                     , "txIds" .= toJSON txIds
-                     ]
-          TS.MsgReplyTxs _ -> -- We shouldn't log a list of whole transactions here.
-            mkObject [ "kind" .= String "TxSubmissionSendReplyTxs" ]
-          TS.MsgKThxBye ->
-            mkObject [ "kind" .= String "MsgKThxBye" ]
-          TS.MsgDone -> emptyObject -- No useful information.
-
-      TraceRecvMsg (AnyMessage msg) ->
-        case msg of
-          TS.MsgRequestTxIds _ ackNumber reqNumber ->
-            mkObject [ "kind"   .= String "TxSubmissionRecvRequestTxIds"
-                     , "ackNum" .= Number (fromIntegral ackNumber)
-                     , "reqNum" .= Number (fromIntegral reqNumber)
-                     ]
-          TS.MsgReplyTxIds (TS.BlockingReply txIds) ->
-            mkObject [ "kind"  .= String "TxSubmissionRecvBReplyTxIds"
-                     , "txIds" .= toJSON txIds
-                     ]
-          TS.MsgReplyTxIds (TS.NonBlockingReply txIds) ->
-            mkObject [ "kind"  .= String "TxSubmissionRecvNBReplyTxIds"
-                     , "txIds" .= toJSON txIds
-                     ]
-          TS.MsgRequestTxs txIds ->
-            mkObject [ "kind"  .= String "TxSubmissionRecvRequestTxs"
-                     , "txIds" .= toJSON txIds
-                     ]
-          TS.MsgReplyTxs _ -> -- We shouldn't log a list of whole transactions here.
-            mkObject [ "kind" .= String "TxSubmissionRecvReplyTxs" ]
-          TS.MsgKThxBye ->
-            mkObject [ "kind" .= String "MsgKThxBye" ]
-          TS.MsgDone -> emptyObject -- No useful information.
-
-instance HasSeverityAnnotation (SendRecvTxSubmission blk)
-
-instance HasPrivacyAnnotation (SendRecvTxSubmission blk)
-
-instance ( Show (GenTxId blk)
-         , ToJSON (TxId (GenTx blk)))
- => Transformable Text IO (SendRecvTxSubmission blk) where
-  -- transform to JSON Object
-  trTransformer verb tr = Tracer $ \arg -> do
-    currentTime <- getCurrentTime
-    let
-      obj = toObject verb arg
-      updatedObj =
-        if obj == emptyObject
-          then obj
-          else
-            -- Add a timestamp in 'ToObject'-representation.
-            HM.insert "time" (String (T.pack . show $ currentTime)) obj
-      tracer = if obj == emptyObject then nullTracer else tr
-    meta <- mkLOMeta (getSeverityAnnotation arg) (getPrivacyAnnotation arg)
-    traceWith tracer (mempty, LogObject mempty meta (LogStructured updatedObj))
-
---------------------------------------------------------------------------------------
-
-data BenchmarkTxSubmitTracers m blk = BenchmarkTracers
-  { trSendRecvConnect      :: Tracer m SendRecvConnect
-  , trSendRecvTxSubmission :: Tracer m (SendRecvTxSubmission blk)
-  }
 
 benchmarkConnectTxSubmit
   :: forall m blk . (RunNode blk, m ~ IO)
-  => IOManager
-  -> BenchmarkTxSubmitTracers m blk
-  -- ^ For tracing the send/receive actions
-  -> TopLevelConfig blk
-  -- ^ The particular block protocol
+  => Params blk
   -> Maybe AddrInfo
   -- ^ local address information (typically local interface/port to use)
   -> AddrInfo
@@ -189,12 +54,12 @@ benchmarkConnectTxSubmit
   -> TxSubmissionClient (GenTxId blk) (GenTx blk) m ()
   -- ^ the particular txSubmission peer
   -> m ()
-benchmarkConnectTxSubmit iocp trs cfg localAddr remoteAddr myTxSubClient =
+benchmarkConnectTxSubmit p localAddr remoteAddr myTxSubClient =
   NtN.connectTo
-    (socketSnocket iocp)
+    (socketSnocket $ paramsIOManager p)
     NetworkConnectTracers {
         nctMuxTracer       = nullTracer,
-        nctHandshakeTracer = trSendRecvConnect trs
+        nctHandshakeTracer = trConnect p
       }
     peerMultiplex
     (addrAddress <$> localAddr)
@@ -202,13 +67,13 @@ benchmarkConnectTxSubmit iocp trs cfg localAddr remoteAddr myTxSubClient =
  where
   myCodecs :: Codecs blk DeserialiseFailure m
                 ByteString ByteString ByteString ByteString ByteString
-  myCodecs  = defaultCodecs (getCodecConfig $ configBlock cfg) (mostRecentSupportedNodeToNode (Proxy @blk))
+  myCodecs  = defaultCodecs (paramsCodecConfig p) (mostRecentSupportedNodeToNode (Proxy @blk))
   peerMultiplex :: Versions NtN.NodeToNodeVersion NtN.DictVersion
                      (OuroborosApplication InitiatorMode SockAddr ByteString IO () Void)
   peerMultiplex =
     simpleSingletonVersions
       NtN.NodeToNodeV_1
-      (NtN.NodeToNodeVersionData { NtN.networkMagic = getNetworkMagic $ configBlock cfg})
+      (NtN.NodeToNodeVersionData { NtN.networkMagic = paramsNetworkMagic p})
       (NtN.DictVersion NtN.nodeToNodeCodecCBORTerm) $
       NtN.nodeToNodeProtocols NtN.defaultMiniProtocolParameters $ \_ _ ->
         NtN.NodeToNodeProtocols
@@ -224,7 +89,7 @@ benchmarkConnectTxSubmit iocp trs cfg localAddr remoteAddr myTxSubClient =
                                          (blockFetchClientPeer blockFetchClientNull)
           , NtN.txSubmissionProtocol = InitiatorProtocolOnly $
                                          MuxPeer
-                                           (trSendRecvTxSubmission trs)
+                                           (trSubmitMux p)
                                            (cTxSubmissionCodec myCodecs)
                                            (txSubmissionClientPeer myTxSubClient)
           }
