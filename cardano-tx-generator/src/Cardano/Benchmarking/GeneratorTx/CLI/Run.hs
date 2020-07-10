@@ -9,6 +9,7 @@ module Cardano.Benchmarking.GeneratorTx.CLI.Run
   ( runCommand
   ) where
 
+import           Prelude (error)
 import           Data.Version
                     ( showVersion )
 import           Data.Text
@@ -19,8 +20,9 @@ import           Cardano.Prelude hiding (option)
 import           Control.Monad
                     ( fail )
 import           Control.Monad.Trans.Except.Extra
-                    ( firstExceptT )
+                    ( firstExceptT, left )
 
+import qualified Ouroboros.Consensus.Cardano as Consensus
 import           Ouroboros.Network.Block (MaxSlotNo (..))
 import           Ouroboros.Network.NodeToClient
                     ( IOManager
@@ -28,20 +30,19 @@ import           Ouroboros.Network.NodeToClient
                     )
 
 import qualified Cardano.Chain.Genesis as Genesis
-import           Cardano.Config.Logging
-                    ( createLoggingFeature )
+
+import           Cardano.Api.Protocol (Protocol)
 import           Cardano.Config.Types
+import           Cardano.Node.Logging
 import           Cardano.Node.Protocol
 import           Cardano.Node.Protocol.Byron
 import           Cardano.Node.Protocol.Shelley
-import           Cardano.Shell.Types (CardanoFeature (..))
+import           Cardano.Node.Types
 
-import           Cardano.Benchmarking.GeneratorTx.Error
-                    ( TxGenError )
-import           Cardano.Benchmarking.GeneratorTx.CLI.Parsers
-                    ( GenerateTxs (..) )
 import           Cardano.Benchmarking.GeneratorTx
-                    ( genesisBenchmarkRunner )
+import           Cardano.Benchmarking.GeneratorTx.CLI.Parsers
+import           Cardano.Benchmarking.GeneratorTx.Error
+import           Cardano.Benchmarking.GeneratorTx.Params
 
 data ProtocolError =
     IncorrectProtocolSpecified  !Protocol
@@ -59,44 +60,15 @@ data CliError =
 
 runCommand :: GenerateTxs -> ExceptT CliError IO ()
 runCommand (GenerateTxs logConfigFp
-                        signingKey
-                        delegCert
                         genFile
                         socketFp
-                        targetNodeAddresses
-                        numOfTxs
-                        numOfInsPerTx
-                        numOfOutsPerTx
-                        feePerTx
-                        tps
-                        initCooldown
-                        txAdditionalSize
-                        sigKeysFiles
-                        singleThreaded) =
+                        b@Benchmark{}
+                        sigKeysFiles) =
   withIOManagerE $ \iocp -> do
-    let ncli = NodeCLI
-               { nodeMode = RealProtocolMode
-               , nodeAddr = Nothing
-               , configFile = ConfigYamlFilePath logConfigFp
-               , topologyFile = TopologyFile "" -- Tx generator doesn't use topology
-               , databaseFile = DbFile ""       -- Tx generator doesn't use database
-               , socketFile = Just socketFp
-               , protocolFiles = ProtocolFilepaths {
-                    byronCertFile = Just delegCert
-                  , byronKeyFile = Just signingKey
-                  , shelleyKESFile = Nothing
-                  , shelleyVRFFile = Nothing
-                  , shelleyCertFile = Nothing
-                  }
-               , validateDB = False
-               , shutdownIPC = Nothing
-               , shutdownOnSlotSynced = NoMaxSlotNo
-               }
-
     -- Logging layer
-    (loggingLayer, loggingFeature)
-      <- firstExceptT (\(ConfigErrorFileNotFound fp) -> FileNotFoundError fp) $
-         createLoggingFeature (pack $ showVersion version) NoEnvironment ncli
+    loggingLayer <- firstExceptT (\(ConfigErrorFileNotFound fp) -> FileNotFoundError fp) $
+                             createLoggingLayer (pack $ showVersion version)
+                             ncli
 
     nc <- liftIO . parseNodeConfigurationFP $ ConfigYamlFilePath logConfigFp
 
@@ -114,28 +86,50 @@ runCommand (GenerateTxs logConfigFp
               x -> fail $ "Unsupported protocol: " <> show x
 
     firstExceptT GenerateTxsError $
-        firstExceptT GenesisBenchmarkRunnerError $
+        firstExceptT GenesisBenchmarkRunnerError $ do
             case protocol of
-              SomeConsensusProtocol p ->
+              SomeConsensusProtocol p -> do
+                let keys = [fp | SigningKeyFile fp <- sigKeysFiles]
+                checkBenchmarkParams b keys
                 genesisBenchmarkRunner
-                  loggingLayer
-                  iocp
-                  socketFp
-                  p
-                  targetNodeAddresses
-                  numOfTxs
-                  numOfInsPerTx
-                  numOfOutsPerTx
-                  feePerTx
-                  tps
-                  initCooldown
-                  txAdditionalSize
-                  [fp | SigningKeyFile fp <- sigKeysFiles]
-                  singleThreaded
+                  b (mkParams p iocp socketFp loggingLayer) keys
 
     liftIO $ do
       threadDelay (200*1000) -- Let the logging layer print out everything.
-      featureShutdown loggingFeature
+      shutdownLoggingLayer loggingLayer
+ where
+   mkParams :: Consensus.Protocol IO blk p
+            -> IOManager -> SocketPath -> LoggingLayer
+            -> Params blk
+   mkParams p@Consensus.ProtocolRealPBFT{}   = mkParamsByron   p
+   mkParams p@Consensus.ProtocolRealTPraos{} = mkParamsShelley p
+   mkParams _ = error $ "Unsupported protocol."
+
+   checkBenchmarkParams :: Benchmark -> [FilePath]
+                        -> ExceptT TxGenError IO ()
+   checkBenchmarkParams Benchmark{} keys = do
+     when (length keys < 3) $
+       left $ NeedMinimumThreeSigningKeyFiles keys
+
+   ncli :: NodeCLI
+   ncli = NodeCLI
+          { nodeMode = RealProtocolMode
+          , nodeAddr = Nothing
+          , configFile = ConfigYamlFilePath logConfigFp
+          , topologyFile = TopologyFile "" -- Tx generator doesn't use topology
+          , databaseFile = DbFile ""       -- Tx generator doesn't use database
+          , socketFile = Just socketFp
+          , protocolFiles = ProtocolFilepaths {
+               byronCertFile = Just ""
+             , byronKeyFile = Just ""
+             , shelleyKESFile = Nothing
+             , shelleyVRFFile = Nothing
+             , shelleyCertFile = Nothing
+             }
+          , validateDB = False
+          , shutdownIPC = Nothing
+          , shutdownOnSlotSynced = NoMaxSlotNo
+          }
 
 ----------------------------------------------------------------------------
 

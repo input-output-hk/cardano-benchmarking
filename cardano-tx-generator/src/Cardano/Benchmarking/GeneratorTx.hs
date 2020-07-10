@@ -1,10 +1,12 @@
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE ViewPatterns #-}
@@ -26,7 +28,7 @@ module Cardano.Benchmarking.GeneratorTx
   ) where
 
 import           Cardano.Prelude
-import           Prelude (String, error, fail)
+import           Prelude (String, error, id)
 
 import           Codec.CBOR.Read (deserialiseFromBytes)
 import           Control.Concurrent (threadDelay)
@@ -34,7 +36,7 @@ import           Control.Exception (IOException)
 import qualified Control.Exception as Exception
 import           Control.Monad (forM, forM_, mapM, when)
 import           Control.Monad.Trans.Except (ExceptT)
-import           Control.Monad.Trans.Except.Extra (left, right, firstExceptT)
+import           Control.Monad.Trans.Except.Extra (left, right, firstExceptT, newExceptT)
 import           Data.Bifunctor (bimap)
 import qualified Data.ByteString.Lazy as LB
 import           Data.Either (isLeft)
@@ -57,91 +59,38 @@ import           Network.Socket (AddrInfo (..),
                      getAddrInfo)
 
 import qualified Cardano.Chain.Common as CC.Common
-import qualified Cardano.Chain.Genesis as CC.Genesis
 import qualified Cardano.Chain.UTxO as CC.UTxO
-import           Cardano.Config.Logging (LoggingLayer (..))
-import           Cardano.Config.Types (NodeAddress (..), NodeHostAddress(..),
-                                       SocketPath)
+import           Cardano.Config.Types (NodeAddress (..), NodeHostAddress(..))
 import qualified Cardano.Crypto as Crypto
-import qualified Cardano.Crypto.DSIGN.Class as Crypto
 import qualified Cardano.Crypto.Hash.Class   as Crypto
 
 import           Cardano.Api
-import qualified Cardano.Api.Shelley.ColdKeys as ColdKeys
-import qualified Ouroboros.Consensus.Shelley.Ledger.Ledger as Shelley
+import qualified Cardano.Api.Typed as TApi
 import qualified Ouroboros.Consensus.Shelley.Ledger.Mempool as Shelley hiding (TxId(..))
 import qualified Shelley.Spec.Ledger.Address as Shelley
 import qualified Shelley.Spec.Ledger.Coin as Shelley
 import qualified Shelley.Spec.Ledger.Genesis as Shelley
-import qualified Shelley.Spec.Ledger.Keys as Shelley
 import qualified Shelley.Spec.Ledger.TxData as Shelley
 import qualified Shelley.Spec.Ledger.UTxO as Shelley
 
 import           Cardano.Benchmarking.GeneratorTx.Error (TxGenError (..))
-import           Cardano.Benchmarking.GeneratorTx.NodeToNode (BenchmarkTxSubmitTracers (..),
-                     benchmarkConnectTxSubmit)
+import           Cardano.Benchmarking.GeneratorTx.NodeToNode
+                   (benchmarkConnectTxSubmit)
 import           Cardano.Benchmarking.GeneratorTx.Submission
 import           Cardano.Benchmarking.GeneratorTx.Tx (txSpendGenesisUTxOByronPBFT,
                      normalByronTxToGenTx)
 
-import           Control.Tracer (Tracer, traceWith)
-
-import           Ouroboros.Network.NodeToClient (IOManager)
+import           Control.Tracer (traceWith)
 
 import           Ouroboros.Consensus.Node.Run (RunNode)
-import qualified Ouroboros.Consensus.Cardano as Consensus
 import           Ouroboros.Consensus.Shelley.Protocol.Crypto (TPraosStandardCrypto)
-import           Ouroboros.Consensus.Config (TopLevelConfig(..))
 import           Ouroboros.Consensus.Byron.Ledger (ByronBlock (..),
-                                                   GenTx (..),
-                                                   byronProtocolMagicId)
+                                                   GenTx (..))
 import           Ouroboros.Consensus.Ledger.SupportsMempool as Mempool
                    ( GenTxId )
 
-newtype NumberOfTxs =
-  NumberOfTxs Word64
-  deriving (Eq, Ord, Show)
+import Cardano.Benchmarking.GeneratorTx.Params
 
-newtype NumberOfInputsPerTx =
-  NumberOfInputsPerTx Int
-  deriving (Eq, Ord, Show)
-
-newtype NumberOfOutputsPerTx =
-  NumberOfOutputsPerTx Int
-  deriving (Eq, Ord, Show)
-
-newtype FeePerTx =
-  FeePerTx Word64
-  deriving (Eq, Ord, Show)
-
--- | How long wait before starting the main submission phase,
---   after the init Tx batch was submitted.
-newtype InitCooldown =
-  InitCooldown Int
-  deriving (Eq, Ord, Show)
-
--- | This parameter specifies additional size (in bytes) of transaction.
---   Since 1 transaction is ([input] + [output] + attributes), its size
---   is defined by its inputs and outputs. We want to have an ability to
---   increase transaction's size without increasing the number of inputs/
---   outputs. Such a big transaction will give us more real-world results
---   of benchmarking.
---   Technically this parameter specifies the size of attribute we'll
---   add to transaction (by default attributes are empty, so if this
---   parameter is skipped, attributes will remain empty).
-newtype TxAdditionalSize =
-  TxAdditionalSize Int
-  deriving (Eq, Ord, Show)
-
--- TODO: move out to Types.hs
-paramsNetwork :: Params ShelleyBlock -> Network
-paramsNetwork (ParamsShelley
-                TopLevelConfig
-                  { configLedger = Shelley.ShelleyLedgerConfig
-                    { Shelley.shelleyLedgerGenesis = Consensus.ShelleyGenesis
-                      { Consensus.sgNetworkMagic } }}
-                _)
-  = Testnet $ NetworkMagic sgNetworkMagic
 
 -----------------------------------------------------------------------------------------
 -- | Genesis benchmark runner (we call it in 'Run.runNode').
@@ -150,152 +99,27 @@ paramsNetwork (ParamsShelley
 --   amount of funds for disbursment.
 -----------------------------------------------------------------------------------------
 genesisBenchmarkRunner
-  :: forall blk p
-  .  ( BenchTraceConstraints blk
-     )
-  => LoggingLayer
-  -> IOManager
-  -> SocketPath
-  -> Consensus.Protocol IO blk p
-  -> NonEmpty NodeAddress
-  -> NumberOfTxs
-  -> NumberOfInputsPerTx
-  -> NumberOfOutputsPerTx
-  -> FeePerTx
-  -> TPSRate
-  -> InitCooldown
-  -> Maybe TxAdditionalSize
-  -> [FilePath]
-  -> Bool
+  :: ( BenchTraceConstraints blk
+     , RunNode blk)
+  => Benchmark -> Params blk -> [FilePath]
   -> ExceptT TxGenError IO ()
-genesisBenchmarkRunner loggingLayer
-                       iocp
-                       socketFp
-                       protocol@Consensus.ProtocolRealPBFT{}
-                       targetNodeAddresses
-                       numOfTxs@(NumberOfTxs rawNumOfTxs)
-                       numOfInsPerTx
-                       numOfOutsPerTx
-                       txFee
-                       tpsRate@(TPSRate tps)
-                       initCooldown
-                       txAdditionalSize
-                       signingKeyFiles
-                       singleThreaded = do
-  when (length signingKeyFiles < 3) $
-    left $ NeedMinimumThreeSigningKeyFiles signingKeyFiles
-
-  -- Since currently slot is 20 sec, we want to check lower limit 1/20 (minimum one tx per block).
-  when (tps < 0.05) $
-    left $ TooSmallTPSRate tps
-
-  let p = mkParamsByron protocol loggingLayer
-
-  liftIO . traceWith (trTxSubmit p) . TraceBenchTxSubDebug
-    $ "******* Tx generator, tracers are ready *******"
-
-  -- 'genesisKey' is for genesis address with initial amount of money (1.4 billion ADA for now).
-  -- 'sourceKey' is for source address that we'll use as a source of money for next transactions.
-  -- 'recepientKey' is for recipient address that we'll use as an output for next transactions.
-  (genesisKey:sourceKey:recepientKey:_) <- prepareSigningKeys p signingKeyFiles
-
-  liftIO . traceWith (trTxSubmit p) . TraceBenchTxSubDebug
-    $ "******* Tx generator, signing keys are ready *******"
-
-  -- We have to prepare an initial funds (it's the money we'll send from 'genesisKey' to
-  -- 'sourceKey'), this will be our very first transaction.
-  fundsWithGenesisMoney <- liftIO $
-    prepareInitialFundsByron
-                        p
-                        iocp
-                        socketFp
-                        (extractGenesisFunds p [genesisKey])
-                        (mkAddressForKey p genesisKey)
-                        (mkAddressForKey p sourceKey)
-                        txFee
-
-  liftIO . traceWith (trTxSubmit p) . TraceBenchTxSubDebug
-    $ "******* Tx generator, initial funds are prepared (sent to sourceAddress) *******"
-
-  -- Check if no transactions needed...
-  when (rawNumOfTxs > 0) $
-    runBenchmark p
-                 iocp
-                 socketFp
-                 sourceKey
-                 (mkAddressForKey p recepientKey)
-                 (if singleThreaded
-                   then NE.fromList $ NE.take 1 targetNodeAddresses
-                   else targetNodeAddresses)
-                 numOfTxs
-                 numOfInsPerTx
-                 numOfOutsPerTx
-                 txFee
-                 tpsRate
-                 initCooldown
-                 txAdditionalSize
-                 fundsWithGenesisMoney
-
-genesisBenchmarkRunner loggingLayer
-                       iocp
-                       socketFp
-                       protocol@Consensus.ProtocolRealTPraos{}
-                       targetNodeAddresses
-                       numOfTxs@NumberOfTxs{}
-                       numOfInsPerTx
-                       numOfOutsPerTx
-                       txFee
-                       tpsRate@(TPSRate tps)
-                       initCooldown
-                       txAdditionalSize
-                       signingKeyFiles
-                       singleThreaded = do
-  when (length signingKeyFiles < 3) $
-    left $ NeedMinimumThreeSigningKeyFiles signingKeyFiles
-
-  -- Since currently slot is 20 sec, we want to check lower limit 1/20 (minimum one tx per block).
-  when (tps < 0.05) $
-    left $ TooSmallTPSRate tps
-
-  let p = mkParamsShelley protocol loggingLayer
-
+genesisBenchmarkRunner b p signingKeyFiles = do
   (genesisKey:sourceKey:recepientKey:_) <- prepareSigningKeys p signingKeyFiles
   liftIO . traceWith (trTxSubmit p) . TraceBenchTxSubDebug
     $ "******* Tx generator, signing keys are ready *******"
 
-  genesisFunds :: (TxDetailsShelley, SigningKey)
-    <- pure $! extractGenesisFunds p [genesisKey]
-
-  liftIO . traceWith (trTxSubmit p) . TraceBenchTxSubDebug
-    $ "******* Tx generator, genesis funds ready: " <> show genesisFunds
-
   fundsWithGenesisMoney <- liftIO $
-    prepareInitialFundsShelley
-                        p
-                        socketFp
-                        genesisFunds
-                        (mkAddressForKey p genesisKey)
-                        (mkAddressForKey p sourceKey)
-                        txFee
+    prepareInitialFunds b p
+      (extractGenesisFunds p [genesisKey])
+      (mkAddressForKey p genesisKey)
+      (mkAddressForKey p sourceKey)
 
   liftIO . traceWith (trTxSubmit p) . TraceBenchTxSubDebug
     $ "******* Tx generator, initial funds are prepared (sent to sourceAddress) *******"
 
-  runBenchmark p
-               iocp
-               socketFp
+  runBenchmark b p
                sourceKey
                (mkAddressForKey p recepientKey)
-               (if singleThreaded
-                 then NE.fromList $ NE.take 1 targetNodeAddresses
-                 else targetNodeAddresses)
-               numOfTxs
-               numOfInsPerTx
-               numOfOutsPerTx
-               txFee
-               tpsRate
-               initCooldown
-               txAdditionalSize
                fundsWithGenesisMoney
 
 {-------------------------------------------------------------------------------
@@ -382,23 +206,23 @@ prepareSigningKeys ParamsByron{} skeys = do
 
 prepareSigningKeys ParamsShelley{} skeys =
   firstExceptT (SecretKeyReadError . show) $
-    mapM (fmap SigningKeyShelley <$>
-          ColdKeys.readSigningKey ColdKeys.GenesisUTxOKey) skeys
+    mapM readKey skeys
+
+readKey :: FilePath -> ExceptT TxGenError IO SigningKey
+readKey keyFile
+  = do
+    k <- firstExceptT (SecretKeyReadError . show) . newExceptT $
+           TApi.readFileTextEnvelopeAnyOf fileTypes keyFile
+    return $ castKey k
+  where
+    fileTypes = [ TApi.FromSomeType (TApi.AsSigningKey TApi.AsPaymentKey) id ]
+    castKey (TApi.PaymentSigningKey typedK) = SigningKeyShelley typedK
 
 mkAddressForKey :: Params blk -> SigningKey -> Address
-mkAddressForKey (ParamsByron
-                  TopLevelConfig
-                   { configLedger = genesisConfig } _)
-                (SigningKeyByron key) =
-  AddressByron . CC.Common.makeVerKeyAddress networkMagic . Crypto.toVerification $ key
- where
-  networkMagic = CC.Common.makeNetworkMagic (CC.Genesis.configProtocolMagic genesisConfig)
-mkAddressForKey p@ParamsShelley{}
-                (SigningKeyShelley key) =
-  shelleyVerificationKeyAddress
-    (paramsNetwork p)
-    (PaymentVerificationKeyShelley . Shelley.VKey $ Crypto.deriveVerKeyDSIGN key)
-    Nothing
+mkAddressForKey p@ParamsByron{} k =
+  byronVerificationKeyAddress (getPaymentVerificationKey k) (paramsNetwork p)
+mkAddressForKey p@ParamsShelley{} k =
+  shelleyVerificationKeyAddress (paramsNetwork p) (getPaymentVerificationKey k) Nothing
 mkAddressForKey _ _ = error "Byron/Shelley-only"
 
 -----------------------------------------------------------------------------------------
@@ -411,10 +235,7 @@ extractGenesisFunds
   -> [SigningKey]
   -> (TxDetails blk, SigningKey)
 
-extractGenesisFunds (ParamsByron
-                     TopLevelConfig
-                      { configLedger = genesisConfig
-                      } _) signingKeys =
+extractGenesisFunds p@ParamsByron{} signingKeys =
     (Map.! 0)
   . Map.fromList
   . mapMaybe (\txd@(TxDetailsByron (_inp, out)) ->
@@ -423,7 +244,7 @@ extractGenesisFunds (ParamsByron
   . Map.toList
   . CC.UTxO.unUTxO
   . CC.UTxO.genesisUtxo
-  $ genesisConfig
+  $ paramsLedgerConfig p
  where
   mkEntry
     :: TxDetailsByron
@@ -447,19 +268,15 @@ extractGenesisFunds (ParamsByron
   fromCompactTxInTxOutList =
     map (TxDetailsByron . bimap CC.UTxO.fromCompactTxIn CC.UTxO.fromCompactTxOut)
 
-extractGenesisFunds p@(ParamsShelley
-                       TopLevelConfig
-                        { configLedger = Shelley.ShelleyLedgerConfig
-                          { Shelley.shelleyLedgerGenesis = genesis }
-                        } _) signingKeys =
+extractGenesisFunds p@ParamsShelley{} signingKeys =
     (Map.! 0)
   . Map.fromList
   . mapMaybe (\txd@(TxDetailsShelley (_inp, out)) ->
                 mkEntry txd <$> isRichman out)
   . fmap genesisFundsEntryTxDetails
   . Map.toList
-  . Consensus.sgInitialFunds
-  $ genesis
+  . paramsInitialFunds
+  $ p
  where
   genesisFundsEntryTxDetails
     :: (Shelley.Addr TPraosStandardCrypto, Shelley.Coin) -> TxDetailsShelley
@@ -490,50 +307,6 @@ extractGenesisFunds p@(ParamsShelley
 
 -- Prepare and submit our first transaction: send money from 'initialAddress' to 'sourceAddress'
 -- (latter corresponds to 'targetAddress' here) and "remember" it in 'availableFunds'.
-prepareInitialFundsByron
-  :: (blk ~ ByronBlock)
-  => Params blk
-  -> IOManager
-  -> SocketPath
-  -> (TxDetails blk, SigningKey)
-  -> Address
-  -> Address
-  -> FeePerTx
-  -> IO (Set (TxDetails blk))
-prepareInitialFundsByron
-  p@(ParamsByron
-      TopLevelConfig
-        { configLedger = genesisConfig } _)
-  iocp socketFp
-  (TxDetailsByron (_, genesisTxOut), SigningKeyByron signingKey)
-  (AddressByron genesisAddress)
-  (AddressByron targetAddress)
-  (FeePerTx txFee) = do
-
-    submitTx' p iocp socketFp genesisTxGeneral
-
-    -- Form availableFunds with a single value, it will be used for further (splitting) transactions.
-    return $ Set.singleton (TxDetailsByron (txDetIn, txDetOut))
-
-  where
-   txDetIn  = CC.UTxO.TxInUtxo (getTxIdFromGenTxByron genesisTxGeneral) 0
-
-   genesisTxGeneral :: GenTx ByronBlock
-   genesisTxGeneral = normalByronTxToGenTx genesisTx
-
-   genesisTx :: CC.UTxO.ATxAux ByteString
-   genesisTx = txSpendGenesisUTxOByronPBFT genesisConfig
-                                           signingKey
-                                           genesisAddress
-                                           (NE.fromList [txDetOut])
-
-   txDetOut = CC.UTxO.TxOut
-     { CC.UTxO.txOutAddress = targetAddress
-     , CC.UTxO.txOutValue   = CC.UTxO.txOutValue genesisTxOut `subLovelace` fee
-     }
-
-   fee :: CC.Common.Lovelace
-   fee = assumeBound . CC.Common.mkLovelace $ txFee
 
 getTxIdFromGenTxByron :: GenTx ByronBlock -> CC.UTxO.TxId
 getTxIdFromGenTxByron (ByronTx txId _) = txId
@@ -546,22 +319,53 @@ toByronTxOut :: TxOut -> CC.UTxO.TxOut
 toByronTxOut (TxOut (AddressByron addr) value) =
   CC.UTxO.TxOut addr (toByronLovelace value)
 
-prepareInitialFundsShelley
-  :: (blk ~ ShelleyBlock)
-  => Params blk
-  -> SocketPath
+prepareInitialFunds
+  :: forall blk
+  .  Benchmark
+  -> Params blk
   -> (TxDetails blk, SigningKey)
   -> Address
   -> Address
-  -> FeePerTx
   -> IO (Set (TxDetails blk))
-prepareInitialFundsShelley
-  p@ParamsShelley{}
-  socketFp
-  (TxDetailsShelley (_, TxOut (AddressShelley addr) genesisCoin), signingKey)
-  _genesisAddress targetAddress (FeePerTx txFee) = do
+prepareInitialFunds
+  Benchmark{bTxFee=FeePerTx txFee}
+  p
+  (TxDetailsByron (_, genesisTxOut), SigningKeyByron signingKey)
+  (AddressByron genesisAddress)
+  (AddressByron targetAddress) = do
 
-    r <- submitTx network socketFp genesisTx
+    submitTx (paramsLocalConnInfo p) (TxForByronMode $ TApi.ByronTx genesisTx)
+
+    -- Form availableFunds with a single value, it will be used for further (splitting) transactions.
+    return $ Set.singleton (TxDetailsByron (txDetIn, txDetOut))
+
+  where
+   txDetIn  = CC.UTxO.TxInUtxo (getTxIdFromGenTxByron genesisTxGeneral) 0
+
+   genesisTxGeneral :: GenTx ByronBlock
+   genesisTxGeneral = normalByronTxToGenTx genesisTx
+
+   genesisTx :: CC.UTxO.ATxAux ByteString
+   genesisTx = txSpendGenesisUTxOByronPBFT (paramsLedgerConfig p)
+                                           signingKey
+                                           genesisAddress
+                                           (NE.fromList [txDetOut])
+
+   txDetOut = CC.UTxO.TxOut
+     { CC.UTxO.txOutAddress = targetAddress
+     , CC.UTxO.txOutValue   = CC.UTxO.txOutValue genesisTxOut `subLovelace` fee
+     }
+
+   fee :: CC.Common.Lovelace
+   fee = assumeBound . CC.Common.mkLovelace $ txFee
+
+prepareInitialFunds
+  Benchmark{bTxFee=FeePerTx txFee}
+  p@ParamsShelley{}
+  (TxDetailsShelley (_, TxOut (AddressShelley addr) genesisCoin), signingKey)
+  _genesisAddress targetAddress = do
+
+    r <- submitTx (paramsLocalConnInfo p) (TxForShelleyMode $ TApi.ShelleyTx genesisTx)
 
     liftIO . traceWith (trTxSubmit p) . TraceBenchTxSubDebug
       $ "******* Genesis funds move submission result: " <> show r
@@ -572,8 +376,7 @@ prepareInitialFundsShelley
    txDetIn  = fromShelleyTxIn $
                 Shelley.TxIn (Shelley.TxId (Shelley.hashTxBody body)) 0
 
-   genesisTx :: TxSigned
-   genesisTx =
+   TxSignedShelley genesisTx =
      signTransaction
        genesisTxUnsigned
        network
@@ -675,7 +478,7 @@ mkTransaction p@ParamsByron{}
          , CC.UTxO.txAttributes = createTxAttributes txAdditionalSize
          }
 
-  txAux = createTxAux (paramsConfig p) tx signingKey
+  txAux = createTxAux p tx signingKey
 
 mkTransaction p@ParamsShelley{}
               inputs mChangeAddress payments _txAdditionalSize txFee =
@@ -781,17 +584,17 @@ appendr l nel = foldr NE.cons nel l
 
 -- | ...
 createTxAux
-  :: TopLevelConfig ByronBlock
+  :: Params ByronBlock
   -> CC.UTxO.Tx
   -> SigningKey
   -> CC.UTxO.ATxAux ByteString
-createTxAux config tx (SigningKeyByron signingKey) = CC.UTxO.annotateTxAux $ CC.UTxO.mkTxAux tx witness
+createTxAux p tx (SigningKeyByron signingKey) = CC.UTxO.annotateTxAux $ CC.UTxO.mkTxAux tx witness
  where
   witness = pure $
       CC.UTxO.VKWitness
         (Crypto.toVerification signingKey)
         (Crypto.sign
-          (byronProtocolMagicId (configBlock config))
+          (paramsProtocolMagicId p)
           -- provide ProtocolMagicId so as not to calculate it every time
           Crypto.SignTx
           signingKey
@@ -831,46 +634,24 @@ subLovelace' (Lovelace a) (Lovelace b)
 runBenchmark
   :: forall blk
   .  (RunNode blk, BenchTraceConstraints  blk)
-  => Params blk
-  -> IOManager
-  -> SocketPath
+  => Benchmark
+  -> Params blk
   -> SigningKey
   -> Address
-  -> NonEmpty NodeAddress
-  -> NumberOfTxs
-  -> NumberOfInputsPerTx
-  -> NumberOfOutputsPerTx
-  -> FeePerTx
-  -> TPSRate
-  -> InitCooldown
-  -> Maybe TxAdditionalSize
   -> Set (TxDetails blk)
   -> ExceptT TxGenError IO ()
-runBenchmark p
-             iocp
-             socketFp
+runBenchmark b@Benchmark{ bTargets
+                        , bTps
+                        , bInitCooldown=InitCooldown initCooldown
+                        }
+             p
              sourceKey
              recipientAddress
-             targetNodeAddresses
-             numOfTxs
-             numOfInsPerTx
-             numOfOutsPerTx
-             txFee
-             tpsRate
-             (InitCooldown initCooldown)
-             txAdditionalSize
              fundsWithGenesisMoney = do
   liftIO . traceWith (trTxSubmit p) . TraceBenchTxSubDebug
     $ "******* Tx generator, phase 1: make enough available UTxO entries using: " <> (show fundsWithGenesisMoney :: String)
   fundsWithSufficientCoins <-
-      createMoreFundCoins p
-                          iocp
-                          socketFp
-                          sourceKey
-                          txFee
-                          numOfTxs
-                          numOfInsPerTx
-                          fundsWithGenesisMoney
+    createMoreFundCoins b p sourceKey fundsWithGenesisMoney
 
   liftIO . traceWith (trTxSubmit p) . TraceBenchTxSubDebug
     $ "******* Tx generator: waiting " ++ show initCooldown ++ "s *******"
@@ -878,16 +659,11 @@ runBenchmark p
 
   liftIO . traceWith (trTxSubmit p) . TraceBenchTxSubDebug
     $ "******* Tx generator, phase 2: pay to recipients *******"
-  let benchmarkTracers :: BenchmarkTxSubmitTracers IO blk
-      benchmarkTracers = BenchmarkTracers
-                           { trSendRecvConnect      = trConnect p
-                           , trSendRecvTxSubmission = trSubmitMux p
-                           }
 
   let localAddr :: Maybe Network.Socket.AddrInfo
       localAddr = Nothing
 
-  remoteAddresses <- forM targetNodeAddresses $ \targetNodeAddress -> do
+  remoteAddresses <- forM bTargets $ \targetNodeAddress -> do
     let (anAddrFamily, targetNodeHost) =
           case unNodeHostAddress $ naHostAddress targetNodeAddress of
               Just (IP.IPv4 ipv4) -> (AF_INET,  show ipv4)
@@ -908,18 +684,13 @@ runBenchmark p
     return remoteAddr
 
   -- Run generator.
-  let numTargets :: Natural = fromIntegral $ NE.length targetNodeAddresses
+  let numTargets :: Natural = fromIntegral $ NE.length bTargets
   txs :: [GenTx blk] <-
            txGenerator
-              p
+              b p
               recipientAddress
               sourceKey
-              txFee
-              (NE.length targetNodeAddresses)
-              numOfTxs
-              numOfInsPerTx
-              numOfOutsPerTx
-              txAdditionalSize
+              (NE.length bTargets)
               fundsWithSufficientCoins
 
   liftIO $ do
@@ -927,18 +698,14 @@ runBenchmark p
         $ "******* Tx generator, launching Tx peers:  " ++ show (NE.length remoteAddresses) ++ " of them"
     submission <- mkSubmission (trTxSubmit p) $
                     SubmissionParams
-                    { spTps      = tpsRate
+                    { spTps      = bTps
                     , spTargets  = numTargets
                     , spQueueLen = 32
                     }
     allAsyncs <- forM (zip [0..] $ NE.toList remoteAddresses) $
       \(i, remoteAddr) ->
         launchTxPeer
-              (trTxSubmit p)
-              benchmarkTracers
-              (trN2N p)
-              iocp
-              (paramsConfig p)
+              p
               localAddr
               remoteAddr
               submission
@@ -955,23 +722,16 @@ runBenchmark p
 --   E.g. (1 entry * 1000 ADA) -> (10 entries * 100 ADA).
 --   Technically all splitting transactions will send money back to 'sourceAddress'.
 createMoreFundCoins
-  :: Params blk
-  -> IOManager
-  -> SocketPath
+  :: Benchmark
+  -> Params blk
   -> SigningKey
-  -> FeePerTx
-  -> NumberOfTxs
-  -> NumberOfInputsPerTx
   -> Set (TxDetails blk)
   -> ExceptT TxGenError IO (Set (TxDetails blk))
-createMoreFundCoins p@ParamsByron{}
-                    iocp
-                    socketFp
-                    sourceKey
-                    (FeePerTx txFee)
-                    (NumberOfTxs numOfTxs)
-                    (NumberOfInputsPerTx numOfInsPerTx)
-                    fundsWithGenesisMoney = do
+createMoreFundCoins
+    Benchmark{ bTxFee=FeePerTx txFee, bTxCount=NumberOfTxs numOfTxs
+             , bTxFanIn=NumberOfInputsPerTx numOfInsPerTx
+             }
+    p@ParamsByron{} sourceKey fundsWithGenesisMoney = do
   let Lovelace feeRaw = Lovelace . fromIntegral $ txFee
       -- The number of splitting txout entries (corresponds to the number of all inputs we will need).
       numSplittingTxOuts    = numOfTxs * fromIntegral numOfInsPerTx
@@ -1004,8 +764,9 @@ createMoreFundCoins p@ParamsByron{}
                                          txOut
                                          []
   -- Submit all splitting transactions sequentially.
-  liftIO $ forM_ splittingTxs $ \(splittingTx, _) -> do
-    submitTx' p iocp socketFp splittingTx
+  liftIO $ forM_ splittingTxs $ \(ByronTx _ splittingTx, _) ->
+    submitTx (paramsLocalConnInfo p)
+             (TxForByronMode $ TApi.ByronTx splittingTx)
 
   -- Re-create availableFunds with information about all splitting transactions
   -- (it will be used for main transactions).
@@ -1067,14 +828,11 @@ createMoreFundCoins p@ParamsByron{}
   reCreateAvailableFunds =
     Set.fromList . concat . map snd
 
-createMoreFundCoins p@ParamsShelley{}
-                    _iocp
-                    socketFp
-                    srcKey
-                    (FeePerTx txFee)
-                    (NumberOfTxs numOfTxs)
-                    (NumberOfInputsPerTx numOfInsPerTx)
-                    fundsWithGenesisMoney = do
+createMoreFundCoins
+    Benchmark{ bTxFee=FeePerTx txFee, bTxCount=NumberOfTxs numOfTxs
+             , bTxFanIn=NumberOfInputsPerTx numOfInsPerTx
+             }
+    p@ParamsShelley{} srcKey fundsWithGenesisMoney = do
   let Lovelace feeRaw = Lovelace . fromIntegral $ txFee
       -- The number of splitting txout entries (corresponds to the number of all inputs we will need).
       numSplittingTxOuts    = numOfTxs * fromIntegral numOfInsPerTx
@@ -1104,12 +862,11 @@ createMoreFundCoins p@ParamsShelley{}
                                          42
                                          txOut
                                          []
-      network :: Network
-      network = paramsNetwork p
   -- Submit all splitting transactions sequentially.
   forM_ (zip splittingTxs [(0 :: Int) ..]) $
     \((Shelley.ShelleyTx _ tx, _), i) -> do
-      r <- liftIO $ submitTx network socketFp (TxSignedShelley tx)
+      r <- liftIO $
+        submitTx (paramsLocalConnInfo p) (TxForShelleyMode $ TApi.ShelleyTx tx)
       case r of
         TxSubmitSuccess -> pure ()
         x -> left . SplittingSubmissionError $ mconcat
@@ -1179,26 +936,21 @@ createMoreFundCoins p@ParamsShelley{}
 -----------------------------------------------------------------------------------------
 txGenerator
   :: forall blk
-  .  Params blk
+  .  Benchmark
+  -> Params blk
   -> Address
   -> SigningKey
-  -> FeePerTx
   -> Int
-  -> NumberOfTxs
-  -> NumberOfInputsPerTx
-  -> NumberOfOutputsPerTx
-  -> Maybe TxAdditionalSize
   -> Set (TxDetails blk)
   -> ExceptT TxGenError IO [GenTx blk]
-txGenerator p
-            recipientAddress
-            sourceKey
-            (FeePerTx txFee)
-            numOfTargetNodes
-            (NumberOfTxs numOfTransactions)
-            (NumberOfInputsPerTx numOfInsPerTx)
-            (NumberOfOutputsPerTx numOfOutsPerTx)
-            txAdditionalSize
+txGenerator Benchmark
+            { bTxFee=FeePerTx txFee
+            , bTxCount=NumberOfTxs numOfTransactions
+            , bTxFanIn=NumberOfInputsPerTx numOfInsPerTx
+            , bTxFanOut=NumberOfOutputsPerTx numOfOutsPerTx
+            , bTxExtraPayload=txAdditionalSize
+            }
+            p recipientAddress sourceKey numOfTargetNodes
             fundsWithSufficientCoins = do
   liftIO . traceWith (trTxSubmit p) . TraceBenchTxSubDebug
     $ " Generating " ++ show numOfTransactions
@@ -1283,16 +1035,7 @@ launchTxPeer
      , txid ~ Mempool.GenTxId block
      , RunNode block
      )
-  => Tracer IO (TraceBenchTxSubmit txid)
-  -> BenchmarkTxSubmitTracers IO block
-  -- tracer for lower level connection and details of
-  -- protocol interactisn, intended for debugging
-  -- associated issues.
-  -> Tracer IO NodeToNodeSubmissionTrace
-  -> IOManager
-  -- ^ associate a file descriptor with IO completion port
-  -> TopLevelConfig block
-  -- the configuration
+  => Params block
   -> Maybe Network.Socket.AddrInfo
   -- local address binding (if wanted)
   -> Network.Socket.AddrInfo
@@ -1302,7 +1045,7 @@ launchTxPeer
   -> Natural
   -- Thread index
   -> IO (Async ())
-launchTxPeer tr1 tr2 tr3 iocp nc localAddr remoteAddr ss ix = do
+launchTxPeer p localAddr remoteAddr ss ix = do
   async $
-    benchmarkConnectTxSubmit iocp tr2 nc localAddr remoteAddr
-      (txSubmissionClient tr1 tr3 ss ix)
+    benchmarkConnectTxSubmit p localAddr remoteAddr
+      (txSubmissionClient (trN2N p) (trTxSubmit p) ss ix)
