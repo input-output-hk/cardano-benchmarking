@@ -23,10 +23,10 @@ import           Cardano.Config.Types
                     )
 
 import           Cardano.Benchmarking.TxGenerator.Types
-import           Cardano.Api
+import           Cardano.Api.Typed
 
 data GenerateTxs = GenerateTxs
-  { network       :: Network
+  { network       :: NetworkId
   , logConfig     :: FilePath
   , socketPath    :: SocketPath
   , nodeAdresses  :: (NonEmpty NodeAddress)
@@ -190,11 +190,11 @@ parseInitialFund
       <*> (strOption   $ long "fund-utxo"  <> help "utxo of the initial fund")
       <*> (strOption   $ long "fund-addr"  <> help "address uses for transactions")
 
-pNetwork :: Parser Network
+pNetwork :: Parser NetworkId
 pNetwork =
   pMainnet <|> fmap Testnet pTestnetMagic
 
-pMainnet :: Parser Network
+pMainnet :: Parser NetworkId
 pMainnet =
   Opt.flag' Mainnet
     (  Opt.long "mainnet"

@@ -4,52 +4,64 @@ where
 
 import           Control.Monad.Trans.Except
 import           Control.Monad.Trans.Except.Extra
-import           Control.Monad.IO.Class
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Text as Text
 
 import qualified Cardano.Benchmarking.TxGenerator.CLI.Parsers as P
 import           Cardano.Benchmarking.TxGenerator.Error (TxGenError (..))
 import           Cardano.Benchmarking.TxGenerator.Producer as Producer
-import           Cardano.Benchmarking.TxGenerator.Submission
 import           Cardano.Benchmarking.TxGenerator.Types as T
 
-import           Cardano.Api as Api
-import qualified Cardano.Api.Typed as TApi
+import           Cardano.Api.Typed as Api
+import qualified Cardano.Api       as UApi
+import           Cardano.Api.TxSubmit as Api
 
 runPhase1 :: P.GenerateTxs -> NE.NonEmpty a0 -> ExceptT TxGenError IO [Producer]
 runPhase1 args remoteAddresses = do
-  skey    <- readKey keyFile
-  utxoIn  <- withExceptT UTxOParseError $ hoistEither $ parseTxIn $ Text.pack utxo
-  srcAddr <- withExceptT AddrParseError $ hoistEither $ addressFromHex $ Text.pack address
+  key    <- readKey keyFile
+  utxoIn  <- withExceptT UTxOParseError $ hoistEither $ UApi.parseTxIn $ Text.pack utxo
+  srcAddr <- readAddr addressFile
   let initialFund = Producer.Producer
-         { Producer.network = network
-         , Producer.ttl  = SlotNo 10000000
+         { Producer.network = thisNetwork
+         , Producer.ttl  = fromInteger 10000000
          , Producer.fee  = Lovelace $ fromIntegral $ T.unFeePerTx $ P.fee args
-         , Producer.addr = srcAddr
-         , Producer.skey = skey
-         , Producer.src  = utxoIn
+         , Producer.addr = makeShelleyAddress
+                              thisNetwork
+                              (PaymentCredentialByKey $ verificationKeyHash srcAddr)
+                              NoStakeAddress
+         , Producer.skey = key
+         , Producer.src  = castTxIn utxoIn
          , Producer.fund = Lovelace $ fromIntegral value
          }
   (tx,p) <- withExceptT Phase1SplitError $ hoistEither $ Producer.split splitList initialFund
-  newExceptT $ fmap mapSubmitError $ Api.submitTx network (P.socketPath args) tx
+  newExceptT $ fmap mapSubmitError $ Api.submitTx connectInfo $ TxForShelleyMode tx
   return p
   where
-    (P.InitialFund value keyFile utxo address) = P.initialFund args
+    thisNetwork = P.network args
+    connectInfo = error "connectInfo"
+    (P.InitialFund value keyFile utxo addressFile) = P.initialFund args
     txCount = NE.length remoteAddresses
-    splitVal = Lovelace $ fromIntegral (value - (T.unFeePerTx $ P.fee args) ) `div` fromIntegral txCount
+    splitVal = Lovelace $ fromIntegral (value - (T.unFeePerTx $ P.fee args) )
+                                           `div` fromIntegral txCount
     splitList :: [Lovelace]
     splitList = replicate txCount splitVal
-    network = P.network args
-    mapSubmitError e = case e of
+          
+    castTxIn :: UApi.TxIn -> TxIn
+    castTxIn = error "castTxIn"
+
+readKey :: FilePath -> ExceptT TxGenError IO (SigningKey PaymentKey)
+readKey keyFile
+  = withExceptT TxFileError $ newExceptT $ readFileTextEnvelopeAnyOf fileTypes keyFile
+  where
+    fileTypes = [ FromSomeType (AsSigningKey AsPaymentKey) id ]
+
+readAddr :: FilePath -> ExceptT TxGenError IO (VerificationKey PaymentKey)
+readAddr keyFile
+  = withExceptT TxFileError $ newExceptT $ readFileTextEnvelopeAnyOf fileTypes keyFile
+  where
+    fileTypes = [ FromSomeType (AsVerificationKey AsPaymentKey) id ]
+
+mapSubmitError :: TxSubmitResultForMode ShelleyMode -> Either TxGenError ()
+mapSubmitError e = case e of
       TxSubmitSuccess -> Right ()
       err             -> Left $ TxSubmitError $ show err
-
-readKey :: FilePath -> ExceptT TxGenError IO SigningKey
-readKey keyFile
-  = do
-    k <- withExceptT TxFileError $ newExceptT $ TApi.readFileTextEnvelopeAnyOf fileTypes keyFile
-    return $ castKey k
-  where
-    fileTypes = [ TApi.FromSomeType (TApi.AsSigningKey TApi.AsPaymentKey) id ]
-    castKey (TApi.PaymentSigningKey typedK) = SigningKeyShelley typedK

@@ -34,7 +34,7 @@ import           Ouroboros.Network.NodeToClient (IOManager)
 import           Ouroboros.Consensus.Node.Run (RunNode)
 import           Ouroboros.Consensus.Ledger.SupportsMempool as Mempool (GenTxId)
 import           Ouroboros.Consensus.Shelley.Ledger.Mempool (GenTx, mkShelleyTx)
-import           Cardano.Api as Api
+import           Cardano.Api.Typed as Api
 
 import qualified Cardano.Benchmarking.TxGenerator.CLI.Parsers as P
 import           Cardano.Benchmarking.TxGenerator.Producer as Producer
@@ -102,7 +102,7 @@ genesisBenchmarkRunner args loggingLayer iocp = do
            -- todo : divide by number of nodes
        (Right (txSigned,_,_)) = payWithChangeSeq (replicate (unNumberOfTxs $ P.txCount args) $ Lovelace 111) p
 
-       txs = map (\(TxSignedShelley x) -> mkShelleyTx x) txSigned
+       txs = map (\(ShelleyTx x) -> mkShelleyTx x) txSigned
     targetNodesAddrsAndTxsLists = zipWith mkNodeTxList (NE.toList remoteAddresses) producers
 
   txSubmissionTerm <- liftIO $ STM.newTVarIO False
@@ -168,7 +168,7 @@ launchTxPeer
   -> Tracer IO NodeToNodeSubmissionTrace
   -> IOManager
   -- ^ associate a file descriptor with IO completion port
-  -> Network
+  -> NetworkId
   -- ^ network magic
   -> MSTM.TVar IO Bool
   -- a "global" stop variable, set to True to force shutdown
