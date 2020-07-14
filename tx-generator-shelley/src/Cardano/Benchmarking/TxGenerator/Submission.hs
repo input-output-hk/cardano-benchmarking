@@ -26,41 +26,22 @@ import           Prelude (error, id)
 import           Cardano.Prelude hiding (ByteString, atomically, retry, threadDelay)
 
 import           Control.Exception (assert)
-import           Control.Monad.Class.MonadST (MonadST)
 import           Control.Monad.Class.MonadSTM (MonadSTM, TMVar, TVar,
                    atomically, newEmptyTMVarM, putTMVar, readTVar, retry,
                    takeTMVar, tryTakeTMVar)
-import qualified Control.Monad.Class.MonadSTM
 import           Control.Monad.Class.MonadTime (MonadTime(..), Time, addTime,
                    diffTime, getMonotonicTime)
-import           Control.Monad.Class.MonadTimer (MonadTimer, threadDelay)
-import           Control.Monad.Class.MonadThrow (MonadThrow)
-
-import           Data.ByteString.Lazy (ByteString)
+import           Control.Monad.Class.MonadTimer (threadDelay)
 import           Data.List.NonEmpty (fromList)
 import qualified Data.Sequence as Seq
 import qualified Data.Set as Set
 import           Data.Time.Clock (DiffTime)
-import           Data.Void (Void)
-
-import           Cardano.BM.Tracing
 import           Control.Tracer (Tracer, traceWith)
 
 import           Ouroboros.Consensus.Byron.Ledger.Mempool as Mempool (GenTx)
 import           Ouroboros.Consensus.Ledger.SupportsMempool as Mempool
-                   ( ApplyTxErr, GenTxId, HasTxId, txId, txInBlockSize)
-import           Ouroboros.Consensus.Network.NodeToClient
-import           Ouroboros.Consensus.Node.NetworkProtocolVersion
-                  (HasNetworkProtocolVersion (..), nodeToClientProtocolVersion, supportedNodeToClientVersions)
+                   ( GenTxId, HasTxId, txId, txInBlockSize)
 import           Ouroboros.Consensus.Node.Run (RunNode(..))
-
-import           Ouroboros.Network.Mux
-                   ( MuxMode(..), OuroborosApplication(..),
-                     MuxPeer(..), RunMiniProtocol(..) , RunOrStop)
-import           Ouroboros.Network.Driver (runPeer)
-import qualified Ouroboros.Network.Protocol.LocalTxSubmission.Client as LocalTxSub
-import           Ouroboros.Network.Protocol.LocalTxSubmission.Type (SubmitResult(..))
-import           Ouroboros.Network.Protocol.Handshake.Version (Versions)
 import           Ouroboros.Network.Protocol.TxSubmission.Client (ClientStIdle(..),
                                                                  ClientStTxs(..),
                                                                  ClientStTxIds(..),
@@ -68,15 +49,6 @@ import           Ouroboros.Network.Protocol.TxSubmission.Client (ClientStIdle(..
 import           Ouroboros.Network.Protocol.TxSubmission.Type (BlockingReplyList(..),
                                                                TokBlockingStyle(..),
                                                                TxSizeInBytes)
-import           Ouroboros.Network.NodeToClient (IOManager,
-                                                 NetworkConnectTracers(..),
-                                                 NodeToClientVersionData(..),
-                                                 foldMapVersions,
-                                                 versionedNodeToClientProtocols)
-import qualified Ouroboros.Network.NodeToClient as NodeToClient
-
-import           Cardano.Config.Types (SocketPath(..))
-
 import           Cardano.Benchmarking.TxGenerator.Types
 
 -- | Bulk submisson of transactions.

@@ -6,29 +6,39 @@ module Cardano.Benchmarking.TxGenerator.CLI.Parsers
   ) where
 
 import           Cardano.Prelude hiding (option)
-import qualified Data.List.NonEmpty as NE
 import           Prelude (String)
+
+import           Data.List.NonEmpty (NonEmpty)
+import qualified Data.List.NonEmpty as NE
+import qualified Data.Attoparsec.ByteString.Char8 as Atto
+import qualified Data.ByteString.Char8 as BSC
+
 import           Options.Applicative as Opt
                     ( Parser
-                    , bashCompleter, completer,flag', help, long, metavar
+                    , ReadM
+                    , bashCompleter, completer, eitherReader
+                    , flag', help, long, metavar
                     , auto, option, strOption
                     )
+
 import qualified Control.Arrow as Arr
 import           Network.Socket (PortNumber)
 
 import           Cardano.Config.Types
-                    ( SocketPath(..)
-                    , NodeAddress(..)
+                    ( NodeAddress(..)
                     , NodeHostAddress(..)
                     )
 
-import           Cardano.Benchmarking.TxGenerator.Types
+import           Cardano.CLI.Shelley.Parsers (parseTxIn)
 import           Cardano.Api.Typed
+
+import           Cardano.Benchmarking.TxGenerator.Types
+
 
 data GenerateTxs = GenerateTxs
   { network       :: NetworkId
   , logConfig     :: FilePath
-  , socketPath    :: SocketPath
+  , socketPath    :: FilePath
   , nodeAdresses  :: (NonEmpty NodeAddress)
   , txCount       :: NumberOfTxs
 --  , txinputs      :: NumberOfInputsPerTx
@@ -45,10 +55,10 @@ parseCommand :: Parser GenerateTxs
 parseCommand =
   GenerateTxs
     <$> pNetwork
-    <*> parseConfigFile
+    <*> parseFilePath
           "config"
           "a cardano-node config file (for logging config)"
-    <*> parseSocketPath
+    <*> parseFilePath
           "socket-path"
           "Path to a cardano-node socket"
     <*> (NE.fromList <$> some (
@@ -117,12 +127,6 @@ parsePort = fromIntegral
 parseNumberOfTxs :: String -> String -> Parser NumberOfTxs
 parseNumberOfTxs opt desc = NumberOfTxs <$> parseIntegral opt desc
 
-parseNumberOfInputsPerTx :: String -> String -> Parser NumberOfInputsPerTx
-parseNumberOfInputsPerTx opt desc = NumberOfInputsPerTx <$> parseIntegral opt desc
-
-parseNumberOfOutputsPerTx :: String -> String -> Parser NumberOfOutputsPerTx
-parseNumberOfOutputsPerTx opt desc = NumberOfOutputsPerTx <$> parseIntegral opt desc
-
 parseFeePerTx :: String -> String -> Parser FeePerTx
 parseFeePerTx opt desc = FeePerTx <$> parseIntegral opt desc
 
@@ -160,19 +164,11 @@ parseFilePath optname desc =
         <> help desc
         <> completer (bashCompleter "file")
 
-parseSocketPath :: String -> String -> Parser SocketPath
-parseSocketPath optname desc =
-  SocketPath <$> parseFilePath optname desc
-
-parseConfigFile :: String -> String -> Parser FilePath
-parseConfigFile = parseFilePath
-
-
 data InitialFund = InitialFund
   { value         :: Word64
   , keyFile       :: FilePath
-  , utxo          :: String
-  , address       :: String
+  , utxo          :: TxIn
+  , addressFile   :: FilePath
   } deriving Show
 
 parseInitialFund :: Parser InitialFund
@@ -182,13 +178,14 @@ parseInitialFund
            <> help "Lovelace value of the initial fund"
            <> metavar "LOVELACE"
           )
-      <*> (strOption   $ long "fund-skey"
-           <> help "signingkey for spending the initial fund"
-           <> metavar "FILE"
-           <> Opt.completer (Opt.bashCompleter "file")
-          )
-      <*> (strOption   $ long "fund-utxo"  <> help "utxo of the initial fund")
-      <*> (strOption   $ long "fund-addr"  <> help "address uses for transactions")
+      <*> Opt.strOption
+         (  Opt.long "signing-key-file"
+         <> Opt.metavar "FILE"
+         <> Opt.help ("Input filepath of the signing key")
+         <> Opt.completer (Opt.bashCompleter "file")
+         )
+      <*> pTxIn
+      <*> (strOption   $ long "fund-addr"  <> help "address used for transactions" <> metavar "FILE")
 
 pNetwork :: Parser NetworkId
 pNetwork =
@@ -209,3 +206,15 @@ pTestnetMagic =
       <> Opt.metavar "NATURAL"
       <> Opt.help "Specify a testnet magic id."
       )
+
+pTxIn :: Parser TxIn
+pTxIn =
+  Opt.option (readerFromAttoParser parseTxIn)
+    (  Opt.long "tx-in"
+    <> Opt.metavar "TX-IN"
+    <> Opt.help "The input transaction as TxId#TxIx where TxId is the transaction hash and TxIx is the index."
+    )
+
+readerFromAttoParser :: Atto.Parser a -> Opt.ReadM a
+readerFromAttoParser p =
+    Opt.eitherReader (Atto.parseOnly (p <* Atto.endOfInput) . BSC.pack)

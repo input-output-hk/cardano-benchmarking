@@ -26,11 +26,8 @@ import           Ouroboros.Network.NodeToClient
                     , withIOManager
                     )
 
-import qualified Cardano.Chain.Genesis as Genesis
 import           Cardano.Node.Logging
                     ( createLoggingLayer )
-import           Cardano.Node.Protocol.Shelley
-                       ( ShelleyProtocolInstantiationError(..))
 
 import           Cardano.Node.Types
                     ( ConfigYamlFilePath(..)
@@ -39,6 +36,7 @@ import           Cardano.Node.Types
 import           Cardano.Config.Types
                     ( DbFile(..), ConfigError(..)
                     , ProtocolFilepaths(..)
+                    , SocketPath (..)
                     , NodeProtocolMode(..)
                     , TopologyFile(..))
 
@@ -65,7 +63,7 @@ runCommand args =
                , configFile = ConfigYamlFilePath $ P.logConfig args
                , topologyFile = TopologyFile "" -- Tx generator doesn't use topology
                , databaseFile = DbFile ""       -- Tx generator doesn't use database
-               , socketFile = Just $ P.socketPath args
+               , socketFile = Just $ SocketPath $ P.socketPath args
                , protocolFiles = ProtocolFilepaths {
                     byronCertFile = Just ""
                   , byronKeyFile = Just ""
@@ -85,7 +83,6 @@ runCommand args =
 
     firstExceptT GenesisBenchmarkRunnerError $
       genesisBenchmarkRunner args loggingLayer iocp
-
 
 ----------------------------------------------------------------------------
 

@@ -16,7 +16,7 @@ import qualified Control.Concurrent.STM as STM
 import           Control.Monad (forM, mapM, when, void)
 import qualified Control.Monad.Class.MonadSTM as MSTM
 import           Control.Monad.IO.Class
-import           Control.Monad.Trans.Except (ExceptT)
+import           Control.Monad.Trans.Except
 import           Control.Monad.Trans.Except.Extra
 import qualified Data.List.NonEmpty as NE
 import           Network.Socket (AddrInfo)
@@ -97,12 +97,11 @@ genesisBenchmarkRunner args loggingLayer iocp = do
               }
 
   let
-    mkNodeTxList addr p = (addr, txs)
+    mkNodeTxList addr p = (addr, [ mkShelleyTx x | ShelleyTx x <- txs ])
       where
-           -- todo : divide by number of nodes
-       (Right (txSigned,_,_)) = payWithChangeSeq (replicate (unNumberOfTxs $ P.txCount args) $ Lovelace 111) p
-
-       txs = map (\(ShelleyTx x) -> mkShelleyTx x) txSigned
+        txs = case payWithChangeSeq (replicate (unNumberOfTxs $ P.txCount args) $ Lovelace 111) p of
+                (Right (x,_,_)) -> x
+                (Left _err) -> error "unsufficient funds: mkNodeTxList"
     targetNodesAddrsAndTxsLists = zipWith mkNodeTxList (NE.toList remoteAddresses) producers
 
   txSubmissionTerm <- liftIO $ STM.newTVarIO False
