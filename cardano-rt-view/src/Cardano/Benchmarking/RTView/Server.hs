@@ -62,14 +62,14 @@ mainPage nsMVar params acceptors window = do
   addJavaScript window "chart.js"
 
   -- Make page's body (HTML markup).
-  (pageBody, nodesStateElems) <- mkPageBody window acceptors
+  (pageBody, (nodesStateElems, gridNodesStateElems)) <- mkPageBody window acceptors
 
   -- Start the timer for GUI update. Every second it will
   -- call a function which updates node state elements on the page.
   guiUpdateTimer <- timer # set interval 2000 -- Every 2 s.
   void $ onEvent (tick guiUpdateTimer) $ \_ -> do
     newState <- liftIO $ readMVar nsMVar
-    updateGUI newState params acceptors nodesStateElems
+    updateGUI window newState params acceptors (nodesStateElems, gridNodesStateElems)
   start guiUpdateTimer
 
   void $ UI.element pageBody

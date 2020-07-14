@@ -54,6 +54,7 @@ data ElementName
   | ElPeersNumber
   | ElTraceAcceptorHost
   | ElTraceAcceptorPort
+  | ElTraceAcceptorEndpoint
   | ElNodeErrors
   | ElMempoolTxsNumber
   | ElMempoolTxsPercent
@@ -123,6 +124,11 @@ data ElementName
   | ElNetworkOutProgressBox
   | ElRTSMemoryProgress
   | ElRTSMemoryProgressBox
+  -- Charts
+  | ElMemoryUsageChart
+  | ElCPUUsageChart
+  | ElDiskUsageChart
+  | ElNetworkUsageChart
   deriving (Eq, Generic, NFData, Ord, Show)
 
 data ElementValue

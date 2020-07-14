@@ -47,9 +47,7 @@ import           Cardano.BM.Data.LogItem
                    , utc2ns
                    )
 import           Cardano.BM.Trace
-                   ( Trace
-                   , logDebug
-                   )
+                   ( Trace )
 
 import           Cardano.Benchmarking.RTView.ErrorBuffer
                    ( ErrorBuffer
@@ -72,8 +70,8 @@ launchNodeStateUpdater
   -> ErrorBuffer Text
   -> MVar NodesState
   -> IO ()
-launchNodeStateUpdater tr switchBoard errBuff nsMVar = forever $ do
-  logDebug tr "Try to update nodes' state..."
+launchNodeStateUpdater _tr switchBoard errBuff nsMVar = forever $ do
+  -- logDebug tr "Try to update nodes' state..."
   -- Take current |LogObject|s from the |ErrorBuffer|.
   currentErrLogObjects <- readErrorBuffer errBuff
   forM_ currentErrLogObjects $ \(loggerName, errLogObject) ->

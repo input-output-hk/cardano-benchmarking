@@ -43,6 +43,11 @@ body {
     background-color: #000 !important;
 }
 
+.view-mode-button:hover {
+    color: rgb(239, 19, 29) !important;
+    background-color: #000 !important;
+}
+
 .service-name {
     font-size: 120%;
     color: #ccc !important;
@@ -135,6 +140,23 @@ body {
 
 .info-mark-img {
     max-width: 18px;
+}
+
+.grid-remove-button {
+    cursor: pointer;
+}
+
+.grid-remove-button-img {
+    max-width: 16px;
+}
+
+.grid-remove-node-button {
+    cursor: pointer;
+}
+
+.grid-remove-node-button-img {
+    max-width: 24px;
+    padding-left: 10px;
 }
 
 .cardano-name {
@@ -420,4 +442,70 @@ a:visited:hover {
 
 .network-usage-chart {
     max-height: 190px;
+}
+
+.grid-cpu-usage-chart {
+    max-width: 280px;
+}
+
+.grid-memory-usage-chart {
+    max-width: 280px;
+}
+
+.grid-disk-usage-chart {
+    max-width: 280px;
+}
+
+.grid-network-usage-chart {
+    max-width: 280px;
+}
+
+th, td {
+    padding: 15px !important;
+}
+
+th {
+    font-size: 110%;
+}
+
+.grid-edit-column {
+    max-width: 30px !important;
+}
+
+.row-hide-hover {
+    background-color: #F8E0E0 !important;
+}
+
+.select-node-check-area {
+    margin-top: 8px;
+    margin-bottom: 8px;
+    margin-left: 16px;
+}
+
+.select-node-check {
+    margin-right: 10px;
+}
+
+.select-metric-check-area {
+    margin-top: 8px;
+    margin-bottom: 8px;
+    margin-left: 16px;
+    margin-right: 16px;
+}
+
+.select-metric-check {
+    margin-right: 10px;
+}
+
+.grid-node-name-label {
+    font-weight: normal;
+}
+
+.w3-dropdown-content {
+    max-height: 500px !important;
+    overflow: auto;
+}
+
+.grid-row-cell {
+    font-weight: bold;
 }
