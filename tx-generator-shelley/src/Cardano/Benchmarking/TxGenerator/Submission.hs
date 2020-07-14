@@ -18,7 +18,6 @@ module Cardano.Benchmarking.TxGenerator.Submission
   , TraceBenchTxSubmit(..)
   , TraceLowLevelSubmit (..)
   , bulkSubmission
-  , submitTx
   , NodeToNodeSubmissionTrace(..)
   , txSubmissionClient
   ) where
@@ -47,10 +46,7 @@ import           Data.Void (Void)
 import           Cardano.BM.Tracing
 import           Control.Tracer (Tracer, traceWith)
 
-import           Ouroboros.Consensus.Block.Abstract (getCodecConfig)
-import           Ouroboros.Consensus.Config.SupportsNode (getNetworkMagic)
 import           Ouroboros.Consensus.Byron.Ledger.Mempool as Mempool (GenTx)
-import           Ouroboros.Consensus.Config (TopLevelConfig(..))
 import           Ouroboros.Consensus.Ledger.SupportsMempool as Mempool
                    ( ApplyTxErr, GenTxId, HasTxId, txId, txInBlockSize)
 import           Ouroboros.Consensus.Network.NodeToClient
@@ -366,114 +362,6 @@ defaultRWEnv = do
     , inFlight        = mempty
     , notYetSent      = mempty
     }
-
-
-{-------------------------------------------------------------------------------
-  Main logic
--------------------------------------------------------------------------------}
-
-submitTx :: ( RunNode blk
-            , Show (ApplyTxErr blk)
-            )
-         => IOManager
-         -> SocketPath
-         -> TopLevelConfig blk
-         -> GenTx blk
-         -> Tracer IO TraceLowLevelSubmit
-         -> IO ()
-submitTx iocp sockpath cfg tx tracer =
-    let path = unSocketPath sockpath
-    in NodeToClient.connectTo
-         (NodeToClient.localSnocket iocp path)
-         NetworkConnectTracers {
-             nctMuxTracer       = nullTracer,
-             nctHandshakeTracer = nullTracer
-           }
-         (localInitiatorNetworkApplication tracer cfg tx)
-         path
-
-
-localInitiatorNetworkApplication
-  :: forall blk m .
-     ( RunNode blk
-     , MonadST m
-     , MonadThrow m
-     , MonadTimer m
-     , Show (ApplyTxErr blk)
-     )
-  => Tracer m TraceLowLevelSubmit
-  -> TopLevelConfig blk
-  -> GenTx blk
-  -> Versions NodeToClient.NodeToClientVersion NodeToClient.DictVersion
-              (OuroborosApplication InitiatorMode NodeToClient.LocalAddress ByteString m () Void)
-
-localInitiatorNetworkApplication tracer cfg tx =
-  foldMapVersions
-    (\v ->
-      versionedNodeToClientProtocols
-        (nodeToClientProtocolVersion proxy v)
-        versionData
-        (protocols v))
-    (supportedNodeToClientVersions proxy)
- where
-    proxy :: Proxy blk
-    proxy = Proxy
-
-    versionData = NodeToClientVersionData $ getNetworkMagic $ configBlock cfg
-
-    protocols :: BlockNodeToClientVersion blk
-              -> NodeToClient.ConnectionId NodeToClient.LocalAddress
-              -> Control.Monad.Class.MonadSTM.STM m RunOrStop
-              -> NodeToClient.NodeToClientProtocols InitiatorMode ByteString m () Void
-    protocols byronClientVersion _ _ =
-        NodeToClient.NodeToClientProtocols {
-          NodeToClient.localChainSyncProtocol =
-            InitiatorProtocolOnly $
-              MuxPeer
-                nullTracer
-                cChainSyncCodec
-                NodeToClient.chainSyncPeerNull
-
-        , NodeToClient.localTxSubmissionProtocol =
-            InitiatorProtocolOnly $
-              MuxPeerRaw $ \channel -> do
-                traceWith tracer TraceLowLevelSubmitting
-                (result, maybs) <- runPeer
-                            nullTracer -- (contramap show tracer)
-                            cTxSubmissionCodec
-                            channel
-                            (LocalTxSub.localTxSubmissionClientPeer
-                               (txSubmissionClientSingle tx))
-                case result of
-                  SubmitSuccess -> traceWith tracer TraceLowLevelAccepted
-                  SubmitFail msg -> traceWith tracer (TraceLowLevelRejected $ show msg)
-                return ((), maybs)
-
-        , NodeToClient.localStateQueryProtocol =
-            InitiatorProtocolOnly $
-              MuxPeer
-                nullTracer
-                cStateQueryCodec
-                NodeToClient.localStateQueryPeerNull
-        }
-     where
-      Codecs { cChainSyncCodec
-             , cTxSubmissionCodec
-             , cStateQueryCodec
-             } = defaultCodecs (getCodecConfig $ configBlock cfg) byronClientVersion
-
-
--- | A 'LocalTxSubmissionClient' that submits exactly one transaction, and then
--- disconnects, returning the confirmation or rejection.
---
-txSubmissionClientSingle
-  :: forall tx reject m.
-     Applicative m
-  => tx
-  -> LocalTxSub.LocalTxSubmissionClient tx reject m (LocalTxSub.SubmitResult reject)
-txSubmissionClientSingle tx = LocalTxSub.LocalTxSubmissionClient $
-    pure $ LocalTxSub.SendMsgSubmitTx tx $ \mreject ->
-      pure (LocalTxSub.SendMsgDone mreject)
 
 txSubmissionClient
   :: forall m block txid tx .

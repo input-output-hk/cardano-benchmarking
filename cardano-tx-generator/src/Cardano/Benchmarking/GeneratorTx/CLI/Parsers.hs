@@ -1,6 +1,7 @@
 module Cardano.Benchmarking.GeneratorTx.CLI.Parsers
   ( GenerateTxs (..)
   , parseCommand
+  , parseFlag
   ) where
 
 import           Cardano.Prelude hiding (option)
@@ -23,23 +24,15 @@ import           Cardano.Config.Types
                     )
 
 import           Cardano.Benchmarking.GeneratorTx
+import           Cardano.Benchmarking.GeneratorTx.Params
 
 data GenerateTxs =
   GenerateTxs FilePath
-              FilePath {- was SigningKeyFile -}
-              FilePath {- was DelegationCertFile -}
               GenesisFile
               SocketPath
-              (NonEmpty NodeAddress)
-              NumberOfTxs
-              NumberOfInputsPerTx
-              NumberOfOutputsPerTx
-              FeePerTx
-              TPSRate
-              InitCooldown
-              (Maybe TxAdditionalSize)
+              Benchmark
               [SigningKeyFile]
-              Bool
+
 
 parseCommand :: Parser GenerateTxs
 parseCommand =
@@ -47,23 +40,34 @@ parseCommand =
     <$> parseConfigFile
           "config"
           "Configuration file for the cardano-node"
-    <*> parseSigningKeyFile
-          "signing-key"
-          "Signing key file."
-    <*> parseDelegationCert
     <*> (GenesisFile <$> parseGenesisPath)
     <*> parseSocketPath
           "socket-path"
           "Path to a cardano-node socket"
-    <*> (NE.fromList <$> some (
+    <*> parseBenchmark
+    <*> parseSigningKeysFiles
+          "sig-key"
+          "Path to signing key file, for genesis UTxO using by generator."
+
+parseBenchmark :: Parser Benchmark
+parseBenchmark =
+  Benchmark
+    <$> (NE.fromList <$> some (
             parseTargetNodeAddress
               "target-node"
               "host and port of the node transactions will be sent to."
           )
         )
+    <*> fmap (fromMaybe defaultInitCooldown)
+          (optional $ parseInitCooldown
+             "init-cooldown"
+             "Delay between init and main submission phases.")
     <*> parseNumberOfTxs
           "num-of-txs"
           "Number of transactions generator will create."
+    <*> parseTPSRate
+          "tps"
+          "TPS (transaction per second) rate."
     <*> parseNumberOfInputsPerTx
           "inputs-per-tx"
           "Number of inputs in each of transactions."
@@ -73,25 +77,11 @@ parseCommand =
     <*> parseFeePerTx
           "tx-fee"
           "Fee per transaction, in Lovelaces."
-    <*> parseTPSRate
-          "tps"
-          "TPS (transaction per second) rate."
-    <*> fmap (fromMaybe defaultInitCooldown)
-          (optional $ parseInitCooldown
-             "init-cooldown"
-             "Delay between init and main submission phases.")
     <*> optional (
           parseTxAdditionalSize
             "add-tx-size"
             "Additional size of transaction, in bytes."
         )
-    <*> parseSigningKeysFiles
-          "sig-key"
-          "Path to signing key file, for genesis UTxO using by generator."
-
-    <*> parseFlag
-          "single-threaded"
-          "Single-threaded submission."
 
 defaultInitCooldown :: InitCooldown
 defaultInitCooldown = InitCooldown 100
@@ -145,9 +135,6 @@ parseInitCooldown opt desc = InitCooldown <$> parseIntegral opt desc
 parseTxAdditionalSize :: String -> String -> Parser TxAdditionalSize
 parseTxAdditionalSize opt desc = TxAdditionalSize <$> parseIntegral opt desc
 
-parseSigningKeyFile :: String -> String -> Parser FilePath
-parseSigningKeyFile opt desc = parseFilePath opt desc
-
 parseSigningKeysFiles :: String -> String -> Parser [SigningKeyFile]
 parseSigningKeysFiles opt desc = some $ SigningKeyFile <$> parseFilePath opt desc
 
@@ -157,17 +144,9 @@ parseIntegral :: Integral a => String -> String -> Parser a
 parseIntegral optname desc = option (fromInteger <$> auto)
   $ long optname <> metavar "INT" <> help desc
 
-parseFloat :: String -> String -> Parser Float
-parseFloat optname desc = option (auto)
-  $ long optname <> metavar "FLOAT" <> help desc
-
 parseDouble :: String -> String -> Parser Double
 parseDouble optname desc = option (auto)
   $ long optname <> metavar "DOUBLE" <> help desc
-
-parseUrl :: String -> String -> Parser String
-parseUrl optname desc =
-  strOption $ long optname <> metavar "URL" <> help desc
 
 parseFilePath :: String -> String -> Parser FilePath
 parseFilePath optname desc =
@@ -183,14 +162,6 @@ parseSocketPath optname desc =
 
 parseConfigFile :: String -> String -> Parser FilePath
 parseConfigFile = parseFilePath
-
-parseDelegationCert :: Parser FilePath
-parseDelegationCert =
-  strOption
-    ( long "delegation-certificate"
-        <> metavar "FILEPATH"
-        <> help "Path to the delegation certificate."
-    )
 
 parseGenesisPath :: Parser FilePath
 parseGenesisPath =

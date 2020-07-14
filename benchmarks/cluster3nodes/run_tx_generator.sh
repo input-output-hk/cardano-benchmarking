@@ -17,8 +17,6 @@ echo "$TARGETNODES"
 
 run 'cardano-tx-generator-byron' \
   --config ${CONFIGDIR}/configuration-generator.yaml \
-  --signing-key ${CONFIGDIR}/genesis/delegate-keys.000.key \
-  --delegation-certificate ${CONFIGDIR}/genesis/delegation-cert.000.json \
   --genesis-file ${GENESISJSON} \
   --socket-path $BASEDIR/sockets/0 \
   --num-of-txs $numtx \

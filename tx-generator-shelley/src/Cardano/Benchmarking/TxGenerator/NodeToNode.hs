@@ -47,9 +47,10 @@ import           Ouroboros.Network.Protocol.Handshake.Type (Handshake)
 import           Ouroboros.Network.Protocol.Handshake.Version (Versions, simpleSingletonVersions)
 import           Ouroboros.Network.Protocol.TxSubmission.Client (TxSubmissionClient, txSubmissionClientPeer)
 import           Ouroboros.Network.Snocket (socketSnocket)
+import           Ouroboros.Network.Magic (NetworkMagic(..))
 
-import           Cardano.Api (Network, toNetworkMagic)
-
+import           Cardano.Api.Typed (NetworkId) -- , toNetworkMagic)
+import qualified Cardano.Api.Typed as Api
 import           Cardano.Benchmarking.TxGenerator.Types
 
 type SendRecvConnect = WithMuxBearer
@@ -70,7 +71,7 @@ benchmarkConnectTxSubmit
   -- ^ For tracing the send/receive actions
   -> ProtocolClientInfo blk
   -- ^ The particular block protocol
-  -> Network
+  -> NetworkId
   -- ^ Network(Magic)
   -> Maybe AddrInfo
   -- ^ local address information (typically local interface/port to use)
@@ -125,3 +126,7 @@ blockFetchClientNull
   => BlockFetchClient block m a
 blockFetchClientNull
   = BlockFetchClient $ forever $ threadDelay (24 * 60 * 60) {- one day in seconds -}
+
+toNetworkMagic :: NetworkId -> NetworkMagic
+toNetworkMagic  Api.Mainnet     = NetworkMagic 764824073
+toNetworkMagic (Api.Testnet nm) = nm

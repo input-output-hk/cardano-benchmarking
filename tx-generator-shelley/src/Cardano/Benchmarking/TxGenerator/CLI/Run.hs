@@ -27,18 +27,20 @@ import           Ouroboros.Network.NodeToClient
                     )
 
 import qualified Cardano.Chain.Genesis as Genesis
-import           Cardano.Config.Logging
-                    ( createLoggingFeature )
+import           Cardano.Node.Logging
+                    ( createLoggingLayer )
 import           Cardano.Node.Protocol.Shelley
                        ( ShelleyProtocolInstantiationError(..))
 
-import           Cardano.Config.Types
-                    ( DbFile(..), ConfigError(..), ConfigYamlFilePath(..)
-                    , CardanoEnvironment(..)
-                    , ProtocolFilepaths(..), NodeCLI(..)
-                    , NodeProtocolMode(..), Protocol
-                    , TopologyFile(..)
+import           Cardano.Node.Types
+                    ( ConfigYamlFilePath(..)
+                    , NodeCLI(..)
                     )
+import           Cardano.Config.Types
+                    ( DbFile(..), ConfigError(..)
+                    , ProtocolFilepaths(..)
+                    , NodeProtocolMode(..)
+                    , TopologyFile(..))
 
 import           Cardano.Benchmarking.TxGenerator.Error
                     ( TxGenError )
@@ -47,16 +49,9 @@ import qualified Cardano.Benchmarking.TxGenerator.CLI.Parsers as P
 import           Cardano.Benchmarking.TxGenerator
                     ( genesisBenchmarkRunner )
 
-data RealPBFTError =
-    IncorrectProtocolSpecified !Protocol
-  | FromProtocolError !ShelleyProtocolInstantiationError
+data CliError
+  = FileNotFoundError !FilePath
   | GenesisBenchmarkRunnerError !TxGenError
-  deriving Show
-
-data CliError =
-    GenesisReadError !FilePath !Genesis.GenesisDataError
-  | GenerateTxsError !RealPBFTError
-  | FileNotFoundError !FilePath
   deriving Show
 
 ------------------------------------------------------------------------------------------------
@@ -83,15 +78,13 @@ runCommand args =
                , shutdownOnSlotSynced = NoMaxSlotNo
                }
 
-    (loggingLayer, _) <- firstExceptT (\(ConfigErrorFileNotFound fp) -> FileNotFoundError fp) $
-                             createLoggingFeature
+    loggingLayer <- firstExceptT (\(ConfigErrorFileNotFound fp) -> FileNotFoundError fp) $
+                             createLoggingLayer
                                  (pack $ "todo: undefined Version" )--showVersion version)
-                                 NoEnvironment
                                  ncli
 
-    firstExceptT GenerateTxsError $
-        firstExceptT GenesisBenchmarkRunnerError $
-            genesisBenchmarkRunner args loggingLayer iocp
+    firstExceptT GenesisBenchmarkRunnerError $
+      genesisBenchmarkRunner args loggingLayer iocp
 
 
 ----------------------------------------------------------------------------

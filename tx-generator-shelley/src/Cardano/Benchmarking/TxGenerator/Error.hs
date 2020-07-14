@@ -4,6 +4,7 @@ module Cardano.Benchmarking.TxGenerator.Error
 
 import           Prelude
 import           Cardano.Api (ApiError)
+import           Cardano.Api.Typed
 import           Cardano.Binary (DecoderError)
 import           Cardano.Benchmarking.TxGenerator.Producer
 
@@ -21,6 +22,7 @@ data TxGenError =
   | UTxOParseError !String
   | AddrParseError !DecoderError
   | CardanoApiError !ApiError
+  | TxFileError !(FileError TextEnvelopeError)
   | TxSubmitError !String
   | Phase1SplitError !PError
   -- ^ error from Cardana.Api.Error

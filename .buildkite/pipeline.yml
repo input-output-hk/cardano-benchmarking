@@ -14,8 +14,8 @@ steps:
     agents:
       system: x86_64-linux
 
-  - label: Check repo dependency tags are present on master branches
-    commands:
-      - "nix build -f ./nix iohkNix.checkRepoTagsOnMasterBranches --arg src ./. --show-trace"
-    agents:
-      system: x86_64-linux
+  # - label: Check repo dependency tags are present on master branches
+  #   commands:
+  #     - "nix build -f ./nix iohkNix.checkRepoTagsOnMasterBranches --arg src ./. --show-trace"
+  #   agents:
+  #     system: x86_64-linux
