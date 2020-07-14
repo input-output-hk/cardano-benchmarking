@@ -9,8 +9,8 @@ Usage: tx-generator-shelley (--mainnet | --testnet-magic NATURAL)
                             --target-node (HOST,PORT) --num-of-txs INT
                             --tx-fee INT --tps FLOAT [--init-cooldown INT] 
                             [--add-tx-size INT] [--submit-to-api URL]
-                            --fund-value LOVELACE --fund-skey FILE
-                            --fund-utxo ARG --fund-addr ARG
+                            --fund-value LOVELACE --signing-key-file FILE
+                            --tx-in TX-IN --fund-addr FILE
 
 Available options:
   --mainnet                Use the mainnet magic id.
@@ -27,32 +27,10 @@ Available options:
   --add-tx-size INT        Additional size of transaction, in bytes.
   --submit-to-api URL      Explorer's API endpoint to submit transaction.
   --fund-value LOVELACE    Lovelace value of the initial fund
-  --fund-skey FILE         signingkey for spending the initial fund
-  --fund-utxo ARG          utxo of the initial fund
-  --fund-addr ARG          address uses for transactions
+  --signing-key-file FILE  Input filepath of the signing key
+  --tx-in TX-IN            The input transaction as TxId#TxIx where TxId is the
+                           transaction hash and TxIx is the index.
+  --fund-addr FILE         address used for transactions
   -h,--help                Show this help text
 ```
 
-### TODO
-
-* `--add-tx-size INT` is not implemented.
-* `--num-of-txs INT` is per target node (not the total number).
-
-## Example
-
-```
-tx-generator-shelley\
-  --testnet-magic 42\
-  --config /work/shelley3pools/node-config.json\
-  --socket-path /work/shelley3pools/logs/sockets/1\
-  --num-of-txs 6000\
-  --tx-fee 10000\
-  --tps 0.7\
-  --target-node '("127.0.0.1",3000)'\
-  --target-node '("127.0.0.1",3001)'\
-  --target-node '("127.0.0.1",3002)'\
-  --fund-utxo '355fae08a93b5920eca47ffb60ba13401d3d579cccfed1b69b766941452eb715#0'\
-  --fund-value 33333333334\
-  --fund-skey /work/shelley3pools/tmp-exgenesis/payer.skey\
-  --fund-addr 60734487ec861e69fa5509866a10d9eec7fba99051c366ce5e490cc2d298ad7579
-```

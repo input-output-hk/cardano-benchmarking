@@ -299,7 +299,7 @@ instance (MonadIO m) => Transformable Text m TraceLowLevelSubmit where
 
 type SendRecvTxSubmission blk = TraceSendRecv (TS.TxSubmission (GenTxId blk) (GenTx blk))
 
-instance (Show (TxId (GenTx blk)), Show (GenTx blk), ToJSON (TxId (GenTx blk)))
+instance (Show (TxId (GenTx blk)), Show (GenTx blk))
            => Transformable Text IO (SendRecvTxSubmission blk) where
   -- transform to JSON Object
   trTransformer verb tr = Tracer $ \arg -> do

@@ -1,5 +1,5 @@
 name:                  tx-generator-shelley
-version:               0.1.0
+version:               0.2.0
 description:           The transaction generator for shelley
 author:                IOHK
 maintainer:            operations@iohk.io
@@ -29,10 +29,12 @@ library
 
   build-depends:       aeson
                      , async
+                     , attoparsec
                      , base >=4.12 && <5
                      , bytestring
                      , cardano-api
                      , cardano-binary
+                     , cardano-cli
                      , cardano-config
                      , cardano-crypto-class
                      , cardano-crypto-wrapper
