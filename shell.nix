@@ -19,6 +19,7 @@ let
     packages = ps: with ps; [
       cardano-rt-view
       cardano-tx-generator
+      tx-generator-shelley
     ];
 
     # These programs will be available inside the nix-shell.
