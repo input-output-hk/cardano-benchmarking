@@ -64,6 +64,8 @@ let
         jobs.native.cardano-tx-generator.x86_64-linux
         jobs.native.cardano-rt-view-service.x86_64-darwin
         jobs.native.cardano-rt-view-service.x86_64-linux
+        jobs.native.tx-generator-shelley.x86_64-darwin
+        jobs.native.tx-generator-shelley.x86_64-linux
       ]));
 
 in jobs
