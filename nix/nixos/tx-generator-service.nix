@@ -4,6 +4,7 @@
       nodeConfigDefault = cfg:
         (__fromJSON (__readFile ../../configuration/defaults/generator/configuration.json))
         // {
+          "Protocol"    = cfg.localNodeConf.nodeConfig.Protocol;
           "GenesisFile" = cfg.localNodeConf.nodeConfig.GenesisFile;
         };
     in
@@ -31,15 +32,10 @@
         init_cooldown   =  intOpt 100        "Delay between init and main submissions.";
 
         nodeConfig      = attrOpt {}         "Node-style config, overrides the default.";
-        keyGen          =  strOpt null       "Signing key: generator";
-        keySrc          =  strOpt null       "Signing key: source";
-        keyRec          =  strOpt null       "Signing key: receiver";
+        sigKey          =  strOpt null       "Key with funds";
 
         localNodeConf   = attrOpt null       "Config of the local observer node";
         targetNodes     = attrOpt null       "Targets: { name = { ip, port } }";
-
-        ## TODO:  obsolete node args
-        delegCert       =  strOpt null       "OBSOLETE: delegation certificate";
       };
 
       configExeArgsFn =
@@ -58,14 +54,11 @@
             "--tps"                    tps
             "--init-cooldown"          init_cooldown
 
-            "--sig-key"                keyGen
-            "--sig-key"                keySrc
-            "--sig-key"                keyRec
+            "--sig-key"                sigKey
+            "--sig-key"                sigKey
+            "--sig-key"                sigKey
 
-            ## TODO:  obsolete node args
             "--genesis-file"           localNodeConf.nodeConfig.GenesisFile
-            "--signing-key"            keyGen
-            "--delegation-certificate" delegCert
           ] ++
           __attrValues
             (__mapAttrs (name: { ip, port }: "--target-node '(\"${ip}\",${toString port})'")
