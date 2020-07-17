@@ -256,6 +256,3 @@ jq '. +
    ' "${params[@]}" \
  < "$gendir"/genesis.json > "$gendir"/genesis.json.
 mv "$gendir"/genesis.json.  "$gendir"/genesis.json
-
-## Fix up the key, so the generator can read it:
-sed -i 's_PaymentSigningKeyShelley_SigningKeyShelley_' $GENESISDIR/utxo-keys/utxo1.skey

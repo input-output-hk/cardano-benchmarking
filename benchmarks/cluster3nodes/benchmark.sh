@@ -28,8 +28,6 @@ case "$era" in
                 ## For now, those are not supported.
                 run_tx_generator=0
                 run_second_cluster=0;;
-        byron )
-                prebuild 'cardano-tx-generator-'$era || exit 1;;
 esac
 
 ### >>>>>> do not change anything below this point

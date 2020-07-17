@@ -20,6 +20,7 @@ import           Cardano.Prelude (Void, forever)
 import           Codec.Serialise (DeserialiseFailure)
 import           Control.Monad.Class.MonadTimer (MonadTimer, threadDelay)
 import           Data.ByteString.Lazy (ByteString)
+import qualified Data.Map as Map
 import           Data.Proxy (Proxy (..))
 import           Network.Mux (MuxMode(InitiatorMode))
 import           Network.Socket (AddrInfo (..), SockAddr)
@@ -31,6 +32,7 @@ import           Ouroboros.Consensus.Node.NetworkProtocolVersion
 import           Ouroboros.Consensus.Node.Run (RunNode)
 import           Ouroboros.Consensus.Network.NodeToNode (Codecs(..), defaultCodecs)
 
+import           Ouroboros.Network.Channel(Channel(..))
 import           Ouroboros.Network.Mux
                    (OuroborosApplication(..), MuxPeer(..), RunMiniProtocol(..))
 import           Ouroboros.Network.NodeToNode (NetworkConnectTracers (..))
@@ -41,12 +43,12 @@ import           Ouroboros.Network.Protocol.Handshake.Version (Versions, simpleS
 import           Ouroboros.Network.Protocol.TxSubmission.Client (TxSubmissionClient, txSubmissionClientPeer)
 import           Ouroboros.Network.Snocket (socketSnocket)
 
-import           Cardano.Benchmarking.GeneratorTx.Params
+import           Cardano.Benchmarking.GeneratorTx.Era
 
 
 benchmarkConnectTxSubmit
-  :: forall m blk . (RunNode blk, m ~ IO)
-  => Params blk
+  :: forall m era blk. (blk ~ BlockOf era, RunNode blk, m ~ IO)
+  => Era era
   -> Maybe AddrInfo
   -- ^ local address information (typically local interface/port to use)
   -> AddrInfo
@@ -56,7 +58,7 @@ benchmarkConnectTxSubmit
   -> m ()
 benchmarkConnectTxSubmit p localAddr remoteAddr myTxSubClient =
   NtN.connectTo
-    (socketSnocket $ paramsIOManager p)
+    (socketSnocket $ eraIOManager p)
     NetworkConnectTracers {
         nctMuxTracer       = nullTracer,
         nctHandshakeTracer = trConnect p
@@ -65,17 +67,23 @@ benchmarkConnectTxSubmit p localAddr remoteAddr myTxSubClient =
     (addrAddress <$> localAddr)
     (addrAddress remoteAddr)
  where
+  n2nVer :: NodeToNodeVersion
+  n2nVer = NodeToNodeV_1
+  blkN2nVer :: BlockNodeToNodeVersion blk
+  blkN2nVer = supportedVers Map.! n2nVer
+  supportedVers :: Map.Map NodeToNodeVersion (BlockNodeToNodeVersion blk)
+  supportedVers = supportedNodeToNodeVersions (Proxy @blk)
   myCodecs :: Codecs blk DeserialiseFailure m
-                ByteString ByteString ByteString ByteString ByteString
-  myCodecs  = defaultCodecs (paramsCodecConfig p) (mostRecentSupportedNodeToNode (Proxy @blk))
+                ByteString ByteString ByteString ByteString ByteString ByteString
+  myCodecs  = defaultCodecs (eraCodecConfig p) blkN2nVer
   peerMultiplex :: Versions NtN.NodeToNodeVersion NtN.DictVersion
                      (OuroborosApplication InitiatorMode SockAddr ByteString IO () Void)
   peerMultiplex =
     simpleSingletonVersions
       NtN.NodeToNodeV_1
-      (NtN.NodeToNodeVersionData { NtN.networkMagic = paramsNetworkMagic p})
+      (NtN.NodeToNodeVersionData { NtN.networkMagic = eraNetworkMagic p})
       (NtN.DictVersion NtN.nodeToNodeCodecCBORTerm) $
-      NtN.nodeToNodeProtocols NtN.defaultMiniProtocolParameters $ \_ _ ->
+      NtN.nodeToNodeProtocols NtN.defaultMiniProtocolParameters $ \them _ ->
         NtN.NodeToNodeProtocols
           { NtN.chainSyncProtocol = InitiatorProtocolOnly $
                                       MuxPeer
@@ -87,12 +95,23 @@ benchmarkConnectTxSubmit p localAddr remoteAddr myTxSubClient =
                                          nullTracer
                                          (cBlockFetchCodec myCodecs)
                                          (blockFetchClientPeer blockFetchClientNull)
+          , NtN.keepAliveProtocol = InitiatorProtocolOnly $
+                                      MuxPeerRaw
+                                        (aKeepAliveClient n2nVer them)
           , NtN.txSubmissionProtocol = InitiatorProtocolOnly $
                                          MuxPeer
                                            (trSubmitMux p)
                                            (cTxSubmissionCodec myCodecs)
                                            (txSubmissionClientPeer myTxSubClient)
           }
+  -- Stolen from: Ouroboros/Consensus/Network/NodeToNode.hs
+  aKeepAliveClient
+    :: NodeToNodeVersion
+    -> remotePeer
+    -> Channel m bKA
+    -> m ((), Maybe bKA)
+  aKeepAliveClient _version _them _channel =
+    forever (threadDelay 1000) >> return ((), Nothing)
 
 -- the null block fetch client
 blockFetchClientNull
