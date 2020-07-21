@@ -29,7 +29,7 @@ cat "${TEMPFILE}" | {
     if [ -n "$TXIDS" ]; then
       IFS=","
       for txid in ${TXIDS}; do
-        echo "$NODENUM, $SLOT, \"$TSTAMP\", $txid"
+        echo "${txid},\"${TSTAMP}\",${NODENUM},${SLOT}"
       done
     fi
 
