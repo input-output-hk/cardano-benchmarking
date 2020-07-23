@@ -47,6 +47,9 @@ mkNodeWidget nameOfNode = do
   elPeersNumber             <- string "0"
   elTraceAcceptorHost       <- string "0"
   elTraceAcceptorPort       <- string "0"
+  elOpCertStartKESPeriod    <- string "0"
+  elCurrentKESPeriod        <- string "0"
+  elRemainingKESPeriods     <- string "0"
   elMempoolTxsNumber        <- string "0"
   elMempoolTxsPercent       <- string "0"
   elMempoolBytes            <- string "0"
@@ -156,6 +159,10 @@ mkNodeWidget nameOfNode = do
   elNodePlatformOutdateWarning   <- infoMark "The value is outdated"
   elNodeCommitHrefOutdateWarning <- infoMark "The value is outdated"
   elUptimeOutdateWarning         <- infoMark "The value is outdated"
+  
+  elOpCertStartKESPeriodOutdateWarning <- infoMark "The value is outdated"
+  elCurrentKESPeriodOutdateWarning     <- infoMark "The value is outdated"
+  elRemainingKESPeriodsOutdateWarning  <- infoMark "The value is outdated"
 
   elSlotOutdateWarning               <- infoMark "The value is outdated"
   elBlocksNumberOutdateWarning       <- infoMark "The value is outdated"
@@ -182,6 +189,10 @@ mkNodeWidget nameOfNode = do
                  , vSpacer "node-info-v-spacer"
                  , UI.div #. "" #+ [string "Node uptime:"]
                  , vSpacer "node-info-v-spacer"
+                 , UI.div #. "" #+ [string "Start KES period:"]
+                 , UI.div #. "" #+ [string "KES period:"]
+                 , UI.div #. "" #+ [string "KES remaining:"]
+                 , vSpacer "node-info-v-spacer"
                  , UI.div #. "" #+ [string "TraceAcceptor endpoint:"]
                  ]
              , UI.div #. "w3-third" #+
@@ -192,6 +203,10 @@ mkNodeWidget nameOfNode = do
                      , UI.div #. "commit-link" #+ [element elNodeCommitHref]
                      , vSpacer "node-info-v-spacer"
                      , UI.div #. "" #+ [element elUptime]
+                     , vSpacer "node-info-v-spacer"
+                     , UI.div #. "" #+ [element elOpCertStartKESPeriod]
+                     , UI.div #. "" #+ [element elCurrentKESPeriod]
+                     , UI.div #. "" #+ [element elRemainingKESPeriods]
                      , vSpacer "node-info-v-spacer"
                      , UI.div #. "" #+
                          [ element elTraceAcceptorHost
@@ -220,6 +235,19 @@ mkNodeWidget nameOfNode = do
                  , vSpacer "node-info-v-spacer"
                  , UI.div #. "" #+
                      [ element elUptimeOutdateWarning
+                     , UI.span # set UI.html "&nbsp;" #+ []
+                     ]
+                 , vSpacer "node-info-v-spacer"
+                 , UI.div #. "" #+
+                     [ element elOpCertStartKESPeriodOutdateWarning
+                     , UI.span # set UI.html "&nbsp;" #+ []
+                     ]
+                 , UI.div #. "" #+
+                     [ element elCurrentKESPeriodOutdateWarning
+                     , UI.span # set UI.html "&nbsp;" #+ []
+                     ]
+                 , UI.div #. "" #+
+                     [ element elRemainingKESPeriodsOutdateWarning
                      , UI.span # set UI.html "&nbsp;" #+ []
                      ]
                  , vSpacer "node-info-v-spacer"
@@ -654,6 +682,9 @@ mkNodeWidget nameOfNode = do
           , (ElPeersNumber,             elPeersNumber)
           , (ElTraceAcceptorHost,       elTraceAcceptorHost)
           , (ElTraceAcceptorPort,       elTraceAcceptorPort)
+          , (ElOpCertStartKESPeriod,    elOpCertStartKESPeriod)
+          , (ElCurrentKESPeriod,        elCurrentKESPeriod)
+          , (ElRemainingKESPeriods,     elRemainingKESPeriods)
           , (ElNodeErrors,              elNodeErrorsList)
           , (ElMempoolTxsNumber,        elMempoolTxsNumber)
           , (ElMempoolTxsPercent,       elMempoolTxsPercent)
@@ -687,6 +718,9 @@ mkNodeWidget nameOfNode = do
           , (ElNodePlatformOutdateWarning,       elNodePlatformOutdateWarning)
           , (ElNodeCommitHrefOutdateWarning,     elNodeCommitHrefOutdateWarning)
           , (ElUptimeOutdateWarning,             elUptimeOutdateWarning)
+          , (ElOpCertStartKESPeriodOutdateWarning, elOpCertStartKESPeriodOutdateWarning)
+          , (ElCurrentKESPeriodOutdateWarning,     elCurrentKESPeriodOutdateWarning)
+          , (ElRemainingKESPeriodsOutdateWarning,  elRemainingKESPeriodsOutdateWarning)
           , (ElSlotOutdateWarning,               elSlotOutdateWarning)
           , (ElBlocksNumberOutdateWarning,       elBlocksNumberOutdateWarning)
           , (ElBlocksForgedNumberOutdateWarning, elBlocksForgedNumberOutdateWarning)
