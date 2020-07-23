@@ -21,7 +21,7 @@ After first checkout of the repository, update the submodules:
 $ git submodule update --init
 ```
 
-## Building
+## Building on Linux / Mac OSX
 
 The following commands will compile the project and copy the binaries to the directory `./bin/`.
 
@@ -37,3 +37,8 @@ $ stack --nix build --copy-bins
 $ cabal build all
 $ cabal install ext/cardano-node.git/cardano-node:exe:cardano-node --install-method=copy --installdir=./bin
 ```
+
+## Building on Windows
+
+Install _MinGW_ (64 bit) ![MinGW](https://raw.githubusercontent.com/wiki/input-output-hk/cardano-benchmarking/mingw64.png) environment and run `stack` in it to compile _cardano-benchmarking_ and all its dependencies.
+(see our [wiki page](https://github.com/input-output-hk/cardano-benchmarking/wiki/BuildingOnWindows))
