@@ -14,6 +14,7 @@ BASEDIR=$(realpath $(dirname "$0"))
 set -e
 
 prebuild 'bmtimeline' || exit 1
+prebuild 'bmadoption' || exit 1
 prebuild 'bmtime2block' || exit 1
 prebuild 'bmresources' || exit 1
 
@@ -61,8 +62,12 @@ for N in $(seq 0 $((NNODES - 1))); do
   fi
 done
 
-run bmtimeline 'stub' ${NNODES} ${OUTDIR} | tee -a ${OUTDIR}/timeline.txt
+run bmtimeline ${NNODES} ${OUTDIR} | tee -a ${OUTDIR}/timeline.txt
 cp timeline.csv ${OUTDIR}/
+
+run bmadoption ${NNODES} ${OUTDIR}
+cp adoption.csv ${OUTDIR}/
+cp diffusion.csv ${OUTDIR}/
 
 run bmtime2block ${OUTDIR}
 cp time2block.csv ${OUTDIR}/

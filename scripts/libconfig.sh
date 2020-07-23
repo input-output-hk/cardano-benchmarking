@@ -31,6 +31,7 @@ CABALEXE_TO_CABALPKG=(
         [bmtimeline]='bm-timeline'
         [bmtime2block]='bm-timeline'
         [bmresources]='bm-timeline'
+        [bmadoption]='bm-timeline'
 )
 
 declare -A CABALEXE_TO_LIBOPTS
