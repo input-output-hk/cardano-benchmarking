@@ -28,7 +28,6 @@ CABALEXE_TO_CABALPKG=(
         [cardano-rt-view]='cardano-rt-view'
         [cardano-rt-view-service]='cardano-rt-view'
         [cardano-tx-generator]='cardano-tx-generator'
-        [cardano-tx-generator-byron]='cardano-tx-generator'
         [bmtimeline]='bm-timeline'
         [bmtime2block]='bm-timeline'
         [reconstruct-timeline]='bm-timeline'

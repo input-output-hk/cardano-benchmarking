@@ -2,21 +2,20 @@
 , crossSystem ? null
 , config ? {}
 , sourcesOverride ? {}
-# override scripts with custom configuration
+, gitrev ? null
 , customConfig ? {}
 }:
 let
   sources = import ./sources.nix { inherit pkgs; }
     // sourcesOverride;
   iohkNix = import sources.iohk-nix {};
-  haskellNix = import sources."haskell.nix";
+  haskellNix = (import sources."haskell.nix" { inherit system sourcesOverride; }).nixpkgsArgs;
   # use our own nixpkgs if it exists in our sources,
   # otherwise use iohkNix default nixpkgs.
   nixpkgs = if (sources ? nixpkgs)
     then (builtins.trace "Not using IOHK default nixpkgs (use 'niv drop nixpkgs' to use default for better sharing)"
       sources.nixpkgs)
-    else (builtins.trace "Using IOHK default nixpkgs"
-      iohkNix.nixpkgs);
+    else iohkNix.nixpkgs;
 
   # for inclusion in pkgs:
   overlays =
@@ -30,12 +29,13 @@ let
     # our own overlays:
     ++ [
       (pkgs: _: with pkgs; rec {
+        inherit gitrev;
 
         # commonLib: mix pkgs.lib with iohk-nix utils and our own:
         commonLib = lib // iohkNix // iohkNix.cardanoLib
           // import ./util.nix { inherit haskell-nix; }
-          # also expose our sources and overlays
-          // { inherit overlays sources; };
+          # also expose our sources, nixpkgs and overlays
+          // { inherit overlays sources nixpkgs; };
 
         svcLib = import ./svclib.nix { inherit pkgs; };
 

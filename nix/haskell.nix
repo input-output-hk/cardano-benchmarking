@@ -1,7 +1,8 @@
 ############################################################################
 # Builds Haskell packages with Haskell.nix
 ############################################################################
-{ lib
+{ pkgs
+, lib
 , stdenv
 , haskell-nix
 , buildPackages
@@ -10,26 +11,34 @@
 , compiler ? config.haskellNix.compiler or "ghc865"
 # Enable profiling
 , profiling ? config.haskellNix.profiling or false
+# Enable asserts for given packages
+, assertedPackages ? []
 # Version info, to be passed when not building from a git work tree
 , gitrev ? null
+, libsodium ? pkgs.libsodium
 }:
 let
 
   src = haskell-nix.haskellLib.cleanGit {
-    name = __trace "haskell.nix profiling: ${if profiling then "true" else "false"}"
-           "cardano-benchmarking";
-    src = ../.;
+      name = "cardano-node-src";
+      src = ../.;
   };
 
   projectPackages = lib.attrNames (haskell-nix.haskellLib.selectProjectPackages
-    (haskell-nix.cabalProject { inherit src; }));
+    (haskell-nix.cabalProject {
+      inherit src;
+      compiler-nix-name = "ghc865";
+    }));
 
+  # This creates the Haskell package set.
+  # https://input-output-hk.github.io/haskell.nix/user-guide/projects/
   pkgSet = haskell-nix.cabalProject  (lib.optionalAttrs stdenv.hostPlatform.isWindows {
     # FIXME: without this deprecated attribute, db-converter fails to compile directory with:
     # Encountered missing dependencies: unix >=2.5.1 && <2.9
     ghc = buildPackages.haskell-nix.compiler.${compiler};
   } // {
     inherit src;
+    compiler-nix-name = compiler;
     #ghc = buildPackages.haskell-nix.compiler.${compiler};
     pkg-def-extras = lib.optional stdenv.hostPlatform.isLinux (hackage: {
       packages = {
@@ -53,11 +62,6 @@ let
           "xhtml"
           # "stm" "terminfo"
         ];
-
-        # Needed for the CLI tests.
-        # Coreutils because we need 'paste'.
-        packages.cardano-cli.components.tests.cardano-cli-test.build-tools =
-          lib.mkForce [buildPackages.bc buildPackages.jq buildPackages.coreutils buildPackages.shellcheck];
 
         # Stamp executables with the git revision
         packages.cardano-tx-generator.components.exes.cardano-tx-generator.postInstall = setGitRev;
@@ -100,7 +104,8 @@ let
       })
       (lib.optionalAttrs stdenv.hostPlatform.isLinux {
         # systemd can't be statically linked
-        packages.cardano-tx-generator.flags.systemd = !stdenv.hostPlatform.isMusl;
+        packages.cardano-config.flags.systemd = !stdenv.hostPlatform.isMusl;
+        packages.cardano-node.flags.systemd = !stdenv.hostPlatform.isMusl;
       })
       # Musl libc fully static build
       (lib.optionalAttrs stdenv.hostPlatform.isMusl (let

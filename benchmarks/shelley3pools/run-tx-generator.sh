@@ -27,15 +27,8 @@ args_common=(
   )
 args_byron=(
   --sig-key                ${CONFIGDIR}/genesis/delegate-keys.000.key
-  --sig-key                ${CONFIGDIR}/genesis/delegate-keys.001.key
-  --sig-key                ${CONFIGDIR}/genesis/delegate-keys.002.key
-  --sig-key                ${CONFIGDIR}/genesis/delegate-keys.003.key
-  --sig-key                ${CONFIGDIR}/genesis/delegate-keys.004.key
-  --sig-key                ${CONFIGDIR}/genesis/delegate-keys.005.key
 )
 args_shelley=(
-  --sig-key                ${CONFIGDIR}/genesis/utxo-keys/utxo1.skey
-  --sig-key                ${CONFIGDIR}/genesis/utxo-keys/utxo1.skey
   --sig-key                ${CONFIGDIR}/genesis/utxo-keys/utxo1.skey
 )
 

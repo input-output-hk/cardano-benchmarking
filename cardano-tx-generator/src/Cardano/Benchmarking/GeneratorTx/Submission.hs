@@ -1,7 +1,6 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
@@ -43,12 +42,7 @@ import           Control.Concurrent.STM (STM)
 import           Control.Concurrent.STM.TBQueue (TBQueue)
 import qualified Control.Concurrent.STM as STM
 import           Control.Monad (replicateM)
-import           Control.Monad.Class.MonadST (MonadST)
-import qualified Control.Monad.Class.MonadSTM
-import           Control.Monad.Class.MonadTimer (MonadTimer)
-import           Control.Monad.Class.MonadThrow (MonadThrow)
 
-import           Data.ByteString.Lazy (ByteString)
 import qualified Data.List as L
 import qualified Data.List.Extra as L
 import qualified Data.List.NonEmpty as NE
@@ -56,14 +50,8 @@ import qualified Data.Text as T
 import           Data.Time.Clock
                    ( NominalDiffTime, UTCTime)
 import qualified Data.Time.Clock as Clock
-import           Data.Void (Void)
 
-import           Cardano.BM.Tracing
 import           Control.Tracer (Tracer, traceWith)
-
-import qualified Codec.CBOR.Term as CBOR
-import           Network.Mux (MuxTrace(..), WithMuxBearer(..))
-import           Ouroboros.Network.NodeToClient (ConnectionId, Handshake, LocalAddress, TraceSendRecv)
 
 import           Cardano.TracingOrphanInstances.Byron()
 import           Cardano.TracingOrphanInstances.Common()
@@ -72,21 +60,9 @@ import           Cardano.TracingOrphanInstances.Mock()
 import           Cardano.TracingOrphanInstances.Network()
 import           Cardano.TracingOrphanInstances.Shelley()
 
-import           Ouroboros.Consensus.Byron.Ledger.Mempool as Mempool (GenTx)
-import           Ouroboros.Consensus.Ledger.SupportsMempool as Mempool
-                   ( GenTxId, HasTxId, TxId, txId, txInBlockSize)
-import           Ouroboros.Consensus.Network.NodeToClient
-import           Ouroboros.Consensus.Node.NetworkProtocolVersion
-                  (HasNetworkProtocolVersion (..), nodeToClientProtocolVersion, supportedNodeToClientVersions)
-import           Ouroboros.Consensus.Node.Run (RunNode(..))
+import           Ouroboros.Consensus.Ledger.SupportsMempool (txInBlockSize)
+import qualified Ouroboros.Consensus.Ledger.SupportsMempool as Mempool
 
-import           Ouroboros.Network.Mux
-                   ( MuxMode(..), OuroborosApplication(..),
-                     MuxPeer(..), RunMiniProtocol(..), RunOrStop )
-import           Ouroboros.Network.Driver (runPeer)
-import qualified Ouroboros.Network.Protocol.LocalTxSubmission.Client as LocalTxSub
-import           Ouroboros.Network.Protocol.LocalTxSubmission.Type (SubmitResult(..))
-import           Ouroboros.Network.Protocol.Handshake.Version (Versions)
 import           Ouroboros.Network.Protocol.TxSubmission.Client (ClientStIdle(..),
                                                                  ClientStTxs(..),
                                                                  ClientStTxIds(..),
@@ -94,15 +70,11 @@ import           Ouroboros.Network.Protocol.TxSubmission.Client (ClientStIdle(..
 import           Ouroboros.Network.Protocol.TxSubmission.Type (BlockingReplyList(..),
                                                                TokBlockingStyle(..),
                                                                TxSizeInBytes)
-import           Ouroboros.Network.NodeToClient (NetworkConnectTracers(..),
-                                                 NodeToClientVersionData(..),
-                                                 foldMapVersions,
-                                                 versionedNodeToClientProtocols)
-import qualified Ouroboros.Network.NodeToClient as NodeToClient
 
-import           Cardano.Config.Types (SocketPath(..))
+import           Cardano.Api.Typed
 
-import           Cardano.Benchmarking.GeneratorTx.Params
+import           Cardano.Benchmarking.GeneratorTx.Era
+import           Cardano.Benchmarking.GeneratorTx.Tx
 
 
 {-------------------------------------------------------------------------------
@@ -116,23 +88,22 @@ data SubmissionParams
     , spQueueLen    :: !Natural
     }
 
-data Submission (m :: Type -> Type) (blk :: Type)
+data Submission (m :: Type -> Type) (era :: Type)
   = Submission
     { sParams      :: !SubmissionParams
     , sStartTime   :: !UTCTime
     , sThreads     :: !Natural
-    , sTxSendQueue :: !(TBQueue (Maybe (GenTx blk)))
+    , sTxSendQueue :: !(TBQueue (Maybe (Tx era)))
     , sReportsRefs :: ![STM.TMVar SubmissionThreadReport]
-    , sTrace       :: !(Tracer m (TraceBenchTxSubmit (GenTxId blk)))
+    , sTrace       :: !(Tracer m (TraceBenchTxSubmit TxId))
     }
 
 mkSubmission
   :: MonadIO m
-  => Tracer m (TraceBenchTxSubmit (GenTxId blk))
+  => Tracer m (TraceBenchTxSubmit TxId)
   -> SubmissionParams
-  -> m (Submission m blk)
-mkSubmission sTrace sParams@SubmissionParams{spTargets=sThreads, spQueueLen} =
- liftIO $ do
+  -> m (Submission m era)
+mkSubmission sTrace sParams@SubmissionParams{spTargets=sThreads, spQueueLen} = liftIO $ do
   sStartTime <- Clock.getCurrentTime
   sTxSendQueue <- STM.newTBQueueIO spQueueLen
   sReportsRefs <- STM.atomically $ replicateM (fromIntegral sThreads) STM.newEmptyTMVar
@@ -165,8 +136,8 @@ mkSubmissionSummary
   reports <- sequence (liftIO . STM.atomically . STM.readTMVar <$> sReportsRefs)
   now <- liftIO Clock.getCurrentTime
   let ssElapsed = Clock.diffUTCTime now sStartTime
-      ssTxSent@(Sent sent) = sum $ (stsSent . strStats) <$> reports
-      ssTxUnavailable = sum $ (stsUnavailable . strStats) <$> reports
+      ssTxSent@(Sent sent) = sum $ stsSent . strStats <$> reports
+      ssTxUnavailable = sum $ stsUnavailable . strStats <$> reports
       ssEffectiveTps = txDiffTimeTPS sent ssElapsed
       ssThreadwiseTps = threadReportTps <$> reports
   pure SubmissionSummary{..}
@@ -185,9 +156,9 @@ mkSubmissionSummary
   Submission queue:  feeding and consumption
 -------------------------------------------------------------------------------}
 simpleTxFeeder
-  :: forall m blk
-  . (MonadIO m, HasTxId (GenTx blk))
-  => Submission m blk -> [GenTx blk] -> m ()
+  :: forall m era
+  . (MonadIO m)
+  => Submission m era -> [Tx era] -> m ()
 simpleTxFeeder
  Submission{sTrace, sThreads, sTxSendQueue} txs = do
   foldM_ (const feedTx) () txs
@@ -195,15 +166,15 @@ simpleTxFeeder
   replicateM_ (fromIntegral sThreads) $
     liftIO $ STM.atomically $ STM.writeTBQueue sTxSendQueue Nothing
  where
-   feedTx :: GenTx blk -> m ()
+   feedTx :: Tx era -> m ()
    feedTx tx = do
      liftIO $ STM.atomically $ STM.writeTBQueue sTxSendQueue (Just tx)
-     traceWith sTrace $ TraceBenchTxSubServFed [txId tx]
+     traceWith sTrace $ TraceBenchTxSubServFed [getTxId $ getTxBody tx]
 
 tpsLimitedTxFeeder
-  :: forall m blk
+  :: forall m era
   . (MonadIO m)
-  => Submission m blk -> [GenTx blk] -> m ()
+  => Submission m era -> [Tx era] -> m ()
 tpsLimitedTxFeeder
  Submission{ sParams=SubmissionParams{spTps=TPSRate rate}
            , sThreads
@@ -214,7 +185,7 @@ tpsLimitedTxFeeder
   replicateM_ (fromIntegral sThreads) .
     liftIO . STM.atomically $ STM.writeTBQueue sTxSendQueue Nothing
  where
-   feedTx :: (UTCTime, NominalDiffTime) -> GenTx blk -> m (UTCTime, NominalDiffTime)
+   feedTx :: (UTCTime, NominalDiffTime) -> Tx era -> m (UTCTime, NominalDiffTime)
    feedTx (lastPreDelay, lastDelay) tx = do
      liftIO . STM.atomically $ STM.writeTBQueue sTxSendQueue (Just tx)
      now <- liftIO Clock.getCurrentTime
@@ -225,13 +196,13 @@ tpsLimitedTxFeeder
      pure (now, delay)
 
 consumeTxs
-  :: forall m blk
+  :: forall m era
   . (MonadIO m)
-  => Submission m blk -> Req -> m (Bool, UnReqd (GenTx blk))
+  => Submission m era -> Req -> m (Bool, UnReqd (Tx era))
 consumeTxs Submission{sTxSendQueue} req
   = liftIO . STM.atomically $ go req []
  where
-   go :: Req -> [GenTx blk] -> STM (Bool, UnReqd (GenTx blk))
+   go :: Req -> [Tx era] -> STM (Bool, UnReqd (Tx era))
    go 0 acc = pure (False, UnReqd acc)
    go n acc = STM.readTBQueue sTxSendQueue >>=
               \case
@@ -242,24 +213,26 @@ consumeTxs Submission{sTxSendQueue} req
   The submission client
 -------------------------------------------------------------------------------}
 txSubmissionClient
-  :: forall m block txid tx .
+  :: forall m era tx txid gentx gentxid .
      ( MonadIO m
-     , Mempool.HasTxId (GenTx block)
-     , RunNode block
-     , txid ~ GenTxId block
-     , tx ~ GenTx block
+     , EraSupportsTxGen era
+     , tx      ~ Tx era
+     , txid    ~ TxId
+     , gentx   ~ GenTxOf era
+     , gentxid ~ GenTxIdOf era
      )
-  => Tracer m NodeToNodeSubmissionTrace
+  => Era era
+  -> Tracer m NodeToNodeSubmissionTrace
   -> Tracer m (TraceBenchTxSubmit txid)
-  -> Submission m block
+  -> Submission m era
   -> Natural
   -- This return type is forced by Ouroboros.Network.NodeToNode.connectTo
-  -> TxSubmissionClient txid tx m ()
+  -> TxSubmissionClient gentxid gentx m ()
 txSubmissionClient
-    tr bmtr
+    p tr bmtr
     sub@Submission{sReportsRefs}
     threadIx =
-  TxSubmissionClient $ do
+  TxSubmissionClient $
     pure $ client False (UnAcked []) (SubmissionThreadStats 0 0 0)
  where
    -- Nothing means we've ran out of things to either announce or send.
@@ -279,14 +252,14 @@ txSubmissionClient
    -- communicate via IORefs, because..
    client :: Bool -> UnAcked tx -> SubmissionThreadStats
           -- The () return type is forced by Ouroboros.Network.NodeToNode.connectTo
-          -> ClientStIdle (TxId (GenTx block)) (GenTx block) m ()
+          -> ClientStIdle gentxid gentx m ()
    client done unAcked (!stats) = ClientStIdle
     { recvMsgRequestTxIds = \blocking (protoToAck -> ack) (protoToReq -> req)
        -> do
         traceWith tr $ reqIdsTrace ack req blocking
 
         (exhausted, unReqd) <-
-          if done then pure $ (True, UnReqd [])
+          if done then pure (True, UnReqd [])
           else consumeTxs sub req
 
         r' <- decideAnnouncement blocking ack unReqd unAcked
@@ -297,9 +270,9 @@ txSubmissionClient
             Right x -> pure x
 
         traceWith tr $ idListTrace ann blocking
-        traceWith bmtr $ TraceBenchTxSubServAnn  (txId <$> annNow)
-        traceWith bmtr $ TraceBenchTxSubServAck  (txId <$> acked)
-        traceWith bmtr $ TraceBenchTxSubServOuts (txId <$> outs)
+        traceWith bmtr $ TraceBenchTxSubServAnn  (getTxId . getTxBody <$> annNow)
+        traceWith bmtr $ TraceBenchTxSubServAck  (getTxId . getTxBody <$> acked)
+        traceWith bmtr $ TraceBenchTxSubServOuts (getTxId . getTxBody <$> outs)
 
         let newStats = stats { stsAcked =
                                stsAcked stats + ack }
@@ -317,24 +290,24 @@ txSubmissionClient
                      (BlockingReply $ txToIdSizify <$> neAnnNow)
                      (client exhausted newUnacked newStats)
 
-          (_, TokNonBlocking) -> do
+          (_, TokNonBlocking) ->
             pure $ SendMsgReplyTxIds
                      (NonBlockingReply $ txToIdSizify <$> annNow)
                      (client exhausted newUnacked newStats)
 
-    , recvMsgRequestTxs = \reqTxids -> do
+    , recvMsgRequestTxs = \(fmap (fromGenTxId p) -> reqTxids) -> do
         traceWith tr $ ReqTxs (length reqTxids)
         let UnAcked ua = unAcked
-            uaIds = txId <$> ua
-            (toSend, _retained) = L.partition ((`L.elem` reqTxids) . txId) ua
+            uaIds = getTxId . getTxBody <$> ua
+            (toSend, _retained) = L.partition ((`L.elem` reqTxids) . getTxId . getTxBody) ua
             missIds = reqTxids L.\\ uaIds
 
         traceWith tr $ TxList (length toSend)
         traceWith bmtr $ TraceBenchTxSubServReq reqTxids
-        traceWith bmtr $ TraceBenchTxSubServOuts (txId <$> ua)
+        traceWith bmtr $ TraceBenchTxSubServOuts (getTxId . getTxBody <$> ua)
         unless (L.null missIds) $
           traceWith bmtr $ TraceBenchTxSubServUnav missIds
-        pure $ SendMsgReplyTxs toSend
+        pure $ SendMsgReplyTxs (toGenTx <$> toSend)
           (client done unAcked $
             stats { stsSent =
                     stsSent stats + Sent (length toSend)
@@ -343,7 +316,6 @@ txSubmissionClient
     , recvMsgKThxBye = do
         traceWith tr KThxBye
         void $ submitThreadReport stats
-        pure ()
     }
 
    submitThreadReport :: SubmissionThreadStats -> m SubmissionThreadReport
@@ -354,8 +326,8 @@ txSubmissionClient
      liftIO . STM.atomically $ STM.putTMVar (sReportsRefs L.!! fromIntegral threadIx) report
      pure report
 
-   txToIdSizify :: tx -> (TxId tx, TxSizeInBytes)
-   txToIdSizify = txId &&& txInBlockSize
+   txToIdSizify :: tx -> (gentxid, TxSizeInBytes)
+   txToIdSizify = (Mempool.txId &&& txInBlockSize) . toGenTx
 
    protoToAck :: Word16 -> Ack
    protoToAck = Ack . fromIntegral

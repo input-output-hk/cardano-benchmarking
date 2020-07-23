@@ -1,6 +1,7 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE GeneralisedNewtypeDeriving #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -11,16 +12,31 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
 
 {-# OPTIONS_GHC -Wno-all-missed-specialisations #-}
+{-# OPTIONS_GHC -Wno-unticked-promoted-constructors #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
-module Cardano.Benchmarking.GeneratorTx.Params
-  ( Benchmark(..)
-  , FeePerTx(..)
+module Cardano.Benchmarking.GeneratorTx.Era
+  ( BlockOf
+  , BlockMode
+  , EraOfProtocol
+  , EraSupportsTxGen
+  , GenTxOf
+  , GenTxIdOf
+  , HFCBlockOf
+  , ModeOf
+  , SomeEra(..)
+  , Era(..)
+  , ShelleyBlock
+  , ShelleyBlockHFC
+  , SigningKeyOf
+  , SigningKeyRoleOf
+
   , InitCooldown(..)
   , NumberOfInputsPerTx(..)
   , NumberOfOutputsPerTx(..)
@@ -39,21 +55,15 @@ module Cardano.Benchmarking.GeneratorTx.Params
 
   , SubmissionSummary(..)
 
-  , ShelleyBlock
-  , BlockMode
-  , Params(..)
-  , mkParamsByron
-  , mkParamsShelley
-  , paramsCodecConfig
-  , paramsInitialFunds
-  , paramsIOManager
-  , paramsLedgerConfig
-  , paramsLocalConnInfo
-  , paramsNetwork
-  , paramsNetworkMagic
-  , paramsProtocolMagicId
-  , paramsTopLevelConfig
-  , paramsTracers
+  , mkEra
+  , eraCodecConfig
+  , eraIOManager
+  , eraLedgerConfig
+  , eraLocalConnInfo
+  , eraNetworkId
+  , eraNetworkMagic
+  , eraTopLevelConfig
+  , eraTracers
   , trBase
   , trTxSubmit
   , trConnect
@@ -69,8 +79,8 @@ module Cardano.Benchmarking.GeneratorTx.Params
   , createTracers
   ) where
 
-import           Prelude (String)
-import           Cardano.Prelude
+import           Prelude (String, error)
+import           Cardano.Prelude hiding (TypeError)
 
 import qualified Codec.CBOR.Term as CBOR
 import           Control.Tracer (Tracer (..), nullTracer, traceWith)
@@ -80,50 +90,47 @@ import qualified Data.Aeson as A
 import qualified Data.HashMap.Strict as HM
 import           Data.Kind (Type)
 import qualified Data.Text as T
-import           Data.Time.Clock (DiffTime, NominalDiffTime, getCurrentTime)
-import           Data.Word (Word64)
+import           Data.Time.Clock (DiffTime, getCurrentTime)
+import           GHC.TypeLits
+import qualified GHC.TypeLits as Ty
 
--- Generic imports
+-- Era-agnostic imports
 import           Cardano.BM.Data.Tracer
                    (emptyObject, mkObject, trStructured)
-import           Cardano.Crypto (ProtocolMagicId)
 import           Network.Mux (WithMuxBearer(..))
-import           Ouroboros.Consensus.Block.Abstract (CodecConfig)
+import           Ouroboros.Consensus.Block.Abstract (CodecConfig, SlotNo(..))
 import qualified Ouroboros.Consensus.Cardano as Consensus
 import           Ouroboros.Consensus.Config
                    ( SecurityParam(..), TopLevelConfig(..)
                    , configBlock, configCodec, configLedger)
 import           Ouroboros.Consensus.Config.SupportsNode
-                   (getNetworkMagic)
+                   (ConfigSupportsNode(..), getNetworkMagic)
 import           Ouroboros.Consensus.Ledger.Basics (LedgerConfig)
-import           Ouroboros.Consensus.Ledger.SupportsMempool
+import           Ouroboros.Consensus.Ledger.SupportsMempool hiding (TxId)
 import qualified Ouroboros.Consensus.Ledger.SupportsMempool as Mempool
 import           Ouroboros.Consensus.Node.ProtocolInfo
                    (ProtocolInfo (..))
-import           Ouroboros.Consensus.Util.Condense (Condense(..))
+import           Ouroboros.Consensus.Node.Run (RunNode)
 import           Ouroboros.Network.Driver (TraceSendRecv (..))
 import           Ouroboros.Network.Protocol.TxSubmission.Type (TxSubmission)
 import           Ouroboros.Network.NodeToClient (Handshake, IOManager)
 import qualified Ouroboros.Network.NodeToNode as NtN
 
 -- Byron-specific imports
-import           Cardano.Chain.Slotting (EpochSlots(..))
-import           Ouroboros.Consensus.Byron.Ledger (ByronBlock (..),
-                                                   GenTx (..),
-                                                   byronProtocolMagicId)
+import qualified Cardano.Chain.Slotting as Byron
+import           Ouroboros.Consensus.Byron.Ledger (ByronBlock (..))
+import           Ouroboros.Consensus.Cardano.ByronHFC
+import           Ouroboros.Consensus.HardFork.Combinator.Basics
+import           Ouroboros.Consensus.HardFork.Combinator.Unary
 
 -- Shelley-specific imports
+import qualified Ouroboros.Consensus.Cardano.ShelleyHFC as Shelley
 import qualified Ouroboros.Consensus.Shelley.Ledger.Block as Shelley
-import qualified Ouroboros.Consensus.Shelley.Ledger.Ledger as Shelley
 import           Ouroboros.Consensus.Shelley.Protocol.Crypto (TPraosStandardCrypto)
-import qualified Shelley.Spec.Ledger.Address as Shelley
-import qualified Shelley.Spec.Ledger.Coin as Shelley
 
 -- Node API imports
-import           Cardano.Api hiding (TxId)
 import           Cardano.Api.Typed
-                   ( LocalNodeConnectInfo(..)
-                   , ByronMode, ShelleyMode, NodeConsensusMode(..))
+import           Cardano.Api.TxSubmit
 import qualified Cardano.Api.Typed as Api
 
 -- Node imports
@@ -136,233 +143,205 @@ import           Cardano.TracingOrphanInstances.Mock()
 import           Cardano.TracingOrphanInstances.Network()
 import           Cardano.TracingOrphanInstances.Shelley()
 
+import Cardano.Benchmarking.GeneratorTx.Benchmark
 
 {-------------------------------------------------------------------------------
-  Ground types
+  Era abstraction
 -------------------------------------------------------------------------------}
-newtype FeePerTx =
-  FeePerTx Word64
-  deriving (Eq, Ord, Show)
+type EraSupportsTxGen era
+  = ( Ord (TxOut era)
+    , Eq (Address era)
+    , Key (SigningKeyRoleOf era)
+    , Mempool.HasTxId (GenTx (BlockOf era))
+    , RunNode (BlockOf era)
+    , Show (Tx era)
+    , Show (TxOut era)
+    , Show (TxSubmitResultForMode (ModeOf era))
+    , BenchTraceConstraints (BlockOf era)
+    )
 
--- | How long wait before starting the main submission phase,
---   after the init Tx batch was submitted.
-newtype InitCooldown =
-  InitCooldown Int
-  deriving (Eq, Ord, Show)
+deriving instance Eq (Address era) => Ord (Address era)
 
-newtype NumberOfInputsPerTx =
-  NumberOfInputsPerTx Int
-  deriving (Eq, Ord, Show)
+deriving instance (Generic TxIn)
+deriving instance (Ord TxIn)
+instance ToJSON TxIn
+instance ToJSON TxId where
+  toJSON (TxId x) = toJSON x
+instance ToJSON TxIx where
+  toJSON (TxIx x) = toJSON x
 
-newtype NumberOfOutputsPerTx =
-  NumberOfOutputsPerTx Int
-  deriving (Eq, Ord, Show)
+deriving instance Eq (Address era) => (Eq (TxOut era))
+deriving instance Eq (Address era) => (Ord (TxOut era))
 
-newtype NumberOfTxs =
-  NumberOfTxs Word64
-  deriving (Eq, Ord, Show)
 
--- | This parameter specifies additional size (in bytes) of transaction.
---   Since 1 transaction is ([input] + [output] + attributes), its size
---   is defined by its inputs and outputs. We want to have an ability to
---   increase transaction's size without increasing the number of inputs/
---   outputs. Such a big transaction will give us more real-world results
---   of benchmarking.
---   Technically this parameter specifies the size of attribute we'll
---   add to transaction (by default attributes are empty, so if this
---   parameter is skipped, attributes will remain empty).
-newtype TxAdditionalSize =
-  TxAdditionalSize Int
-  deriving (Eq, Ord, Show)
+type family EraOfProtocol p :: Type where
+  EraOfProtocol Consensus.ProtocolByron   = Byron
+  EraOfProtocol Consensus.ProtocolShelley = Shelley
+  EraOfProtocol t = TypeError (Ty.Text "Unsupported trotocol: "  :<>: ShowType t)
 
--- | Transactions not yet even announced.
-newtype UnReqd  tx = UnReqd  [tx]
+type family ModeOf era :: Type where
+  ModeOf Byron       = ByronMode
+  ModeOf Shelley     = ShelleyMode
+  ModeOf t = TypeError (Ty.Text "Unsupported era: "  :<>: ShowType t)
 
--- | Transactions we decided to announce now.
-newtype ToAnnce tx = ToAnnce [tx]
+type ShelleyBlock    = Shelley.ShelleyBlock    TPraosStandardCrypto
+type ShelleyBlockHFC = Shelley.ShelleyBlockHFC TPraosStandardCrypto
 
--- | Transactions announced, yet unacked by peer.
-newtype UnAcked tx = UnAcked [tx]
+type family BlockOf era :: Type where
+  BlockOf Byron      = ByronBlock
+  BlockOf Shelley    = ShelleyBlock
+  BlockOf t = TypeError (Ty.Text "Unsupported era: "  :<>: ShowType t)
 
--- | Transactions acked by peer.
-newtype Acked tx = Acked [tx]
+type family HFCBlockOf era :: Type where
+  HFCBlockOf Byron   = ByronBlockHFC
+  HFCBlockOf Shelley = HardForkBlock '[ShelleyBlock]
+  HFCBlockOf t = TypeError (Ty.Text "Unsupported era: "  :<>: ShowType t)
 
--- | Peer acknowledged this many txids of the outstanding window.
-newtype Ack = Ack Int deriving (Enum, Eq, Integral, Num, Ord, Real)
+type family SigningKeyRoleOf era :: Type where
+  SigningKeyRoleOf Byron   = ByronKey
+  SigningKeyRoleOf Shelley = PaymentKey
+  SigningKeyRoleOf t = TypeError (Ty.Text "Unsupported era: "  :<>: ShowType t)
 
--- | Peer requested this many txids to add to the outstanding window.
-newtype Req = Req Int deriving (Enum, Eq, Integral, Num, Ord, Real)
+type SigningKeyOf era = SigningKey (SigningKeyRoleOf era)
 
--- | This many Txs sent to peer.
-newtype Sent = Sent Int deriving (Enum, Eq, Generic, Integral, Num, Ord, Real, Show)
-
--- | This many Txs requested by the peer, but not available for sending.
-newtype Unav = Unav Int deriving (Enum, Eq, Generic, Integral, Num, Ord, Real, Show)
-
-newtype TPSRate = TPSRate Double deriving (Eq, Generic, Ord, Show)
-
-instance ToJSON Sent
-instance ToJSON Unav
-instance ToJSON TPSRate
-
--- | Summary of a submission run.
-data SubmissionSummary
-  = SubmissionSummary
-    { ssTxSent        :: !Sent
-    , ssTxUnavailable :: !Unav
-    , ssElapsed       :: !NominalDiffTime
-    , ssEffectiveTps  :: !TPSRate
-    , ssThreadwiseTps :: ![TPSRate]
-    } deriving (Show, Generic)
-instance ToJSON SubmissionSummary
-
-data Benchmark
-  = Benchmark
-    { bTargets        :: NonEmpty NodeAddress
-    , bInitCooldown   :: InitCooldown
-    , bTxCount        :: NumberOfTxs
-    , bTps            :: TPSRate
-    , bTxFanIn        :: NumberOfInputsPerTx
-    , bTxFanOut       :: NumberOfOutputsPerTx
-    , bTxFee          :: FeePerTx
-    , bTxExtraPayload :: Maybe TxAdditionalSize
-    }
-  deriving (Show)
-
-{-------------------------------------------------------------------------------
-  System abstraction
--------------------------------------------------------------------------------}
-type ShelleyBlock = Shelley.ShelleyBlock TPraosStandardCrypto
-
--- | System-level submission context (not parameters)
---   TODO:  rename the type to SubContext or something similar.
-data Params blk where
-  ParamsByron
-    :: TopLevelConfig ByronBlock
-    -> CodecConfig ByronBlock
-    -> LocalNodeConnectInfo ByronMode ByronBlock
-    -> IOManager
-    -> BenchTracers IO ByronBlock
-    -> Params ByronBlock
-  ParamsShelley
-    :: TopLevelConfig ShelleyBlock
-    -> CodecConfig ShelleyBlock
-    -> LocalNodeConnectInfo ShelleyMode ShelleyBlock
-    -> IOManager
-    -> BenchTracers IO ShelleyBlock
-    -> Params ShelleyBlock
-
-mkParamsByron
-  :: Consensus.Protocol IO ByronBlock Consensus.ProtocolRealPBFT
-  -> IOManager
-  -> SocketPath
-  -> LoggingLayer
-  -> Params ByronBlock
-mkParamsByron ptcl iom (SocketPath sock) =
-  ParamsByron
-    pInfoConfig
-    (configCodec pInfoConfig)
-    (LocalNodeConnectInfo
-      { localNodeSocketPath    = sock
-      , localNodeNetworkId     = Api.Testnet . getNetworkMagic . configBlock $ pInfoConfig
-      , localNodeConsensusMode = ByronMode
-                                 (EpochSlots 21600)
-                                 (SecurityParam 2160)
-      })
-    iom
-  . createTracers
- where
-   ProtocolInfo{pInfoConfig} = Consensus.protocolInfo ptcl
-
-mkParamsShelley
-  :: Consensus.Protocol IO ShelleyBlock Consensus.ProtocolRealTPraos
-  -> IOManager
-  -> SocketPath
-  -> LoggingLayer
-  -> Params ShelleyBlock
-mkParamsShelley ptcl iom (SocketPath sock) =
-  ParamsShelley
-    pInfoConfig
-    (configCodec pInfoConfig)
-    (LocalNodeConnectInfo
-      { localNodeSocketPath    = sock
-      , localNodeNetworkId     = Api.Testnet . getNetworkMagic . configBlock $ pInfoConfig
-      , localNodeConsensusMode = ShelleyMode
-      })
-    iom
-  . createTracers
- where
-   ProtocolInfo{pInfoConfig} = Consensus.protocolInfo ptcl
+type GenTxOf   era = GenTx   (BlockOf era)
+type GenTxIdOf era = GenTxId (BlockOf era)
 
 type family BlockMode blk :: Type where
   BlockMode ByronBlock   = ByronMode
   BlockMode ShelleyBlock = ShelleyMode
+  BlockMode t = TypeError (Ty.Text "Unsupported block type: "  :<>: ShowType t)
 
-paramsTopLevelConfig :: Params blk -> TopLevelConfig blk
-paramsTopLevelConfig (ParamsByron   x _ _ _ _) = x
-paramsTopLevelConfig (ParamsShelley x _ _ _ _) = x
+data SomeEra =
+  forall era. EraSupportsTxGen era =>
+  SomeEra (Era era)
 
-paramsCodecConfig :: Params blk -> CodecConfig blk
-paramsCodecConfig    (ParamsByron   _ x _ _ _) = x
-paramsCodecConfig    (ParamsShelley _ x _ _ _) = x
+-- | System-level submission context (not parameters)
+--   TODO:  rename the type to SubContext or something similar.
+data Era era where
+  EraByron
+    :: TopLevelConfig (BlockOf Byron)
+    -> CodecConfig (BlockOf Byron)
+    -> LocalNodeConnectInfo ByronMode (HFCBlockOf Byron)
+    -> IOManager
+    -> BenchTracers IO (BlockOf Byron)
+    -> Era Byron
+  EraShelley
+    :: TopLevelConfig (BlockOf Shelley)
+    -> CodecConfig (BlockOf Shelley)
+    -> LocalNodeConnectInfo ShelleyMode (HFCBlockOf Shelley)
+    -> IOManager
+    -> BenchTracers IO (BlockOf Shelley)
+    -> Era Shelley
 
-paramsLocalConnInfo :: Params blk -> LocalNodeConnectInfo (BlockMode blk) blk
-paramsLocalConnInfo  (ParamsByron   _ _ x _ _) = x
-paramsLocalConnInfo  (ParamsShelley _ _ x _ _) = x
+mkEra
+  :: forall blok era ptcl
+  . era ~ EraOfProtocol ptcl
+  => Consensus.Protocol IO blok ptcl
+  -> IOManager
+  -> SocketPath
+  -> LoggingLayer
+  -> Era (EraOfProtocol ptcl)
+mkEra ptcl@Consensus.ProtocolByron{} iom (SocketPath sock) ll =
+  EraByron
+    (project pInfoConfig)
+    (configCodec $ project pInfoConfig)
+    (LocalNodeConnectInfo
+       sock
+       (Api.Testnet . getNetworkMagic . configBlock $ project pInfoConfig)
+       (ByronMode (Byron.EpochSlots 21600) (SecurityParam 2160)))
+    iom
+    (createTracers ll)
+ where
+   ProtocolInfo{pInfoConfig} = Consensus.protocolInfo ptcl
+mkEra ptcl@Consensus.ProtocolShelley{} iom (SocketPath sock) ll =
+  EraShelley
+    (project pInfoConfig)
+    (configCodec $ project pInfoConfig)
+    (LocalNodeConnectInfo
+       sock
+       (Api.Testnet . getNetworkMagic . configBlock $ project pInfoConfig)
+       ShelleyMode)
+    iom
+    (createTracers ll)
+ where
+   ProtocolInfo{pInfoConfig} = Consensus.protocolInfo ptcl
+mkEra _ _ _ _ = error "mkEra:  unhandled protocol"
 
-paramsIOManager :: Params blk -> IOManager
-paramsIOManager      (ParamsByron   _ _ _ x _) = x
-paramsIOManager      (ParamsShelley _ _ _ x _) = x
+eraTopLevelConfig :: Era era -> TopLevelConfig (BlockOf era)
+eraTopLevelConfig (EraByron   x _ _ _ _) = x
+eraTopLevelConfig (EraShelley x _ _ _ _) = x
 
-paramsTracers :: Params blk -> BenchTracers IO blk
-paramsTracers        (ParamsByron   _ _ _ _ x) = x
-paramsTracers        (ParamsShelley _ _ _ _ x) = x
+eraCodecConfig :: Era era -> CodecConfig (BlockOf era)
+eraCodecConfig    (EraByron   _ x _ _ _) = x
+eraCodecConfig    (EraShelley _ x _ _ _) = x
 
-paramsInitialFunds :: Params ShelleyBlock
-                   -> Map (Shelley.Addr TPraosStandardCrypto) Shelley.Coin
-paramsInitialFunds = Consensus.sgInitialFunds . Shelley.shelleyLedgerGenesis . paramsLedgerConfig
+eraLocalConnInfo :: Era era -> LocalNodeConnectInfo (ModeOf era) (HFCBlockOf era)
+eraLocalConnInfo  (EraByron   _ _ x _ _) = x
+eraLocalConnInfo  (EraShelley _ _ x _ _) = x
 
-paramsNetworkMagic :: Params blk -> NetworkMagic
-paramsNetworkMagic p@ParamsByron{}   = getNetworkMagic . configBlock $ paramsTopLevelConfig p
-paramsNetworkMagic p@ParamsShelley{} = getNetworkMagic . configBlock $ paramsTopLevelConfig p
+eraIOManager :: Era era -> IOManager
+eraIOManager      (EraByron   _ _ _ x _) = x
+eraIOManager      (EraShelley _ _ _ x _) = x
 
-paramsNetwork :: Params blk -> Network
-paramsNetwork = Testnet . paramsNetworkMagic
+eraTracers :: Era era -> BenchTracers IO (BlockOf era)
+eraTracers        (EraByron   _ _ _ _ x) = x
+eraTracers        (EraShelley _ _ _ _ x) = x
 
-paramsProtocolMagicId :: Params ByronBlock -> ProtocolMagicId
-paramsProtocolMagicId p@ParamsByron{} = byronProtocolMagicId . configBlock $ paramsTopLevelConfig p
+eraNetworkId :: Era era -> NetworkId
+eraNetworkId p@EraByron{}   = Testnet . getNetworkMagic . configBlock $ eraTopLevelConfig p
+eraNetworkId p@EraShelley{} = Testnet . getNetworkMagic . configBlock $ eraTopLevelConfig p
 
-paramsLedgerConfig :: Params blk -> LedgerConfig blk
-paramsLedgerConfig = configLedger . paramsTopLevelConfig
+eraNetworkMagic :: Era era -> NetworkMagic
+eraNetworkMagic p@EraByron{}   = getNetworkMagic . configBlock $ eraTopLevelConfig p
+eraNetworkMagic p@EraShelley{} = getNetworkMagic . configBlock $ eraTopLevelConfig p
 
-trBase       :: Params blk -> Trace IO Text
-trTxSubmit   :: Params blk -> Tracer IO (TraceBenchTxSubmit (GenTxId blk))
-trConnect    :: Params blk -> Tracer IO SendRecvConnect
-trSubmitMux  :: Params blk -> Tracer IO (SendRecvTxSubmission blk)
-trLowLevel   :: Params blk -> Tracer IO TraceLowLevelSubmit
-trN2N        :: Params blk -> Tracer IO NodeToNodeSubmissionTrace
-trBase       = btBase_       . paramsTracers
-trTxSubmit   = btTxSubmit_   . paramsTracers
-trConnect    = btConnect_    . paramsTracers
-trSubmitMux  = btSubmission_ . paramsTracers
-trLowLevel   = btLowLevel_   . paramsTracers
-trN2N        = btN2N_        . paramsTracers
+eraLedgerConfig :: Era era -> LedgerConfig (BlockOf era)
+eraLedgerConfig = configLedger . eraTopLevelConfig
+
+trBase       :: Era era -> Trace IO Text
+trTxSubmit   :: Era era -> Tracer IO (TraceBenchTxSubmit TxId)
+trConnect    :: Era era -> Tracer IO SendRecvConnect
+trSubmitMux  :: Era era -> Tracer IO (SendRecvTxSubmission (BlockOf era))
+trLowLevel   :: Era era -> Tracer IO TraceLowLevelSubmit
+trN2N        :: Era era -> Tracer IO NodeToNodeSubmissionTrace
+trBase       = btBase_       . eraTracers
+trTxSubmit   = btTxSubmit_   . eraTracers
+trConnect    = btConnect_    . eraTracers
+trSubmitMux  = btSubmission_ . eraTracers
+trLowLevel   = btLowLevel_   . eraTracers
+trN2N        = btN2N_        . eraTracers
+
+data Benchmark
+  = Benchmark
+    { bTargets        :: !(NonEmpty NodeAddress)
+    , bInitCooldown   :: !InitCooldown
+    , bInitialTTL     :: !SlotNo
+    , bTxCount        :: !NumberOfTxs
+    , bTps            :: !TPSRate
+    , bTxFanIn        :: !NumberOfInputsPerTx
+    , bTxFanOut       :: !NumberOfOutputsPerTx
+    , bTxFee          :: !Lovelace
+    , bTxExtraPayload :: !TxAdditionalSize
+    }
+  deriving (Generic, Show)
+-- Warning:  make sure to maintain correspondence between the two data structures.
 
 {-------------------------------------------------------------------------------
   Tracers
 -------------------------------------------------------------------------------}
 type BenchTraceConstraints blk =
-  ( Condense (GenTxId blk)
-  , Show (GenTxId blk)
-  , ToJSON (TxId (GenTx blk))
-  , Transformable Text IO (TraceBenchTxSubmit (GenTxId blk))
+  ( Show TxId
+  , Show (GenTx blk)
+  , ToJSON TxId
+  , Transformable Text IO (TraceBenchTxSubmit TxId)
   , Transformable Text IO (SendRecvTxSubmission blk)
   )
 
 data BenchTracers m blk =
   BenchTracers
   { btBase_       :: Trace  m Text
-  , btTxSubmit_   :: Tracer m (TraceBenchTxSubmit (GenTxId blk))
+  , btTxSubmit_   :: Tracer m (TraceBenchTxSubmit TxId)
   , btConnect_    :: Tracer m SendRecvConnect
   , btSubmission_ :: Tracer m (SendRecvTxSubmission blk)
   , btLowLevel_   :: Tracer m TraceLowLevelSubmit
@@ -392,7 +371,7 @@ createTracers loggingLayer =
   tr' :: Trace IO Text
   tr' = appendName "generate-txs" tr
 
-  benchTracer :: Tracer IO (TraceBenchTxSubmit (GenTxId blk))
+  benchTracer :: Tracer IO (TraceBenchTxSubmit TxId)
   benchTracer = toLogObjectVerbose (appendName "benchmark" tr')
 
   connectTracer :: Tracer IO SendRecvConnect
@@ -445,12 +424,12 @@ data TraceBenchTxSubmit txid
   | TraceBenchTxSubError Text
   deriving (Show)
 
-instance Show (GenTxId blk) => Transformable Text IO (TraceBenchTxSubmit (Mempool.GenTxId blk)) where
+instance Transformable Text IO (TraceBenchTxSubmit TxId) where
   -- transform to JSON Object
   trTransformer = trStructured
 
-instance HasSeverityAnnotation (TraceBenchTxSubmit (Mempool.GenTxId blk))
-instance HasPrivacyAnnotation  (TraceBenchTxSubmit (Mempool.GenTxId blk))
+instance HasSeverityAnnotation (TraceBenchTxSubmit TxId)
+instance HasPrivacyAnnotation  (TraceBenchTxSubmit TxId)
 
 {-------------------------------------------------------------------------------
   N2N submission trace
@@ -542,86 +521,6 @@ instance (MonadIO m) => Transformable Text m TraceLowLevelSubmit where
 -------------------------------------------------------------------------------}
 type SendRecvTxSubmission blk = TraceSendRecv (TxSubmission (GenTxId blk) (GenTx blk))
 
--- instance ( Show (GenTxId blk)
---          , ToJSON (TxId (GenTx blk)))
---  => ToObject (SendRecvTxSubmission blk) where
---   toObject MinimalVerbosity _ = emptyObject -- do not log
---   toObject NormalVerbosity t =
---     case t of
---       TraceSendMsg (AnyMessage msg) ->
---         case msg of
---           TS.MsgRequestTxIds _ _ _                 -> mkObject ["kind" .= String "TxSubmissionSendRequestTxIds"]
---           TS.MsgReplyTxIds (TS.BlockingReply _)    -> mkObject ["kind" .= String "TxSubmissionSendBReplyTxIds"]
---           TS.MsgReplyTxIds (TS.NonBlockingReply _) -> mkObject ["kind" .= String "TxSubmissionSendNBReplyTxIds"]
---           TS.MsgRequestTxs _                       -> mkObject ["kind" .= String "TxSubmissionSendRequestTxs"]
---           TS.MsgReplyTxs _                         -> mkObject ["kind" .= String "TxSubmissionSendReplyTxs"]
---           TS.MsgKThxBye                            -> mkObject ["kind" .= String "MsgKThxBye"]
---           TS.MsgDone                               -> emptyObject -- No useful information.
---       TraceRecvMsg (AnyMessage msg) ->
---         case msg of
---           TS.MsgRequestTxIds _ _ _                 -> mkObject ["kind" .= String "TxSubmissionRecvRequestTxIds"]
---           TS.MsgReplyTxIds (TS.BlockingReply _)    -> mkObject ["kind" .= String "TxSubmissionRecvBReplyTxIds"]
---           TS.MsgReplyTxIds (TS.NonBlockingReply _) -> mkObject ["kind" .= String "TxSubmissionRecvNBReplyTxIds"]
---           TS.MsgRequestTxs _                       -> mkObject ["kind" .= String "TxSubmissionRecvRequestTxs"]
---           TS.MsgReplyTxs _                         -> mkObject ["kind" .= String "TxSubmissionRecvReplyTxs"]
---           TS.MsgKThxBye                            -> mkObject ["kind" .= String "MsgKThxBye"]
---           TS.MsgDone                               -> emptyObject -- No useful information.
-
---   toObject MaximalVerbosity t =
---     case t of
---       TraceSendMsg (AnyMessage msg) ->
---         case msg of
---           TS.MsgRequestTxIds _ ackNumber reqNumber ->
---             mkObject [ "kind"   .= String "TxSubmissionSendRequestTxIds"
---                      , "ackNum" .= Number (fromIntegral ackNumber)
---                      , "reqNum" .= Number (fromIntegral reqNumber)
---                      ]
---           TS.MsgReplyTxIds (TS.BlockingReply txIds) ->
---             mkObject [ "kind"  .= String "TxSubmissionSendBReplyTxIds"
---                      , "txIds" .= toJSON txIds
---                      ]
---           TS.MsgReplyTxIds (TS.NonBlockingReply txIds) ->
---             mkObject [ "kind"  .= String "TxSubmissionSendNBReplyTxIds"
---                      , "txIds" .= toJSON txIds
---                      ]
---           TS.MsgRequestTxs txIds ->
---             mkObject [ "kind"  .= String "TxSubmissionSendRequestTxs"
---                      , "txIds" .= toJSON txIds
---                      ]
---           TS.MsgReplyTxs _ -> -- We shouldn't log a list of whole transactions here.
---             mkObject [ "kind" .= String "TxSubmissionSendReplyTxs" ]
---           TS.MsgKThxBye ->
---             mkObject [ "kind" .= String "MsgKThxBye" ]
---           TS.MsgDone -> emptyObject -- No useful information.
-
---       TraceRecvMsg (AnyMessage msg) ->
---         case msg of
---           TS.MsgRequestTxIds _ ackNumber reqNumber ->
---             mkObject [ "kind"   .= String "TxSubmissionRecvRequestTxIds"
---                      , "ackNum" .= Number (fromIntegral ackNumber)
---                      , "reqNum" .= Number (fromIntegral reqNumber)
---                      ]
---           TS.MsgReplyTxIds (TS.BlockingReply txIds) ->
---             mkObject [ "kind"  .= String "TxSubmissionRecvBReplyTxIds"
---                      , "txIds" .= toJSON txIds
---                      ]
---           TS.MsgReplyTxIds (TS.NonBlockingReply txIds) ->
---             mkObject [ "kind"  .= String "TxSubmissionRecvNBReplyTxIds"
---                      , "txIds" .= toJSON txIds
---                      ]
---           TS.MsgRequestTxs txIds ->
---             mkObject [ "kind"  .= String "TxSubmissionRecvRequestTxs"
---                      , "txIds" .= toJSON txIds
---                      ]
---           TS.MsgReplyTxs _ -> -- We shouldn't log a list of whole transactions here.
---             mkObject [ "kind" .= String "TxSubmissionRecvReplyTxs" ]
---           TS.MsgKThxBye ->
---             mkObject [ "kind" .= String "MsgKThxBye" ]
---           TS.MsgDone -> emptyObject -- No useful information.
-
--- instance HasSeverityAnnotation (SendRecvTxSubmission blk)
--- instance HasPrivacyAnnotation (SendRecvTxSubmission blk)
-
 instance ( Show (GenTx blk)
          , Show (GenTxId blk))
  => Transformable Text IO (SendRecvTxSubmission blk) where
@@ -643,19 +542,17 @@ instance ( Show (GenTx blk)
 {-------------------------------------------------------------------------------
   Orphans
 -------------------------------------------------------------------------------}
-instance HasSeverityAnnotation (Mempool.GenTxId blk)
-instance HasPrivacyAnnotation  (Mempool.GenTxId blk)
+instance HasSeverityAnnotation TxId
+instance HasPrivacyAnnotation  TxId
 
-instance Show (GenTxId blk)
- => ToObject (Mempool.GenTxId blk) where
+instance ToObject TxId where
   toObject MinimalVerbosity _    = emptyObject -- do not log
   toObject NormalVerbosity _     = mkObject [ "kind" .= A.String "GenTxId"]
   toObject MaximalVerbosity txid = mkObject [ "kind" .= A.String "GenTxId"
                                             , "txId" .= toJSON txid
                                             ]
 
-instance Show (GenTxId blk)
- => Transformable Text IO (Mempool.GenTxId blk) where
+instance Transformable Text IO TxId where
   trTransformer = trStructured
 
 type SendRecvConnect = WithMuxBearer
@@ -664,12 +561,11 @@ type SendRecvConnect = WithMuxBearer
                                            NtN.NodeToNodeVersion
                                            CBOR.Term))
 
-instance {-# OVERLAPS #-} Show (GenTxId blk)
- => ToJSON (Mempool.GenTxId blk) where
-  toJSON txid = A.String (T.pack $ show txid)
+-- instance {-# OVERLAPS #-} Show (GenTxId blk)
+--  => ToJSON (Mempool.GenTxId blk) where
+--   toJSON txid = A.String (T.pack $ show txid)
 
-instance Show (GenTxId blk)
- => ToObject (TraceBenchTxSubmit (Mempool.GenTxId blk)) where
+instance ToObject (TraceBenchTxSubmit TxId) where
   toObject MinimalVerbosity _ = emptyObject -- do not log
   toObject NormalVerbosity t =
     case t of

@@ -1,119 +1,274 @@
+{-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE GeneralisedNewtypeDeriving #-}
+{-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE NoMonomorphismRestriction #-}
+{-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE UndecidableInstances #-}
 {-# OPTIONS_GHC -Wno-all-missed-specialisations #-}
 
 module Cardano.Benchmarking.GeneratorTx.Tx
-  ( toCborTxAux
-  , normalByronTxToGenTx
-  , txSpendGenesisUTxOByronPBFT
+  ( castTxMode
+  , fromByronTxId
+  , fromByronTxIn
+  , fromByronTxOut
+  , fromShelleyAddr
+  , fromShelleyLovelace
+  , fromGenTxId
+  , mkTransaction
+  , mkTransactionGen
+  , signTransaction
+  , toGenTx
   )
 where
 
 import           Prelude (error)
-import           Cardano.Prelude hiding (option, trace, (%))
+import qualified Prelude
+import           Cardano.Prelude hiding (TypeError)
 
+import qualified Data.ByteString as SB
 import qualified Data.ByteString.Lazy as LB
 import qualified Data.Map.Strict as Map
-import           Data.Text (Text)
+import qualified Data.List.NonEmpty as NonEmpty
 import qualified Data.Text as T
-import           Formatting ((%), sformat)
 
-import           Cardano.Chain.Common (Address)
-import qualified Cardano.Chain.Common as Common
-import           Cardano.Chain.Genesis as Genesis
-import           Cardano.Chain.UTxO ( mkTxAux, annotateTxAux
-                                    , Tx(..), TxId, TxOut)
-import qualified Cardano.Chain.UTxO as UTxO
-import           Cardano.Crypto (SigningKey(..), ProtocolMagicId)
-import qualified Cardano.Crypto.Hashing as Crypto
-import qualified Cardano.Crypto.Signing as Crypto
+-- Era-agnostic imports
+import           Cardano.Binary (Annotated(..), reAnnotate)
+import qualified Cardano.Crypto.Hash.Class  as Crypto
+import           Ouroboros.Consensus.Block.Abstract (SlotNo(..))
+import           Ouroboros.Consensus.Ledger.SupportsMempool hiding (TxId)
 
-import qualified Ouroboros.Consensus.Byron.Ledger as Byron
-import           Ouroboros.Consensus.Byron.Ledger (GenTx(..), ByronBlock)
+-- Byron-specific imports
+import qualified Cardano.Chain.Common as Byron
+import qualified Cardano.Chain.UTxO   as Byron
+import qualified Cardano.Crypto.Hashing as Byron
+import qualified Ouroboros.Consensus.Byron.Ledger as Byron hiding (TxId)
 
-toCborTxAux :: UTxO.ATxAux ByteString -> LB.ByteString
-toCborTxAux = LB.fromStrict . UTxO.aTaAnnotation -- The ByteString anotation is the CBOR encoded version.
+-- Shelley-specific imports
+import qualified Ouroboros.Consensus.Shelley.Ledger.Mempool as Shelley
+import           Ouroboros.Consensus.Shelley.Protocol.Crypto (TPraosStandardCrypto)
+import qualified Shelley.Spec.Ledger.Address as Shelley
+import qualified Shelley.Spec.Ledger.Coin as Shelley
+import qualified Shelley.Spec.Ledger.TxData as ShelleyLedger
 
--- | The 'GenTx' is all the kinds of transactions that can be submitted
--- and \"normal\" Byron transactions are just one of the kinds.
-normalByronTxToGenTx :: UTxO.ATxAux ByteString -> GenTx ByronBlock
-normalByronTxToGenTx tx' = Byron.ByronTx (Byron.byronIdTx tx') tx'
+import Cardano.Api.Typed
+import Cardano.Api.TxSubmit
+import Cardano.Benchmarking.GeneratorTx.Era
+import Cardano.Benchmarking.GeneratorTx.Tx.Byron
 
--- | Generate a transaction spending genesis UTxO at a given address,
---   to given outputs, signed by the given key.
-txSpendGenesisUTxOByronPBFT
-  :: Genesis.Config
-  -> SigningKey
-  -> Address
-  -> NonEmpty TxOut
-  -> UTxO.ATxAux ByteString
-txSpendGenesisUTxOByronPBFT gc sk genAddr outs =
-    annotateTxAux $ mkTxAux tx (pure wit)
-  where
-    tx = UnsafeTx (pure txIn) outs txattrs
 
-    wit = signTxId (configProtocolMagicId gc) sk (Crypto.serializeCborHash tx)
+castTxMode :: Tx era -> TxForMode (ModeOf era)
+castTxMode tx@ByronTx{}   = TxForByronMode  tx
+castTxMode tx@ShelleyTx{} = TxForShelleyMode tx
 
-    txIn :: UTxO.TxIn
-    txIn  = genesisUTxOTxIn gc (Crypto.toVerification sk) genAddr
+toGenTx :: Tx era -> GenTx (BlockOf era)
+toGenTx (ShelleyTx tx) = Shelley.mkShelleyTx tx
+toGenTx (ByronTx tx) = normalByronTxToGenTx tx
 
-    txattrs = Common.mkAttributes ()
+fromGenTxId :: Era era -> GenTxId (BlockOf era) -> TxId
+fromGenTxId EraShelley{} (Shelley.ShelleyTxId (ShelleyLedger.TxId i))  = TxId (Crypto.castHash i)
+fromGenTxId EraByron{} (Byron.ByronTxId i) = fromByronTxId i
+fromGenTxId EraByron{} _ = error "fromGenTxId:  unhandled Byron GenTxId case"
 
--- | Given a Tx id, produce a UTxO Tx input witness, by signing it
---   with respect to a given protocol magic.
-signTxId :: ProtocolMagicId -> SigningKey -> TxId -> UTxO.TxInWitness
-signTxId pmid sk txid =
-  UTxO.VKWitness
-  (Crypto.toVerification sk)
-  (Crypto.sign
-    pmid
-    Crypto.SignTx
-    sk
-    (UTxO.TxSigData txid))
+fromByronTxId :: Byron.TxId -> TxId
+fromByronTxId =
+  maybe (error "Failed to convert Byron txid.") TxId
+  . Crypto.hashFromBytes . Byron.hashToBytes
 
--- | Given a genesis, and a pair of a genesis public key and address,
---   reconstruct a TxIn corresponding to the genesis UTxO entry.
-genesisUTxOTxIn :: Genesis.Config -> Crypto.VerificationKey -> Common.Address -> UTxO.TxIn
-genesisUTxOTxIn gc vk genAddr =
-  handleMissingAddr $ fst <$> Map.lookup genAddr initialUtxo
-  where
-    initialUtxo :: Map Common.Address (UTxO.TxIn, UTxO.TxOut)
-    initialUtxo =
-          Map.fromList
-        . mapMaybe (\(inp, out) -> mkEntry inp genAddr <$> keyMatchesUTxO vk out)
-        . fromCompactTxInTxOutList
-        . Map.toList
-        . UTxO.unUTxO
-        . UTxO.genesisUtxo
-        $ gc
-      where
-        mkEntry :: UTxO.TxIn
-                -> Address
-                -> UTxO.TxOut
-                -> (Address, (UTxO.TxIn, UTxO.TxOut))
-        mkEntry inp addr out = (addr, (inp, out))
+fromByronTxIn :: Byron.TxIn -> TxIn
+fromByronTxIn (Byron.TxInUtxo txid txix) =
+  TxIn (fromByronTxId txid) (TxIx $ fromIntegral txix)
 
-    fromCompactTxInTxOutList :: [(UTxO.CompactTxIn, UTxO.CompactTxOut)]
-                             -> [(UTxO.TxIn, UTxO.TxOut)]
-    fromCompactTxInTxOutList =
-        map (bimap UTxO.fromCompactTxIn UTxO.fromCompactTxOut)
+fromByronTxOut :: Byron.TxOut -> TxOut Byron
+fromByronTxOut (Byron.TxOut addr coin) =
+  TxOut (ByronAddress addr) (Lovelace $ Byron.lovelaceToInteger coin)
 
-    keyMatchesUTxO :: Crypto.VerificationKey -> UTxO.TxOut -> Maybe UTxO.TxOut
-    keyMatchesUTxO key out =
-      if Common.checkVerKeyAddress key (UTxO.txOutAddress out)
-      then Just out else Nothing
+fromShelleyAddr :: Shelley.Addr TPraosStandardCrypto -> Address Shelley
+fromShelleyAddr (Shelley.Addr nw pc scr) = ShelleyAddress nw pc scr
+fromShelleyAddr _ = error "fromShelleyAddr:  unhandled Shelley.Addr case"
 
-    handleMissingAddr :: Maybe UTxO.TxIn -> UTxO.TxIn
-    handleMissingAddr  = fromMaybe . error
-      $  "\nGenesis UTxO has no address\n"
-      <> (T.unpack $ prettyAddress genAddr)
-      <> "\n\nIt has the following, though:\n\n"
-      <> Cardano.Prelude.concat (T.unpack . prettyAddress <$> Map.keys initialUtxo)
+fromShelleyLovelace :: Shelley.Coin -> Lovelace
+fromShelleyLovelace (Shelley.Coin l) = Lovelace l
 
-    prettyAddress :: Common.Address -> Text
-    prettyAddress addr = sformat
-      (Common.addressF %"\n"%Common.addressDetailedF)
-      addr addr
+toByronTxId :: TxId -> Byron.TxId
+toByronTxId (TxId h) =
+  Byron.unsafeHashFromBytes (Crypto.hashToBytes h)
+
+toByronTxIn  :: TxIn -> Byron.TxIn
+toByronTxIn (TxIn txid (TxIx txix)) =
+  Byron.TxInUtxo (toByronTxId txid) (fromIntegral txix)
+
+toByronTxOut :: TxOut Byron -> Maybe Byron.TxOut
+toByronTxOut (TxOut (ByronAddress addr) value) =
+  Byron.TxOut addr <$> toByronLovelace value
+
+toByronLovelace :: Lovelace -> Maybe Byron.Lovelace
+toByronLovelace (Lovelace x) =
+  case Byron.integerToLovelace x of
+    Left  _  -> Nothing
+    Right x' -> Just x'
+
+signTransaction :: Era era -> SigningKeyOf era -> TxBody era -> Tx era
+signTransaction p@EraByron{} k body =
+  signByronTransaction (eraNetworkId p) body [k]
+signTransaction EraShelley{} k body =
+  signShelleyTransaction body [WitnessPaymentKey k]
+
+mkTransaction :: forall era
+  .  Era era
+  -> SigningKeyOf era
+  -> TxAdditionalSize
+  -> TTL
+  -> TxFee
+  -> [TxIn]
+  -> [TxOut era]
+  -> Tx era
+mkTransaction p key payloadSize ttl fee txins txouts =
+  signTransaction p key $ makeTransaction p
+ where
+   makeTransaction :: Era era -> TxBody era
+   makeTransaction EraShelley{} =
+     makeShelleyTransaction
+      (txExtraContentEmpty { txMetadata =
+                             if payloadSize == 0
+                             then Nothing
+                             else Just $ payloadShelley payloadSize })
+      ttl fee txins txouts
+   makeTransaction EraByron{} =
+     either (error . T.unpack) Prelude.id $
+     mkByronTransaction txins txouts
+
+   payloadShelley :: TxAdditionalSize -> TxMetadata
+   payloadShelley = makeTransactionMetadata . Map.singleton 0 . TxMetaBytes . flip SB.replicate 42 . unTxAdditionalSize
+
+   mkByronTransaction :: [TxIn]
+                        -> [TxOut Byron]
+                        -> Either Text (TxBody Byron)
+   mkByronTransaction ins outs = do
+     ins'  <- NonEmpty.nonEmpty ins        ?! error "makeByronTransaction: empty txIns"
+     let ins'' = NonEmpty.map toByronTxIn ins'
+
+     outs'  <- NonEmpty.nonEmpty outs      ?! error "makeByronTransaction: empty txOuts"
+     outs'' <- traverse
+                 (\out -> toByronTxOut out ?! error "makeByronTransaction: ByronTxBodyLovelaceOverflow")
+                 outs'
+     return $
+       ByronTxBody $
+         reAnnotate $
+           Annotated
+             (Byron.UnsafeTx ins'' outs'' (createTxAttributes payloadSize))
+             ()
+    where
+     (?!) :: Maybe a -> e -> Either e a
+     Nothing ?! e = Left e
+     Just x  ?! _ = Right x
+
+   -- | If this transaction should contain additional binary blob -
+   --   we have to create attributes of the corresponding size.
+   --   TxAttributes contains a map from 1-byte integer to arbitrary bytes which
+   --   will be used as a binary blob to increase the size of the transaction.
+   createTxAttributes
+     :: TxAdditionalSize
+     -> Byron.TxAttributes
+   createTxAttributes (TxAdditionalSize 0) = Byron.mkAttributes ()
+   createTxAttributes (TxAdditionalSize n) = blobAttributes n
+    where
+     blobAttributes :: Int -> Byron.TxAttributes
+     blobAttributes aSize =
+       (Byron.mkAttributes ()) {
+         Byron.attrRemain =
+           Byron.UnparsedFields $
+           Map.singleton k $ LB.replicate (finalSize aSize) byte
+       }
+
+     k :: Word8
+     k = 1 -- Arbitrary key.
+
+     -- Fill an attribute by the same arbitrary byte in each element.
+     byte :: Word8
+     byte = 0
+
+     sizeOfKey :: Int
+     sizeOfKey = 1
+
+     -- Please note that actual binary size of attributes will be a little bit
+     -- bigger than the size defined by user (via CLI argument), because size of
+     -- singleton 'Map k v' isn't equal to the size of ('k' + 'v').
+     finalSize :: Int -> Int64
+     finalSize userDefinedSize = fromIntegral (userDefinedSize - sizeOfKey)
+
+mkTransactionGen
+  :: r ~ Int
+  => Era era
+  -> SigningKeyOf era
+  -> NonEmpty (TxIn, TxOut era)
+  -- ^ Non-empty list of (TxIn, TxOut) that will be used as
+  -- inputs and the key to spend the associated value
+  -> Maybe (Address era)
+  -- ^ The address to associate with the 'change',
+  -- if different from that of the first argument
+  -> Set (r, TxOut era)
+  -- ^ Each recipient and their payment details
+  -> TxAdditionalSize
+  -- ^ Optional size of additional binary blob in transaction (as 'txAttributes')
+  -> TxFee
+  -- ^ Tx fee.
+  -> ( Maybe (TxIx, Lovelace)   -- The 'change' index and value (if any)
+     , Lovelace                 -- The associated fees
+     , Map r TxIx               -- The offset map in the transaction below
+     , Tx era
+     )
+mkTransactionGen p signingKey inputs mChangeAddr paySet payloadSize fee@(Lovelace fees) =
+  (mChange, fee, offsetMap, tx)
+ where
+  tx = mkTransaction p signingKey payloadSize (SlotNo 10000000) fee
+         (NonEmpty.toList $ fst <$> inputs)
+         (NonEmpty.toList txOutputs)
+
+  fundsTxOuts   = snd <$> NonEmpty.toList inputs
+  payments      = toList paySet
+  payTxOuts     = map snd payments
+
+  Lovelace totalInpValue = txOutSum fundsTxOuts
+  Lovelace totalOutValue = txOutSum payTxOuts
+  changeValue@(Lovelace chgValRaw)
+                = Lovelace (totalInpValue - totalOutValue - fees)
+
+      -- change the order of comparisons first check emptiness of txouts AND remove appendr after
+
+  (txOutputs, mChange) =
+    if chgValRaw > 0
+    then
+      let changeAddress = fromMaybe (txOutAddr . snd $ NonEmpty.head inputs) mChangeAddr
+          changeTxOut   = TxOut changeAddress changeValue
+          changeIndex   = TxIx $ fromIntegral $ length payTxOuts -- 0-based index
+      in
+          (appendr payTxOuts (changeTxOut :| []), Just (changeIndex, changeValue))
+    else
+      case payTxOuts of
+        []                 -> panic "change is zero and txouts is empty"
+        txout0: txoutsRest -> (txout0 :| txoutsRest, Nothing)
+
+  -- TxOuts of recipients are placed at the first positions
+  offsetMap = Map.fromList $ zipWith (\payment index -> (fst payment, TxIx index))
+                                     payments
+                                     [0..]
+  txOutSum :: Foldable t => t (TxOut era) -> Lovelace
+  txOutSum =
+    foldl' (\(Lovelace acc) (TxOut _ (Lovelace val)) -> Lovelace $ acc + val)
+           (Lovelace 0)
+
+  -- | Append a non-empty list to a list.
+  -- > appendr [1,2,3] (4 :| [5]) == 1 :| [2,3,4,5]
+  appendr :: [a] -> NonEmpty a -> NonEmpty a
+  appendr l nel = foldr NonEmpty.cons nel l
+
+  txOutAddr :: TxOut era -> Address era
+  txOutAddr (TxOut addr _) = addr

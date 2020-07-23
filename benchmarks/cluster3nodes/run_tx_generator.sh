@@ -15,7 +15,7 @@ TARGETNODES=`for N in $targetnodes; do echo -n "--target-node (\"127.0.0.1\",$((
 
 echo "$TARGETNODES"
 
-run 'cardano-tx-generator-byron' \
+run 'cardano-tx-generator' \
   --config ${CONFIGDIR}/configuration-generator.yaml \
   --genesis-file ${GENESISJSON} \
   --socket-path $BASEDIR/sockets/0 \
