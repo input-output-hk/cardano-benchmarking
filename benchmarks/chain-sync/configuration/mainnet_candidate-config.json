@@ -1,0 +1,181 @@
+{
+  "ApplicationName": "cardano-sl",
+  "ApplicationVersion": 0,
+  "ByronGenesisFile": "mainnet_candidate-byron-genesis.json",
+  "ByronGenesisHash": "33233fcae89c68fd829520d93990812c2b152b840e2e2aeaeaa6b69eccce25c8",
+  "LastKnownBlockVersion-Alt": 0,
+  "LastKnownBlockVersion-Major": 2,
+  "LastKnownBlockVersion-Minor": 0,
+  "MaxKnownMajorProtocolVersion": 2,
+  "PBftSignatureThreshold": 0.9,
+  "Protocol": "Cardano",
+  "RequiresNetworkMagic": "RequiresNoMagic",
+  "ShelleyGenesisFile": "mainnet_candidate-shelley-genesis.json",
+  "ShelleyGenesisHash": "5dc651631a9ddd8f387f00748d899ebaae156541dba1c65965bb8ab82d49292a",
+  "TraceBlockFetchClient": true,
+  "TraceBlockFetchDecisions": true,
+  "TraceBlockFetchProtocol": true,
+  "TraceBlockFetchProtocolSerialised": false,
+  "TraceBlockFetchServer": false,
+  "TraceChainDb": true,
+  "TraceChainSyncBlockServer": false,
+  "TraceChainSyncClient": true,
+  "TraceChainSyncHeaderServer": false,
+  "TraceChainSyncProtocol": true,
+  "TraceDNSResolver": true,
+  "TraceDNSSubscription": true,
+  "TraceErrorPolicy": true,
+  "TraceForge": true,
+  "TraceHandshake": false,
+  "TraceIpSubscription": true,
+  "TraceLocalChainSyncProtocol": false,
+  "TraceLocalErrorPolicy": true,
+  "TraceLocalHandshake": false,
+  "TraceLocalTxSubmissionProtocol": false,
+  "TraceLocalTxSubmissionServer": false,
+  "TraceMempool": true,
+  "TraceMux": false,
+  "TraceTxInbound": false,
+  "TraceTxOutbound": false,
+  "TraceTxSubmissionProtocol": false,
+  "TracingVerbosity": "MaximalVerbosity",
+  "TurnOnLogMetrics": true,
+  "TurnOnLogging": true,
+  "ViewMode": "LiveView",
+  "defaultBackends": [
+    "KatipBK"
+  ],
+  "defaultScribes": [
+    [
+      "StdoutSK",
+      "stdout"
+    ],
+    [
+      "FileSK",
+      "node-0.json"
+    ]
+  ],
+  "hasEKG": 12788,
+  "hasPrometheus": [
+    "127.0.0.1",
+    12798
+  ],
+  "minSeverity": "Debug",
+  "options": {
+    "mapBackends": {
+      "cardano.node-metrics": [
+        "KatipBK",
+        "EKGViewBK",
+        {
+          "kind": "UserDefinedBK",
+          "name": "LiveViewBackend"
+        }
+      ],
+      "cardano.node.BlockFetchDecision.peers": [
+        "EKGViewBK",
+        {
+          "kind": "UserDefinedBK",
+          "name": "LiveViewBackend"
+        }
+      ],
+      "cardano.node.ChainDB.metrics": [
+        "EKGViewBK",
+        {
+          "kind": "UserDefinedBK",
+          "name": "LiveViewBackend"
+        }
+      ],
+      "cardano.node.Forge.metrics": [
+        "EKGViewBK"
+      ],
+      "cardano.node.metrics": [
+        "EKGViewBK",
+        {
+          "kind": "UserDefinedBK",
+          "name": "LiveViewBackend"
+        }
+      ]
+    },
+    "mapSubtrace": {
+      "#ekgview": {
+        "contents": [
+          [
+            {
+              "contents": "cardano.epoch-validation.benchmark",
+              "tag": "Contains"
+            },
+            [
+              {
+                "contents": ".monoclock.basic.",
+                "tag": "Contains"
+              }
+            ]
+          ],
+          [
+            {
+              "contents": "cardano.epoch-validation.benchmark",
+              "tag": "Contains"
+            },
+            [
+              {
+                "contents": "diff.RTS.cpuNs.timed.",
+                "tag": "Contains"
+              }
+            ]
+          ],
+          [
+            {
+              "contents": "#ekgview.#aggregation.cardano.epoch-validation.benchmark",
+              "tag": "StartsWith"
+            },
+            [
+              {
+                "contents": "diff.RTS.gcNum.timed.",
+                "tag": "Contains"
+              }
+            ]
+          ]
+        ],
+        "subtrace": "FilterTrace"
+      },
+      "benchmark": {
+        "contents": [
+          "GhcRtsStats",
+          "MonotonicClock"
+        ],
+        "subtrace": "ObservableTrace"
+      },
+      "cardano.epoch-validation.utxo-stats": {
+        "subtrace": "NoTrace"
+      },
+      "cardano.node-metrics": {
+        "subtrace": "Neutral"
+      },
+      "cardano.node.metrics": {
+        "subtrace": "Neutral"
+      }
+    }
+  },
+  "rotation": {
+    "rpKeepFilesNum": 10,
+    "rpLogLimitBytes": 50000000,
+    "rpMaxAgeHours": 24
+  },
+  "setupBackends": [
+    "KatipBK"
+  ],
+  "setupScribes": [
+    {
+      "scFormat": "ScText",
+      "scKind": "StdoutSK",
+      "scName": "stdout",
+      "scRotation": null,
+      "scMinSev": "Notice"
+    },
+    {
+      "scFormat": "ScJson",
+      "scKind": "FileSK",
+      "scName": "node-0.json"
+    }
+  ]
+}
