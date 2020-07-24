@@ -207,6 +207,15 @@ updateNodesState nsMVar loggerName (LogObject aName aMeta aContent) = do
               LogValue "RTS.gcMajorNum" (PureI gcMajorNum) ->
                 nodesStateWith $ updateGcMajorNum ns gcMajorNum now
               _ -> return currentNodesState
+           | "cardano.node.Forge.metrics" `T.isInfixOf` aName ->
+            case aContent of
+              LogValue "operationalCertificateStartKESPeriod" (PureI oCertStartKesPeriod) ->
+                nodesStateWith $ updateCertStartKESPeriod ns oCertStartKesPeriod now
+              LogValue "currentKESPeriod" (PureI currentKesPeriod) ->
+                nodesStateWith $ updateCurrentKESPeriod ns currentKesPeriod now
+              LogValue "remainingKESPeriods" (PureI kesPeriodsUntilExpiry) ->
+                nodesStateWith $ updateRemainingKESPeriods ns kesPeriodsUntilExpiry now
+              _ -> return currentNodesState
            | "cardano.node.BlockFetchDecision" `T.isInfixOf` aName ->
             case aContent of
               LogValue "connectedPeers" (PureI peersNum) ->
@@ -625,6 +634,36 @@ updateGcMajorNum ns gcMajorNum now = ns { nsMetrics = newNm }
                         , nmRTSGcMajorNumLastUpdate = now
                         }
   currentNm = nsMetrics ns
+
+updateCertStartKESPeriod :: NodeState -> Integer -> Word64 -> NodeState
+updateCertStartKESPeriod ns oCertStartKesPeriod now = ns { nsInfo = newNi }
+ where
+  newNi =
+    currentNi
+      { niOpCertStartKESPeriod = oCertStartKesPeriod
+      , niOpCertStartKESPeriodLastUpdate = now
+      }
+  currentNi = nsInfo ns
+
+updateCurrentKESPeriod :: NodeState -> Integer -> Word64 -> NodeState
+updateCurrentKESPeriod ns currentKesPeriod now = ns { nsInfo = newNi }
+ where
+  newNi =
+    currentNi
+      { niCurrentKESPeriod = currentKesPeriod
+      , niCurrentKESPeriodLastUpdate = now
+      }
+  currentNi = nsInfo ns
+
+updateRemainingKESPeriods :: NodeState -> Integer -> Word64 -> NodeState
+updateRemainingKESPeriods ns kesPeriodsUntilExpiry now = ns { nsInfo = newNi }
+ where
+  newNi =
+    currentNi
+      { niRemainingKESPeriods = kesPeriodsUntilExpiry
+      , niRemainingKESPeriodsLastUpdate = now
+      }
+  currentNi = nsInfo ns
 
 updateChainDensity :: NodeState -> Double -> Word64 -> NodeState
 updateChainDensity ns density now = ns { nsInfo = newNi }

@@ -69,6 +69,9 @@ metricLabel ElNodePlatform          = "Node platform"
 metricLabel ElNodeCommitHref        = "Node commit"
 metricLabel ElPeersNumber           = "Peers number"
 metricLabel ElUptime                = "Node uptime"
+metricLabel ElOpCertStartKESPeriod  = "Start KES period"
+metricLabel ElCurrentKESPeriod      = "Current KES period"
+metricLabel ElRemainingKESPeriods   = "KES remaining periods"
 metricLabel ElMemoryUsageChart      = "Memory usage"
 metricLabel ElCPUUsageChart         = "CPU usage"
 metricLabel ElDiskUsageChart        = "Disk usage"
@@ -99,6 +102,9 @@ allMetricsNames =
   , ElNodeCommitHref
   , ElPeersNumber
   , ElUptime
+  , ElOpCertStartKESPeriod
+  , ElCurrentKESPeriod
+  , ElRemainingKESPeriods
   , ElMemoryUsageChart
   , ElCPUUsageChart
   , ElDiskUsageChart
@@ -163,6 +169,9 @@ mkNodeElements nameOfNode = do
                  #+ [string ""]
   elPeersNumber <- string "0"
   elUptime      <- string "00:00:00"
+  elOpCertStartKESPeriod <- string "-"
+  elCurrentKESPeriod     <- string "-"
+  elRemainingKESPeriods  <- string "-"
 
   elMemoryUsageChart
     <- UI.canvas ## ("grid-memoryUsageChart-" <> T.unpack nameOfNode)
@@ -206,6 +215,9 @@ mkNodeElements nameOfNode = do
       , (ElNodeCommitHref,        elNodeCommitHref)
       , (ElPeersNumber,           elPeersNumber)
       , (ElUptime,                elUptime)
+      , (ElOpCertStartKESPeriod,  elOpCertStartKESPeriod)
+      , (ElCurrentKESPeriod,      elCurrentKESPeriod)
+      , (ElRemainingKESPeriods,   elRemainingKESPeriods)
       , (ElMemoryUsageChart,      elMemoryUsageChart)
       , (ElCPUUsageChart,         elCPUUsageChart)
       , (ElDiskUsageChart,        elDiskUsageChart)

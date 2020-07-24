@@ -55,6 +55,9 @@ data ElementName
   | ElTraceAcceptorHost
   | ElTraceAcceptorPort
   | ElTraceAcceptorEndpoint
+  | ElOpCertStartKESPeriod
+  | ElCurrentKESPeriod
+  | ElRemainingKESPeriods
   | ElNodeErrors
   | ElMempoolTxsNumber
   | ElMempoolTxsPercent
@@ -94,6 +97,9 @@ data ElementName
   | ElNodePlatformOutdateWarning
   | ElNodeCommitHrefOutdateWarning
   | ElUptimeOutdateWarning
+  | ElOpCertStartKESPeriodOutdateWarning
+  | ElCurrentKESPeriodOutdateWarning
+  | ElRemainingKESPeriodsOutdateWarning
   | ElSlotOutdateWarning
   | ElBlocksNumberOutdateWarning
   | ElBlocksForgedNumberOutdateWarning

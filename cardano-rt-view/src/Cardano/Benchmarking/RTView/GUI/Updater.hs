@@ -90,7 +90,7 @@ updatePaneGUI window nodesState params acceptors nodesStateElems = do
     void $ updateElementValue (ElementString  $ niNodePlatform ni)            $ elements ! ElNodePlatform
     void $ updateNodeCommit   (niNodeCommit ni) (niNodeShortCommit ni)        $ elements ! ElNodeCommitHref
     void $ updateElementValue (ElementString activeNodeMark)                  $ elements ! ElActiveNode
-    void $ updateNodeUpTime   (niUpTime ni)                                   $ elements ! ElUptime
+    void $ updateNodeUpTime   (niUpTime ni)                                   $ elements ! ElUptime 
     void $ updateElementValue (ElementInteger $ niEpoch ni)                   $ elements ! ElEpoch
     void $ updateElementValue (ElementInteger $ niSlot ni)                    $ elements ! ElSlot
     void $ updateElementValue (ElementInteger $ niBlocksNumber ni)            $ elements ! ElBlocksNumber
@@ -130,6 +130,11 @@ updatePaneGUI window nodesState params acceptors nodesStateElems = do
     void $ updateElementValue (ElementDouble  $ nmRTSGcElapsed nm)            $ elements ! ElRTSGcElapsed
     void $ updateElementValue (ElementInteger $ nmRTSGcNum nm)                $ elements ! ElRTSGcNum
     void $ updateElementValue (ElementInteger $ nmRTSGcMajorNum nm)           $ elements ! ElRTSGcMajorNum
+
+    updateKESInfo [ (niOpCertStartKESPeriod ni, elements ! ElOpCertStartKESPeriod)
+                  , (niCurrentKESPeriod ni,     elements ! ElCurrentKESPeriod)
+                  , (niRemainingKESPeriods ni,  elements ! ElRemainingKESPeriods)
+                  ]
 
     updatePeersList (niPeersInfo ni) peerInfoItems
 
@@ -184,6 +189,11 @@ updateGridGUI window nodesState _params acceptors gridNodesStateElems =
     void $ updateElementValue (ElementDouble  $ nmRTSGcElapsed nm)       $ elements ! ElRTSGcElapsed
     void $ updateElementValue (ElementInteger $ nmRTSGcNum nm)           $ elements ! ElRTSGcNum
     void $ updateElementValue (ElementInteger $ nmRTSGcMajorNum nm)      $ elements ! ElRTSGcMajorNum
+
+    updateKESInfo [ (niOpCertStartKESPeriod ni, elements ! ElOpCertStartKESPeriod)
+                  , (niCurrentKESPeriod ni,     elements ! ElCurrentKESPeriod)
+                  , (niRemainingKESPeriods ni,  elements ! ElRemainingKESPeriods)
+                  ]
 
 updateElementValue
   :: ElementValue
@@ -268,6 +278,15 @@ updatePeersList peersInfo' peersInfoItems = do
     -- Make item visible.
     showElement $ piItem item
 
+updateKESInfo :: [(Integer, Element)] -> UI ()
+updateKESInfo valuesWithElems =
+  forM_ valuesWithElems $ \(value, kesElem) ->
+    if value == 9999999999
+      -- This value cannot be such a big, so it wasn't replaced by the
+      -- real metric. It means there's no KES at all (node uses an old protocol).
+      then void $ updateElementValue (ElementString "—")    kesElem
+      else void $ updateElementValue (ElementInteger value) kesElem
+
 updateErrorsList
   :: [NodeError]
   -> Element
@@ -347,6 +366,12 @@ markOutdatedElements params ni nm els = do
                                                       ]
 
   markValue  now (niEpochLastUpdate ni)        bcLife (els ! ElEpoch)
+  markValueW now (niOpCertStartKESPeriodLastUpdate ni) niLife [els ! ElOpCertStartKESPeriod]
+                                                              [els ! ElOpCertStartKESPeriodOutdateWarning]
+  markValueW now (niCurrentKESPeriodLastUpdate ni)     niLife [els ! ElCurrentKESPeriod]
+                                                              [els ! ElCurrentKESPeriodOutdateWarning]
+  markValueW now (niRemainingKESPeriodsLastUpdate ni)  niLife [els ! ElRemainingKESPeriods]
+                                                              [els ! ElRemainingKESPeriodsOutdateWarning]
   markValueW now (niSlotLastUpdate ni)         bcLife [els ! ElSlot]
                                                       [els ! ElSlotOutdateWarning]
   markValueW now (niBlocksNumberLastUpdate ni) bcLife [els ! ElBlocksNumber]
