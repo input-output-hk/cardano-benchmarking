@@ -3,8 +3,8 @@ compiler: ghc-8.6.5
 
 packages:
   - cardano-rt-view
-  - cardano-tx-generator
-  - tx-generator-shelley
+  #- cardano-tx-generator
+  #- tx-generator-shelley
   - bm-timeline
 
   # references to git submodules only in development
@@ -38,7 +38,7 @@ extra-deps:
   - assoc-1.0.1
   - base58-bytestring-0.1.0
   - base64-0.4.2
-  - bech32-1.0.2
+  - bech32-1.1.0
   - bifunctors-5.5.7
   - bimap-0.4.0
   - binary-0.8.7.0
@@ -100,7 +100,7 @@ extra-deps:
       - test
 
   - git: https://github.com/input-output-hk/cardano-node
-    commit: a0eb63646c35e33192aa99a73672757d7f25f246
+    commit: ba0f96b1a9fc9232ed211e57835fd5018093069d
     subdirs:
       - cardano-api
       - cardano-config
@@ -134,10 +134,11 @@ extra-deps:
       - cardano-shell
 
   - git: https://github.com/input-output-hk/cardano-ledger-specs
-    commit: 550a70b9ff83c9e9ddbcb7f7b49ee93161bb29ed
+    commit: 183a70c001587d9b1977541deae28c3e44713907
     subdirs:
       # small-steps
       - semantics/executable-spec
+      - semantics/small-steps-test
       # cs-ledger
       - byron/ledger/executable-spec
       - byron/ledger/impl
@@ -155,7 +156,7 @@ extra-deps:
     commit: 26d35ad52fe9ade3391532dbfeb2f416f07650bc
 
   - git: https://github.com/input-output-hk/ouroboros-network
-    commit: 670c734f0aa74a3feab8ff8dd6ee8793b2e29e1c
+    commit: ec74d1c463b6d18bdca2b714abe730c1d237cc32
     subdirs:
         - io-sim
         - io-sim-classes
