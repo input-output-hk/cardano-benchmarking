@@ -8,6 +8,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TupleSections #-}
 
 {-# OPTIONS_GHC -Wno-all-missed-specialisations #-}
 {-# OPTIONS_GHC -Wno-missed-specialisations #-}
@@ -21,14 +22,15 @@ module Cardano.Benchmarking.GeneratorTx
   , TPSRate(..)
   , TxAdditionalSize(..)
   , TxGenError
-  , genesisBenchmarkRunner
+  , secureFunds
+  , runBenchmark
   ) where
 
 import           Cardano.Prelude
-import           Prelude (String, id)
+import           Prelude (String, error, id)
 
 import           Control.Concurrent (threadDelay)
-import           Control.Monad (forM, forM_)
+import           Control.Monad (fail, forM, forM_)
 import           Control.Monad.Trans.Except (ExceptT)
 import           Control.Monad.Trans.Except.Extra (left, newExceptT, right)
 import           Control.Tracer (traceWith)
@@ -60,34 +62,6 @@ import           Cardano.Benchmarking.GeneratorTx.Submission
 import           Cardano.Benchmarking.GeneratorTx.Tx
 
 
------------------------------------------------------------------------------------------
--- | Genesis benchmark runner (we call it in 'Run.runNode').
---
---   Using a _richman_ (from genesis block) to supply some initial
---   amount of funds for disbursment.
------------------------------------------------------------------------------------------
-genesisBenchmarkRunner
-  :: EraSupportsTxGen era
-  => Benchmark -> Era era -> SigningKeyFile
-  -> ExceptT TxGenError IO ()
-genesisBenchmarkRunner b p keyFile = do
-  key <- readSigningKey p keyFile
-  liftIO . traceWith (trTxSubmit p) . TraceBenchTxSubDebug
-    $ "******* Tx generator, signing keys are ready *******"
-
-  fundsWithGenesisMoney <- liftIO $
-    prepareInitialFunds b p
-      (extractGenesisFunds p key) key
-      (keyAddress p key)
-
-  liftIO . traceWith (trTxSubmit p) . TraceBenchTxSubDebug
-    $ "******* Tx generator, initial funds are prepared (sent to sourceAddress) *******"
-
-  runBenchmark b p key (keyAddress p key) fundsWithGenesisMoney
-
-{-------------------------------------------------------------------------------
-  Main logic
--------------------------------------------------------------------------------}
 readSigningKey ::
      Era era -> SigningKeyFile
   -> ExceptT TxGenError IO (SigningKeyOf era)
@@ -102,36 +76,48 @@ readSigningKey p =
      , FromSomeType (AsSigningKey AsPaymentKey) id
      ]
 
+secureFunds :: ConfigSupportsTxGen mode era
+  => Benchmark
+  -> Mode mode era
+  -> GeneratorFunds
+  -> ExceptT TxGenError IO (SigningKeyOf era, (TxIn, TxOut era))
+
+secureFunds Benchmark{bTxFee, bInitialTTL} m (FundsGenesis keyF) = do
+  key <- readSigningKey (modeEra m) keyF
+  let (_, TxOut _ genesisCoin) = extractGenesisFunds m key
+      toAddr = keyAddress m key
+      (tx, txin, txout) =
+         genesisExpenditure m key toAddr genesisCoin bTxFee bInitialTTL
+      txOfMode = castTxMode m tx
+  r <- liftIO $ submitTx (modeLocalConnInfo m) txOfMode
+  case r of
+    TxSubmitSuccess ->
+      liftIO . traceWith (trTxSubmit m) . TraceBenchTxSubDebug
+      $ mconcat
+      [ "******* Funding secured (", show txin, " -> ", show txout
+      , "), submission result: " , show r ]
+    e -> fail $ show e
+  pure (key, (txin, txout))
+
+secureFunds _ m@ModeShelley{} (FundsUtxo keyF txin txout) = do
+  key <- readSigningKey (modeEra m) keyF
+  pure (key, (txin, txout))
+
+secureFunds _ m@ModeCardanoShelley{} (FundsUtxo keyF txin txout) = do
+  key <- readSigningKey (modeEra m) keyF
+  pure (key, (txin, txout))
+
+secureFunds _ m f =
+  error $ "secureFunds:  unsupported config: " <> show m <> " / " <> show f
+
 -----------------------------------------------------------------------------------------
 -- Obtain initial funds.
 -----------------------------------------------------------------------------------------
-prepareInitialFunds
-  :: forall era
-  .  EraSupportsTxGen era
-  => Benchmark
-  -> Era era
-  -> (TxIn, TxOut era)
-  -> SigningKeyOf era
-  -> Address era
-  -> IO (TxIn, TxOut era)
-prepareInitialFunds
-  Benchmark{bTxFee, bInitialTTL} p (_, TxOut _ genesisCoin) key toAddr = do
-    r <- submitTx (eraLocalConnInfo p) (castTxMode tx)
-    liftIO . traceWith (trTxSubmit p) . TraceBenchTxSubDebug
-      $ mconcat
-      [ "******* Genesis funds move (", show txin, " -> ", show txout
-      , ") submission result: "
-      , show r]
-    pure (txin, txout)
- where
-   (tx, txin, txout) =
-     genesisExpenditure p key toAddr genesisCoin bTxFee bInitialTTL
-
 splitFunds
-  :: forall era
-  .  EraSupportsTxGen era
+  :: forall mode era
+  .  ConfigSupportsTxGen mode era
   => Benchmark
-  -> Era era
+  -> Mode mode era
   -> SigningKeyOf era
   -> (TxIn, TxOut era)
   -> ExceptT TxGenError IO (Set (TxIn, TxOut era))
@@ -139,7 +125,7 @@ splitFunds
     Benchmark{ bTxFee=fee@(Lovelace feeRaw), bTxCount=NumberOfTxs numTxs
              , bTxFanIn=NumberOfInputsPerTx txFanin
              }
-    p sourceKey fundsTxIO@(_, (TxOut addr (Lovelace rawCoin))) = do
+    m sourceKey fundsTxIO@(_, (TxOut addr (Lovelace rawCoin))) = do
   let -- The number of splitting txout entries (corresponds to the number of all inputs we will need).
       numRequiredTxOuts = numTxs * fromIntegral txFanin
       splitFanout = 60 :: Word64 -- near the upper bound so as not to exceed the tx size limit
@@ -167,7 +153,7 @@ splitFunds
                                          []
   -- Submit all splitting transactions sequentially.
   forM_ (zip splittingTxs [0::Int ..]) $ \((tx, _), i) ->
-    liftIO (submitTx (eraLocalConnInfo p) (castTxMode tx))
+    liftIO (submitTx (modeLocalConnInfo m) (castTxMode m tx))
     >>= \case
       TxSubmitSuccess -> pure ()
       x -> left . SplittingSubmissionError $ mconcat
@@ -201,7 +187,7 @@ splitFunds
                    identityIndex + fromIntegral numOutsPerInitTx - 1]
                   (repeat txOut)
             (mFunds, _fees, outIndices, splitTx) =
-              mkTransactionGen p sKey (txIO :| []) Nothing outs 0 fee
+              mkTransactionGen m sKey (txIO :| []) Nothing outs 0 fee
             !splitTxId = getTxId $ getTxBody splitTx
             txIOList = flip map (Map.toList outIndices) $
                 \(_, txInIndex) ->
@@ -238,32 +224,30 @@ splitFunds
 --   So if one Cardano tx contains 10 outputs (with addresses of 10 recipients),
 --   we have 1 Cardano tx and 10 fiscal txs.
 runBenchmark
-  :: forall era
-  .  (EraSupportsTxGen era)
+  :: forall mode era
+  .  ConfigSupportsTxGen mode era
   => Benchmark
-  -> Era era
+  -> Mode mode era
   -> SigningKeyOf era
-  -> Address era
   -> (TxIn, TxOut era)
   -> ExceptT TxGenError IO ()
 runBenchmark b@Benchmark{ bTargets
                         , bTps
                         , bInitCooldown=InitCooldown initCooldown
                         }
-             p
-             sourceKey
-             recipientAddress
-             fundsWithGenesisMoney = do
-  liftIO . traceWith (trTxSubmit p) . TraceBenchTxSubDebug
-    $ "******* Tx generator, phase 1: make enough available UTxO entries using: " <> (show fundsWithGenesisMoney :: String)
-  fundsWithSufficientCoins <-
-    splitFunds b p sourceKey fundsWithGenesisMoney
+             m fundsKey funds = do
+  let recipientAddress = keyAddress m fundsKey
 
-  liftIO . traceWith (trTxSubmit p) . TraceBenchTxSubDebug
+  liftIO . traceWith (trTxSubmit m) . TraceBenchTxSubDebug
+    $ "******* Tx generator, phase 1: make enough available UTxO entries using: " <> (show funds :: String)
+  fundsWithSufficientCoins <-
+    splitFunds b m fundsKey funds
+
+  liftIO . traceWith (trTxSubmit m) . TraceBenchTxSubDebug
     $ "******* Tx generator: waiting " ++ show initCooldown ++ "s *******"
   liftIO $ threadDelay (initCooldown*1000*1000)
 
-  liftIO . traceWith (trTxSubmit p) . TraceBenchTxSubDebug
+  liftIO . traceWith (trTxSubmit m) . TraceBenchTxSubDebug
     $ "******* Tx generator, phase 2: pay to recipients *******"
 
   let localAddr :: Maybe Network.Socket.AddrInfo
@@ -293,16 +277,16 @@ runBenchmark b@Benchmark{ bTargets
   let numTargets :: Natural = fromIntegral $ NE.length bTargets
   txs :: [Tx era] <-
            txGenerator
-              b p
+              b m
               recipientAddress
-              sourceKey
+              fundsKey
               (NE.length bTargets)
               fundsWithSufficientCoins
 
   liftIO $ do
-    traceWith (trTxSubmit p) . TraceBenchTxSubDebug
+    traceWith (trTxSubmit m) . TraceBenchTxSubDebug
         $ "******* Tx generator, launching Tx peers:  " ++ show (NE.length remoteAddresses) ++ " of them"
-    submission <- mkSubmission (trTxSubmit p) $
+    submission <- mkSubmission (trTxSubmit m) $
                     SubmissionParams
                     { spTps      = bTps
                     , spTargets  = numTargets
@@ -311,7 +295,7 @@ runBenchmark b@Benchmark{ bTargets
     allAsyncs <- forM (zip [0..] $ NE.toList remoteAddresses) $
       \(i, remoteAddr) ->
         launchTxPeer
-              p
+              m
               localAddr
               remoteAddr
               submission
@@ -319,7 +303,7 @@ runBenchmark b@Benchmark{ bTargets
     tpsFeeder <- async $ tpsLimitedTxFeeder submission txs
     -- Wait for all threads to complete.
     mapM_ wait (tpsFeeder : allAsyncs)
-    traceWith (trTxSubmit p) =<<
+    traceWith (trTxSubmit m) =<<
        TraceBenchTxSubSummary <$> mkSubmissionSummary submission
 
 -- | At this moment 'sourceAddress' contains a huge amount of money (lets call it A).
@@ -332,10 +316,10 @@ runBenchmark b@Benchmark{ bTargets
 -- | Work with tx generator thread (for Phase 2).
 -----------------------------------------------------------------------------------------
 txGenerator
-  :: forall era
-  .  EraSupportsTxGen era
+  :: forall mode era
+  .  ConfigSupportsTxGen mode era
   => Benchmark
-  -> Era era
+  -> Mode mode era
   -> Address era
   -> SigningKeyOf era
   -> Int
@@ -348,13 +332,13 @@ txGenerator Benchmark
             , bTxFanOut=NumberOfOutputsPerTx numOfOutsPerTx
             , bTxExtraPayload=txAdditionalSize
             }
-            p recipientAddress sourceKey numOfTargetNodes
+            m recipientAddress sourceKey numOfTargetNodes
             fundsWithSufficientCoins = do
-  liftIO . traceWith (trTxSubmit p) . TraceBenchTxSubDebug
+  liftIO . traceWith (trTxSubmit m) . TraceBenchTxSubDebug
     $ " Generating " ++ show numOfTransactions
       ++ " transactions, for " ++ show numOfTargetNodes ++ " peers"
   txs <- createMainTxs numOfTransactions numOfInsPerTx fundsWithSufficientCoins
-  liftIO . traceWith (trTxSubmit p) . TraceBenchTxSubDebug
+  liftIO . traceWith (trTxSubmit m) . TraceBenchTxSubDebug
     $ " Done, " ++ show numOfTransactions ++ " were generated."
   pure txs
  where
@@ -381,7 +365,7 @@ txGenerator Benchmark
     (txInputs, updatedFunds) <- getTxInputs insNumPerTx funds
     let (_, _, _, txAux :: Tx era) =
           mkTransactionGen
-            p
+            m
             sourceKey
             (NE.fromList txInputs)
             (Just addressForChange)
@@ -428,9 +412,9 @@ txGenerator Benchmark
 -- TODO: transform comments into haddocks.
 --
 launchTxPeer
-  :: forall era
-  .  EraSupportsTxGen era
-  => Era era
+  :: forall mode era
+  .  ConfigSupportsTxGen mode era
+  => Mode mode era
   -> Maybe Network.Socket.AddrInfo
   -- local address binding (if wanted)
   -> Network.Socket.AddrInfo
@@ -440,7 +424,7 @@ launchTxPeer
   -> Natural
   -- Thread index
   -> IO (Async ())
-launchTxPeer p localAddr remoteAddr ss ix =
+launchTxPeer m localAddr remoteAddr ss ix =
   async $
-    benchmarkConnectTxSubmit p localAddr remoteAddr
-      (txSubmissionClient p (trN2N p) (trTxSubmit p) ss ix)
+    benchmarkConnectTxSubmit m localAddr remoteAddr
+      (txSubmissionClient m (trN2N m) (trTxSubmit m) ss ix)

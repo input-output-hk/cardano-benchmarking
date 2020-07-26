@@ -23,19 +23,23 @@
 
 module Cardano.Benchmarking.GeneratorTx.Era
   ( BlockOf
-  , BlockMode
-  , EraOfProtocol
-  , EraSupportsTxGen
+  , ModeOfProtocol
+  , ConfigSupportsTxGen
   , GenTxOf
   , GenTxIdOf
   , HFCBlockOf
-  , ModeOf
+  , inject
+  , project
+  , SomeMode(..)
+  , Mode(..)
   , SomeEra(..)
   , Era(..)
+  , ByronBlockHFC
   , ShelleyBlock
   , ShelleyBlockHFC
   , SigningKeyOf
   , SigningKeyRoleOf
+  , CardanoBlock
 
   , InitCooldown(..)
   , NumberOfInputsPerTx(..)
@@ -55,15 +59,16 @@ module Cardano.Benchmarking.GeneratorTx.Era
 
   , SubmissionSummary(..)
 
-  , mkEra
-  , eraCodecConfig
-  , eraIOManager
-  , eraLedgerConfig
-  , eraLocalConnInfo
-  , eraNetworkId
-  , eraNetworkMagic
-  , eraTopLevelConfig
-  , eraTracers
+  , mkMode
+  , modeEra
+  , modeCodecConfig
+  , modeIOManager
+  , modeLedgerConfig
+  , modeLocalConnInfo
+  , modeNetworkId
+  , modeNetworkMagic
+  , modeTopLevelConfig
+  , modeTracers
   , trBase
   , trTxSubmit
   , trConnect
@@ -79,8 +84,8 @@ module Cardano.Benchmarking.GeneratorTx.Era
   , createTracers
   ) where
 
-import           Prelude (String, error)
-import           Cardano.Prelude hiding (TypeError)
+import           Prelude (Show(..), String, error)
+import           Cardano.Prelude hiding (TypeError, show)
 
 import qualified Codec.CBOR.Term as CBOR
 import           Control.Tracer (Tracer (..), nullTracer, traceWith)
@@ -94,11 +99,11 @@ import           Data.Time.Clock (DiffTime, getCurrentTime)
 import           GHC.TypeLits
 import qualified GHC.TypeLits as Ty
 
--- Era-agnostic imports
+-- Mode-agnostic imports
 import           Cardano.BM.Data.Tracer
                    (emptyObject, mkObject, trStructured)
 import           Network.Mux (WithMuxBearer(..))
-import           Ouroboros.Consensus.Block.Abstract (CodecConfig, SlotNo(..))
+import           Ouroboros.Consensus.Block.Abstract (CodecConfig)
 import qualified Ouroboros.Consensus.Cardano as Consensus
 import           Ouroboros.Consensus.Config
                    ( SecurityParam(..), TopLevelConfig(..)
@@ -134,7 +139,7 @@ import           Cardano.Api.TxSubmit
 import qualified Cardano.Api.Typed as Api
 
 -- Node imports
-import           Cardano.Config.Types (NodeAddress, SocketPath(..))
+import           Cardano.Config.Types (SocketPath(..))
 import           Cardano.Node.Logging (LOContent(..), LoggingLayer (..))
 import           Cardano.TracingOrphanInstances.Byron()
 import           Cardano.TracingOrphanInstances.Common()
@@ -148,17 +153,24 @@ import Cardano.Benchmarking.GeneratorTx.Benchmark
 {-------------------------------------------------------------------------------
   Era abstraction
 -------------------------------------------------------------------------------}
-type EraSupportsTxGen era
-  = ( Ord (TxOut era)
-    , Eq (Address era)
-    , Key (SigningKeyRoleOf era)
-    , Mempool.HasTxId (GenTx (BlockOf era))
-    , RunNode (BlockOf era)
-    , Show (Tx era)
-    , Show (TxOut era)
-    , Show (TxSubmitResultForMode (ModeOf era))
-    , BenchTraceConstraints (BlockOf era)
-    )
+
+type ModeSupportsTxGen mode =
+  ( BenchTraceConstraints (BlockOf mode)
+  , Mempool.HasTxId (GenTx (HFCBlockOf mode))
+  , Mempool.LedgerSupportsMempool (HFCBlockOf mode)
+  , Show (TxSubmitResultForMode mode)
+  , Show (TxForMode mode)
+  , RunNode (HFCBlockOf mode))
+
+type EraSupportsTxGen era =
+  ( Eq (Address era)
+  , Key (SigningKeyRoleOf era)
+  , Ord (TxOut era)
+  , Show (Tx era)
+  , Show (TxOut era))
+
+type ConfigSupportsTxGen mode era =
+  (ModeSupportsTxGen mode, EraSupportsTxGen era)
 
 deriving instance Eq (Address era) => Ord (Address era)
 
@@ -173,29 +185,21 @@ instance ToJSON TxIx where
 deriving instance Eq (Address era) => (Eq (TxOut era))
 deriving instance Eq (Address era) => (Ord (TxOut era))
 
-
-type family EraOfProtocol p :: Type where
-  EraOfProtocol Consensus.ProtocolByron   = Byron
-  EraOfProtocol Consensus.ProtocolShelley = Shelley
-  EraOfProtocol t = TypeError (Ty.Text "Unsupported trotocol: "  :<>: ShowType t)
-
-type family ModeOf era :: Type where
-  ModeOf Byron       = ByronMode
-  ModeOf Shelley     = ShelleyMode
-  ModeOf t = TypeError (Ty.Text "Unsupported era: "  :<>: ShowType t)
-
 type ShelleyBlock    = Shelley.ShelleyBlock    TPraosStandardCrypto
 type ShelleyBlockHFC = Shelley.ShelleyBlockHFC TPraosStandardCrypto
+type CardanoBlock    = Consensus.CardanoBlock  TPraosStandardCrypto
 
-type family BlockOf era :: Type where
-  BlockOf Byron      = ByronBlock
-  BlockOf Shelley    = ShelleyBlock
-  BlockOf t = TypeError (Ty.Text "Unsupported era: "  :<>: ShowType t)
+type family BlockOf mode :: Type where
+  BlockOf ByronMode      = ByronBlock
+  BlockOf ShelleyMode    = ShelleyBlock
+  BlockOf CardanoMode    = CardanoBlock
+  BlockOf t = TypeError (Ty.Text "Unsupported mode: "  :<>: ShowType t)
 
-type family HFCBlockOf era :: Type where
-  HFCBlockOf Byron   = ByronBlockHFC
-  HFCBlockOf Shelley = HardForkBlock '[ShelleyBlock]
-  HFCBlockOf t = TypeError (Ty.Text "Unsupported era: "  :<>: ShowType t)
+type family HFCBlockOf mode :: Type where
+  HFCBlockOf ByronMode   = ByronBlockHFC
+  HFCBlockOf ShelleyMode = ShelleyBlockHFC
+  HFCBlockOf CardanoMode = CardanoBlock
+  HFCBlockOf t = TypeError (Ty.Text "Unsupported mode: "  :<>: ShowType t)
 
 type family SigningKeyRoleOf era :: Type where
   SigningKeyRoleOf Byron   = ByronKey
@@ -204,128 +208,204 @@ type family SigningKeyRoleOf era :: Type where
 
 type SigningKeyOf era = SigningKey (SigningKeyRoleOf era)
 
-type GenTxOf   era = GenTx   (BlockOf era)
-type GenTxIdOf era = GenTxId (BlockOf era)
+type GenTxOf   mode = GenTx   (HFCBlockOf mode)
+type GenTxIdOf mode = GenTxId (HFCBlockOf mode)
 
-type family BlockMode blk :: Type where
-  BlockMode ByronBlock   = ByronMode
-  BlockMode ShelleyBlock = ShelleyMode
-  BlockMode t = TypeError (Ty.Text "Unsupported block type: "  :<>: ShowType t)
+type family ModeOfProtocol p :: Type where
+  ModeOfProtocol Consensus.ProtocolByron   = ByronMode
+  ModeOfProtocol Consensus.ProtocolShelley = ShelleyMode
+  ModeOfProtocol (HardForkProtocol '[ByronBlock, ShelleyBlock]) = CardanoMode
+  ModeOfProtocol t = TypeError (Ty.Text "Unsupported protocol: "  :<>: ShowType t)
 
-data SomeEra =
-  forall era. EraSupportsTxGen era =>
-  SomeEra (Era era)
+data SomeMode =
+  forall mode era. ConfigSupportsTxGen mode era =>
+  SomeMode (Mode mode era)
 
 -- | System-level submission context (not parameters)
 --   TODO:  rename the type to SubContext or something similar.
-data Era era where
-  EraByron
-    :: TopLevelConfig (BlockOf Byron)
-    -> CodecConfig (BlockOf Byron)
-    -> LocalNodeConnectInfo ByronMode (HFCBlockOf Byron)
+data Mode mode era where
+  ModeByron
+    :: TopLevelConfig (HFCBlockOf ByronMode)
+    -> CodecConfig (HFCBlockOf ByronMode)
+    -> LocalNodeConnectInfo ByronMode (HFCBlockOf ByronMode)
     -> IOManager
-    -> BenchTracers IO (BlockOf Byron)
-    -> Era Byron
-  EraShelley
-    :: TopLevelConfig (BlockOf Shelley)
-    -> CodecConfig (BlockOf Shelley)
-    -> LocalNodeConnectInfo ShelleyMode (HFCBlockOf Shelley)
+    -> BenchTracers IO (HFCBlockOf ByronMode)
+    -> Mode ByronMode Byron
+  ModeShelley
+    :: TopLevelConfig (HFCBlockOf ShelleyMode)
+    -> CodecConfig (HFCBlockOf ShelleyMode)
+    -> LocalNodeConnectInfo ShelleyMode (HFCBlockOf ShelleyMode)
     -> IOManager
-    -> BenchTracers IO (BlockOf Shelley)
-    -> Era Shelley
+    -> BenchTracers IO (HFCBlockOf ShelleyMode)
+    -> Mode ShelleyMode Shelley
+  ModeCardanoByron
+    :: TopLevelConfig (HFCBlockOf CardanoMode)
+    -> CodecConfig (HFCBlockOf CardanoMode)
+    -> LocalNodeConnectInfo CardanoMode (HFCBlockOf CardanoMode)
+    -> IOManager
+    -> BenchTracers IO (HFCBlockOf CardanoMode)
+    -> Mode CardanoMode Byron
+  ModeCardanoShelley
+    :: TopLevelConfig (HFCBlockOf CardanoMode)
+    -> CodecConfig (HFCBlockOf CardanoMode)
+    -> LocalNodeConnectInfo CardanoMode (HFCBlockOf CardanoMode)
+    -> IOManager
+    -> BenchTracers IO (HFCBlockOf CardanoMode)
+    -> Mode CardanoMode Shelley
 
-mkEra
-  :: forall blok era ptcl
-  . era ~ EraOfProtocol ptcl
+instance Show (Mode mode era) where
+  show ModeByron{}          = "ModeByron"
+  show ModeShelley{}        = "ModeShelley"
+  show ModeCardanoByron{}   = "ModeCardanoByron"
+  show ModeCardanoShelley{} = "ModeCardanoShelley"
+
+data SomeEra = forall era. EraSupportsTxGen era => SomeEra (Era era)
+
+data Era era where
+  EraByron   :: Era Byron
+  EraShelley :: Era Shelley
+
+instance Show (Era era) where
+  show EraByron   = "EraByron"
+  show EraShelley = "EraShelley"
+
+mkMode
+  :: forall blok era mode ptcl
+  . ( mode ~ ModeOfProtocol ptcl
+    )
   => Consensus.Protocol IO blok ptcl
+  -> Era era
   -> IOManager
   -> SocketPath
   -> LoggingLayer
-  -> Era (EraOfProtocol ptcl)
-mkEra ptcl@Consensus.ProtocolByron{} iom (SocketPath sock) ll =
-  EraByron
-    (project pInfoConfig)
-    (configCodec $ project pInfoConfig)
+  -> Mode mode era
+mkMode ptcl@Consensus.ProtocolByron{} EraByron iom (SocketPath sock) ll =
+  ModeByron
+    pInfoConfig
+    (configCodec pInfoConfig)
     (LocalNodeConnectInfo
        sock
-       (Api.Testnet . getNetworkMagic . configBlock $ project pInfoConfig)
+       (Api.Testnet . getNetworkMagic . configBlock $ pInfoConfig)
        (ByronMode (Byron.EpochSlots 21600) (SecurityParam 2160)))
     iom
     (createTracers ll)
  where
    ProtocolInfo{pInfoConfig} = Consensus.protocolInfo ptcl
-mkEra ptcl@Consensus.ProtocolShelley{} iom (SocketPath sock) ll =
-  EraShelley
-    (project pInfoConfig)
-    (configCodec $ project pInfoConfig)
+mkMode ptcl@Consensus.ProtocolShelley{} EraShelley iom (SocketPath sock) ll =
+  ModeShelley
+    pInfoConfig
+    (configCodec pInfoConfig)
     (LocalNodeConnectInfo
        sock
-       (Api.Testnet . getNetworkMagic . configBlock $ project pInfoConfig)
+       (Api.Testnet . getNetworkMagic . configBlock $ pInfoConfig)
        ShelleyMode)
     iom
     (createTracers ll)
  where
    ProtocolInfo{pInfoConfig} = Consensus.protocolInfo ptcl
-mkEra _ _ _ _ = error "mkEra:  unhandled protocol"
+mkMode ptcl@Consensus.ProtocolCardano{} EraByron iom (SocketPath sock) ll =
+  ModeCardanoByron
+    pInfoConfig
+    (configCodec pInfoConfig)
+    (LocalNodeConnectInfo
+       sock
+       (Api.Testnet . getNetworkMagic . configBlock $ pInfoConfig)
+       (CardanoMode (Byron.EpochSlots 21600) (SecurityParam 2160)))
+    iom
+    (createTracers ll)
+ where
+   ProtocolInfo{pInfoConfig} = Consensus.protocolInfo ptcl
+mkMode ptcl@Consensus.ProtocolCardano{} EraShelley iom (SocketPath sock) ll =
+  ModeCardanoShelley
+    pInfoConfig
+    (configCodec pInfoConfig)
+    (LocalNodeConnectInfo
+       sock
+       (Api.Testnet . getNetworkMagic . configBlock $ pInfoConfig)
+       (CardanoMode (Byron.EpochSlots 21600) (SecurityParam 2160)))
+    iom
+    (createTracers ll)
+ where
+   ProtocolInfo{pInfoConfig} = Consensus.protocolInfo ptcl
+mkMode p e _ _ _ = error $ "mkMode:  unhandled protocol/era: " <> show p <> " / " <> show e
 
-eraTopLevelConfig :: Era era -> TopLevelConfig (BlockOf era)
-eraTopLevelConfig (EraByron   x _ _ _ _) = x
-eraTopLevelConfig (EraShelley x _ _ _ _) = x
+instance Show (Consensus.Protocol m blk p) where
+  show Consensus.ProtocolByron{}   = "ProtocolByron"
+  show Consensus.ProtocolShelley{} = "ProtocolShelley"
+  show Consensus.ProtocolCardano{} = "ProtocolCardano"
+  show Consensus.ProtocolMockBFT{} = "ProtocolMockBFT"
+  show Consensus.ProtocolMockPBFT{} = "ProtocolMockPBFT"
+  show Consensus.ProtocolMockPraos{} = "ProtocolMockPraos"
+  show Consensus.ProtocolLeaderSchedule{} = "ProtocolLeaderSchedule"
 
-eraCodecConfig :: Era era -> CodecConfig (BlockOf era)
-eraCodecConfig    (EraByron   _ x _ _ _) = x
-eraCodecConfig    (EraShelley _ x _ _ _) = x
+modeEra :: Mode mode era -> Era era
+modeEra = \case
+  ModeByron{}          -> EraByron
+  ModeShelley{}        -> EraShelley
+  ModeCardanoByron{}   -> EraByron
+  ModeCardanoShelley{} -> EraShelley
 
-eraLocalConnInfo :: Era era -> LocalNodeConnectInfo (ModeOf era) (HFCBlockOf era)
-eraLocalConnInfo  (EraByron   _ _ x _ _) = x
-eraLocalConnInfo  (EraShelley _ _ x _ _) = x
+modeTopLevelConfig :: Mode mode era -> TopLevelConfig (HFCBlockOf mode)
+modeTopLevelConfig (ModeByron          x _ _ _ _) = x
+modeTopLevelConfig (ModeShelley        x _ _ _ _) = x
+modeTopLevelConfig (ModeCardanoByron   x _ _ _ _) = x
+modeTopLevelConfig (ModeCardanoShelley x _ _ _ _) = x
 
-eraIOManager :: Era era -> IOManager
-eraIOManager      (EraByron   _ _ _ x _) = x
-eraIOManager      (EraShelley _ _ _ x _) = x
+modeCodecConfig :: Mode mode era -> CodecConfig (HFCBlockOf mode)
+modeCodecConfig    (ModeByron          _ x _ _ _) = x
+modeCodecConfig    (ModeShelley        _ x _ _ _) = x
+modeCodecConfig    (ModeCardanoByron   _ x _ _ _) = x
+modeCodecConfig    (ModeCardanoShelley _ x _ _ _) = x
 
-eraTracers :: Era era -> BenchTracers IO (BlockOf era)
-eraTracers        (EraByron   _ _ _ _ x) = x
-eraTracers        (EraShelley _ _ _ _ x) = x
+modeLocalConnInfo :: Mode mode era -> LocalNodeConnectInfo mode (HFCBlockOf mode)
+modeLocalConnInfo  (ModeByron          _ _ x _ _) = x
+modeLocalConnInfo  (ModeShelley        _ _ x _ _) = x
+modeLocalConnInfo  (ModeCardanoByron   _ _ x _ _) = x
+modeLocalConnInfo  (ModeCardanoShelley _ _ x _ _) = x
 
-eraNetworkId :: Era era -> NetworkId
-eraNetworkId p@EraByron{}   = Testnet . getNetworkMagic . configBlock $ eraTopLevelConfig p
-eraNetworkId p@EraShelley{} = Testnet . getNetworkMagic . configBlock $ eraTopLevelConfig p
+modeIOManager :: Mode mode era -> IOManager
+modeIOManager      (ModeByron          _ _ _ x _) = x
+modeIOManager      (ModeShelley        _ _ _ x _) = x
+modeIOManager      (ModeCardanoByron   _ _ _ x _) = x
+modeIOManager      (ModeCardanoShelley _ _ _ x _) = x
 
-eraNetworkMagic :: Era era -> NetworkMagic
-eraNetworkMagic p@EraByron{}   = getNetworkMagic . configBlock $ eraTopLevelConfig p
-eraNetworkMagic p@EraShelley{} = getNetworkMagic . configBlock $ eraTopLevelConfig p
+modeTracers :: Mode mode era -> BenchTracers IO (HFCBlockOf mode)
+modeTracers        (ModeByron          _ _ _ _ x) = x
+modeTracers        (ModeShelley        _ _ _ _ x) = x
+modeTracers        (ModeCardanoByron   _ _ _ _ x) = x
+modeTracers        (ModeCardanoShelley _ _ _ _ x) = x
 
-eraLedgerConfig :: Era era -> LedgerConfig (BlockOf era)
-eraLedgerConfig = configLedger . eraTopLevelConfig
+modeNetworkId :: Mode mode era -> NetworkId
+modeNetworkId m@ModeByron{}   = Testnet . getNetworkMagic . configBlock $ modeTopLevelConfig m
+modeNetworkId m@ModeShelley{} = Testnet . getNetworkMagic . configBlock $ modeTopLevelConfig m
+modeNetworkId m@ModeCardanoByron{}   = Testnet . getNetworkMagic . configBlock $ modeTopLevelConfig m
+modeNetworkId m@ModeCardanoShelley{} = Testnet . getNetworkMagic . configBlock $ modeTopLevelConfig m
 
-trBase       :: Era era -> Trace IO Text
-trTxSubmit   :: Era era -> Tracer IO (TraceBenchTxSubmit TxId)
-trConnect    :: Era era -> Tracer IO SendRecvConnect
-trSubmitMux  :: Era era -> Tracer IO (SendRecvTxSubmission (BlockOf era))
-trLowLevel   :: Era era -> Tracer IO TraceLowLevelSubmit
-trN2N        :: Era era -> Tracer IO NodeToNodeSubmissionTrace
-trBase       = btBase_       . eraTracers
-trTxSubmit   = btTxSubmit_   . eraTracers
-trConnect    = btConnect_    . eraTracers
-trSubmitMux  = btSubmission_ . eraTracers
-trLowLevel   = btLowLevel_   . eraTracers
-trN2N        = btN2N_        . eraTracers
+modeNetworkMagic :: Mode mode era -> NetworkMagic
+modeNetworkMagic m@ModeByron{}          = getNetworkMagic . configBlock $ modeTopLevelConfig m
+modeNetworkMagic m@ModeShelley{}        = getNetworkMagic . configBlock $ modeTopLevelConfig m
+modeNetworkMagic m@ModeCardanoByron{}   = getNetworkMagic . configBlock $ modeTopLevelConfig m
+modeNetworkMagic m@ModeCardanoShelley{} = getNetworkMagic . configBlock $ modeTopLevelConfig m
 
-data Benchmark
-  = Benchmark
-    { bTargets        :: !(NonEmpty NodeAddress)
-    , bInitCooldown   :: !InitCooldown
-    , bInitialTTL     :: !SlotNo
-    , bTxCount        :: !NumberOfTxs
-    , bTps            :: !TPSRate
-    , bTxFanIn        :: !NumberOfInputsPerTx
-    , bTxFanOut       :: !NumberOfOutputsPerTx
-    , bTxFee          :: !Lovelace
-    , bTxExtraPayload :: !TxAdditionalSize
-    }
-  deriving (Generic, Show)
--- Warning:  make sure to maintain correspondence between the two data structures.
+modeLedgerConfig :: Mode mode era -> LedgerConfig (BlockOf mode)
+modeLedgerConfig m@ModeByron{}          = configLedger . project $ modeTopLevelConfig m
+modeLedgerConfig m@ModeShelley{}        = configLedger . project $ modeTopLevelConfig m
+modeLedgerConfig _ = error "Ledger config query not supported in Cardano mode."
+-- modeLedgerConfig m@ModeCardanoByron{}   = configLedger . project $ modeTopLevelConfig m
+-- modeLedgerConfig m@ModeCardanoShelley{} = configLedger . project $ modeTopLevelConfig m
+
+trBase       :: Mode mode era -> Trace IO Text
+trTxSubmit   :: Mode mode era -> Tracer IO (TraceBenchTxSubmit TxId)
+trConnect    :: Mode mode era -> Tracer IO SendRecvConnect
+trSubmitMux  :: Mode mode era -> Tracer IO (SendRecvTxSubmission (HFCBlockOf mode))
+trLowLevel   :: Mode mode era -> Tracer IO TraceLowLevelSubmit
+trN2N        :: Mode mode era -> Tracer IO NodeToNodeSubmissionTrace
+trBase       = btBase_       . modeTracers
+trTxSubmit   = btTxSubmit_   . modeTracers
+trConnect    = btConnect_    . modeTracers
+trSubmitMux  = btSubmission_ . modeTracers
+trLowLevel   = btLowLevel_   . modeTracers
+trN2N        = btN2N_        . modeTracers
 
 {-------------------------------------------------------------------------------
   Tracers

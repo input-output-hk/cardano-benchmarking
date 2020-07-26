@@ -211,15 +211,15 @@ consumeTxs Submission{sTxSendQueue} req
   The submission client
 -------------------------------------------------------------------------------}
 txSubmissionClient
-  :: forall m era tx txid gentx gentxid .
+  :: forall m mode era tx txid gentx gentxid .
      ( MonadIO m
-     , EraSupportsTxGen era
+     , ConfigSupportsTxGen mode era
      , tx      ~ Tx era
      , txid    ~ TxId
-     , gentx   ~ GenTxOf era
-     , gentxid ~ GenTxIdOf era
+     , gentx   ~ GenTxOf mode
+     , gentxid ~ GenTxIdOf mode
      )
-  => Era era
+  => Mode mode era
   -> Tracer m NodeToNodeSubmissionTrace
   -> Tracer m (TraceBenchTxSubmit txid)
   -> Submission m era
@@ -227,7 +227,7 @@ txSubmissionClient
   -- This return type is forced by Ouroboros.Network.NodeToNode.connectTo
   -> TxSubmissionClient gentxid gentx m ()
 txSubmissionClient
-    p tr bmtr
+    m tr bmtr
     sub@Submission{sReportsRefs}
     threadIx =
   TxSubmissionClient $
@@ -285,15 +285,15 @@ txSubmissionClient
 
           (Just neAnnNow, TokBlocking) ->
             pure $ SendMsgReplyTxIds
-                     (BlockingReply $ txToIdSizify <$> neAnnNow)
+                     (BlockingReply $ txToIdSize <$> neAnnNow)
                      (client exhausted newUnacked newStats)
 
           (_, TokNonBlocking) ->
             pure $ SendMsgReplyTxIds
-                     (NonBlockingReply $ txToIdSizify <$> annNow)
+                     (NonBlockingReply $ txToIdSize <$> annNow)
                      (client exhausted newUnacked newStats)
 
-    , recvMsgRequestTxs = \(fmap (fromGenTxId p) -> reqTxids) -> do
+    , recvMsgRequestTxs = \(fmap (fromGenTxId m) -> reqTxids) -> do
         traceWith tr $ ReqTxs (length reqTxids)
         let UnAcked ua = unAcked
             uaIds = getTxId . getTxBody <$> ua
@@ -305,7 +305,7 @@ txSubmissionClient
         traceWith bmtr $ TraceBenchTxSubServOuts (getTxId . getTxBody <$> ua)
         unless (L.null missIds) $
           traceWith bmtr $ TraceBenchTxSubServUnav missIds
-        pure $ SendMsgReplyTxs (toGenTx <$> toSend)
+        pure $ SendMsgReplyTxs (toGenTx m <$> toSend)
           (client done unAcked $
             stats { stsSent =
                     stsSent stats + Sent (length toSend)
@@ -324,8 +324,8 @@ txSubmissionClient
      liftIO . STM.atomically $ STM.putTMVar (sReportsRefs L.!! fromIntegral threadIx) report
      pure report
 
-   txToIdSizify :: tx -> (gentxid, TxSizeInBytes)
-   txToIdSizify = (Mempool.txId &&& txInBlockSize) . toGenTx
+   txToIdSize :: tx -> (gentxid, TxSizeInBytes)
+   txToIdSize = (Mempool.txId &&& txInBlockSize) . toGenTx m
 
    protoToAck :: Word16 -> Ack
    protoToAck = Ack . fromIntegral
