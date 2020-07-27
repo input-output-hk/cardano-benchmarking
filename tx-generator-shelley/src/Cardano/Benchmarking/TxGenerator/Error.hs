@@ -3,7 +3,6 @@ module Cardano.Benchmarking.TxGenerator.Error
   ) where
 
 import           Prelude
-import           Cardano.Api (ApiError)
 import           Cardano.Api.Typed
 import           Cardano.Binary (DecoderError)
 import           Cardano.Benchmarking.TxGenerator.Producer
@@ -17,13 +16,9 @@ data TxGenError =
   -- ^ Need at least 3 signing key files.
   | TooSmallTPSRate !Float
   -- ^ TPS is less than lower limit.
---  | SecretKeyDeserialiseError !Text
---  | SecretKeyReadError !Text
   | UTxOParseError !String
   | AddrParseError !DecoderError
-  | CardanoApiError !ApiError
   | TxFileError !(FileError TextEnvelopeError)
   | TxSubmitError !String
   | Phase1SplitError !PError
-  -- ^ error from Cardana.Api.Error
   deriving Show
