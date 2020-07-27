@@ -30,7 +30,7 @@ else
 fi
 
 # stem of logfile names:
-LOGFILESTEM="node"
+LOGFILESTEM=${LOGFILESTEM:-"node"}
 for N in $(seq 0 $((NNODES - 1))); do
   echo "analysing logs of node ${N}"
   ../../scripts/nodeisleader.sh ${LOGPATH}/${LOGFILESTEM}$((N+1))-*.json | sed -e 's/^\(.*\)$/'${N}',\1/' - > ${OUTDIR}/leader-${N}.csv

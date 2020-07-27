@@ -16,7 +16,7 @@ grep -h '"TraceAdoptedBlock"' $* |
   # extract specific data
   jq -cr 'select(.data.kind=="TraceAdoptedBlock") | [ .data.slot, .at, .data.kind, .data."block hash", .data."block size", (.data."tx ids" | length), .data."tx ids" ]' |
   # reformat timestamp
-  sed -e 's/\([0-9-]\+\)T\([0-9:.]\+\)Z/\1 \2/' > ${TEMPFILE}
+  sed -e 's/\([0-9-]\+\)T\([0-9:.]\+\)Z/\1 \2/;s/\\"//g' > ${TEMPFILE}
 
 OLDIFS=$IFS
 cat "${TEMPFILE}" | {
@@ -25,11 +25,12 @@ cat "${TEMPFILE}" | {
 
     SLOT=$(echo $ln | sed -ne 's/^\[\([0-9]\+\),"\([^"]\+\)","[^"]*","[^"]*",[0-9]\+,[0-9]\+,\[\(.*\)\]\]$/\1/p')
     TSTAMP=$(echo $ln | sed -ne 's/^\[\([0-9]\+\),"\([^"]\+\)","[^"]*","[^"]*",[0-9]\+,[0-9]\+,\[\(.*\)\]\]$/\2/p')
-    TXIDS=$(echo $ln | sed -ne 's/^\[\([0-9]\+\),"\([^"]\+\)","[^"]*","[^"]*",[0-9]\+,[0-9]\+,\[\(.*\)\]\]$/\3/p')
+    TXIDS=$(echo $ln | sed -ne 's/^\[\([0-9]\+\),"\([^"]\+\)","[^"]*","[^"]*",[0-9]\+,[0-9]\+,\[\(.*\)\]\]$/\3/p;' |
+                       sed -e 's/"[^"]*_unTxId = \([a-f0-9]\+\)[^"]*"/\1/g')
     if [ -n "$TXIDS" ]; then
       IFS=","
       for txid in ${TXIDS}; do
-        echo "${txid},\"${TSTAMP}\",${NODENUM},${SLOT}"
+        echo "\"${txid}\",\"${TSTAMP}\",${NODENUM},${SLOT}"
       done
     fi
 
