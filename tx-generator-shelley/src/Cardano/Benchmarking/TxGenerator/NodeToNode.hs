@@ -26,13 +26,15 @@ import           Codec.Serialise (DeserialiseFailure)
 import           Control.Monad.Class.MonadTimer (MonadTimer, threadDelay)
 import           Data.ByteString.Lazy (ByteString)
 import           Data.Proxy (Proxy (..))
+import           Data.Map as Map
 import           Network.Mux (MuxMode(InitiatorMode), WithMuxBearer (..))
 import           Network.Socket (AddrInfo (..), SockAddr)
 
 import           Control.Tracer (Tracer (..), nullTracer)
 import           Ouroboros.Consensus.Byron.Ledger.Mempool (GenTx)
 import           Ouroboros.Consensus.Ledger.SupportsMempool (GenTxId)
-import           Ouroboros.Consensus.Node.NetworkProtocolVersion
+import           Ouroboros.Consensus.Node.NetworkProtocolVersion (supportedNodeToNodeVersions)
+
 import           Ouroboros.Consensus.Node.ProtocolInfo (ProtocolClientInfo, pClientInfoCodecConfig)
 import           Ouroboros.Consensus.Node.Run (RunNode)
 import           Ouroboros.Consensus.Network.NodeToNode (Codecs(..), defaultCodecs)
@@ -92,8 +94,10 @@ benchmarkConnectTxSubmit iocp trs cfg network localAddr remoteAddr myTxSubClient
     (addrAddress remoteAddr)
  where
   myCodecs :: Codecs blk DeserialiseFailure m
-                ByteString ByteString ByteString ByteString ByteString
-  myCodecs  = defaultCodecs (pClientInfoCodecConfig cfg) (mostRecentSupportedNodeToNode (Proxy @blk))
+                ByteString ByteString ByteString ByteString ByteString ByteString
+  myCodecs  = defaultCodecs
+                  (pClientInfoCodecConfig cfg)
+                  ((Map.!) (supportedNodeToNodeVersions $ Proxy @blk ) maxBound)
   peerMultiplex :: Versions NtN.NodeToNodeVersion NtN.DictVersion
                      (OuroborosApplication InitiatorMode SockAddr ByteString IO () Void)
   peerMultiplex =
