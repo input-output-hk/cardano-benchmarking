@@ -21,22 +21,9 @@ After first checkout of the repository, update the submodules:
 $ git submodule update --init
 ```
 
-## Building on Linux / Mac OSX
+## Building on Linux / macOS
 
-The following commands will compile the project and copy the binaries to the directory `./bin/`.
-
-### 1 using `stack`
-
-```
-$ stack --nix build --copy-bins
-```
-
-### 2 using `cabal` (version >= 3)
-
-```
-$ cabal build all
-$ cabal install ext/cardano-node.git/cardano-node:exe:cardano-node --install-method=copy --installdir=./bin
-```
+Please see our [wiki page](https://github.com/input-output-hk/cardano-benchmarking/wiki/BuildingOnUnix).
 
 ## Building on Windows
 
