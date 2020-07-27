@@ -55,8 +55,6 @@
             "--init-cooldown"          init_cooldown
 
             "--sig-key"                sigKey
-            "--sig-key"                sigKey
-            "--sig-key"                sigKey
 
             "--genesis-file"           localNodeConf.nodeConfig.GenesisFile
           ] ++
