@@ -36,7 +36,7 @@ extract_sends() {
           select (.data.kind == "'"${msgty}"'")
         | .at as $at       # bind timestamp
         | .data.txIds      # narrow to the txid list
-        | map ( .[5:]          # cut the "txid: txid: " prefix
+        | map ( .[0:]          # the format saga continues...
               | "\(.);\($at)") # produce the resulting string
         | .[]              # merge string lists over all messages
         ' "$@" |
@@ -56,7 +56,7 @@ extract_recvs() {
           select (.data.kind == "Recv" and .data.msg.kind == "MsgBlock")
         | .at as $at           # bind timestamp
         | .data.msg."tx ids"   # narrow to the txid list
-        | map ( .[5:]          # cut the "txid: txid: " prefix
+        | map ( .[23:87]       # cut the extra stuff
               | "\(.);\($at)") # produce the resulting string
         | .[]              # merge string lists over all messages
         ' $1 |
