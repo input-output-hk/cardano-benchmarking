@@ -8,5 +8,5 @@ grep -h '"TraceAdoptedBlock"' $* |
   # reformat 'HashHeader'
   sed -e 's/HashHeader {unHashHeader = \([a-z0-9]\+\)}/\1/g' |
   # reformat timestamp
-  sed -e 's/\([0-9-]\+\)T\([0-9:.]\+\)Z/\1 \2/' 
+  sed -e 's/\([0-9-]\+\)T\([0-9:.]\+\)Z/\1 \2/; s/"""/"/g' 
 
