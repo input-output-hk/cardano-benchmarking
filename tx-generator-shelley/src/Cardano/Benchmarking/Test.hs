@@ -3,19 +3,21 @@
 {-# LANGUAGE DataKinds #-}
 
 module Cardano.Benchmarking.Test
-  ( testTxPeer
-  )
+--  ( testTxPeer
+--  )
 where
+import           Control.Concurrent
 import           Control.Concurrent.Async
-import qualified Control.Concurrent.STM as STM
-import           Control.Monad (void)
+
+import           Control.Concurrent.STM as STM
+import           Control.Monad (forM_, void)
 import qualified Control.Monad.Class.MonadSTM as MSTM
 import           Control.Monad.IO.Class
 import           Control.Tracer (Tracer, nullTracer)
 
 import           Ouroboros.Consensus.Node.Run (RunNode)
 import           Ouroboros.Consensus.Ledger.SupportsMempool as Mempool (GenTxId,txId)
-import           Ouroboros.Consensus.Shelley.Ledger.Mempool (GenTx)
+import           Ouroboros.Consensus.Shelley.Ledger.Mempool (GenTx , mkShelleyTx)
 
 import           Network.TypedProtocol.Proofs (connectPipelined)
 import           Ouroboros.Network.Protocol.TxSubmission.Client (txSubmissionClientPeer)
@@ -31,48 +33,49 @@ import           Network.TypedProtocol.Pipelined (PeerPipelined)
 import           Cardano.Benchmarking.TxGenerator.Submission
 import           Cardano.Benchmarking.TxGenerator.Types as T
 
+import           Cardano.Api.Typed as Api
+import           Cardano.Slotting.Slot
 
 -- an alternative path is possible via
 -- Ouroboros.Network.Protocol.TxSubmission.Direct.directPipelined
 
-testTxPeer
-  :: forall block txid tx.
-     ( RunNode block
-     , block ~ Block
-     , tx ~ GenTx block
-     )
-  => [tx] -> IO [tx]
+testTxPeer :: forall blk. RunNode blk => [GenTx blk] -> IO [GenTx blk]
 testTxPeer txs = do
   tmv <- MSTM.newEmptyTMVarM
-  terminateEarly <- liftIO $ STM.newTVarIO False
-  txInChan <- liftIO $ STM.newTMVarIO txs
+  terminateEarly <- STM.newTVarIO False
+  txInChan <- STM.newTMVarIO txs
   pipeline <- async $ mockPipeline nullTracer tmv
   generator <- async $ bulkSubmission updROEnv nullTracer terminateEarly txInChan tmv
-  return []
+  threadDelay $ 10 * 1000000
+  atomically $ STM.writeTVar terminateEarly True
+  wait pipeline
   where
-    updROEnv
-        :: ROEnv (Mempool.GenTxId Block) (GenTx Block)
-        -> ROEnv (Mempool.GenTxId Block) (GenTx Block)
+    updROEnv :: ROEnv (Mempool.GenTxId blk) (GenTx blk) -> ROEnv (Mempool.GenTxId blk) (GenTx blk)
     updROEnv defaultROEnv =
         ROEnv { targetBacklog     = targetBacklog defaultROEnv
               , txNumServiceTime  = Just 10 -- minimalTPSRate $ P.tps args
               , txSizeServiceTime = Nothing
               }
 
+mockPipeline
+  :: RunNode block =>
+     Tracer IO NodeToNodeSubmissionTrace
+     -> STM.TMVar (RPCTxSubmission IO (GenTxId block) (GenTx block))
+     -> IO [GenTx block]
 
-mockPipeline tr3 tmv
-  = do
-    (receivedTxs, () , _terminalstate) <- connectPipelined []
+mockPipeline tr3 tmv = do
+  (receivedTxs, () , _terminalstate) <- connectPipelined []
              (txSubmissionServerPeerPipelined mockServer)
              (txSubmissionClientPeer (txSubmissionClient tr3 tmv))
-    return receivedTxs
+  return receivedTxs
 
 mockServer
-  :: TxSubmissionServerPipelined
-       (GenTxId Block)
-       (GenTx Block)
+  :: forall block. RunNode block
+  =>  TxSubmissionServerPipelined
+       (GenTxId block)
+       (GenTx block)
        IO
-       [GenTx Block]
+       [GenTx block]
 mockServer
   = txSubmissionServer
      nullTracer
@@ -83,3 +86,22 @@ mockServer
   where
     maxTxIdsToRequest = 3
     maxTxToRequest    = 2
+
+dummyTx :: Integer -> GenTx Block
+dummyTx f = mkShelleyTx tx
+  where
+    (ShelleyTx tx) = Api.makeSignedTransaction [] $
+      Api.makeShelleyTransaction
+        Api.txExtraContentEmpty
+        ( SlotNo 10000)
+        ( Lovelace f )
+        []
+        []
+
+test i = do
+  receivedTx <- testTxPeer sendTx
+  return $ receivedTx == sendTx
+  where
+    sendTx = map dummyTx [1..i]
+
+t2 = forM_ [1..10] $ \i -> print i >> test i >>= print
