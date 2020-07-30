@@ -2,9 +2,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE DataKinds #-}
 
-module Cardano.Benchmarking.Test
---  ( testTxPeer
---  )
+module Cardano.Benchmarking.MockServer
 where
 import           Control.Concurrent
 import           Control.Concurrent.Async
@@ -25,7 +23,6 @@ import           Ouroboros.Network.Protocol.TxSubmission.Server
                     (TxSubmissionServerPipelined, txSubmissionServerPeerPipelined)
 import           Ouroboros.Network.NodeToNode
                    (MiniProtocolParameters (..), defaultMiniProtocolParameters)
-import           Ouroboros.Network.Protocol.TxSubmission.Examples (txSubmissionServer)
 
 import           Ouroboros.Network.Protocol.TxSubmission.Type (TxSubmission(..))
 import           Network.TypedProtocol.Core (PeerRole(..))
@@ -35,6 +32,8 @@ import           Cardano.Benchmarking.TxGenerator.Types as T
 
 import           Cardano.Api.Typed as Api
 import           Cardano.Slotting.Slot
+
+import           Cardano.Benchmarking.ReferenceServer (txSubmissionServer)
 
 -- an alternative path is possible via
 -- Ouroboros.Network.Protocol.TxSubmission.Direct.directPipelined
@@ -53,7 +52,7 @@ testTxPeer txs = do
     updROEnv :: ROEnv (Mempool.GenTxId blk) (GenTx blk) -> ROEnv (Mempool.GenTxId blk) (GenTx blk)
     updROEnv defaultROEnv =
         ROEnv { targetBacklog     = targetBacklog defaultROEnv
-              , txNumServiceTime  = Just 10 -- minimalTPSRate $ P.tps args
+              , txNumServiceTime  = Just 0.1
               , txSizeServiceTime = Nothing
               }
 
@@ -98,10 +97,9 @@ dummyTx f = mkShelleyTx tx
         []
         []
 
-test i = do
+testPipeline :: [ GenTx Block ] -> IO Bool
+testPipeline sendTx = do
   receivedTx <- testTxPeer sendTx
   return $ receivedTx == sendTx
-  where
-    sendTx = map dummyTx [1..i]
 
-t2 = forM_ [1..10] $ \i -> print i >> test i >>= print
+test = testPipeline $ map dummyTx [1..10]

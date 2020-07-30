@@ -1,3 +1,7 @@
+{--
+this is a copy of
+module Ouroboros.Network.Protocol.TxSubmission.Examples
+-}
 {-# LANGUAGE NamedFieldPuns      #-}
 {-# LANGUAGE BangPatterns        #-}
 {-# LANGUAGE GADTs               #-}
@@ -6,7 +10,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving  #-}
 
-module Ouroboros.Network.Protocol.TxSubmission.Examples (
+module Cardano.Benchmarking.ReferenceServer (
     txSubmissionClient,
     txSubmissionServer,
 
