@@ -97,14 +97,30 @@ executable tx-generator-shelley
 
 test-suite tx-generator-test
   hs-source-dirs:       test
-  main-is:              Spec.hs
+  main-is:              Main.hs
   type:                 exitcode-stdio-1.0
+  other-modules:        Cardano.Benchmarking.MockServer
+                        Cardano.Benchmarking.ReferenceServer
 
   build-depends:        base >=4.12 && <5
+                      , async
+                      , cardano-api
                       , cardano-prelude
+                      , cardano-slotting
+                      , containers
+                      , contra-tracer
+                      , io-sim-classes
+                      , ouroboros-consensus
+                      , ouroboros-consensus-shelley
+                      , ouroboros-network
+                      , tasty-hunit
+                      , tasty-quickcheck
+                      , tasty
+                      , tx-generator-shelley
+                      , typed-protocols
+                      , stm
 
   default-language:     Haskell2010
-  default-extensions:   NoImplicitPrelude
 
   ghc-options:          -Wall
                         -fno-warn-missing-import-lists
