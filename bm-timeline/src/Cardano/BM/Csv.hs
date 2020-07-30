@@ -11,15 +11,17 @@ module Cardano.BM.Csv
     , tuple6_in_columns
     , timestamp_with_list
     , list_to_columns
+    , transpose
     , textify
     , Range
     )
 where
 
-import Data.Text (Text, intercalate, pack)
+import           Control.Applicative (ZipList(..))
+import           Data.Text (Text, intercalate, pack)
 import qualified Data.Text.IO as TIO
 
-import System.IO (Handle)
+import           System.IO (Handle)
 
 type ValTy = Text
 
@@ -40,7 +42,7 @@ named_columns ls =
   where
     enter_ranges :: [([Text], Range)] -> (Int, Range) -> Range
     enter_ranges [] (_w,acc) = acc
-    enter_ranges ((headers, range):r) (w,acc) = 
+    enter_ranges ((headers, range):r) (w,acc) =
       let w2 = length headers
           newcols = headers : range
           rng2 = append_cols (w,acc) (w2,newcols) []
@@ -71,6 +73,9 @@ timestamp_with_list = map (\(a,b) -> a : (map textify b))
 
 list_to_columns :: Show a => [a] -> Range
 list_to_columns ls = [ map textify ls ]
+
+transpose :: Range -> Range
+transpose = getZipList . traverse ZipList
 
 textify :: (Show a) => a -> Text
 textify = pack . show
