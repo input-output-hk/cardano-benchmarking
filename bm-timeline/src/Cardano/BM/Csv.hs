@@ -5,16 +5,23 @@ module Cardano.BM.Csv
       output_csv
     , named_columns
     , pairs_in_columns
+    , tuple3_in_columns
+    , tuple4_in_columns
+    , tuple5_in_columns
+    , tuple6_in_columns
     , timestamp_with_list
     , list_to_columns
+    , transpose
+    , textify
     , Range
     )
 where
 
-import Data.Text (Text, intercalate, pack)
+import           Control.Applicative (ZipList(..))
+import           Data.Text (Text, intercalate, pack)
 import qualified Data.Text.IO as TIO
 
-import System.IO (Handle)
+import           System.IO (Handle)
 
 type ValTy = Text
 
@@ -35,7 +42,7 @@ named_columns ls =
   where
     enter_ranges :: [([Text], Range)] -> (Int, Range) -> Range
     enter_ranges [] (_w,acc) = acc
-    enter_ranges ((headers, range):r) (w,acc) = 
+    enter_ranges ((headers, range):r) (w,acc) =
       let w2 = length headers
           newcols = headers : range
           rng2 = append_cols (w,acc) (w2,newcols) []
@@ -49,11 +56,26 @@ named_columns ls =
 pairs_in_columns :: (Show a, Show b) => [(a,b)] -> Range
 pairs_in_columns = map (\(a,b) -> [textify a, textify b])
 
+tuple3_in_columns :: (Show a, Show b, Show c) => [(a,b,c)] -> Range
+tuple3_in_columns = map (\(a,b,c) -> [textify a, textify b, textify c])
+
+tuple4_in_columns :: (Show a, Show b, Show c, Show d) => [(a,b,c,d)] -> Range
+tuple4_in_columns = map (\(a,b,c,d) -> [textify a, textify b, textify c, textify d])
+
+tuple5_in_columns :: (Show a, Show b, Show c, Show d, Show e) => [(a,b,c,d,e)] -> Range
+tuple5_in_columns = map (\(a,b,c,d,e) -> [textify a, textify b, textify c, textify d, textify e])
+
+tuple6_in_columns :: (Show a, Show b, Show c, Show d, Show e, Show f) => [(a,b,c,d,e,f)] -> Range
+tuple6_in_columns = map (\(a,b,c,d,e,f) -> [textify a, textify b, textify c, textify d, textify e, textify f])
+
 timestamp_with_list :: Show a => [(Text,[a])] -> Range
 timestamp_with_list = map (\(a,b) -> a : (map textify b))
 
 list_to_columns :: Show a => [a] -> Range
 list_to_columns ls = [ map textify ls ]
+
+transpose :: Range -> Range
+transpose = getZipList . traverse ZipList
 
 textify :: (Show a) => a -> Text
 textify = pack . show

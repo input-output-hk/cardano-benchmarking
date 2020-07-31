@@ -13,10 +13,33 @@ extra-source-files:  README.md
 
 executable bmtimeline
   main-is:             Timeline.hs 
-  other-modules:       Cardano.BM.Common
+  other-modules:       Cardano.BM.AddToChain
                      , Cardano.BM.Adopted
-                     , Cardano.BM.AddToChain
+                     , Cardano.BM.Common
+                     , Cardano.BM.Csv
                      , Cardano.BM.Leader
+                     , Cardano.BM.Stats
+  -- other-extensions:
+  build-depends:       base >=4.12 && <4.14
+                     , text
+                     , time
+                     , unordered-containers
+  hs-source-dirs:      src
+  default-language:    Haskell2010
+  default-extensions:  OverloadedStrings
+
+  ghc-options:         -Wall -Werror
+                       -rtsopts
+                       "-with-rtsopts=-T"
+
+executable bmadoption
+  main-is:             Adoption.hs 
+  other-modules:       Cardano.BM.AddToChain
+                     , Cardano.BM.Adopted
+                     , Cardano.BM.Common
+                     , Cardano.BM.Csv
+                     , Cardano.BM.Leader
+                     , Cardano.BM.Stats
   -- other-extensions:
   build-depends:       base >=4.12 && <4.14
                      , text
@@ -53,8 +76,8 @@ executable bmtime2block
 executable bmresources
   main-is:             Resources.hs 
   other-modules:       Cardano.BM.Common
-                     , Cardano.BM.Csv
                      , Cardano.BM.CPUticks
+                     , Cardano.BM.Csv
                      , Cardano.BM.MemResident
                      , Cardano.BM.Stats
   -- other-extensions:
