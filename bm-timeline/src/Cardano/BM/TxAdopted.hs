@@ -5,9 +5,9 @@ module Cardano.BM.TxAdopted
   )
 where
 
-import Data.Text.Lazy (Text, unpack)
+import           Data.Text.Lazy (Text, unpack)
 
-import Cardano.BM.Common
+import           Cardano.BM.Common
 
 data TxAdopted = TxAdopted {
      txid :: Text,

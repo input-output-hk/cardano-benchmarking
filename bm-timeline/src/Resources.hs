@@ -7,20 +7,20 @@ module Main
   )
 where
 
-import Control.Monad (foldM)
-import Data.List (sortOn)
-import Data.Text.Lazy (Text, pack)
+import           Control.Monad (foldM)
+import           Data.List (sortOn)
 import qualified Data.Text as T
+import           Data.Text.Lazy (Text, pack)
 import qualified Data.Text.Lazy as TL
 import qualified Data.Text.Lazy.IO as TLIO
-import Data.Time.Clock (diffUTCTime)
-import System.Environment (getArgs)
-import System.IO (IOMode(..), withFile)
-import Text.Read (readMaybe)
+import           Data.Time.Clock (diffUTCTime)
+import           System.Environment (getArgs)
+import           System.IO (IOMode(..), withFile)
+import           Text.Read (readMaybe)
 
-import Cardano.BM.Common
-import Cardano.BM.Csv
+import           Cardano.BM.Common
 import qualified Cardano.BM.CPUticks as CPUticks
+import           Cardano.BM.Csv
 import qualified Cardano.BM.MemResident as MemResident
 
 

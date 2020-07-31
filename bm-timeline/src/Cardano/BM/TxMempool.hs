@@ -5,9 +5,9 @@ module Cardano.BM.TxMempool
   )
 where
 
-import Data.Text.Lazy (Text, unpack)
+import           Data.Text.Lazy (Text, unpack)
 
-import Cardano.BM.Common
+import           Cardano.BM.Common
 
 data TxMempool = TxMempool {
      txid :: Text,
@@ -24,4 +24,4 @@ instance Lineparser TxMempool where
                                     (parseTS (remquotes ts))
                                     (read . unpack $ n)
     itemFromArray _ = TxMempool "n/a" time0 (-1)
-    
+

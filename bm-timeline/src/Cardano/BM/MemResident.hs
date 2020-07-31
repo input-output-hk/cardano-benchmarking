@@ -5,9 +5,9 @@ module Cardano.BM.MemResident
   )
 where
 
-import Data.Text.Lazy (unpack)
+import           Data.Text.Lazy (unpack)
 
-import Cardano.BM.Common
+import           Cardano.BM.Common
 
 data MemResident = MemResident {
      timestamp :: Timestamp,
