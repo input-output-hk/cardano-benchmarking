@@ -13,8 +13,6 @@ HOSTADDR=127.0.0.1
 # the nodes will listen on ports starting with:
 PORTBASE=3000
 
-GENESISDIR=configuration/genesis
-
 # redirect stderr if LiveView active
 REDIRSTDERR="2>/dev/null"
 REDIRSTDERR=
@@ -33,7 +31,9 @@ tmux split-window -h
 
 mkdir -p logs
 for N in 1 2 3
-do tmux select-pane -t $((N - 1))
+do N1=$((N - 1))
+   N13=$(printf "%03d" $N1)
+   tmux select-pane -t $N1
    tmux send-keys \
      "${TMUX_ENV_PASSTHROUGH[*]}
 
@@ -49,9 +49,11 @@ do tmux select-pane -t $((N - 1))
             --socket-path logs/sockets/${N} \
             --host-addr ${HOSTADDR} --port $((PORTBASE + N - 1)) \
             --config configuration/configuration-node-${N}.yaml \
-            --shelley-kes-key ${GENESISDIR}/node${N}/kes.skey \
-            --shelley-vrf-key ${GENESISDIR}/node${N}/vrf.skey \
-            --shelley-operational-certificate ${GENESISDIR}/node${N}/node.cert \
+            --signing-key            ${GENESISDIR_byron}/delegate-keys.$N13.key \
+            --delegation-certificate ${GENESISDIR_byron}/delegation-cert.$N13.json \
+            --shelley-kes-key ${GENESISDIR_shelley}/node${N}/kes.skey \
+            --shelley-vrf-key ${GENESISDIR_shelley}/node${N}/vrf.skey \
+            --shelley-operational-certificate ${GENESISDIR_shelley}/node${N}/node.cert \
             " ${REDIRSTDERR} \
      C-m
 done

@@ -1,6 +1,7 @@
 
 # the directory of the fresh genesis and keys
-GENESISDIR=configuration/genesis
+GENESISDIR_byron=configuration/genesis-byron
+GENESISDIR_shelley=configuration/genesis-shelley
 
 # genesis parameters
 GEN_SLOTLENGTH="0.2"
@@ -13,7 +14,7 @@ GEN_DECENTRALISATIONPARAM="0.5"
 MAGIC=42
 
 # total supply of Lovelaces in genesis
-TOTAL_SUPPLY=1000000000000
+TOTAL_SUPPLY=100000000000000
 
 # supply of pool-delegated Lovelaces in genesis
 POOL_SUPPLY=$((TOTAL_SUPPLY / 2))
@@ -56,3 +57,10 @@ txfee=1000000
 
 # number of transactions for cli benchmarking
 NUM_OF_ADDRESSES=1000
+
+start_time_file=configuration/start-time
+if test -f $start_time_file
+then start_time=$(cat $start_time_file)
+else start_time=$(date --date='5 seconds' +%s)
+     echo -n $start_time > $start_time_file
+fi

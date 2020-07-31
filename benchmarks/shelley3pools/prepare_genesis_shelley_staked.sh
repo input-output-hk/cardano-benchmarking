@@ -9,7 +9,7 @@ basedir=$(realpath "$(dirname "$0")")
 
 cd "$basedir"
 
-gendir=$GENESISDIR
+gendir=$GENESISDIR_shelley
 cli=${CLICMD:-'run cardano-cli'}
 
 ###
@@ -106,7 +106,7 @@ mv "$gendir"/genesis.spec.json.  "$gendir"/genesis.spec.json
 params=(--genesis-dir      "$gendir"
         --testnet-magic    "$MAGIC"
         --supply           "$TOTAL_SUPPLY"
-        --start-time       "$(date --iso-8601=s --date='5 seconds' --utc | cut -c-19)Z"
+        --start-time       "$(date --iso-8601=s --date=@$start_time --utc | cut -c-19)Z"
        )
 ## update genesis from template
 $cli shelley genesis create "${params[@]}"
@@ -254,5 +254,8 @@ jq '. +
       } + $initialFundsOfPools)
    }
    ' "${params[@]}" \
- < "$gendir"/genesis.json > "$gendir"/genesis.json.
-mv "$gendir"/genesis.json.  "$gendir"/genesis.json
+ < "$gendir"/genesis.json        > "$gendir"/genesis.json.
+mv "$gendir"/genesis.json.         "$gendir"/genesis.json
+
+$cli shelley genesis hash --genesis "$gendir"/genesis.json |
+        tr -d '"' > "$gendir"/GENHASH

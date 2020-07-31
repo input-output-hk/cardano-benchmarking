@@ -1,5 +1,6 @@
 
-configuration/genesis
+configuration/genesis*
+configuration/start-time
 
 db/
 logs/

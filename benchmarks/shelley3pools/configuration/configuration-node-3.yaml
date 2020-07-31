@@ -3,10 +3,16 @@
 ############### Cardano Byron Node Configuration #########
 ##########################################################
 
+ByronGenesisFile: genesis-byron/genesis.json
+ByronGenesisHash: 
+ShelleyGenesisFile: genesis-shelley/genesis.json
+ShelleyGenesisHash: 
 
-##### Locations #####
 
-GenesisFile: genesis/genesis.json
+
+
+PBftSignatureThreshold: 0.5
+TestShelleyHardForkAtEpoch: 1
 
 ##### Core protocol parameters #####
 
@@ -14,7 +20,7 @@ GenesisFile: genesis/genesis.json
 # The node also supports various test and mock instances.
 # "RealPBFT" is the real (ie not mock) (permissive) OBFT protocol, which
 # is what we use on mainnet in Byron era.
-Protocol: TPraos
+Protocol: 
 
 # The mainnet does not include the network magic into addresses. Testnets do.
 RequiresNetworkMagic: RequiresMagic
