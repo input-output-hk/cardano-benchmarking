@@ -4,8 +4,8 @@ module Cardano.Benchmarking.GeneratorTx.Error
   ( TxGenError (..)
   ) where
 
-import           Cardano.Prelude
 import           Cardano.Api.Typed
+import           Cardano.Prelude
 
 data TxGenError =
     CurrentlyCannotSendTxToRelayNode !FilePath

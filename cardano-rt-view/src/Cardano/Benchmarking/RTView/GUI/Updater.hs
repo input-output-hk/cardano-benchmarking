@@ -6,49 +6,30 @@ module Cardano.Benchmarking.RTView.GUI.Updater
     ( updateGUI
     ) where
 
-import           Cardano.Prelude hiding ( (%) )
-import           Prelude
-                   ( String )
+import           Cardano.Prelude hiding ((%))
 import qualified Data.List as L
-import           Data.Map.Strict
-                   ( (!) )
-import           Data.Time.Calendar
-                   ( Day (..) )
-import           Data.Time.Clock
-                   ( NominalDiffTime, UTCTime (..)
-                   , addUTCTime
-                   )
-import           Data.Time.Format
-                   ( defaultTimeLocale, formatTime )
-import           Data.Text
-                   ( unpack )
-import           Formatting
-                   ( sformat, fixed, (%) )
-import           GHC.Clock
-                   ( getMonotonicTimeNSec )
+import           Data.Map.Strict ((!))
+import           Data.Text (unpack)
+import           Data.Time.Calendar (Day (..))
+import           Data.Time.Clock (NominalDiffTime, UTCTime (..), addUTCTime)
+import           Data.Time.Format (defaultTimeLocale, formatTime)
+import           Formatting (fixed, sformat, (%))
+import           GHC.Clock (getMonotonicTimeNSec)
 import qualified Graphics.UI.Threepenny as UI
-import           Graphics.UI.Threepenny.Core
-                   ( Element, UI
-                   , (#), (#.), (#+), children, element
-                   , set, style, text
-                   )
+import           Graphics.UI.Threepenny.Core (Element, UI, children, element, set, style, text,
+                                              ( # ), ( #+ ), ( #. ))
+import           Prelude (String)
 
-import           Cardano.BM.Data.Configuration
-                   ( RemoteAddrNamed (..), RemoteAddr (..) )
-import           Cardano.BM.Data.Severity
-                   ( Severity (..) )
-import           Cardano.Benchmarking.RTView.CLI
-                   ( RTViewParams (..) )
+import           Cardano.Benchmarking.RTView.CLI (RTViewParams (..))
 import qualified Cardano.Benchmarking.RTView.GUI.Charts as Chart
-import           Cardano.Benchmarking.RTView.GUI.Elements
-                   ( ElementName (..), ElementValue (..)
-                   , NodeStateElements, NodesStateElements
-                   , PeerInfoItem (..), PeerInfoElements (..)
-                   )
-import           Cardano.Benchmarking.RTView.NodeState.Types
-                   ( NodeInfo (..), NodeMetrics (..), NodeError (..)
-                   , NodeState (..), NodesState, PeerInfo (..)
-                   )
+import           Cardano.Benchmarking.RTView.GUI.Elements (ElementName (..), ElementValue (..),
+                                                           NodeStateElements, NodesStateElements,
+                                                           PeerInfoElements (..), PeerInfoItem (..))
+import           Cardano.Benchmarking.RTView.NodeState.Types (NodeError (..), NodeInfo (..),
+                                                              NodeMetrics (..), NodeState (..),
+                                                              NodesState, PeerInfo (..))
+import           Cardano.BM.Data.Configuration (RemoteAddr (..), RemoteAddrNamed (..))
+import           Cardano.BM.Data.Severity (Severity (..))
 
 -- | This function is calling by the timer. It updates the node' state elements
 --   on the page automatically, because threepenny-gui is based on websockets.
@@ -90,7 +71,7 @@ updatePaneGUI window nodesState params acceptors nodesStateElems = do
     void $ updateElementValue (ElementString  $ niNodePlatform ni)            $ elements ! ElNodePlatform
     void $ updateNodeCommit   (niNodeCommit ni) (niNodeShortCommit ni)        $ elements ! ElNodeCommitHref
     void $ updateElementValue (ElementString activeNodeMark)                  $ elements ! ElActiveNode
-    void $ updateNodeUpTime   (niUpTime ni)                                   $ elements ! ElUptime 
+    void $ updateNodeUpTime   (niUpTime ni)                                   $ elements ! ElUptime
     void $ updateElementValue (ElementInteger $ niEpoch ni)                   $ elements ! ElEpoch
     void $ updateElementValue (ElementInteger $ niSlot ni)                    $ elements ! ElSlot
     void $ updateElementValue (ElementInteger $ niBlocksNumber ni)            $ elements ! ElBlocksNumber

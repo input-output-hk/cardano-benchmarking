@@ -14,147 +14,149 @@ module Cardano.Benchmarking.RTView.NodeState.Types
     ) where
 
 import           Cardano.Prelude
-import           Prelude
-                   ( String )
-import           Control.DeepSeq
-                   ( NFData (..) )
+import           Control.DeepSeq (NFData (..))
+import           Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
-import           Data.Map.Strict
-                   ( Map )
-import           Data.Time.Calendar
-                   ( Day (..) )
-import           Data.Time.Clock
-                   ( UTCTime (..) )
+import           Data.Time.Calendar (Day (..))
+import           Data.Time.Clock (UTCTime (..))
+import           Prelude (String)
 
-import           Cardano.BM.Configuration
-                   ( Configuration )
+import           Cardano.BM.Configuration (Configuration)
 import qualified Cardano.BM.Configuration.Model as CM
-import           Cardano.BM.Data.Severity
-                   ( Severity )
-import           Cardano.BM.Data.Configuration
-                   ( RemoteAddrNamed (..) )
+import           Cardano.BM.Data.Configuration (RemoteAddrNamed (..))
+import           Cardano.BM.Data.Severity (Severity)
 
 type NodesState = Map Text NodeState
 
-data NodeState = NodeState
-  { nsInfo    :: !NodeInfo
-  , nsMetrics :: !NodeMetrics
-  } deriving (Generic, NFData, Show)
+data NodeState
+  = NodeState
+      { nsInfo    :: !NodeInfo
+      , nsMetrics :: !NodeMetrics
+      }
+  deriving (Generic, NFData, Show)
 
-data PeerInfo = PeerInfo
-  { piEndpoint   :: !String
-  , piBytesInF   :: !String
-  , piReqsInF    :: !String
-  , piBlocksInF  :: !String
-  , piSlotNumber :: !String
-  , piStatus     :: !String
-  } deriving (Eq, Generic, NFData, Show)
+data PeerInfo
+  = PeerInfo
+      { piEndpoint   :: !String
+      , piBytesInF   :: !String
+      , piReqsInF    :: !String
+      , piBlocksInF  :: !String
+      , piSlotNumber :: !String
+      , piStatus     :: !String
+      }
+  deriving (Eq, Generic, NFData, Show)
 
 -- Severity type already has Generic instance.
 instance NFData Severity
 
-data NodeError = NodeError
-  { eTimestamp :: !UTCTime
-  , eSeverity  :: !Severity
-  , eMessage   :: !String
-  } deriving (Generic, NFData, Show)
+data NodeError
+  = NodeError
+      { eTimestamp :: !UTCTime
+      , eSeverity  :: !Severity
+      , eMessage   :: !String
+      }
+  deriving (Generic, NFData, Show)
 
-data NodeInfo = NodeInfo
-  { niNodeRelease                   :: !String
-  , niNodeVersion                   :: !String
-  , niNodeCommit                    :: !String
-  , niNodeShortCommit               :: !String
-  , niNodePlatform                  :: !String
-  , niUpTime                        :: !Word64
-  , niUpTimeLastUpdate              :: !Word64
-  , niEpoch                         :: !Integer
-  , niEpochLastUpdate               :: !Word64
-  , niSlot                          :: !Integer
-  , niSlotLastUpdate                :: !Word64
-  , niNodeIsLeaderNum               :: !Integer
-  , niNodeIsLeaderNumLastUpdate     :: !Word64
-  , niSlotsMissedNumber             :: !Integer
-  , niSlotsMissedNumberLastUpdate   :: !Word64
-  , niBlocksNumber                  :: !Integer
-  , niBlocksNumberLastUpdate        :: !Word64
-  , niBlocksForgedNumber            :: !Integer
-  , niBlocksForgedNumberLastUpdate  :: !Word64
-  , niNodeCannotLead                :: !Integer
-  , niChainDensity                  :: !Double
-  , niChainDensityLastUpdate        :: !Word64
-  , niTxsProcessed                  :: !Integer
-  , niPeersNumber                   :: !Integer
-  , niPeersInfo                     :: ![PeerInfo]
-  , niTraceAcceptorHost             :: !String
-  , niTraceAcceptorPort             :: !String
-  , niRemainingKESPeriods           :: !Integer
-  , niRemainingKESPeriodsLastUpdate :: !Word64
-  , niOpCertStartKESPeriod          :: !Integer
-  , niOpCertStartKESPeriodLastUpdate :: !Word64
-  , niCurrentKESPeriod              :: !Integer
-  , niCurrentKESPeriodLastUpdate    :: !Word64
-  , niNodeErrors                    :: ![NodeError]
-  } deriving (Generic, NFData, Show)
+data NodeInfo
+  = NodeInfo
+      { niNodeRelease                    :: !String
+      , niNodeVersion                    :: !String
+      , niNodeCommit                     :: !String
+      , niNodeShortCommit                :: !String
+      , niNodePlatform                   :: !String
+      , niUpTime                         :: !Word64
+      , niUpTimeLastUpdate               :: !Word64
+      , niEpoch                          :: !Integer
+      , niEpochLastUpdate                :: !Word64
+      , niSlot                           :: !Integer
+      , niSlotLastUpdate                 :: !Word64
+      , niNodeIsLeaderNum                :: !Integer
+      , niNodeIsLeaderNumLastUpdate      :: !Word64
+      , niSlotsMissedNumber              :: !Integer
+      , niSlotsMissedNumberLastUpdate    :: !Word64
+      , niBlocksNumber                   :: !Integer
+      , niBlocksNumberLastUpdate         :: !Word64
+      , niBlocksForgedNumber             :: !Integer
+      , niBlocksForgedNumberLastUpdate   :: !Word64
+      , niNodeCannotLead                 :: !Integer
+      , niChainDensity                   :: !Double
+      , niChainDensityLastUpdate         :: !Word64
+      , niTxsProcessed                   :: !Integer
+      , niPeersNumber                    :: !Integer
+      , niPeersInfo                      :: ![PeerInfo]
+      , niTraceAcceptorHost              :: !String
+      , niTraceAcceptorPort              :: !String
+      , niRemainingKESPeriods            :: !Integer
+      , niRemainingKESPeriodsLastUpdate  :: !Word64
+      , niOpCertStartKESPeriod           :: !Integer
+      , niOpCertStartKESPeriodLastUpdate :: !Word64
+      , niCurrentKESPeriod               :: !Integer
+      , niCurrentKESPeriodLastUpdate     :: !Word64
+      , niNodeErrors                     :: ![NodeError]
+      }
+  deriving (Generic, NFData, Show)
 
-data NodeMetrics = NodeMetrics
-  { nmMempoolTxsNumber          :: !Word64
-  , nmMempoolTxsPercent         :: !Double
-  , nmMempoolBytes              :: !Word64
-  , nmMempoolBytesPercent       :: !Double
-  , nmMempoolMaxTxs             :: !Integer
-  , nmMempoolMaxBytes           :: !Integer
-  , nmMemory                    :: !Double
-  , nmMemoryMax                 :: !Double
-  , nmMemoryMaxTotal            :: !Double
-  , nmMemoryPercent             :: !Double
-  , nmMemoryLastUpdate          :: !Word64
-  , nmCPUPercent                :: !Double
-  , nmCPULast                   :: !Integer
-  , nmCPUNs                     :: !Word64
-  , nmCPULastUpdate             :: !Word64
-  , nmDiskUsageR                :: !Double
-  , nmDiskUsageRMax             :: !Double
-  , nmDiskUsageRMaxTotal        :: !Double
-  , nmDiskUsageRPercent         :: !Double
-  , nmDiskUsageRLast            :: !Word64
-  , nmDiskUsageRNs              :: !Word64
-  , nmDiskUsageRAdaptTime       :: !UTCTime
-  , nmDiskUsageRLastUpdate      :: !Word64
-  , nmDiskUsageW                :: !Double
-  , nmDiskUsageWMax             :: !Double
-  , nmDiskUsageWMaxTotal        :: !Double
-  , nmDiskUsageWPercent         :: !Double
-  , nmDiskUsageWLast            :: !Word64
-  , nmDiskUsageWNs              :: !Word64
-  , nmDiskUsageWAdaptTime       :: !UTCTime
-  , nmDiskUsageWLastUpdate      :: !Word64
-  , nmNetworkUsageIn            :: !Double
-  , nmNetworkUsageInPercent     :: !Double
-  , nmNetworkUsageInMax         :: !Double
-  , nmNetworkUsageInMaxTotal    :: !Double
-  , nmNetworkUsageInLast        :: !Word64
-  , nmNetworkUsageInNs          :: !Word64
-  , nmNetworkUsageInLastUpdate  :: !Word64
-  , nmNetworkUsageOut           :: !Double
-  , nmNetworkUsageOutPercent    :: !Double
-  , nmNetworkUsageOutMax        :: !Double
-  , nmNetworkUsageOutMaxTotal   :: !Double
-  , nmNetworkUsageOutLast       :: !Word64
-  , nmNetworkUsageOutNs         :: !Word64
-  , nmNetworkUsageOutLastUpdate :: !Word64
-  , nmRTSMemoryAllocated        :: !Double
-  , nmRTSMemoryUsed             :: !Double
-  , nmRTSMemoryUsedPercent      :: !Double
-  , nmRTSMemoryLastUpdate       :: !Word64
-  , nmRTSGcCpu                  :: !Double
-  , nmRTSGcCpuLastUpdate        :: !Word64
-  , nmRTSGcElapsed              :: !Double
-  , nmRTSGcElapsedLastUpdate    :: !Word64
-  , nmRTSGcNum                  :: !Integer
-  , nmRTSGcNumLastUpdate        :: !Word64
-  , nmRTSGcMajorNum             :: !Integer
-  , nmRTSGcMajorNumLastUpdate   :: !Word64
-  } deriving (Generic, NFData, Show)
+data NodeMetrics
+  = NodeMetrics
+      { nmMempoolTxsNumber          :: !Word64
+      , nmMempoolTxsPercent         :: !Double
+      , nmMempoolBytes              :: !Word64
+      , nmMempoolBytesPercent       :: !Double
+      , nmMempoolMaxTxs             :: !Integer
+      , nmMempoolMaxBytes           :: !Integer
+      , nmMemory                    :: !Double
+      , nmMemoryMax                 :: !Double
+      , nmMemoryMaxTotal            :: !Double
+      , nmMemoryPercent             :: !Double
+      , nmMemoryLastUpdate          :: !Word64
+      , nmCPUPercent                :: !Double
+      , nmCPULast                   :: !Integer
+      , nmCPUNs                     :: !Word64
+      , nmCPULastUpdate             :: !Word64
+      , nmDiskUsageR                :: !Double
+      , nmDiskUsageRMax             :: !Double
+      , nmDiskUsageRMaxTotal        :: !Double
+      , nmDiskUsageRPercent         :: !Double
+      , nmDiskUsageRLast            :: !Word64
+      , nmDiskUsageRNs              :: !Word64
+      , nmDiskUsageRAdaptTime       :: !UTCTime
+      , nmDiskUsageRLastUpdate      :: !Word64
+      , nmDiskUsageW                :: !Double
+      , nmDiskUsageWMax             :: !Double
+      , nmDiskUsageWMaxTotal        :: !Double
+      , nmDiskUsageWPercent         :: !Double
+      , nmDiskUsageWLast            :: !Word64
+      , nmDiskUsageWNs              :: !Word64
+      , nmDiskUsageWAdaptTime       :: !UTCTime
+      , nmDiskUsageWLastUpdate      :: !Word64
+      , nmNetworkUsageIn            :: !Double
+      , nmNetworkUsageInPercent     :: !Double
+      , nmNetworkUsageInMax         :: !Double
+      , nmNetworkUsageInMaxTotal    :: !Double
+      , nmNetworkUsageInLast        :: !Word64
+      , nmNetworkUsageInNs          :: !Word64
+      , nmNetworkUsageInLastUpdate  :: !Word64
+      , nmNetworkUsageOut           :: !Double
+      , nmNetworkUsageOutPercent    :: !Double
+      , nmNetworkUsageOutMax        :: !Double
+      , nmNetworkUsageOutMaxTotal   :: !Double
+      , nmNetworkUsageOutLast       :: !Word64
+      , nmNetworkUsageOutNs         :: !Word64
+      , nmNetworkUsageOutLastUpdate :: !Word64
+      , nmRTSMemoryAllocated        :: !Double
+      , nmRTSMemoryUsed             :: !Double
+      , nmRTSMemoryUsedPercent      :: !Double
+      , nmRTSMemoryLastUpdate       :: !Word64
+      , nmRTSGcCpu                  :: !Double
+      , nmRTSGcCpuLastUpdate        :: !Word64
+      , nmRTSGcElapsed              :: !Double
+      , nmRTSGcElapsedLastUpdate    :: !Word64
+      , nmRTSGcNum                  :: !Integer
+      , nmRTSGcNumLastUpdate        :: !Word64
+      , nmRTSGcMajorNum             :: !Integer
+      , nmRTSGcMajorNumLastUpdate   :: !Word64
+      }
+  deriving (Generic, NFData, Show)
 
 defaultNodesState
   :: Configuration

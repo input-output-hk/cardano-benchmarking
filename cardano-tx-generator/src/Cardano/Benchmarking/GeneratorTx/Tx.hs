@@ -29,25 +29,25 @@ module Cardano.Benchmarking.GeneratorTx.Tx
   )
 where
 
+import           Cardano.Prelude hiding (TypeError)
 import           Prelude (error)
 import qualified Prelude
-import           Cardano.Prelude hiding (TypeError)
 
 import qualified Data.ByteString as SB
 import qualified Data.ByteString.Lazy as LB
-import qualified Data.Map.Strict as Map
 import qualified Data.List.NonEmpty as NonEmpty
+import qualified Data.Map.Strict as Map
 import qualified Data.Text as T
 
 -- Era-agnostic imports
-import           Cardano.Binary (Annotated(..), reAnnotate)
-import qualified Cardano.Crypto.Hash.Class  as Crypto
-import           Ouroboros.Consensus.Block.Abstract (SlotNo(..))
+import           Cardano.Binary (Annotated (..), reAnnotate)
+import qualified Cardano.Crypto.Hash.Class as Crypto
+import           Ouroboros.Consensus.Block.Abstract (SlotNo (..))
 import           Ouroboros.Consensus.Ledger.SupportsMempool hiding (TxId)
 
 -- Byron-specific imports
 import qualified Cardano.Chain.Common as Byron
-import qualified Cardano.Chain.UTxO   as Byron
+import qualified Cardano.Chain.UTxO as Byron
 import qualified Cardano.Crypto.Hashing as Byron
 import qualified Ouroboros.Consensus.Byron.Ledger as Byron hiding (TxId)
 
@@ -58,10 +58,10 @@ import qualified Shelley.Spec.Ledger.Address as Shelley
 import qualified Shelley.Spec.Ledger.Coin as Shelley
 import qualified Shelley.Spec.Ledger.TxData as ShelleyLedger
 
-import Cardano.Api.Typed
-import Cardano.Api.TxSubmit
-import Cardano.Benchmarking.GeneratorTx.Era
-import Cardano.Benchmarking.GeneratorTx.Tx.Byron
+import           Cardano.Api.TxSubmit
+import           Cardano.Api.Typed
+import           Cardano.Benchmarking.GeneratorTx.Era
+import           Cardano.Benchmarking.GeneratorTx.Tx.Byron
 
 
 castTxMode :: Tx era -> TxForMode (ModeOf era)
@@ -70,7 +70,7 @@ castTxMode tx@ShelleyTx{} = TxForShelleyMode tx
 
 toGenTx :: Tx era -> GenTx (BlockOf era)
 toGenTx (ShelleyTx tx) = Shelley.mkShelleyTx tx
-toGenTx (ByronTx tx) = normalByronTxToGenTx tx
+toGenTx (ByronTx tx)   = normalByronTxToGenTx tx
 
 fromGenTxId :: Era era -> GenTxId (BlockOf era) -> TxId
 fromGenTxId EraShelley{} (Shelley.ShelleyTxId (ShelleyLedger.TxId i))  = TxId (Crypto.castHash i)
@@ -92,7 +92,7 @@ fromByronTxOut (Byron.TxOut addr coin) =
 
 fromShelleyAddr :: Shelley.Addr TPraosStandardCrypto -> Address Shelley
 fromShelleyAddr (Shelley.Addr nw pc scr) = ShelleyAddress nw pc scr
-fromShelleyAddr _ = error "fromShelleyAddr:  unhandled Shelley.Addr case"
+fromShelleyAddr _                        = error "fromShelleyAddr:  unhandled Shelley.Addr case"
 
 fromShelleyLovelace :: Shelley.Coin -> Lovelace
 fromShelleyLovelace (Shelley.Coin l) = Lovelace l

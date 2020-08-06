@@ -1,7 +1,7 @@
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE GADTs #-}
-{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
@@ -14,33 +14,35 @@ module Cardano.Benchmarking.GeneratorTx.NodeToNode
   ( benchmarkConnectTxSubmit
   ) where
 
-import           Prelude
 import           Cardano.Prelude (Void, forever)
+import           Prelude
 
 import           Codec.Serialise (DeserialiseFailure)
 import           Control.Monad.Class.MonadTimer (MonadTimer, threadDelay)
 import           Data.ByteString.Lazy (ByteString)
 import qualified Data.Map as Map
 import           Data.Proxy (Proxy (..))
-import           Network.Mux (MuxMode(InitiatorMode))
+import           Network.Mux (MuxMode (InitiatorMode))
 import           Network.Socket (AddrInfo (..), SockAddr)
 
 import           Control.Tracer (nullTracer)
 import           Ouroboros.Consensus.Byron.Ledger.Mempool (GenTx)
 import           Ouroboros.Consensus.Ledger.SupportsMempool (GenTxId)
+import           Ouroboros.Consensus.Network.NodeToNode (Codecs (..), defaultCodecs)
 import           Ouroboros.Consensus.Node.NetworkProtocolVersion
 import           Ouroboros.Consensus.Node.Run (RunNode)
-import           Ouroboros.Consensus.Network.NodeToNode (Codecs(..), defaultCodecs)
 
-import           Ouroboros.Network.Channel(Channel(..))
-import           Ouroboros.Network.Mux
-                   (OuroborosApplication(..), MuxPeer(..), RunMiniProtocol(..))
+import           Ouroboros.Network.Channel (Channel (..))
+import           Ouroboros.Network.Mux (MuxPeer (..), OuroborosApplication (..),
+                                        RunMiniProtocol (..))
+import           Ouroboros.Network.NodeToClient (chainSyncPeerNull)
 import           Ouroboros.Network.NodeToNode (NetworkConnectTracers (..))
 import qualified Ouroboros.Network.NodeToNode as NtN
-import           Ouroboros.Network.NodeToClient (chainSyncPeerNull)
-import           Ouroboros.Network.Protocol.BlockFetch.Client (BlockFetchClient(..), blockFetchClientPeer)
+import           Ouroboros.Network.Protocol.BlockFetch.Client (BlockFetchClient (..),
+                                                               blockFetchClientPeer)
 import           Ouroboros.Network.Protocol.Handshake.Version (Versions, simpleSingletonVersions)
-import           Ouroboros.Network.Protocol.TxSubmission.Client (TxSubmissionClient, txSubmissionClientPeer)
+import           Ouroboros.Network.Protocol.TxSubmission.Client (TxSubmissionClient,
+                                                                 txSubmissionClientPeer)
 import           Ouroboros.Network.Snocket (socketSnocket)
 
 import           Cardano.Benchmarking.GeneratorTx.Era

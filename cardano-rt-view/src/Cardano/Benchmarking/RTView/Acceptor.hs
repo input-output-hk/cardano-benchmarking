@@ -6,16 +6,12 @@ module Cardano.Benchmarking.RTView.Acceptor
 
 import           Cardano.Prelude
 
-import           Cardano.BM.Backend.Switchboard
-                   ( Switchboard )
+import           Cardano.BM.Backend.Switchboard (Switchboard)
 import qualified Cardano.BM.Backend.TraceAcceptor as TraceAcceptor
-import           Cardano.BM.Configuration
-                   ( Configuration )
+import           Cardano.BM.Configuration (Configuration)
 import           Cardano.BM.IOManager
-import           Cardano.BM.Plugin
-                   ( loadPlugin )
-import           Cardano.BM.Trace
-                   ( Trace )
+import           Cardano.BM.Plugin (loadPlugin)
+import           Cardano.BM.Trace (Trace)
 
 -- | It is assumed that there's at least one cardano-node process
 --   that sends its metrics as |LogObject|s via |TraceForwarder|.

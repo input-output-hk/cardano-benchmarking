@@ -1,9 +1,9 @@
 module Main (main) where
 
-import Test.Tasty
-import Test.Tasty.HUnit
+import           Test.Tasty
+import           Test.Tasty.HUnit
 
-import Cardano.Benchmarking.MockServer as MockServer
+import           Cardano.Benchmarking.MockServer as MockServer
 
 main :: IO ()
 main = defaultMain tests

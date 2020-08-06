@@ -15,7 +15,7 @@ import qualified Data.Text.Lazy as TL
 import qualified Data.Text.Lazy.IO as TLIO
 import           Data.Time.Clock (diffUTCTime)
 import           System.Environment (getArgs)
-import           System.IO (IOMode(..), withFile)
+import           System.IO (IOMode (..), withFile)
 import           Text.Read (readMaybe)
 
 import           Cardano.BM.Common
@@ -120,8 +120,8 @@ processCPUticks nnodes ticks = process_cputicks' ticks (replicate nnodes Nothing
                     , setAt nodeid (Just cputicks) lastticks )
 
 setAt :: Int -> a -> [a] -> [a]
-setAt _ _val [] = []
-setAt 0 val (_v : vs) = val : vs
+setAt _ _val []        = []
+setAt 0 val (_v : vs)  = val : vs
 setAt idx val (v : vs) = v : setAt (idx - 1) val vs
 
 loadCPUticks :: FilePath -> [CPUticks.CPUticks] -> NodeId -> IO [CPUticks.CPUticks]

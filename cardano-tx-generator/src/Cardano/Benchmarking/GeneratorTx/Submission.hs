@@ -33,43 +33,41 @@ module Cardano.Benchmarking.GeneratorTx.Submission
   , tpsLimitedTxFeeder
   ) where
 
-import           Prelude (fail)
 import           Cardano.Prelude hiding (ByteString, atomically, retry, threadDelay)
+import           Prelude (fail)
 
 import           Control.Arrow ((&&&))
 import           Control.Concurrent (threadDelay)
 import           Control.Concurrent.STM (STM)
-import           Control.Concurrent.STM.TBQueue (TBQueue)
 import qualified Control.Concurrent.STM as STM
+import           Control.Concurrent.STM.TBQueue (TBQueue)
 import           Control.Monad (replicateM)
 
 import qualified Data.List as L
 import qualified Data.List.Extra as L
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Text as T
-import           Data.Time.Clock
-                   ( NominalDiffTime, UTCTime)
+import           Data.Time.Clock (NominalDiffTime, UTCTime)
 import qualified Data.Time.Clock as Clock
 
 import           Control.Tracer (Tracer, traceWith)
 
-import           Cardano.TracingOrphanInstances.Byron()
-import           Cardano.TracingOrphanInstances.Common()
-import           Cardano.TracingOrphanInstances.Consensus()
-import           Cardano.TracingOrphanInstances.Mock()
-import           Cardano.TracingOrphanInstances.Network()
-import           Cardano.TracingOrphanInstances.Shelley()
+import           Cardano.TracingOrphanInstances.Byron ()
+import           Cardano.TracingOrphanInstances.Common ()
+import           Cardano.TracingOrphanInstances.Consensus ()
+import           Cardano.TracingOrphanInstances.Mock ()
+import           Cardano.TracingOrphanInstances.Network ()
+import           Cardano.TracingOrphanInstances.Shelley ()
 
 import           Ouroboros.Consensus.Ledger.SupportsMempool (txInBlockSize)
 import qualified Ouroboros.Consensus.Ledger.SupportsMempool as Mempool
 
-import           Ouroboros.Network.Protocol.TxSubmission.Client (ClientStIdle(..),
-                                                                 ClientStTxs(..),
-                                                                 ClientStTxIds(..),
-                                                                 TxSubmissionClient(..))
-import           Ouroboros.Network.Protocol.TxSubmission.Type (BlockingReplyList(..),
-                                                               TokBlockingStyle(..),
-                                                               TxSizeInBytes)
+import           Ouroboros.Network.Protocol.TxSubmission.Client (ClientStIdle (..),
+                                                                 ClientStTxIds (..),
+                                                                 ClientStTxs (..),
+                                                                 TxSubmissionClient (..))
+import           Ouroboros.Network.Protocol.TxSubmission.Type (BlockingReplyList (..),
+                                                               TokBlockingStyle (..), TxSizeInBytes)
 
 import           Cardano.Api.Typed
 
@@ -83,20 +81,20 @@ import           Cardano.Benchmarking.GeneratorTx.Tx
 
 data SubmissionParams
   = SubmissionParams
-    { spTps         :: !TPSRate
-    , spTargets     :: !Natural
-    , spQueueLen    :: !Natural
-    }
+      { spTps      :: !TPSRate
+      , spTargets  :: !Natural
+      , spQueueLen :: !Natural
+      }
 
 data Submission (m :: Type -> Type) (era :: Type)
   = Submission
-    { sParams      :: !SubmissionParams
-    , sStartTime   :: !UTCTime
-    , sThreads     :: !Natural
-    , sTxSendQueue :: !(TBQueue (Maybe (Tx era)))
-    , sReportsRefs :: ![STM.TMVar SubmissionThreadReport]
-    , sTrace       :: !(Tracer m (TraceBenchTxSubmit TxId))
-    }
+      { sParams      :: !SubmissionParams
+      , sStartTime   :: !UTCTime
+      , sThreads     :: !Natural
+      , sTxSendQueue :: !(TBQueue (Maybe (Tx era)))
+      , sReportsRefs :: ![STM.TMVar SubmissionThreadReport]
+      , sTrace       :: !(Tracer m (TraceBenchTxSubmit TxId))
+      }
 
 mkSubmission
   :: MonadIO m
@@ -114,17 +112,17 @@ mkSubmission sTrace sParams@SubmissionParams{spTargets=sThreads, spQueueLen} = l
 -------------------------------------------------------------------------------}
 data SubmissionThreadStats
   = SubmissionThreadStats
-    { stsAcked         :: {-# UNPACK #-} !Ack
-    , stsSent          :: {-# UNPACK #-} !Sent
-    , stsUnavailable   :: {-# UNPACK #-} !Unav
-    }
+      { stsAcked       :: {-# UNPACK #-} !Ack
+      , stsSent        :: {-# UNPACK #-} !Sent
+      , stsUnavailable :: {-# UNPACK #-} !Unav
+      }
 
 data SubmissionThreadReport
   = SubmissionThreadReport
-    { strStats         :: !SubmissionThreadStats
-    , strThreadIndex   :: !Natural
-    , strEndOfProtocol :: !UTCTime
-    }
+      { strStats         :: !SubmissionThreadStats
+      , strThreadIndex   :: !Natural
+      , strEndOfProtocol :: !UTCTime
+      }
 
 mkSubmissionSummary
   :: MonadIO m

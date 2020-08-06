@@ -9,15 +9,17 @@ import           Data.Text.Lazy (Text, unpack)
 
 import           Cardano.BM.Common
 
-data Adopted = Adopted {
-     node :: NodeId,
-     slot :: SlotNum,
-     timestamp :: Timestamp,
-     msg :: Text,
-     blockhash :: Text,
-     ntx :: Int,
-     bsz :: Int
-  } deriving (Show)
+data Adopted
+  = Adopted
+      { node      :: NodeId
+      , slot      :: SlotNum
+      , timestamp :: Timestamp
+      , msg       :: Text
+      , blockhash :: Text
+      , ntx       :: Int
+      , bsz       :: Int
+      }
+  deriving (Show)
 
 instance Lineparser Adopted where
     -- example:

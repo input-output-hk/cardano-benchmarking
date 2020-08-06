@@ -1,35 +1,23 @@
-{-# LANGUAGE OverloadedStrings   #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Cardano.Benchmarking.RTView.Server
     ( launchServer
     ) where
 
-import           Cardano.Prelude hiding ( readMVar )
+import           Cardano.Prelude hiding (readMVar)
 
-import           Control.Concurrent.MVar.Strict
-                   ( MVar
-                   , readMVar
-                   )
+import           Control.Concurrent.MVar.Strict (MVar, readMVar)
 import qualified Graphics.UI.Threepenny as UI
-import           Graphics.UI.Threepenny.Core
-                   ( UI
-                   , (#), (#+), onEvent, set
-                   )
-import           Graphics.UI.Threepenny.Timer
-                   ( start, tick, timer, interval )
+import           Graphics.UI.Threepenny.Core (UI, onEvent, set, ( # ), ( #+ ))
+import           Graphics.UI.Threepenny.Timer (interval, start, tick, timer)
 
-import           Cardano.BM.Data.Configuration
-                   ( RemoteAddrNamed (..) )
+import           Cardano.BM.Data.Configuration (RemoteAddrNamed (..))
 
-import           Cardano.Benchmarking.RTView.CLI
-                   ( RTViewParams (..) )
-import           Cardano.Benchmarking.RTView.NodeState.Types
-                   ( NodesState )
-import           Cardano.Benchmarking.RTView.GUI.Markup
-                   ( mkPageBody )
-import           Cardano.Benchmarking.RTView.GUI.Updater
-                   ( updateGUI )
+import           Cardano.Benchmarking.RTView.CLI (RTViewParams (..))
+import           Cardano.Benchmarking.RTView.GUI.Markup (mkPageBody)
+import           Cardano.Benchmarking.RTView.GUI.Updater (updateGUI)
+import           Cardano.Benchmarking.RTView.NodeState.Types (NodesState)
 
 -- | Launch web server.
 launchServer

@@ -9,12 +9,14 @@ import           Data.Text.Lazy (Text, unpack)
 
 import           Cardano.BM.Common
 
-data Leader = Leader {
-     node :: NodeId,
-     slot :: SlotNum,
-     timestamp :: Timestamp,
-     msg :: Text
-  } deriving (Show)
+data Leader
+  = Leader
+      { node      :: NodeId
+      , slot      :: SlotNum
+      , timestamp :: Timestamp
+      , msg       :: Text
+      }
+  deriving (Show)
 
 instance Lineparser Leader where
     -- example:

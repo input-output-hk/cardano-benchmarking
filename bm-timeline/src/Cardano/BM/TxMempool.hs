@@ -9,11 +9,13 @@ import           Data.Text.Lazy (Text, unpack)
 
 import           Cardano.BM.Common
 
-data TxMempool = TxMempool {
-     txid :: Text,
-     timestamp :: Timestamp,
-     node :: NodeId
-  } deriving (Show)
+data TxMempool
+  = TxMempool
+      { txid      :: Text
+      , timestamp :: Timestamp
+      , node      :: NodeId
+      }
+  deriving (Show)
 
 instance Lineparser TxMempool where
     -- example:

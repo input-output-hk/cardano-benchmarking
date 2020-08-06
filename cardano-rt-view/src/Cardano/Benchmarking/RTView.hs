@@ -5,52 +5,28 @@ module Cardano.Benchmarking.RTView
     ( runCardanoRTView
     ) where
 
-import           Cardano.Prelude hiding ( newMVar )
+import           Cardano.Prelude hiding (newMVar)
 
-import           Control.Concurrent.Async
-                   ( async, waitAnyCancel )
-import           Control.Concurrent.MVar.Strict
-                   ( MVar
-                   , newMVar
-                   )
-import           Data.List
-                   ( nub, nubBy )
+import           Control.Concurrent.Async (async, waitAnyCancel)
+import           Control.Concurrent.MVar.Strict (MVar, newMVar)
+import           Data.List (nub, nubBy)
 import qualified System.Exit as Ex
 
-import           Cardano.BM.Backend.Switchboard
-                   ( addUserDefinedBackend )
-import           Cardano.BM.Configuration
-                   ( Configuration
-                   , getAcceptAt, setup
-                   )
-import           Cardano.BM.Data.Configuration
-                   ( RemoteAddrNamed (..), RemoteAddr (..) )
-import           Cardano.BM.Data.Backend
-                   ( Backend (..) )
+import           Cardano.BM.Backend.Switchboard (addUserDefinedBackend)
+import           Cardano.BM.Configuration (Configuration, getAcceptAt, setup)
+import           Cardano.BM.Data.Backend (Backend (..))
+import           Cardano.BM.Data.Configuration (RemoteAddr (..), RemoteAddrNamed (..))
 import qualified Cardano.BM.Setup as Setup
-import           Cardano.BM.Trace
-                   ( Trace
-                   , logNotice
-                   )
-import           Cardano.BM.Tracing
-                   ( appendName )
+import           Cardano.BM.Trace (Trace, logNotice)
+import           Cardano.BM.Tracing (appendName)
 
-import           Cardano.Benchmarking.RTView.CLI
-                   ( RTViewParams (..) )
-import           Cardano.Benchmarking.RTView.Acceptor
-                   ( launchMetricsAcceptor )
-import           Cardano.Benchmarking.RTView.ErrorBuffer
-                   ( ErrorBuffer
-                   , effectuate, realize, unrealize
-                   )
-import           Cardano.Benchmarking.RTView.NodeState.Types
-                   ( NodesState
-                   , defaultNodesState
-                   )
-import           Cardano.Benchmarking.RTView.NodeState.Updater
-                   ( launchNodeStateUpdater )
-import           Cardano.Benchmarking.RTView.Server
-                   ( launchServer )
+import           Cardano.Benchmarking.RTView.Acceptor (launchMetricsAcceptor)
+import           Cardano.Benchmarking.RTView.CLI (RTViewParams (..))
+import           Cardano.Benchmarking.RTView.ErrorBuffer (ErrorBuffer, effectuate, realize,
+                                                          unrealize)
+import           Cardano.Benchmarking.RTView.NodeState.Types (NodesState, defaultNodesState)
+import           Cardano.Benchmarking.RTView.NodeState.Updater (launchNodeStateUpdater)
+import           Cardano.Benchmarking.RTView.Server (launchServer)
 
 -- | Run the service.
 runCardanoRTView :: RTViewParams -> IO ()

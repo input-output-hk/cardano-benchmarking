@@ -1,6 +1,5 @@
-{-# LANGUAGE BangPatterns          #-}
-{-# LANGUAGE FlexibleInstances     #-}
-{-# LANGUAGE LambdaCase            #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 
 module Cardano.Benchmarking.RTView.ErrorBuffer
@@ -11,26 +10,18 @@ module Cardano.Benchmarking.RTView.ErrorBuffer
     , unrealize
     ) where
 
-import           Cardano.Prelude hiding ( modifyMVar, newMVar, readMVar )
+import           Cardano.Prelude hiding (modifyMVar, newMVar, readMVar)
 
-import           Control.Concurrent.MVar
-                   ( MVar
-                   , modifyMVar, newMVar, readMVar
-                   )
+import           Control.Concurrent.MVar (MVar, modifyMVar, newMVar, readMVar)
 import qualified Control.Concurrent.STM.TBQueue as TBQ
 
-import           Data.Aeson
-                   ( FromJSON )
+import           Data.Aeson (FromJSON)
 import qualified Data.Text.IO as TIO
-import           System.IO
-                   ( stderr )
+import           System.IO (stderr)
 
-import           Cardano.BM.Data.Backend
-                   ( BackendKind (..), IsBackend (..), IsEffectuator (..) )
-import           Cardano.BM.Data.LogItem
-                   ( LOContent (..), LOMeta (..), LoggerName, LogObject (..) )
-import           Cardano.BM.Data.Severity
-                   ( Severity (..) )
+import           Cardano.BM.Data.Backend (BackendKind (..), IsBackend (..), IsEffectuator (..))
+import           Cardano.BM.Data.LogItem (LOContent (..), LOMeta (..), LogObject (..), LoggerName)
+import           Cardano.BM.Data.Severity (Severity (..))
 
 -- | All |LogObject|s accepted by |TraceAcceptor| plugin
 --   will be decoded and traced to 'cardano-rt-view.acceptor'.
@@ -43,9 +34,10 @@ newtype ErrorBuffer a = ErrorBuffer
   { getErrBuf :: MVar (ErrorBufferInternal a)
   }
 
-data ErrorBufferInternal a = ErrorBufferInternal
-  { errQueue :: TBQ.TBQueue (LoggerName, LogObject a)
-  }
+data ErrorBufferInternal a
+  = ErrorBufferInternal
+      { errQueue :: TBQ.TBQueue (LoggerName, LogObject a)
+      }
 
 -- | Once we read the current content of the queue, it should be cleaned.
 readErrorBuffer :: ErrorBuffer a -> IO [(LoggerName, LogObject a)]

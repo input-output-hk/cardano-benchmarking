@@ -4,23 +4,16 @@ module Cardano.Benchmarking.GeneratorTx.CLI.Parsers
 where
 
 import           Cardano.Prelude hiding (option)
-import           Prelude (String)
-import           Options.Applicative
-                    ( Parser
-                    , auto, bashCompleter, completer, flag, help
-                    , long, metavar, option, strOption
-                    )
 import qualified Control.Arrow as Arr
 import           Network.Socket (PortNumber)
+import           Options.Applicative (Parser, auto, bashCompleter, completer, flag, help, long,
+                                      metavar, option, strOption)
+import           Prelude (String)
 
 import           Cardano.Api.Typed
-import           Ouroboros.Consensus.Block.Abstract(SlotNo(..))
-import           Cardano.Config.Types
-                    ( SigningKeyFile(..)
-                    , SocketPath(..)
-                    , NodeAddress(..)
-                    , NodeHostAddress(..)
-                    )
+import           Cardano.Config.Types (NodeAddress (..), NodeHostAddress (..), SigningKeyFile (..),
+                                       SocketPath (..))
+import           Ouroboros.Consensus.Block.Abstract (SlotNo (..))
 
 
 lastly :: Parser a -> Parser (Last a)

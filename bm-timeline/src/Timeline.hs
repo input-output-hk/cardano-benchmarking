@@ -14,7 +14,7 @@ import qualified Data.Text.Lazy as TL
 import qualified Data.Text.Lazy.IO as TLIO
 import           Data.Time.Clock (diffUTCTime)
 import           System.Environment (getArgs)
-import           System.IO (Handle, IOMode(..), withFile)
+import           System.IO (Handle, IOMode (..), withFile)
 import           Text.Read (readMaybe)
 
 import qualified Cardano.BM.AddToChain as AddToChain

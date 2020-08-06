@@ -1,5 +1,5 @@
-{-# LANGUAGE GADTs #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 
@@ -7,45 +7,28 @@ module Cardano.Benchmarking.TxGenerator.CLI.Run
   ( runCommand
   ) where
 
+import           Data.Text (pack)
+import           Data.Version (showVersion)
 import qualified Prelude ()
-import           Data.Version
-                    ( showVersion )
-import           Data.Text
-                    ( pack )
 -- todo: fix
 --import           Paths_tx_generator_shelley
 --                    ( version )
 
 import           Cardano.Prelude hiding (option)
-import           Control.Monad.Trans.Except.Extra
-                    ( firstExceptT )
+import           Control.Monad.Trans.Except.Extra (firstExceptT)
 
 import           Ouroboros.Network.Block (MaxSlotNo (..))
-import           Ouroboros.Network.NodeToClient
-                    ( IOManager
-                    , withIOManager
-                    )
+import           Ouroboros.Network.NodeToClient (IOManager, withIOManager)
 
-import           Cardano.Node.Logging
-                    ( createLoggingLayer )
+import           Cardano.Node.Logging (createLoggingLayer)
 
-import           Cardano.Node.Types
-                    ( ConfigYamlFilePath(..)
-                    , NodeCLI(..)
-                    )
-import           Cardano.Config.Types
-                    ( DbFile(..), ConfigError(..)
-                    , ProtocolFilepaths(..)
-                    , SocketPath (..)
-                    , NodeProtocolMode(..)
-                    , TopologyFile(..))
+import           Cardano.Config.Types (ConfigError (..), DbFile (..), NodeProtocolMode (..),
+                                       ProtocolFilepaths (..), SocketPath (..), TopologyFile (..))
+import           Cardano.Node.Types (ConfigYamlFilePath (..), NodeCLI (..))
 
-import           Cardano.Benchmarking.TxGenerator.Error
-                    ( TxGenError )
-import qualified Cardano.Benchmarking.TxGenerator.CLI.Parsers as P
-                    ( GenerateTxs (..) )
-import           Cardano.Benchmarking.TxGenerator
-                    ( genesisBenchmarkRunner )
+import           Cardano.Benchmarking.TxGenerator (genesisBenchmarkRunner)
+import qualified Cardano.Benchmarking.TxGenerator.CLI.Parsers as P (GenerateTxs (..))
+import           Cardano.Benchmarking.TxGenerator.Error (TxGenError)
 
 data CliError
   = FileNotFoundError !FilePath

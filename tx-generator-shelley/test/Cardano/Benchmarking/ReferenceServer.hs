@@ -2,13 +2,13 @@
 this is a copy of
 module Ouroboros.Network.Protocol.TxSubmission.Examples
 -}
-{-# LANGUAGE NamedFieldPuns      #-}
-{-# LANGUAGE BangPatterns        #-}
-{-# LANGUAGE GADTs               #-}
-{-# LANGUAGE DataKinds           #-}
-{-# LANGUAGE KindSignatures      #-}
+{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE StandaloneDeriving  #-}
+{-# LANGUAGE StandaloneDeriving #-}
 
 module Cardano.Benchmarking.ReferenceServer (
     txSubmissionClient,
@@ -18,20 +18,20 @@ module Cardano.Benchmarking.ReferenceServer (
     TraceEventServer(..),
   ) where
 
+import           Data.Foldable as Foldable (foldl', foldr, toList)
+import           Data.List.NonEmpty (NonEmpty (..))
 import qualified Data.List.NonEmpty as NonEmpty
-import           Data.List.NonEmpty (NonEmpty(..))
-import           Data.Word (Word16)
-import qualified Data.Map.Strict as Map
 import           Data.Map.Strict (Map)
-import qualified Data.Sequence.Strict as Seq
+import qualified Data.Map.Strict as Map
 import           Data.Sequence.Strict (StrictSeq)
-import           Data.Foldable as Foldable (foldr, foldl', toList)
+import qualified Data.Sequence.Strict as Seq
+import           Data.Word (Word16)
 
-import           Control.Monad (when)
 import           Control.Exception (assert)
+import           Control.Monad (when)
 import           Control.Tracer (Tracer, traceWith)
 
-import           Network.TypedProtocol.Pipelined (N, Nat(..))
+import           Network.TypedProtocol.Pipelined (N, Nat (..))
 
 import           Ouroboros.Network.Protocol.TxSubmission.Client
 import           Ouroboros.Network.Protocol.TxSubmission.Server
@@ -171,40 +171,14 @@ data TraceEventServer txid tx =
 
 deriving instance (Show txid, Show tx) => Show (TraceEventServer txid tx)
 
-data ServerState txid tx = ServerState {
-       -- | The number of transaction identifiers that we have requested but
-       -- which have not yet been replied to. We need to track this it keep
-       -- our requests within the limit on the number of unacknowledged txids.
-       --
-       requestedTxIdsInFlight :: Word16,
-
-       -- | Those transactions (by their identifier) that the client has told
-       -- us about, and which we have not yet acknowledged. This is kept in
-       -- the order in which the client gave them to us. This is the same order
-       -- in which we submit them to the mempool (or for this example, the final
-       -- result order). It is also the order we acknowledge in.
-       unacknowledgedTxIds :: StrictSeq txid,
-
-       -- | Those transactions (by their identifier) that we can request. These
-       -- are a subset of the 'unacknowledgedTxIds' that we have not yet
-       -- requested. This is not ordered to illustrate the fact that we can
-       -- request txs out of order. We also remember the sizes, though this
-       -- example does not make use of the size information.
-       availableTxids      :: Map txid TxSizeInBytes,
-
-       -- | Transactions we have successfully downloaded but have not yet added
-       -- to the mempool or acknowledged. This is needed because we request
-       -- transactions out of order but we must use the original order when
-       -- adding to the mempool or acknowledging transactions.
-       --
-       bufferedTxs         :: Map txid (Maybe tx),
-
-       -- | The number of transactions we can acknowledge on our next request
-       -- for more transactions. The number here have already been removed from
-       -- 'unacknowledgedTxIds'.
-       --
-       numTxsToAcknowledge :: Word16
-     }
+data ServerState txid tx
+  = ServerState
+      { requestedTxIdsInFlight :: Word16
+      , unacknowledgedTxIds    :: StrictSeq txid
+      , availableTxids         :: Map txid TxSizeInBytes
+      , bufferedTxs            :: Map txid (Maybe tx)
+      , numTxsToAcknowledge    :: Word16
+      }
   deriving Show
 
 initialServerState :: ServerState txid tx

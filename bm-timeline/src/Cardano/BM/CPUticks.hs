@@ -9,11 +9,13 @@ import           Data.Text.Lazy (unpack)
 
 import           Cardano.BM.Common
 
-data CPUticks = CPUticks {
-     timestamp :: Timestamp,
-     ticks :: Int,
-     node :: NodeId
-  } deriving (Show)
+data CPUticks
+  = CPUticks
+      { timestamp :: Timestamp
+      , ticks     :: Int
+      , node      :: NodeId
+      }
+  deriving (Show)
 
 instance Lineparser CPUticks where
     -- example:

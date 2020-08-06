@@ -20,8 +20,7 @@ module Cardano.Benchmarking.RTView.GUI.Charts
     ) where
 
 import           Cardano.Prelude
-import           Prelude
-                   ( String )
+import           Prelude (String)
 
 prepareChartsJS :: String
 prepareChartsJS = concat

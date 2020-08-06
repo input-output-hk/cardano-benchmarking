@@ -17,7 +17,7 @@ module Cardano.BM.Csv
     )
 where
 
-import           Control.Applicative (ZipList(..))
+import           Control.Applicative (ZipList (..))
 import           Data.Text (Text, intercalate, pack)
 import qualified Data.Text.IO as TIO
 

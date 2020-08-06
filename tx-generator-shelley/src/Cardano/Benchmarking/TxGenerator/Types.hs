@@ -12,29 +12,28 @@ import           Data.Aeson (ToJSON (..), (.=))
 import qualified Data.Aeson as A
 import           Data.ByteString (ByteString)
 import qualified Data.HashMap.Strict as HM
-import qualified Data.Text as T
 import           Data.Text (Text)
+import qualified Data.Text as T
 import           Data.Time.Clock (DiffTime, getCurrentTime)
 import           Data.Word
 
-import           Cardano.BM.Tracing
 import           Cardano.BM.Data.LogItem
 import           Cardano.BM.Data.Tracer (emptyObject, mkObject, trStructured)
+import           Cardano.BM.Tracing
 
 import           Cardano.TracingOrphanInstances.Byron ()
 import           Cardano.TracingOrphanInstances.Common ()
 import           Cardano.TracingOrphanInstances.Consensus ()
 import           Cardano.TracingOrphanInstances.Mock ()
-import           Cardano.TracingOrphanInstances.Shelley ()
 import           Cardano.TracingOrphanInstances.Network ()
+import           Cardano.TracingOrphanInstances.Shelley ()
 
 import qualified Cardano.Chain.UTxO as CC.UTxO
 
+import           Ouroboros.Consensus.Byron.Ledger.Mempool as Mempool (GenTx)
+import           Ouroboros.Consensus.Ledger.SupportsMempool as Mempool (GenTxId, TxId)
 import           Ouroboros.Consensus.Shelley.Ledger.Block (ShelleyBlock)
 import           Ouroboros.Consensus.Shelley.Protocol.Crypto (TPraosStandardCrypto)
-import           Ouroboros.Consensus.Byron.Ledger.Mempool as Mempool (GenTx)
-import           Ouroboros.Consensus.Ledger.SupportsMempool as Mempool
-                   ( GenTxId, TxId)
 import           Ouroboros.Network.Driver (TraceSendRecv (..))
 import qualified Ouroboros.Network.Protocol.TxSubmission.Type as TS
 

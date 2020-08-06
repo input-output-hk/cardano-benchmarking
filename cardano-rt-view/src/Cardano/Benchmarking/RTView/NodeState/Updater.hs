@@ -16,49 +16,28 @@ module Cardano.Benchmarking.RTView.NodeState.Updater
     ( launchNodeStateUpdater
     ) where
 
-import           Cardano.Prelude hiding ( modifyMVar_ )
+import           Cardano.Prelude hiding (modifyMVar_)
 
-import           Control.Concurrent.MVar.Strict
-                   ( MVar
-                   , modifyMVar_
-                   )
+import           Cardano.BM.Backend.Switchboard (Switchboard, readLogBuffer)
+import           Cardano.BM.Data.Aggregated (Measurable (..))
+import           Cardano.BM.Data.Counter (Platform (..))
+import           Cardano.BM.Data.LogItem (LOContent (..), LOMeta (..), LogObject (..),
+                                          MonitorAction (..), utc2ns)
+import           Cardano.BM.Trace (Trace)
+import           Control.Concurrent.MVar.Strict (MVar, modifyMVar_)
 import qualified Data.Aeson as A
-import           Data.List
-                   ( (!!) )
+import           Data.List ((!!))
+import           Data.Map.Strict ((!?))
 import qualified Data.Map.Strict as Map
-import           Data.Map.Strict
-                   ( (!?) )
 import qualified Data.Text as T
-import           Data.Time.Clock
-                   ( NominalDiffTime
-                   , diffUTCTime
-                   )
-import           GHC.Clock
-                   ( getMonotonicTimeNSec )
-import           Cardano.BM.Backend.Switchboard
-                   ( Switchboard, readLogBuffer )
-import           Cardano.BM.Data.Aggregated
-                   ( Measurable (..) )
-import           Cardano.BM.Data.Counter
-                   ( Platform (..) )
-import           Cardano.BM.Data.LogItem
-                   ( LOContent (..), LOMeta (..), LogObject (..)
-                   , MonitorAction (..)
-                   , utc2ns
-                   )
-import           Cardano.BM.Trace
-                   ( Trace )
+import           Data.Time.Clock (NominalDiffTime, diffUTCTime)
+import           GHC.Clock (getMonotonicTimeNSec)
 
-import           Cardano.Benchmarking.RTView.ErrorBuffer
-                   ( ErrorBuffer
-                   , readErrorBuffer
-                   )
-import           Cardano.Benchmarking.RTView.NodeState.Parsers
-                   ( extractPeersInfo )
-import           Cardano.Benchmarking.RTView.NodeState.Types
-                   ( NodesState, NodeState (..), NodeInfo (..)
-                   , NodeMetrics (..), NodeError (..)
-                   )
+import           Cardano.Benchmarking.RTView.ErrorBuffer (ErrorBuffer, readErrorBuffer)
+import           Cardano.Benchmarking.RTView.NodeState.Parsers (extractPeersInfo)
+import           Cardano.Benchmarking.RTView.NodeState.Types (NodeError (..), NodeInfo (..),
+                                                              NodeMetrics (..), NodeState (..),
+                                                              NodesState)
 
 -- | This function is running in a separate thread.
 --   It takes |LogObject|s with nodes' metrics from |LogBuffer|,

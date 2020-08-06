@@ -6,22 +6,16 @@ module Cardano.Benchmarking.RTView.GUI.NodeWidget
     ) where
 
 import           Cardano.Prelude
-import           Prelude
-                   ( String )
 import qualified Data.Map.Strict as Map
 import qualified Data.Text as T
+import           Prelude (String)
 
 import qualified Graphics.UI.Threepenny as UI
-import           Graphics.UI.Threepenny.Core
-                   ( Element, UI
-                   , (#), (#+), (#.)
-                   , element, set, string
-                   )
+import           Graphics.UI.Threepenny.Core (Element, UI, element, set, string, ( # ), ( #+ ),
+                                              ( #. ))
 
-import           Cardano.Benchmarking.RTView.GUI.Elements
-                   ( ElementName (..), NodeStateElements
-                   , PeerInfoItem (..), PeerInfoElements (..)
-                   )
+import           Cardano.Benchmarking.RTView.GUI.Elements (ElementName (..), NodeStateElements,
+                                                           PeerInfoElements (..), PeerInfoItem (..))
 
 mkNodeWidget
   :: Text
@@ -159,7 +153,7 @@ mkNodeWidget nameOfNode = do
   elNodePlatformOutdateWarning   <- infoMark "The value is outdated"
   elNodeCommitHrefOutdateWarning <- infoMark "The value is outdated"
   elUptimeOutdateWarning         <- infoMark "The value is outdated"
-  
+
   elOpCertStartKESPeriodOutdateWarning <- infoMark "The value is outdated"
   elCurrentKESPeriodOutdateWarning     <- infoMark "The value is outdated"
   elRemainingKESPeriodsOutdateWarning  <- infoMark "The value is outdated"
@@ -252,7 +246,7 @@ mkNodeWidget nameOfNode = do
                      ]
                  , vSpacer "node-info-v-spacer"
                  , UI.div #. "" #+ [UI.span # set UI.html "&nbsp;" #+ []]
-                 , UI.div #. "" #+ [UI.span # set UI.html "&nbsp;" #+ []] 
+                 , UI.div #. "" #+ [UI.span # set UI.html "&nbsp;" #+ []]
                  ]
              ]
          ]
@@ -584,7 +578,7 @@ mkNodeWidget nameOfNode = do
                      ]
                  ]
              ]
-         ] 
+         ]
 
   -- List of node errors, it will be changed dynamically!
   elNodeErrorsList <- UI.div #. "" #+ []

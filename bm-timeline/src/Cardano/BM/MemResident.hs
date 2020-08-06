@@ -9,11 +9,13 @@ import           Data.Text.Lazy (unpack)
 
 import           Cardano.BM.Common
 
-data MemResident = MemResident {
-     timestamp :: Timestamp,
-     memresident :: Int,
-     node :: NodeId
-  } deriving (Show)
+data MemResident
+  = MemResident
+      { timestamp   :: Timestamp
+      , memresident :: Int
+      , node        :: NodeId
+      }
+  deriving (Show)
 
 instance Lineparser MemResident where
     -- example:
