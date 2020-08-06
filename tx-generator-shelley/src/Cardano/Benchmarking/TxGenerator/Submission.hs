@@ -22,34 +22,32 @@ module Cardano.Benchmarking.TxGenerator.Submission
   , txSubmissionClient
   ) where
 
-import           Prelude (error, id)
 import           Cardano.Prelude hiding (ByteString, atomically, retry, threadDelay)
+import           Prelude (error, id)
 
 import           Control.Exception (assert)
-import           Control.Monad.Class.MonadSTM (MonadSTM, TMVar, TVar,
-                   atomically, newEmptyTMVarM, putTMVar, readTVar, retry,
-                   takeTMVar, tryTakeTMVar)
-import           Control.Monad.Class.MonadTime (MonadTime(..), Time, addTime,
-                   diffTime, getMonotonicTime)
+import           Control.Monad.Class.MonadSTM (MonadSTM, TMVar, TVar, atomically, newEmptyTMVarM,
+                                               putTMVar, readTVar, retry, takeTMVar, tryTakeTMVar)
+import           Control.Monad.Class.MonadTime (MonadTime (..), Time, addTime, diffTime,
+                                                getMonotonicTime)
 import           Control.Monad.Class.MonadTimer (threadDelay)
+import           Control.Tracer (Tracer, traceWith)
 import           Data.List.NonEmpty (fromList)
 import qualified Data.Sequence as Seq
 import qualified Data.Set as Set
 import           Data.Time.Clock (DiffTime)
-import           Control.Tracer (Tracer, traceWith)
 
-import           Ouroboros.Consensus.Byron.Ledger.Mempool as Mempool (GenTx)
-import           Ouroboros.Consensus.Ledger.SupportsMempool as Mempool
-                   ( GenTxId, HasTxId, txId, txInBlockSize)
-import           Ouroboros.Consensus.Node.Run (RunNode(..))
-import           Ouroboros.Network.Protocol.TxSubmission.Client (ClientStIdle(..),
-                                                                 ClientStTxs(..),
-                                                                 ClientStTxIds(..),
-                                                                 TxSubmissionClient(..))
-import           Ouroboros.Network.Protocol.TxSubmission.Type (BlockingReplyList(..),
-                                                               TokBlockingStyle(..),
-                                                               TxSizeInBytes)
 import           Cardano.Benchmarking.TxGenerator.Types
+import           Ouroboros.Consensus.Byron.Ledger.Mempool as Mempool (GenTx)
+import           Ouroboros.Consensus.Ledger.SupportsMempool as Mempool (GenTxId, HasTxId, txId,
+                                                                        txInBlockSize)
+import           Ouroboros.Consensus.Node.Run (RunNode (..))
+import           Ouroboros.Network.Protocol.TxSubmission.Client (ClientStIdle (..),
+                                                                 ClientStTxIds (..),
+                                                                 ClientStTxs (..),
+                                                                 TxSubmissionClient (..))
+import           Ouroboros.Network.Protocol.TxSubmission.Type (BlockingReplyList (..),
+                                                               TokBlockingStyle (..), TxSizeInBytes)
 
 -- | Bulk submisson of transactions.
 --
@@ -300,11 +298,15 @@ bulkSubmission updEnv tr termVar txIn rpcIn =
 data ActivityState = Idle | Busy deriving (Eq)
 
 -- | The readonly environment
-data ROEnv txid tx = ROEnv
-  { targetBacklog     :: Int -- ^ how many to try to keep in back pocket, >0
-  , txNumServiceTime  :: Maybe DiffTime -- ^ seconds per tx
-  , txSizeServiceTime :: Maybe DiffTime -- ^ seconds per tx octet
-  } deriving Show
+data ROEnv txid tx
+  = ROEnv
+      { targetBacklog     :: Int -- ^ how many to try to keep in back pocket, >0
+        -- ^ seconds per tx
+      , txNumServiceTime  :: Maybe DiffTime -- ^ seconds per tx
+        -- ^ seconds per tx octet
+      , txSizeServiceTime :: Maybe DiffTime -- ^ seconds per tx octet
+      }
+  deriving Show
 
 defaultROEnv :: ROEnv txid tx
 defaultROEnv = ROEnv
@@ -313,15 +315,15 @@ defaultROEnv = ROEnv
   , txSizeServiceTime = Nothing
   }
 
-data RWEnv m txid tx = RWEnv
-  { terminating     :: Bool
-  , activityState   :: ActivityState
-  , proceedAfter    :: Time
-  , availableOp     :: Maybe (Int, TMVar m (Maybe [(txid, TxSizeInBytes)]))
-  -- ^ the window and the response action
-  , inFlight
-  , notYetSent      :: Seq (txid, tx,  TxSizeInBytes)
-  }
+data RWEnv m txid tx
+  = RWEnv
+      { terminating          :: Bool
+      , activityState        :: ActivityState
+      , proceedAfter         :: Time
+      , availableOp          :: Maybe (Int, TMVar m (Maybe [(txid, TxSizeInBytes)]))
+        -- ^ the window and the response action
+      , inFlight, notYetSent :: Seq (txid, tx, TxSizeInBytes)
+      }
 
 defaultRWEnv :: MonadTime m => m (RWEnv m txid tx)
 defaultRWEnv = do

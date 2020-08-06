@@ -1,7 +1,7 @@
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE GADTs #-}
-{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
@@ -18,16 +18,16 @@ module Cardano.Benchmarking.TxGenerator.NodeToNode
   , benchmarkConnectTxSubmit
   ) where
 
-import           Prelude
 import           Cardano.Prelude (Void, forever)
+import           Prelude
 
 import qualified Codec.CBOR.Term as CBOR
 import           Codec.Serialise (DeserialiseFailure)
 import           Control.Monad.Class.MonadTimer (MonadTimer, threadDelay)
 import           Data.ByteString.Lazy (ByteString)
-import           Data.Proxy (Proxy (..))
 import           Data.Map as Map
-import           Network.Mux (MuxMode(InitiatorMode), WithMuxBearer (..))
+import           Data.Proxy (Proxy (..))
+import           Network.Mux (MuxMode (InitiatorMode), WithMuxBearer (..))
 import           Network.Socket (AddrInfo (..), SockAddr)
 
 import           Control.Tracer (Tracer (..), nullTracer)
@@ -35,23 +35,25 @@ import           Ouroboros.Consensus.Byron.Ledger.Mempool (GenTx)
 import           Ouroboros.Consensus.Ledger.SupportsMempool (GenTxId)
 import           Ouroboros.Consensus.Node.NetworkProtocolVersion (supportedNodeToNodeVersions)
 
+import           Ouroboros.Consensus.Network.NodeToNode (Codecs (..), defaultCodecs)
 import           Ouroboros.Consensus.Node.ProtocolInfo (ProtocolClientInfo, pClientInfoCodecConfig)
 import           Ouroboros.Consensus.Node.Run (RunNode)
-import           Ouroboros.Consensus.Network.NodeToNode (Codecs(..), defaultCodecs)
 import           Ouroboros.Network.Driver (TraceSendRecv (..))
-import           Ouroboros.Network.Mux
-                   (OuroborosApplication(..), MuxPeer(..), RunMiniProtocol(..))
+import           Ouroboros.Network.Magic (NetworkMagic (..))
+import           Ouroboros.Network.Mux (MuxPeer (..), OuroborosApplication (..),
+                                        RunMiniProtocol (..))
+import           Ouroboros.Network.NodeToClient (IOManager, chainSyncPeerNull)
 import           Ouroboros.Network.NodeToNode (NetworkConnectTracers (..))
 import qualified Ouroboros.Network.NodeToNode as NtN
-import           Ouroboros.Network.NodeToClient (IOManager, chainSyncPeerNull)
-import           Ouroboros.Network.Protocol.BlockFetch.Client (BlockFetchClient(..), blockFetchClientPeer)
+import           Ouroboros.Network.Protocol.BlockFetch.Client (BlockFetchClient (..),
+                                                               blockFetchClientPeer)
 import           Ouroboros.Network.Protocol.Handshake.Type (Handshake)
 import           Ouroboros.Network.Protocol.Handshake.Version (Versions, simpleSingletonVersions)
-import           Ouroboros.Network.Protocol.TxSubmission.Client (TxSubmissionClient, txSubmissionClientPeer)
+import           Ouroboros.Network.Protocol.TxSubmission.Client (TxSubmissionClient,
+                                                                 txSubmissionClientPeer)
 import           Ouroboros.Network.Snocket (socketSnocket)
-import           Ouroboros.Network.Magic (NetworkMagic(..))
 
-import           Cardano.Api.Typed (NetworkId) -- , toNetworkMagic)
+import           Cardano.Api.Typed (NetworkId)
 import qualified Cardano.Api.Typed as Api
 import           Cardano.Benchmarking.TxGenerator.Types
 
@@ -61,10 +63,11 @@ type SendRecvConnect = WithMuxBearer
                                            NtN.NodeToNodeVersion
                                            CBOR.Term))
 
-data BenchmarkTxSubmitTracers m blk = BenchmarkTracers
-  { trSendRecvConnect      :: Tracer m SendRecvConnect
-  , trSendRecvTxSubmission :: Tracer m (SendRecvTxSubmission blk)
-  }
+data BenchmarkTxSubmitTracers m blk
+  = BenchmarkTracers
+      { trSendRecvConnect      :: Tracer m SendRecvConnect
+      , trSendRecvTxSubmission :: Tracer m (SendRecvTxSubmission blk)
+      }
 
 benchmarkConnectTxSubmit
   :: forall m blk . (RunNode blk, m ~ IO)

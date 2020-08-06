@@ -2,10 +2,10 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DerivingVia #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE GeneralisedNewtypeDeriving #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
@@ -46,8 +46,8 @@ module Cardano.Benchmarking.GeneratorTx.Benchmark
   , SubmissionSummary(..)
   ) where
 
-import           Prelude (String)
 import           Cardano.Prelude hiding (TypeError)
+import           Prelude (String)
 
 import           Data.Aeson (ToJSON (..))
 import qualified Data.List.NonEmpty as NE
@@ -58,21 +58,21 @@ import           Options.Applicative (Parser)
 import qualified Options.Applicative as Opt
 
 -- Era-agnostic imports
-import           Ouroboros.Consensus.Block.Abstract (SlotNo(..))
+import           Ouroboros.Consensus.Block.Abstract (SlotNo (..))
 
 -- Node API imports
 import           Cardano.Api.Typed
 
 -- Node imports
 import           Cardano.Config.Types (NodeAddress)
-import           Cardano.TracingOrphanInstances.Byron()
-import           Cardano.TracingOrphanInstances.Common()
-import           Cardano.TracingOrphanInstances.Consensus()
-import           Cardano.TracingOrphanInstances.Mock()
-import           Cardano.TracingOrphanInstances.Network()
-import           Cardano.TracingOrphanInstances.Shelley()
+import           Cardano.TracingOrphanInstances.Byron ()
+import           Cardano.TracingOrphanInstances.Common ()
+import           Cardano.TracingOrphanInstances.Consensus ()
+import           Cardano.TracingOrphanInstances.Mock ()
+import           Cardano.TracingOrphanInstances.Network ()
+import           Cardano.TracingOrphanInstances.Shelley ()
 
-import Cardano.Benchmarking.GeneratorTx.CLI.Parsers
+import           Cardano.Benchmarking.GeneratorTx.CLI.Parsers
 
 {-------------------------------------------------------------------------------
   Ground types
@@ -163,44 +163,45 @@ parseTxAdditionalSize opt desc = TxAdditionalSize <$> parseIntegral opt desc
 -- | Summary of a tx submission run.
 data SubmissionSummary
   = SubmissionSummary
-    { ssTxSent        :: !Sent
-    , ssTxUnavailable :: !Unav
-    , ssElapsed       :: !NominalDiffTime
-    , ssEffectiveTps  :: !TPSRate
-    , ssThreadwiseTps :: ![TPSRate]
-    } deriving (Show, Generic)
+      { ssTxSent        :: !Sent
+      , ssTxUnavailable :: !Unav
+      , ssElapsed       :: !NominalDiffTime
+      , ssEffectiveTps  :: !TPSRate
+      , ssThreadwiseTps :: ![TPSRate]
+      }
+  deriving (Show, Generic)
 instance ToJSON SubmissionSummary
 
 -- | Specification for a benchmark run.
 data Benchmark
   = Benchmark
-    { bTargets        :: !(NonEmpty NodeAddress)
-    , bInitCooldown   :: !InitCooldown
-    , bInitialTTL     :: !SlotNo
-    , bTxCount        :: !NumberOfTxs
-    , bTps            :: !TPSRate
-    , bTxFanIn        :: !NumberOfInputsPerTx
-    , bTxFanOut       :: !NumberOfOutputsPerTx
-    , bTxFee          :: !Lovelace
-    , bTxExtraPayload :: !TxAdditionalSize
-    }
+      { bTargets        :: !(NonEmpty NodeAddress)
+      , bInitCooldown   :: !InitCooldown
+      , bInitialTTL     :: !SlotNo
+      , bTxCount        :: !NumberOfTxs
+      , bTps            :: !TPSRate
+      , bTxFanIn        :: !NumberOfInputsPerTx
+      , bTxFanOut       :: !NumberOfOutputsPerTx
+      , bTxFee          :: !Lovelace
+      , bTxExtraPayload :: !TxAdditionalSize
+      }
   deriving (Generic, Show)
 -- Warning:  make sure to maintain correspondence between the two data structures.
 data PartialBenchmark
   = PartialBenchmark
-    { pbTargets        :: !(Last (NonEmpty NodeAddress))
-    , pbInitCooldown   :: !(Last InitCooldown)
-    , pbInitialTTL     :: !(Last SlotNo)
-    , pbTxCount        :: !(Last NumberOfTxs)
-    , pbTps            :: !(Last TPSRate)
-    , pbTxFanIn        :: !(Last NumberOfInputsPerTx)
-    , pbTxFanOut       :: !(Last NumberOfOutputsPerTx)
-    , pbTxFee          :: !(Last Lovelace)
-    , pbTxExtraPayload :: !(Last TxAdditionalSize)
-    }
+      { pbTargets        :: !(Last (NonEmpty NodeAddress))
+      , pbInitCooldown   :: !(Last InitCooldown)
+      , pbInitialTTL     :: !(Last SlotNo)
+      , pbTxCount        :: !(Last NumberOfTxs)
+      , pbTps            :: !(Last TPSRate)
+      , pbTxFanIn        :: !(Last NumberOfInputsPerTx)
+      , pbTxFanOut       :: !(Last NumberOfOutputsPerTx)
+      , pbTxFee          :: !(Last Lovelace)
+      , pbTxExtraPayload :: !(Last TxAdditionalSize)
+      }
   deriving (Generic, Show)
   deriving Semigroup via GenericSemigroup PartialBenchmark
-  deriving Monoid    via GenericMonoid PartialBenchmark
+  deriving Monoid via GenericMonoid PartialBenchmark
 
 parsePartialBenchmark :: Opt.Parser PartialBenchmark
 parsePartialBenchmark =

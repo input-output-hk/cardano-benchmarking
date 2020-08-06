@@ -1,7 +1,7 @@
-{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE StandaloneDeriving #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Cardano.Benchmarking.TxGenerator.Producer
@@ -9,34 +9,28 @@ where
 
 import           Prelude
 
-import           Cardano.Api.Typed
-                   ( Address, Lovelace(..), NetworkId
-                   , PaymentKey
-                   , Shelley
-                   , ShelleyWitnessSigningKey (WitnessPaymentKey)
-                   , SigningKey (..)
-                   , TTL
-                   , Tx, TxBody, TxIx(..), TxIn (..), TxOut (..)
-                   , getTxId
-                   , makeShelleyKeyWitness
-                   , makeShelleyTransaction
-                   , makeSignedTransaction
-                   , txExtraContentEmpty )
+import           Cardano.Api.Typed (Address, Lovelace (..), NetworkId, PaymentKey, Shelley,
+                                    ShelleyWitnessSigningKey (WitnessPaymentKey), SigningKey (..),
+                                    TTL, Tx, TxBody, TxIn (..), TxIx (..), TxOut (..), getTxId,
+                                    makeShelleyKeyWitness, makeShelleyTransaction,
+                                    makeSignedTransaction, txExtraContentEmpty)
 
 deriving instance Num Lovelace
 
 {-
 It may be possible to use a fancy co-monad here.
 -}
-data Producer = Producer
-  { network :: !NetworkId
-  , ttl     :: !TTL
-  , fee     :: !Lovelace
-  , addr    :: !(Address Shelley)
-  , skey    :: !(SigningKey PaymentKey)
-  , src     :: !TxIn
-  , fund    :: !Lovelace
-  } -- deriving (Show)
+data Producer
+  = Producer
+      { network :: !NetworkId
+      , ttl     :: !TTL
+      , fee     :: !Lovelace
+      , addr    :: !(Address Shelley)
+      , skey    :: !(SigningKey PaymentKey)
+      , src     :: !TxIn
+      , fund    :: !Lovelace
+        -- deriving (Show)
+      }
 
 data PError = UnsufficientFunds
   deriving (Show,Eq)

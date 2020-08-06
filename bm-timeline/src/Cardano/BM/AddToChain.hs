@@ -5,16 +5,18 @@ module Cardano.BM.AddToChain
   )
 where
 
-import Data.Text.Lazy (Text, unpack)
+import           Data.Text.Lazy (Text, unpack)
 
-import Cardano.BM.Common
+import           Cardano.BM.Common
 
-data AddToChain = AddToChain {
-     node :: NodeId,
-     slot :: SlotNum,
-     timestamp :: Timestamp,
-     msg :: Text
-  } deriving (Show)
+data AddToChain
+  = AddToChain
+      { node      :: NodeId
+      , slot      :: SlotNum
+      , timestamp :: Timestamp
+      , msg       :: Text
+      }
+  deriving (Show)
 
 instance Lineparser AddToChain where
     -- example:

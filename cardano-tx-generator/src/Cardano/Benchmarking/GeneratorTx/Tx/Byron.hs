@@ -13,27 +13,26 @@ module Cardano.Benchmarking.GeneratorTx.Tx.Byron
   )
 where
 
-import           Prelude (error)
 import           Cardano.Prelude hiding (option, trace, (%))
+import           Prelude (error)
 
 import qualified Data.ByteString.Lazy as LB
 import qualified Data.Map.Strict as Map
 import           Data.Text (Text)
 import qualified Data.Text as T
-import           Formatting ((%), sformat)
+import           Formatting (sformat, (%))
 
 import           Cardano.Chain.Common (Address)
 import qualified Cardano.Chain.Common as Common
 import           Cardano.Chain.Genesis as Genesis
-import           Cardano.Chain.UTxO ( mkTxAux, annotateTxAux
-                                    , Tx(..), TxId, TxOut)
+import           Cardano.Chain.UTxO (Tx (..), TxId, TxOut, annotateTxAux, mkTxAux)
 import qualified Cardano.Chain.UTxO as UTxO
-import           Cardano.Crypto (SigningKey(..), ProtocolMagicId)
+import           Cardano.Crypto (ProtocolMagicId, SigningKey (..))
 import qualified Cardano.Crypto.Hashing as Crypto
 import qualified Cardano.Crypto.Signing as Crypto
 
+import           Ouroboros.Consensus.Byron.Ledger (ByronBlock, GenTx (..))
 import qualified Ouroboros.Consensus.Byron.Ledger as Byron
-import           Ouroboros.Consensus.Byron.Ledger (GenTx(..), ByronBlock)
 
 
 toCborTxAux :: UTxO.ATxAux ByteString -> LB.ByteString

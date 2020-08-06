@@ -1,17 +1,10 @@
 import           Cardano.Prelude
 
-import           Options.Applicative
-                   ( ParserInfo
-                   , customExecParser, fullDesc, header
-                   , helper, info, prefs, showHelpOnEmpty
-                   )
+import           Options.Applicative (ParserInfo, customExecParser, fullDesc, header, helper, info,
+                                      prefs, showHelpOnEmpty)
 
-import           Cardano.Benchmarking.RTView.CLI
-                   ( RTViewParams
-                   , parseRTViewParams
-                   )
-import           Cardano.Benchmarking.RTView
-                   ( runCardanoRTView )
+import           Cardano.Benchmarking.RTView (runCardanoRTView)
+import           Cardano.Benchmarking.RTView.CLI (RTViewParams, parseRTViewParams)
 
 main :: IO ()
 main = do

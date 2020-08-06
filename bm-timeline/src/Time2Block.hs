@@ -8,17 +8,17 @@ module Main
 where
 
 import qualified Data.HashMap.Strict as HM
-import Data.Maybe (mapMaybe)
-import Data.Text.Lazy (Text)
+import           Data.Maybe (mapMaybe)
+import           Data.Text.Lazy (Text)
 import qualified Data.Text.Lazy as TL
 import qualified Data.Text.Lazy.IO as TLIO
-import Data.Time.Clock (diffUTCTime)
-import System.Environment (getArgs)
-import System.IO (IOMode(..), withFile)
+import           Data.Time.Clock (diffUTCTime)
+import           System.Environment (getArgs)
+import           System.IO (IOMode (..), withFile)
 
-import Cardano.BM.Common
-import Cardano.BM.Csv
-import Cardano.BM.Stats
+import           Cardano.BM.Common
+import           Cardano.BM.Csv
+import           Cardano.BM.Stats
 import qualified Cardano.BM.TxAdopted as TxAdopted
 import qualified Cardano.BM.TxMempool as TxMempool
 
@@ -47,9 +47,9 @@ parseArguments = do
         Right res -> return res
 
   where
-    parseArgs [] = Left "no arguments"
+    parseArgs []         = Left "no arguments"
     parseArgs ( bp : []) = Right bp
-    parseArgs _ = Left "too many arguments"
+    parseArgs _          = Left "too many arguments"
 
 process :: FilePath -> IO ()
 process basep = do

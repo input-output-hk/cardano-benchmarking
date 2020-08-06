@@ -22,8 +22,8 @@ module Cardano.Benchmarking.GeneratorTx.Genesis
   )
 where
 
-import           Prelude (error)
 import           Cardano.Prelude hiding (TypeError)
+import           Prelude (error)
 
 import           Control.Arrow ((***))
 import qualified Data.Map.Strict as Map
@@ -33,15 +33,15 @@ import qualified Ouroboros.Consensus.Cardano as Consensus
 
 -- Byron-specific imports
 import qualified Cardano.Chain.Common as Byron
-import qualified Cardano.Chain.UTxO   as Byron
+import qualified Cardano.Chain.UTxO as Byron
 
 -- Shelley-specific imports
 import qualified Ouroboros.Consensus.Shelley.Ledger.Ledger as Shelley
 
-import Cardano.Api.Typed
-import Cardano.Benchmarking.GeneratorTx.Era
-import Cardano.Benchmarking.GeneratorTx.Tx
-import Cardano.Benchmarking.GeneratorTx.Tx.Byron
+import           Cardano.Api.Typed
+import           Cardano.Benchmarking.GeneratorTx.Era
+import           Cardano.Benchmarking.GeneratorTx.Tx
+import           Cardano.Benchmarking.GeneratorTx.Tx.Byron
 
 
 keyAddress :: Era era -> SigningKeyOf era -> Address era

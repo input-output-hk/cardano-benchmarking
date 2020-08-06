@@ -12,17 +12,11 @@ module Cardano.Benchmarking.RTView.GUI.Elements
     ) where
 
 import           Cardano.Prelude
-import           Prelude
-                   ( String )
-import           Control.DeepSeq
-                   ( NFData (..)
-                   , rwhnf
-                   )
-import           Data.Map.Strict
-                   ( Map )
+import           Control.DeepSeq (NFData (..), rwhnf)
+import           Data.Map.Strict (Map)
+import           Prelude (String)
 
-import           Graphics.UI.Threepenny.Core
-                   ( Element )
+import           Graphics.UI.Threepenny.Core (Element)
 
 instance NFData Element where
   rnf = rwhnf
@@ -146,16 +140,20 @@ data ElementValue
 
 -- | An item for each connected peer, contains a parent element
 --   and list of child elements.
-data PeerInfoItem = PeerInfoItem
-  { piItem      :: !Element
-  , piItemElems :: !PeerInfoElements
-  } deriving (Generic, NFData)
+data PeerInfoItem
+  = PeerInfoItem
+      { piItem      :: !Element
+      , piItemElems :: !PeerInfoElements
+      }
+  deriving (Generic, NFData)
 
-data PeerInfoElements = PeerInfoElements
-  { pieEndpoint   :: !Element
-  , pieBytesInF   :: !Element
-  , pieReqsInF    :: !Element
-  , pieBlocksInF  :: !Element
-  , pieSlotNumber :: !Element
-  , pieStatus     :: !Element
-  } deriving (Generic, NFData)
+data PeerInfoElements
+  = PeerInfoElements
+      { pieEndpoint   :: !Element
+      , pieBytesInF   :: !Element
+      , pieReqsInF    :: !Element
+      , pieBlocksInF  :: !Element
+      , pieSlotNumber :: !Element
+      , pieStatus     :: !Element
+      }
+  deriving (Generic, NFData)

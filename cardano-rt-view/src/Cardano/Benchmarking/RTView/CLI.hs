@@ -3,28 +3,23 @@ module Cardano.Benchmarking.RTView.CLI
     , parseRTViewParams
     ) where
 
-import           Cardano.Prelude hiding ( option )
-import           Prelude
-                   ( String )
-import           Options.Applicative
-                   ( Parser
-                   , auto, bashCompleter, completer, help
-                   , long, metavar, option, strOption
-                   , showDefault, value
-                   )
-import           Network.Socket
-                   ( PortNumber )
+import           Cardano.Prelude hiding (option)
+import           Network.Socket (PortNumber)
+import           Options.Applicative (Parser, auto, bashCompleter, completer, help, long, metavar,
+                                      option, showDefault, strOption, value)
+import           Prelude (String)
 
 -- | Type for CLI parameters required for the service.
-data RTViewParams = RTViewParams
-  { rtvConfig             :: !FilePath
-  , rtvStatic             :: !FilePath
-  , rtvPort               :: !PortNumber
-  , rtvNodeInfoLife       :: !Word64
-  , rtvBlockchainInfoLife :: !Word64
-  , rtvResourcesInfoLife  :: !Word64
-  , rtvRTSInfoLife        :: !Word64
-  }
+data RTViewParams
+  = RTViewParams
+      { rtvConfig             :: !FilePath
+      , rtvStatic             :: !FilePath
+      , rtvPort               :: !PortNumber
+      , rtvNodeInfoLife       :: !Word64
+      , rtvBlockchainInfoLife :: !Word64
+      , rtvResourcesInfoLife  :: !Word64
+      , rtvRTSInfoLife        :: !Word64
+      }
 
 parseRTViewParams :: Parser RTViewParams
 parseRTViewParams =

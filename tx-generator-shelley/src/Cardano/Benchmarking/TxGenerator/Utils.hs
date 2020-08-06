@@ -5,23 +5,20 @@ where
 import qualified Data.IP as IP
 import           Data.Text (Text)
 import           Data.Time.Clock (DiffTime, picosecondsToDiffTime)
-import           Network.Socket (AddrInfo (..),
-                     AddrInfoFlag (..), Family (..), SocketType (Stream),
-                     addrFamily,addrFlags, addrSocketType, defaultHints,
-                     getAddrInfo)
+import           Network.Socket (AddrInfo (..), AddrInfoFlag (..), Family (..), SocketType (Stream),
+                                 addrFamily, addrFlags, addrSocketType, defaultHints, getAddrInfo)
 
 import           Cardano.BM.Data.Tracer (ToLogObject (..))
 import           Cardano.BM.Trace (appendName)
+import           Cardano.Config.Types (NodeAddress (..), NodeHostAddress (..))
 import           Cardano.Node.Logging (LoggingLayer (..), Trace)
-import           Cardano.Config.Types (NodeAddress (..), NodeHostAddress(..))
 
 import           Control.Tracer (Tracer)
 
-import           Ouroboros.Consensus.Ledger.SupportsMempool as Mempool
-                   ( GenTxId )
+import           Ouroboros.Consensus.Ledger.SupportsMempool as Mempool (GenTxId)
 
-import           Cardano.Benchmarking.TxGenerator.Types
 import           Cardano.Benchmarking.TxGenerator.NodeToNode (SendRecvConnect)
+import           Cardano.Benchmarking.TxGenerator.Types
 
 createTracers
   :: LoggingLayer

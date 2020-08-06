@@ -3,8 +3,8 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -30,37 +30,34 @@ import           Prelude (String, id)
 import           Control.Concurrent (threadDelay)
 import           Control.Monad (forM, forM_)
 import           Control.Monad.Trans.Except (ExceptT)
-import           Control.Monad.Trans.Except.Extra (left, right, newExceptT)
+import           Control.Monad.Trans.Except.Extra (left, newExceptT, right)
 import           Control.Tracer (traceWith)
 
 import           Data.Foldable (find)
 import qualified Data.IP as IP
 import           Data.List.NonEmpty (NonEmpty (..))
 import qualified Data.List.NonEmpty as NE
-import           Data.Maybe (Maybe (..))
 import qualified Data.Map.Strict as Map
+import           Data.Maybe (Maybe (..))
 import           Data.Set (Set)
 import qualified Data.Set as Set
 import           Data.Text (Text)
 import           Data.Word (Word64)
-import           Network.Socket
-                   ( AddrInfo (..), AddrInfoFlag (..), Family (..), SocketType (Stream)
-                   , addrFamily,addrFlags, addrSocketType, defaultHints, getAddrInfo)
+import           Network.Socket (AddrInfo (..), AddrInfoFlag (..), Family (..), SocketType (Stream),
+                                 addrFamily, addrFlags, addrSocketType, defaultHints, getAddrInfo)
 
-import           Cardano.Config.Types
-                   ( NodeAddress (..), NodeHostAddress(..)
-                   , SigningKeyFile(..))
+import           Cardano.Config.Types (NodeAddress (..), NodeHostAddress (..), SigningKeyFile (..))
 
-import           Cardano.Api.Typed
 import           Cardano.Api.TxSubmit
+import           Cardano.Api.Typed
 
-import Cardano.Benchmarking.GeneratorTx.Benchmark
-import Cardano.Benchmarking.GeneratorTx.Error
-import Cardano.Benchmarking.GeneratorTx.Genesis
-import Cardano.Benchmarking.GeneratorTx.NodeToNode
-import Cardano.Benchmarking.GeneratorTx.Era
-import Cardano.Benchmarking.GeneratorTx.Submission
-import Cardano.Benchmarking.GeneratorTx.Tx
+import           Cardano.Benchmarking.GeneratorTx.Benchmark
+import           Cardano.Benchmarking.GeneratorTx.Era
+import           Cardano.Benchmarking.GeneratorTx.Error
+import           Cardano.Benchmarking.GeneratorTx.Genesis
+import           Cardano.Benchmarking.GeneratorTx.NodeToNode
+import           Cardano.Benchmarking.GeneratorTx.Submission
+import           Cardano.Benchmarking.GeneratorTx.Tx
 
 
 -----------------------------------------------------------------------------------------

@@ -1,4 +1,3 @@
-{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -13,7 +12,7 @@ where
 import           Control.Concurrent (threadDelay)
 import           Control.Concurrent.Async
 import qualified Control.Concurrent.STM as STM
-import           Control.Monad (forM, mapM, when, void)
+import           Control.Monad (forM, mapM, void, when)
 import qualified Control.Monad.Class.MonadSTM as MSTM
 import           Control.Monad.IO.Class
 import           Control.Monad.Trans.Except
@@ -25,20 +24,20 @@ import           Cardano.Node.Logging (LoggingLayer (..))
 
 import           Cardano.Benchmarking.TxGenerator.Error (TxGenError (..))
 import           Cardano.Benchmarking.TxGenerator.NodeToNode (BenchmarkTxSubmitTracers (..),
-                     benchmarkConnectTxSubmit)
+                                                              benchmarkConnectTxSubmit)
 
 import           Control.Tracer (Tracer, traceWith)
 
+import           Cardano.Api.Typed as Api
+import           Ouroboros.Consensus.Ledger.SupportsMempool as Mempool (GenTxId)
+import           Ouroboros.Consensus.Node.Run (RunNode)
+import           Ouroboros.Consensus.Shelley.Ledger.Mempool (GenTx, mkShelleyTx)
 import           Ouroboros.Consensus.Shelley.Node as Ouroboros (protocolClientInfoShelley)
 import           Ouroboros.Network.NodeToClient (IOManager)
-import           Ouroboros.Consensus.Node.Run (RunNode)
-import           Ouroboros.Consensus.Ledger.SupportsMempool as Mempool (GenTxId)
-import           Ouroboros.Consensus.Shelley.Ledger.Mempool (GenTx, mkShelleyTx)
-import           Cardano.Api.Typed as Api
 
 import qualified Cardano.Benchmarking.TxGenerator.CLI.Parsers as P
-import           Cardano.Benchmarking.TxGenerator.Producer as Producer
 import           Cardano.Benchmarking.TxGenerator.Phase1
+import           Cardano.Benchmarking.TxGenerator.Producer as Producer
 import           Cardano.Benchmarking.TxGenerator.Submission
 import           Cardano.Benchmarking.TxGenerator.Types as T
 import           Cardano.Benchmarking.TxGenerator.Utils

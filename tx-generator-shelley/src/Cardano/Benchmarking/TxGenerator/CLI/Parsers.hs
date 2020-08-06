@@ -8,48 +8,41 @@ module Cardano.Benchmarking.TxGenerator.CLI.Parsers
 import           Cardano.Prelude hiding (option)
 import           Prelude (String)
 
-import           Data.List.NonEmpty (NonEmpty)
-import qualified Data.List.NonEmpty as NE
 import qualified Data.Attoparsec.ByteString.Char8 as Atto
 import qualified Data.ByteString.Char8 as BSC
+import           Data.List.NonEmpty (NonEmpty)
+import qualified Data.List.NonEmpty as NE
 
-import           Options.Applicative as Opt
-                    ( Parser
-                    , ReadM
-                    , bashCompleter, completer, eitherReader
-                    , flag', help, long, metavar
-                    , auto, option, strOption
-                    )
+import           Options.Applicative as Opt (Parser, ReadM, auto, bashCompleter, completer,
+                                             eitherReader, flag', help, long, metavar, option,
+                                             strOption)
 
 import qualified Control.Arrow as Arr
 import           Network.Socket (PortNumber)
 
-import           Cardano.Config.Types
-                    ( NodeAddress(..)
-                    , NodeHostAddress(..)
-                    )
+import           Cardano.Config.Types (NodeAddress (..), NodeHostAddress (..))
 
-import           Cardano.CLI.Shelley.Parsers (parseTxIn)
 import           Cardano.Api.Typed
+import           Cardano.CLI.Shelley.Parsers (parseTxIn)
 
 import           Cardano.Benchmarking.TxGenerator.Types
 
 
-data GenerateTxs = GenerateTxs
-  { network       :: NetworkId
-  , logConfig     :: FilePath
-  , socketPath    :: FilePath
-  , nodeAdresses  :: (NonEmpty NodeAddress)
-  , txCount       :: NumberOfTxs
---  , txinputs      :: NumberOfInputsPerTx
---  , txoutputs     :: NumberOfOutputsPerTx
-  , fee           :: FeePerTx
-  , tps           :: TPSRate
-  , coolDownDelay :: InitCoolDown
-  , extraPayload  :: (Maybe TxAdditionalSize)
-  , explorerAPI   :: (Maybe ExplorerAPIEnpoint)
-  , initialFund   :: InitialFund
-  }
+data GenerateTxs
+  = GenerateTxs
+      { network       :: NetworkId
+      , logConfig     :: FilePath
+      , socketPath    :: FilePath
+      , nodeAdresses  :: (NonEmpty NodeAddress)
+      , txCount       :: NumberOfTxs
+        --  , txinputs      :: NumberOfInputsPerTx
+      , fee           :: FeePerTx
+      , tps           :: TPSRate
+      , coolDownDelay :: InitCoolDown
+      , extraPayload  :: (Maybe TxAdditionalSize)
+      , explorerAPI   :: (Maybe ExplorerAPIEnpoint)
+      , initialFund   :: InitialFund
+      }
 
 parseCommand :: Parser GenerateTxs
 parseCommand =
@@ -164,12 +157,14 @@ parseFilePath optname desc =
         <> help desc
         <> completer (bashCompleter "file")
 
-data InitialFund = InitialFund
-  { value         :: Word64
-  , keyFile       :: FilePath
-  , utxo          :: TxIn
-  , addressFile   :: FilePath
-  } deriving Show
+data InitialFund
+  = InitialFund
+      { value       :: Word64
+      , keyFile     :: FilePath
+      , utxo        :: TxIn
+      , addressFile :: FilePath
+      }
+  deriving Show
 
 parseInitialFund :: Parser InitialFund
 parseInitialFund

@@ -1,4 +1,4 @@
-{-# Language LambdaCase #-}
+{-# LANGUAGE LambdaCase #-}
 module Cardano.Benchmarking.TxGenerator.Phase1
 where
 
@@ -11,8 +11,8 @@ import           Cardano.Benchmarking.TxGenerator.Error (TxGenError (..))
 import           Cardano.Benchmarking.TxGenerator.Producer as Producer
 import           Cardano.Benchmarking.TxGenerator.Types as T
 
-import           Cardano.Api.Typed as Api
 import           Cardano.Api.TxSubmit as Api
+import           Cardano.Api.Typed as Api
 
 runPhase1 :: P.GenerateTxs -> NE.NonEmpty a0 -> ExceptT TxGenError IO [Producer]
 runPhase1 args remoteAddresses = do

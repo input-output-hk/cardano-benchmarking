@@ -6,20 +6,20 @@ module Main
   )
 where
 
-import Control.Monad (forM, forM_)
+import           Control.Monad (forM, forM_)
 import qualified Data.HashMap.Strict as HM
-import Data.List (sort, sortOn)
-import Data.Text.Lazy (Text)
+import           Data.List (sort, sortOn)
+import           Data.Text.Lazy (Text)
 import qualified Data.Text.Lazy as TL
 import qualified Data.Text.Lazy.IO as TLIO
-import Data.Time.Clock (diffUTCTime)
-import System.Environment (getArgs)
-import System.IO (Handle, IOMode(..), withFile)
-import Text.Read (readMaybe)
+import           Data.Time.Clock (diffUTCTime)
+import           System.Environment (getArgs)
+import           System.IO (Handle, IOMode (..), withFile)
+import           Text.Read (readMaybe)
 
-import Cardano.BM.Common
 import qualified Cardano.BM.AddToChain as AddToChain
 import qualified Cardano.BM.Adopted as Adopted
+import           Cardano.BM.Common
 import qualified Cardano.BM.Leader as Leader
 
 

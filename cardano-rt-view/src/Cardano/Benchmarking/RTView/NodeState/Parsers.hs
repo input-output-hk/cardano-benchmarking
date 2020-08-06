@@ -7,15 +7,11 @@ module Cardano.Benchmarking.RTView.NodeState.Parsers
 
 import           Cardano.Prelude
 
+import           Data.Aeson (Object, (.:))
 import qualified Data.Aeson as A
-import           Data.Aeson
-                   ( Object
-                   , (.:)
-                   )
 import qualified Data.Text as T
 
-import           Cardano.Benchmarking.RTView.NodeState.Types
-                   ( PeerInfo (..) )
+import           Cardano.Benchmarking.RTView.NodeState.Types (PeerInfo (..))
 
 extractPeersInfo :: Object -> [PeerInfo]
 extractPeersInfo peersObj =
@@ -39,14 +35,15 @@ extractPeersInfo peersObj =
 
 newtype ConnectedPeers = ConnectedPeers [ConnectedPeer]
 
-data ConnectedPeer = ConnectedPeer
-  { peerBytesInF  :: !Text
-  , peerReqsInF   :: !Text
-  , peerBlocksInF :: !Text
-  , peerAddress   :: !Text
-  , peerSlotNo    :: !Text
-  , peerStatus    :: !Text
-  }
+data ConnectedPeer
+  = ConnectedPeer
+      { peerBytesInF  :: !Text
+      , peerReqsInF   :: !Text
+      , peerBlocksInF :: !Text
+      , peerAddress   :: !Text
+      , peerSlotNo    :: !Text
+      , peerStatus    :: !Text
+      }
 
 instance A.FromJSON ConnectedPeers where
   parseJSON = A.withObject "ConnectedPeers" $ \v -> ConnectedPeers

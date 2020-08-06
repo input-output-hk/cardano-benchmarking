@@ -10,27 +10,19 @@ module Cardano.Benchmarking.RTView.GUI.Grid
     ) where
 
 import           Cardano.Prelude
-import           Prelude
-                   ( String )
+import           Prelude (String)
 
+import           Data.Map.Strict ((!))
 import qualified Data.Map.Strict as Map
-import           Data.Map.Strict
-                   ( (!) )
 import qualified Data.Text as T
 
 import qualified Graphics.UI.Threepenny as UI
-import           Graphics.UI.Threepenny.Core
-                   ( Element, UI
-                   , (#), (#+), (#.)
-                   , element, set, string
-                   )
+import           Graphics.UI.Threepenny.Core (Element, UI, element, set, string, ( # ), ( #+ ),
+                                              ( #. ))
 
-import           Cardano.BM.Data.Configuration
-                   ( RemoteAddrNamed (..) )
-import           Cardano.Benchmarking.RTView.GUI.Elements
-                   ( ElementName (..), NodeStateElements
-                   , NodesStateElements, PeerInfoItem (..)
-                   )
+import           Cardano.Benchmarking.RTView.GUI.Elements (ElementName (..), NodeStateElements,
+                                                           NodesStateElements, PeerInfoItem (..))
+import           Cardano.BM.Data.Configuration (RemoteAddrNamed (..))
 
 mkNodesGrid
   :: UI.Window
@@ -123,7 +115,7 @@ allMetricsNames =
   , ElRTSGcCpu
   , ElRTSGcElapsed
   , ElRTSGcNum
-  , ElRTSGcMajorNum         
+  , ElRTSGcMajorNum
   ]
 
 mkNodesRowCells

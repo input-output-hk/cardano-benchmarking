@@ -1,6 +1,6 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE DataKinds #-}
 
 module Cardano.Benchmarking.MockServer
 where
@@ -13,22 +13,22 @@ import qualified Control.Monad.Class.MonadSTM as MSTM
 import           Control.Monad.IO.Class
 import           Control.Tracer (Tracer, nullTracer)
 
+import           Ouroboros.Consensus.Ledger.SupportsMempool as Mempool (GenTxId, txId)
 import           Ouroboros.Consensus.Node.Run (RunNode)
-import           Ouroboros.Consensus.Ledger.SupportsMempool as Mempool (GenTxId,txId)
-import           Ouroboros.Consensus.Shelley.Ledger.Mempool (GenTx , mkShelleyTx)
+import           Ouroboros.Consensus.Shelley.Ledger.Mempool (GenTx, mkShelleyTx)
 
 import           Network.TypedProtocol.Proofs (connectPipelined)
+import           Ouroboros.Network.NodeToNode (MiniProtocolParameters (..),
+                                               defaultMiniProtocolParameters)
 import           Ouroboros.Network.Protocol.TxSubmission.Client (txSubmissionClientPeer)
-import           Ouroboros.Network.Protocol.TxSubmission.Server
-                    (TxSubmissionServerPipelined, txSubmissionServerPeerPipelined)
-import           Ouroboros.Network.NodeToNode
-                   (MiniProtocolParameters (..), defaultMiniProtocolParameters)
+import           Ouroboros.Network.Protocol.TxSubmission.Server (TxSubmissionServerPipelined,
+                                                                 txSubmissionServerPeerPipelined)
 
-import           Ouroboros.Network.Protocol.TxSubmission.Type (TxSubmission(..))
-import           Network.TypedProtocol.Core (PeerRole(..))
-import           Network.TypedProtocol.Pipelined (PeerPipelined)
 import           Cardano.Benchmarking.TxGenerator.Submission
 import           Cardano.Benchmarking.TxGenerator.Types as T
+import           Network.TypedProtocol.Core (PeerRole (..))
+import           Network.TypedProtocol.Pipelined (PeerPipelined)
+import           Ouroboros.Network.Protocol.TxSubmission.Type (TxSubmission (..))
 
 import           Cardano.Api.Typed as Api
 import           Cardano.Slotting.Slot

@@ -16,7 +16,7 @@ import qualified Data.Text.Lazy as TL
 import qualified Data.Text.Lazy.IO as TLIO
 import           Data.Time.Clock (diffUTCTime)
 import           System.Environment (getArgs)
-import           System.IO (IOMode(..), withFile)
+import           System.IO (IOMode (..), withFile)
 import           Text.Read (readMaybe)
 
 import qualified Cardano.BM.AddToChain as AddToChain
@@ -88,7 +88,7 @@ process_csv basep nodes = do
   let tbetween n = calculate_time_between hm_adopted n
   let cdf_tbetween = foldl (\acc n -> pairs_in_columns(calc_cdf (tbetween n)) : acc) [] $ reverse nodes
   let cdf_tb_headers = foldl (\acc n -> [ "time between blocks (node " <> (T.pack . show) n <> ")"
-                                        , "fraction node " <> (T.pack . show) n 
+                                        , "fraction node " <> (T.pack . show) n
                                         ] : acc )
                              [] $ reverse nodes
   -- compute boxplot of block adoption time; prepend with source node id
@@ -150,7 +150,7 @@ reconstruct nodes (sn : sns) (hmch, hmad, hmld) acc1 acc2 =
   in reconstruct nodes sns (hmch, hmad, hmld) (tdiffadopted : acc1) (tdiffusion ++ acc2)
 
 reconstruct_leader :: SlotNum -> Maybe ValLeader -> ValLeader
-reconstruct_leader _ Nothing = (-1, time0)
+reconstruct_leader _ Nothing  = (-1, time0)
 reconstruct_leader _ (Just v) = v
 
 reconstruct_adopt :: SlotNum -> ValLeader -> Maybe ValAdopted

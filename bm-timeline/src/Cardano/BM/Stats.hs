@@ -7,19 +7,19 @@ module Cardano.BM.Stats
     )
 where
 
-import Data.List (sort)
-import GHC.Float (int2Double)
+import           Data.List (sort)
+import           GHC.Float (int2Double)
 
 
 calc_cdf :: (Ord a, Integral a) => [a] -> [(a, Double)]
 calc_cdf [] = []
-calc_cdf tms = 
+calc_cdf tms =
     let s_tms = sort tms
         min_tm :: Double = fromIntegral (head s_tms)
         max_tm :: Double = fromIntegral (last s_tms)
     in map (calc_fraction min_tm max_tm s_tms) [1::Double .. 100]
   where
-    calc_fraction min_tm max_tm ls q = 
+    calc_fraction min_tm max_tm ls q =
         let v = round $ (max_tm - min_tm) * q / 100.0 + min_tm
         in (v, fraction ls v)
     -- | count elements in sorted list smaller or equal than value

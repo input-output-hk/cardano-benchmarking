@@ -7,29 +7,20 @@ module Cardano.Benchmarking.RTView.GUI.Markup
     ) where
 
 import           Cardano.Prelude
-import           Prelude
-                   ( String )
+import           Prelude (String)
 
 import qualified Data.Text as T
 
 import qualified Graphics.UI.Threepenny as UI
-import           Graphics.UI.Threepenny.Core
-                   ( Element, UI
-                   , (#), (#+), (#.)
-                   , element, set, string
-                   )
+import           Graphics.UI.Threepenny.Core (Element, UI, element, set, string, ( # ), ( #+ ),
+                                              ( #. ))
 
-import           Cardano.BM.Data.Configuration
-                   ( RemoteAddrNamed (..) )
 import qualified Cardano.Benchmarking.RTView.GUI.Charts as Chart
-import           Cardano.Benchmarking.RTView.GUI.Elements
-                   ( ElementName (..), NodeStateElements
-                   , NodesStateElements, PeerInfoItem
-                   )
-import           Cardano.Benchmarking.RTView.GUI.Grid
-                   ( allMetricsNames, mkNodesGrid, metricLabel )
-import           Cardano.Benchmarking.RTView.GUI.NodeWidget
-                   ( mkNodeWidget )
+import           Cardano.Benchmarking.RTView.GUI.Elements (ElementName (..), NodeStateElements,
+                                                           NodesStateElements, PeerInfoItem)
+import           Cardano.Benchmarking.RTView.GUI.Grid (allMetricsNames, metricLabel, mkNodesGrid)
+import           Cardano.Benchmarking.RTView.GUI.NodeWidget (mkNodeWidget)
+import           Cardano.BM.Data.Configuration (RemoteAddrNamed (..))
 
 mkPageBody
   :: UI.Window

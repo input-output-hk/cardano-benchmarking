@@ -14,10 +14,10 @@ module Cardano.BM.Common
     )
 where
 
-import Data.Time.Clock (UTCTime (..))
-import Data.Time.Format (defaultTimeLocale, formatTime, parseTimeM)
-import Data.Text.Lazy (Text)
+import           Data.Text.Lazy (Text)
 import qualified Data.Text.Lazy as TL
+import           Data.Time.Clock (UTCTime (..))
+import           Data.Time.Format (defaultTimeLocale, formatTime, parseTimeM)
 
 type NodeId = Int
 type SlotNum = Int

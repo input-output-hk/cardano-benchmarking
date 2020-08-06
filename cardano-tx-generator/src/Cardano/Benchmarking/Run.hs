@@ -1,5 +1,5 @@
-{-# LANGUAGE GADTs #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
@@ -12,25 +12,19 @@ module Cardano.Benchmarking.Run
   , runCommand
   ) where
 
-import           Prelude (String)
-import           Data.Version
-                    (showVersion )
-import           Data.Text
-                    (Text, pack, unpack)
 import           Cardano.Prelude hiding (option)
-import           Control.Monad
-                    (fail)
-import           Control.Monad.Trans.Except.Extra
-                    (firstExceptT)
+import           Control.Monad (fail)
+import           Control.Monad.Trans.Except.Extra (firstExceptT)
+import           Data.Text (Text, pack, unpack)
+import           Data.Version (showVersion)
 import qualified Options.Applicative as Opt
-import           Paths_cardano_tx_generator
-                    (version)
+import           Paths_cardano_tx_generator (version)
+import           Prelude (String)
 
 import qualified Cardano.Chain.Genesis as Genesis
 
 import           Ouroboros.Network.Block (MaxSlotNo (..))
-import           Ouroboros.Network.NodeToClient
-                    (IOManager, withIOManager)
+import           Ouroboros.Network.NodeToClient (IOManager, withIOManager)
 
 import           Cardano.Api.Protocol
 import           Cardano.Config.Types
