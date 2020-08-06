@@ -30,10 +30,11 @@ let
       cabal-install
       stack
       ghcid
-      gnumeric
       hlint
-      libreoffice
+      stylish-haskell
       weeder
+      gnumeric
+      libreoffice
       nix
       niv
       pkgconfig
