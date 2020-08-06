@@ -28,21 +28,20 @@ import           Cardano.CLI.Shelley.Parsers (parseTxIn)
 import           Cardano.Benchmarking.TxGenerator.Types
 
 
-data GenerateTxs
-  = GenerateTxs
-      { network       :: NetworkId
-      , logConfig     :: FilePath
-      , socketPath    :: FilePath
-      , nodeAdresses  :: (NonEmpty NodeAddress)
-      , txCount       :: NumberOfTxs
-        --  , txinputs      :: NumberOfInputsPerTx
-      , fee           :: FeePerTx
-      , tps           :: TPSRate
-      , coolDownDelay :: InitCoolDown
-      , extraPayload  :: (Maybe TxAdditionalSize)
-      , explorerAPI   :: (Maybe ExplorerAPIEnpoint)
-      , initialFund   :: InitialFund
-      }
+data GenerateTxs = GenerateTxs
+    { network       :: NetworkId
+    , logConfig     :: FilePath
+    , socketPath    :: FilePath
+    , nodeAdresses  :: (NonEmpty NodeAddress)
+    , txCount       :: NumberOfTxs
+    --  , txinputs      :: NumberOfInputsPerTx
+    , fee           :: FeePerTx
+    , tps           :: TPSRate
+    , coolDownDelay :: InitCoolDown
+    , extraPayload  :: (Maybe TxAdditionalSize)
+    , explorerAPI   :: (Maybe ExplorerAPIEnpoint)
+    , initialFund   :: InitialFund
+    }
 
 parseCommand :: Parser GenerateTxs
 parseCommand =
@@ -157,14 +156,13 @@ parseFilePath optname desc =
         <> help desc
         <> completer (bashCompleter "file")
 
-data InitialFund
-  = InitialFund
-      { value       :: Word64
-      , keyFile     :: FilePath
-      , utxo        :: TxIn
-      , addressFile :: FilePath
-      }
-  deriving Show
+data InitialFund = InitialFund
+    { value       :: Word64
+    , keyFile     :: FilePath
+    , utxo        :: TxIn
+    , addressFile :: FilePath
+    }
+    deriving Show
 
 parseInitialFund :: Parser InitialFund
 parseInitialFund

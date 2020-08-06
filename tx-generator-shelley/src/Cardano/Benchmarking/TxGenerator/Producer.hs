@@ -20,20 +20,19 @@ deriving instance Num Lovelace
 {-
 It may be possible to use a fancy co-monad here.
 -}
-data Producer
-  = Producer
-      { network :: !NetworkId
-      , ttl     :: !TTL
-      , fee     :: !Lovelace
-      , addr    :: !(Address Shelley)
-      , skey    :: !(SigningKey PaymentKey)
-      , src     :: !TxIn
-      , fund    :: !Lovelace
-        -- deriving (Show)
-      }
+data Producer = Producer
+    { network :: !NetworkId
+    , ttl     :: !TTL
+    , fee     :: !Lovelace
+    , addr    :: !(Address Shelley)
+    , skey    :: !(SigningKey PaymentKey)
+    , src     :: !TxIn
+    , fund    :: !Lovelace
+    -- deriving (Show)
+    }
 
 data PError = UnsufficientFunds
-  deriving (Show,Eq)
+    deriving (Show, Eq)
 
 extract :: Producer -> (TxIn, Lovelace)
 extract (Producer {src, fund}) = (src, fund)
