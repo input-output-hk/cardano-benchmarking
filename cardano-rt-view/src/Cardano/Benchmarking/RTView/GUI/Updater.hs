@@ -23,8 +23,11 @@ import           Prelude (String)
 import           Cardano.Benchmarking.RTView.CLI (RTViewParams (..))
 import qualified Cardano.Benchmarking.RTView.GUI.Charts as Chart
 import           Cardano.Benchmarking.RTView.GUI.Elements (ElementName (..), ElementValue (..),
-                                                           NodeStateElements, NodesStateElements,
-                                                           PeerInfoElements (..), PeerInfoItem (..))
+                                                           HTMLClass (..), HTMLId (..),
+                                                           HTMLW3Class (..), NodeStateElements,
+                                                           NodesStateElements,
+                                                           PeerInfoElements (..), PeerInfoItem (..),
+                                                           (<+>))
 import           Cardano.Benchmarking.RTView.NodeState.Types (NodeError (..), NodeInfo (..),
                                                               NodeMetrics (..), NodeState (..),
                                                               NodesState, PeerInfo (..))
@@ -42,7 +45,7 @@ updateGUI
   -> UI ()
 updateGUI window nodesState params acceptors (nodesStateElems, gridNodesStateElems) = do
   -- Only one GUI mode can be active now, so check it and update it.
-  UI.getElementById window "viewModeButton" >>= \case
+  UI.getElementById window (show ViewModeButton) >>= \case
     Just btn -> UI.get UI.value btn >>= \case
       "paneMode" -> updatePaneGUI window nodesState params acceptors nodesStateElems
       _ ->          updateGridGUI window nodesState params acceptors gridNodesStateElems
@@ -276,17 +279,17 @@ updateErrorsList nodeErrors errorsList = do
   errors <- forM nodeErrors $ \(NodeError utcTimeStamp sev msg) -> do
     let className :: String
         className = case sev of
-                      Warning   -> "warning-message"
-                      Error     -> "error-message"
-                      Critical  -> "critical-message"
-                      Alert     -> "alert-message"
-                      Emergency -> "emergency-message"
+                      Warning   -> show WarningMessage
+                      Error     -> show ErrorMessage
+                      Critical  -> show CriticalMessage
+                      Alert     -> show AlertMessage
+                      Emergency -> show EmergencyMessage
                       _         -> ""
     let timeStamp = formatTime defaultTimeLocale "%F %T" utcTimeStamp
 
-    UI.div #. "w3-row" #+
-      [ UI.div #. "w3-third w3-theme" #+ [UI.div #. "" #+ [UI.string timeStamp]]
-      , UI.div #. "w3-twothird w3-theme" #+ [UI.div #. className #+ [UI.string msg]]
+    UI.div #. show W3Row #+
+      [ UI.div #. [W3Third, W3Theme] <+> [] #+ [UI.div #+ [UI.string timeStamp]]
+      , UI.div #. [W3TwoThird, W3Theme] <+> [] #+ [UI.div #. className #+ [UI.string msg]]
       ]
   element errorsList # set children errors
 
@@ -299,8 +302,8 @@ findTraceAcceptorNetInfo
 findTraceAcceptorNetInfo nameOfNode acceptors =
   case maybeActiveNode of
     Just (RemoteAddrNamed _ (RemoteSocket host port)) -> (host, port)
-    Just (RemoteAddrNamed _ (RemotePipe _)) -> ("-", "-")
-    Nothing -> ("-", "-")
+    Just (RemoteAddrNamed _ (RemotePipe _))           -> ("-", "-")
+    Nothing                                           -> ("-", "-")
  where
   maybeActiveNode = flip L.find acceptors $ \(RemoteAddrNamed name _) -> name == nameOfNode
 
@@ -311,8 +314,8 @@ mkTraceAcceptorEndpoint
 mkTraceAcceptorEndpoint nameOfNode acceptors =
   case maybeActiveNode of
     Just (RemoteAddrNamed _ (RemoteSocket host port)) -> host <> ":" <> port
-    Just (RemoteAddrNamed _ (RemotePipe pipePath)) -> pipePath
-    Nothing -> "-"
+    Just (RemoteAddrNamed _ (RemotePipe pipePath))    -> pipePath
+    Nothing                                           -> "-"
  where
   maybeActiveNode = flip L.find acceptors $ \(RemoteAddrNamed name _) -> name == nameOfNode
 
@@ -454,7 +457,7 @@ showElement w = element w # set UI.style [("display", "inline")]
 hideElement w = element w # set UI.style [("display", "none")]
 
 markAsOutdated, markAsUpToDate :: Element -> UI Element
-markAsOutdated el = element el # set UI.class_ "outdated-value"
+markAsOutdated el = element el # set UI.class_ (show OutdatedValue)
 markAsUpToDate el = element el # set UI.class_ ""
 
 markProgressBar
@@ -473,22 +476,14 @@ markProgressBar now lastUpdate lifetime els (barName, barBoxName) labelsNames =
   bar    = els ! barName
   barBox = els ! barBoxName
 
-  barClass, barBoxClass :: String
-  barClass = show barName
-  barBoxClass = show barBoxName
-
-  barClassOutdated, barBoxClassOutdated :: String
-  barClassOutdated = barClass <> "-outdated"
-  barBoxClassOutdated = barBoxClass <> "-outdated"
-
   markBarAsOutdated = do
-    void $ element bar    # set UI.class_ barClassOutdated
-    void $ element barBox # set UI.class_ barBoxClassOutdated
+    void $ element bar    # set UI.class_ (show ProgressBarOutdated)
+    void $ element barBox # set UI.class_ (show ProgressBarBoxOutdated)
                           # set UI.title__ "The progress values are outdated"
     forM_ labelsNames $ \name -> void . markAsOutdated $ els ! name
   markBarAsUpToDate = do
-    void $ element bar    # set UI.class_ barClass
-    void $ element barBox # set UI.class_ barBoxClass
+    void $ element bar    # set UI.class_ (show ProgressBar)
+    void $ element barBox # set UI.class_ (show ProgressBarBox)
                           # set UI.title__ ""
     forM_ labelsNames $ \name -> void . markAsUpToDate $ els ! name
 
@@ -517,14 +512,14 @@ updateCharts window nameOfNode ni nm = do
   timeInSec :: Double
   timeInSec = fromIntegral (niUpTime ni) / 1000000000
 
-  mN = "memoryUsageChart-"  <> nameOfNode
-  cN = "cpuUsageChart-"     <> nameOfNode
-  dN = "diskUsageChart-"    <> nameOfNode
-  nN = "networkUsageChart-" <> nameOfNode
+  mN = show MemoryUsageChartId  <> nameOfNode
+  cN = show CPUUsageChartId     <> nameOfNode
+  dN = show DiskUsageChartId    <> nameOfNode
+  nN = show NetworkUsageChartId <> nameOfNode
 
-  mGN = "grid-memoryUsageChart-"  <> nameOfNode
-  cGN = "grid-cpuUsageChart-"     <> nameOfNode
-  dGN = "grid-diskUsageChart-"    <> nameOfNode
-  nGN = "grid-networkUsageChart-" <> nameOfNode
+  mGN = show GridMemoryUsageChartId  <> nameOfNode
+  cGN = show GridCPUUsageChartId     <> nameOfNode
+  dGN = show GridDiskUsageChartId    <> nameOfNode
+  nGN = show GridNetworkUsageChartId <> nameOfNode
 
   elementExists anId = isJust <$> UI.getElementById window (unpack anId)
