@@ -12,7 +12,7 @@ echo
 echo "Running Stylish Haskell"
 echo "======================="
 echo
-stylish-haskell -c .stylish-haskell.yaml -i $(git ls-files -- '*.hs')
+stylish-haskell -c .stylish-haskell.yaml -i $(git ls-files -- '*.hs' | grep 'bm-timeline')
 
 echo
 echo
