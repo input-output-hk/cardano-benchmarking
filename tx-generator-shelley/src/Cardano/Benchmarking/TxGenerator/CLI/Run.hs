@@ -30,10 +30,9 @@ import           Cardano.Benchmarking.TxGenerator (genesisBenchmarkRunner)
 import qualified Cardano.Benchmarking.TxGenerator.CLI.Parsers as P (GenerateTxs (..))
 import           Cardano.Benchmarking.TxGenerator.Error (TxGenError)
 
-data CliError
-  = FileNotFoundError !FilePath
-  | GenesisBenchmarkRunnerError !TxGenError
-  deriving Show
+data CliError = FileNotFoundError !FilePath
+    | GenesisBenchmarkRunnerError !TxGenError
+    deriving Show
 
 ------------------------------------------------------------------------------------------------
 

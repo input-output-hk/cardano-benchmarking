@@ -30,7 +30,7 @@ import           Control.Monad.Class.MonadSTM (MonadSTM, TMVar, TVar, atomically
                                                putTMVar, readTVar, retry, takeTMVar, tryTakeTMVar)
 import           Control.Monad.Class.MonadTime (MonadTime (..), Time, addTime, diffTime,
                                                 getMonotonicTime)
-import           Control.Monad.Class.MonadTimer (threadDelay)
+import           Control.Monad.Class.MonadTimer (MonadDelay (..), threadDelay)
 import           Control.Tracer (Tracer, traceWith)
 import           Data.List.NonEmpty (fromList)
 import qualified Data.Sequence as Seq
@@ -63,28 +63,29 @@ import           Ouroboros.Network.Protocol.TxSubmission.Type (BlockingReplyList
 --   `TxSubmission` and its associated instances
 --   (e.g. `Message`).
 bulkSubmission
-  :: forall blk txid tx .
-     ( Ord txid
+  :: forall m blk txid tx .
+     ( MonadSTM m, MonadTime m, MonadDelay m
+     ,  Ord txid
      , Mempool.HasTxId tx
      , RunNode blk
      , tx ~ Mempool.GenTx blk, txid ~ Mempool.GenTxId blk)
   => (ROEnv txid tx -> ROEnv txid tx)
   -- changes to default settings
-  -> Tracer IO (TraceBenchTxSubmit txid)
-  -> TVar IO Bool
+  -> Tracer m (TraceBenchTxSubmit txid)
+  -> TVar m Bool
   -- Set to True to indicate subsystem should terminate
-  -> TMVar IO [tx]
+  -> TMVar m [tx]
   -- non-empty list of transactions to be forwarded,
   -- empty list indicates terminating
-  -> TMVar IO (RPCTxSubmission IO txid tx)
+  -> TMVar m (RPCTxSubmission m txid tx)
   -- the RPC variable shared with
   -- `TxSubmission` local peer
-  -> IO ()
+  -> m ()
 bulkSubmission updEnv tr termVar txIn rpcIn =
   -- liftIO $ putStrLn "bulkSubmission__0"
   defaultRWEnv >>= evalStateT (go $ updEnv defaultROEnv)
  where
-  go :: ROEnv txid tx -> StateT (RWEnv IO txid tx) IO ()
+  go :: ROEnv txid tx -> StateT (RWEnv m txid tx) m ()
   go env = do
     -- lift . traceWith tr . TraceBenchTxSubDebug $ "go, env: " ++ show env
     shutdown <- gets (\RWEnv{terminating, inFlight, notYetSent} ->
@@ -110,7 +111,7 @@ bulkSubmission updEnv tr termVar txIn rpcIn =
       -- lift . traceWith tr . TraceBenchTxSubDebug $ "go, process next interaction"
       go1 env
 
-  go1 :: ROEnv txid tx -> StateT (RWEnv IO txid tx) IO ()
+  go1 :: ROEnv txid tx -> StateT (RWEnv m txid tx) m ()
   go1 env = do
     -- lift . traceWith tr . TraceBenchTxSubDebug $ "go1, env: " ++ show env
     terminating' <- gets terminating
@@ -175,7 +176,7 @@ bulkSubmission updEnv tr termVar txIn rpcIn =
   getTxSize :: tx -> TxSizeInBytes
   getTxSize = txInBlockSize
 
-  processOp :: ROEnv txid tx -> StateT (RWEnv IO txid tx) IO ()
+  processOp :: ROEnv txid tx -> StateT (RWEnv m txid tx) m ()
   processOp env = do
     -- lift . traceWith tr . TraceBenchTxSubDebug $ "processOp, env: " ++ show env
     (window, op) <- (maybe (error "internal error")) id <$> gets availableOp
@@ -193,7 +194,7 @@ bulkSubmission updEnv tr termVar txIn rpcIn =
                     , notYetSent  = store })
     -- lift . traceWith tr . TraceBenchTxSubDebug $ "processOp, done."
 
-  processRPC :: ROEnv txid tx -> RPCTxSubmission IO txid tx -> StateT (RWEnv IO txid tx) IO ()
+  processRPC :: ROEnv txid tx -> RPCTxSubmission m txid tx -> StateT (RWEnv m txid tx) m ()
   processRPC env =
     \case
       RPCRequestTxs  txids resp -> do
@@ -250,7 +251,7 @@ bulkSubmission updEnv tr termVar txIn rpcIn =
         -- deal with acked txs
         processAcks acked
 
-  checkRateLimiter :: StateT (RWEnv IO txid tx) IO ()
+  checkRateLimiter :: StateT (RWEnv m txid tx) m ()
   checkRateLimiter = do
     waitUntil <- gets proceedAfter
     sleepFor <- (\x -> waitUntil `diffTime` x) <$> lift getMonotonicTime
@@ -261,24 +262,24 @@ bulkSubmission updEnv tr termVar txIn rpcIn =
   setRateLimiter
     :: ROEnv txid tx
     -> [TxSizeInBytes]
-    -> StateT (RWEnv IO txid tx) IO ()
+    -> StateT (RWEnv m txid tx) m ()
   setRateLimiter env tls = do
     let txLimit   = (* fromIntegral (length tls)) <$> txNumServiceTime  env
         sizeLimit = (* fromIntegral (sum    tls)) <$> txSizeServiceTime env
         limit     = max txLimit sizeLimit
     flip (maybe (pure ())) limit $ \d -> do
-      liftIO . traceWith tr . TraceBenchTxSubDebug
+      lift . traceWith tr . TraceBenchTxSubDebug
         $ "******* sleeping for " ++ show d
       waitUntil <- (addTime d) <$> lift getMonotonicTime
       modify (\x -> x { proceedAfter = waitUntil })
 
-  processAcks :: Word16 -> StateT (RWEnv IO txid tx) IO ()
+  processAcks :: Word16 -> StateT (RWEnv m txid tx) m ()
   processAcks acked  =  when (acked > 0) $ do
     (done, left) <- (Seq.splitAt (fromIntegral acked)) <$> gets inFlight
     lift . traceWith tr $ TraceBenchTxSubServAck [a | (a,_,_) <- toList done]
     modify (\x -> x {inFlight = left})
 
-  noteIdle :: StateT (RWEnv IO txid tx) IO ()
+  noteIdle :: StateT (RWEnv m txid tx) m ()
   noteIdle = do
 --      liftIO $ putStrLn $ "noteIdle"
     wasBusy <- (== Busy) <$> gets activityState
@@ -287,7 +288,7 @@ bulkSubmission updEnv tr termVar txIn rpcIn =
 --        liftIO $ putStrLn $ "noteIdle, Idle!"
       modify (\x -> x { activityState = Idle})
 
-  noteBusy :: StateT (RWEnv IO txid tx) IO ()
+  noteBusy :: StateT (RWEnv m txid tx) m ()
   noteBusy = do -- just can't get those memory write cycles out of my head
 --      liftIO $ putStrLn $ "noteBusy"
     wasIdle <- (== Idle) <$> gets activityState

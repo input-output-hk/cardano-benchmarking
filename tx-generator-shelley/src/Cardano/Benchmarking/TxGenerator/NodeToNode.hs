@@ -63,11 +63,10 @@ type SendRecvConnect = WithMuxBearer
                                            NtN.NodeToNodeVersion
                                            CBOR.Term))
 
-data BenchmarkTxSubmitTracers m blk
-  = BenchmarkTracers
-      { trSendRecvConnect      :: Tracer m SendRecvConnect
-      , trSendRecvTxSubmission :: Tracer m (SendRecvTxSubmission blk)
-      }
+data BenchmarkTxSubmitTracers m blk = BenchmarkTracers
+    { trSendRecvConnect      :: Tracer m SendRecvConnect
+    , trSendRecvTxSubmission :: Tracer m (SendRecvTxSubmission blk)
+    }
 
 benchmarkConnectTxSubmit
   :: forall m blk . (RunNode blk, m ~ IO)

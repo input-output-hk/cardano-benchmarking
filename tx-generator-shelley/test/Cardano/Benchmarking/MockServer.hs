@@ -4,13 +4,12 @@
 
 module Cardano.Benchmarking.MockServer
 where
-import           Control.Concurrent
-import           Control.Concurrent.Async
 
-import           Control.Concurrent.STM as STM
-import           Control.Monad (forM_, void)
-import qualified Control.Monad.Class.MonadSTM as MSTM
-import           Control.Monad.IO.Class
+import           Control.Monad.Class.MonadAsync
+import           Control.Monad.Class.MonadSTM
+import           Control.Monad.Class.MonadTime
+import           Control.Monad.Class.MonadTimer
+import           Control.Monad.IOSim
 import           Control.Tracer (Tracer, nullTracer)
 
 import           Ouroboros.Consensus.Ledger.SupportsMempool as Mempool (GenTxId, txId)
@@ -26,7 +25,8 @@ import           Ouroboros.Network.Protocol.TxSubmission.Server (TxSubmissionSer
 
 import           Cardano.Benchmarking.TxGenerator.Submission
 import           Cardano.Benchmarking.TxGenerator.Types as T
-import           Network.TypedProtocol.Core (PeerRole (..))
+import           Network.TypedProtocol.Core (Peer, PeerRole (..))
+import           Network.TypedProtocol.Pipelined (PeerPipelined)
 import           Network.TypedProtocol.Pipelined (PeerPipelined)
 import           Ouroboros.Network.Protocol.TxSubmission.Type (TxSubmission (..))
 
@@ -35,18 +35,20 @@ import           Cardano.Slotting.Slot
 
 import           Cardano.Benchmarking.ReferenceServer (txSubmissionServer)
 
--- an alternative path is possible via
+-- An alternative path is possible via
 -- Ouroboros.Network.Protocol.TxSubmission.Direct.directPipelined
 
-testTxPeer :: forall blk. RunNode blk => [GenTx blk] -> IO [GenTx blk]
+testTxPeer
+  :: forall m block. (RunNode block, MonadSTM m , MonadAsync m, MonadTime m, MonadDelay m)
+  =>  [GenTx block] -> m [GenTx block]
 testTxPeer txs = do
-  tmv <- MSTM.newEmptyTMVarM
-  terminateEarly <- STM.newTVarIO False
-  txInChan <- STM.newTMVarIO txs
+  tmv <- newEmptyTMVarM
+  terminateEarly <- newTVarM False
+  txInChan <- newTMVarM txs
   pipeline <- async $ mockPipeline nullTracer tmv
-  generator <- async $ bulkSubmission updROEnv nullTracer terminateEarly txInChan tmv
+  _generator <- async $ bulkSubmission updROEnv nullTracer terminateEarly txInChan tmv
   threadDelay $ 10 * 1000000
-  atomically $ STM.writeTVar terminateEarly True
+  atomically $ writeTVar terminateEarly True
   wait pipeline
   where
     updROEnv :: ROEnv (Mempool.GenTxId blk) (GenTx blk) -> ROEnv (Mempool.GenTxId blk) (GenTx blk)
@@ -57,23 +59,37 @@ testTxPeer txs = do
               }
 
 mockPipeline
-  :: RunNode block =>
-     Tracer IO NodeToNodeSubmissionTrace
-     -> STM.TMVar (RPCTxSubmission IO (GenTxId block) (GenTx block))
-     -> IO [GenTx block]
-
+  :: forall m block. (RunNode block, MonadSTM m ) =>
+     Tracer m NodeToNodeSubmissionTrace
+     -> TMVar m (RPCTxSubmission m (GenTxId block) (GenTx block))
+     -> m [GenTx block]
 mockPipeline tr3 tmv = do
-  (receivedTxs, () , _terminalstate) <- connectPipelined []
-             (txSubmissionServerPeerPipelined mockServer)
-             (txSubmissionClientPeer (txSubmissionClient tr3 tmv))
+  (receivedTxs, () , _terminalstate) <- connectPipelined [] server client
   return receivedTxs
+  where
+    client ::
+        Peer
+          (TxSubmission (GenTxId block) (GenTx block))
+         'AsClient
+         'StIdle
+         m
+         ()
+    client = txSubmissionClientPeer (txSubmissionClient tr3 tmv)
+    server ::
+        PeerPipelined
+          (TxSubmission (GenTxId block) (GenTx block))
+          'AsServer
+          'StIdle
+          m
+          [GenTx block]
+    server = txSubmissionServerPeerPipelined mockServer
 
 mockServer
-  :: forall block. RunNode block
+  :: forall m block. (RunNode block, Monad m)
   =>  TxSubmissionServerPipelined
        (GenTxId block)
        (GenTx block)
-       IO
+       m
        [GenTx block]
 mockServer
   = txSubmissionServer
@@ -97,9 +113,9 @@ dummyTx f = mkShelleyTx tx
         []
         []
 
-testPipeline :: [ GenTx Block ] -> IO Bool
-testPipeline sendTx = do
-  receivedTx <- testTxPeer sendTx
-  return $ receivedTx == sendTx
+testPipeline :: [ GenTx Block ] -> Bool
+testPipeline sendTx
+  = (runSimOrThrow $ testTxPeer sendTx) == sendTx
 
+test :: Bool
 test = testPipeline $ map dummyTx [1..10]
