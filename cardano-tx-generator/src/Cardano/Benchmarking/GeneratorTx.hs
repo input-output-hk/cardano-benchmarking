@@ -12,6 +12,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE ViewPatterns #-}
 
 {-# OPTIONS_GHC -Wno-all-missed-specialisations #-}
 {-# OPTIONS_GHC -Wno-missed-specialisations #-}
@@ -93,7 +94,7 @@ secureFunds :: ConfigSupportsTxGen mode era
 secureFunds b@Benchmark{bTxFee, bInitialTTL} m (FundsGenesis keyF) = do
   key <- readSigningKey (modeEra m) keyF
   let (_, TxOut _ genesisCoin) = extractGenesisFunds m key
-      toAddr = keyAddress m key
+      toAddr = keyAddress m modeNetworkId key
       (tx, txin, txout) =
          genesisExpenditure m key toAddr genesisCoin bTxFee bInitialTTL
       txOfMode = castTxMode m tx
@@ -115,9 +116,12 @@ secureFunds b m@ModeCardanoShelley{} (FundsUtxo keyF txin txout) = do
   key <- readSigningKey (modeEra m) keyF
   (key, ) <$> splitFunds b m key (txin, txout)
 
-secureFunds _ m (FundsSplitUtxo keyF utxoF) = do
+secureFunds Benchmark{bTxCount=NumberOfTxs (fromIntegral -> ntxs)}
+            m (FundsSplitUtxo keyF utxoF) = do
   key <- readSigningKey (modeEra m) keyF
   utxo <- withExceptT (UtxoReadFailure . pack) . newExceptT $ A.eitherDecode <$> BS.readFile utxoF
+  when (Set.size utxo < ntxs) $
+    left $ SuppliedUtxoTooSmall ntxs (Set.size utxo)
   pure (key, utxo)
 
 secureFunds _ m f =
@@ -279,7 +283,7 @@ runBenchmark b@Benchmark{ bTargets
                         , bInitCooldown=InitCooldown initCooldown
                         }
              m fundsKey fundsWithSufficientCoins = do
-  let recipientAddress = keyAddress m fundsKey
+  let recipientAddress = keyAddress m modeNetworkIdOverridable fundsKey
 
   liftIO . traceWith (trTxSubmit m) . TraceBenchTxSubDebug
     $ "******* Tx generator: waiting " ++ show initCooldown ++ "s *******"
@@ -374,7 +378,10 @@ txGenerator Benchmark
             fundsWithSufficientCoins = do
   liftIO . traceWith (trTxSubmit m) . TraceBenchTxSubDebug
     $ " Generating " ++ show numOfTransactions
-      ++ " transactions, for " ++ show numOfTargetNodes ++ " peers"
+      ++ " transactions, for " ++ show numOfTargetNodes
+      ++ " peers, fee " ++ show bTxFee
+      ++ ", value " ++ show valueForRecipient
+      ++ ", totalValue " ++ show totalValue
   txs <- createMainTxs numOfTransactions numOfInsPerTx fundsWithSufficientCoins
   liftIO . traceWith (trTxSubmit m) . TraceBenchTxSubDebug
     $ " Done, " ++ show numOfTransactions ++ " were generated."
@@ -386,7 +393,7 @@ txGenerator Benchmark
                                   (repeat txOut)
   initRecipientIndex = 0 :: Int
   -- The same output for all transactions.
-  valueForRecipient = Lovelace 10000000 -- 10 ADA
+  valueForRecipient = Lovelace 1000000 -- 10 ADA
   !txOut = TxOut recipientAddress valueForRecipient
   totalValue = valueForRecipient + bTxFee
   -- Send possible change to the same 'recipientAddress'.
@@ -433,7 +440,10 @@ txGenerator Benchmark
     -> ExceptT TxGenError IO ((TxIn, TxOut era), Set (TxIn, TxOut era))
   findAvailableFunds funds thresh =
     case find (predTxD thresh) funds of
-      Nothing    -> left $ InsufficientFundsForRecipientTx thresh
+      Nothing    -> left $ InsufficientFundsForRecipientTx
+                             thresh
+                             (maximum [ coin
+                                      | (_, TxOut _ coin) <- Set.toList funds])
       Just found -> right (found, Set.delete found funds)
 
   -- Find the first tx output that contains sufficient amount of money.

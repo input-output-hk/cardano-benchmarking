@@ -80,14 +80,14 @@ parseGeneratorFunds =
         "split-utxo"
         "UTxO funds file.")
 
-keyAddress :: Mode mode era -> SigningKeyOf era -> Address era
-keyAddress m = case modeEra m of
+keyAddress :: Mode mode era -> (Mode mode era -> NetworkId) -> SigningKeyOf era -> Address era
+keyAddress m toNetId = case modeEra m of
   EraByron{}   -> \(getVerificationKey -> ByronVerificationKey k) ->
     ByronAddress
-      (Byron.makeVerKeyAddress (toByronNetworkMagic $ modeNetworkId m) k)
+      (Byron.makeVerKeyAddress (toByronNetworkMagic $ toNetId m) k)
   EraShelley{} -> \k ->
     makeShelleyAddress
-      (modeNetworkId m)
+      (toNetId m)
       (PaymentCredentialByKey $ verificationKeyHash $ getVerificationKey k)
       NoStakeAddress
 
@@ -145,14 +145,14 @@ extractGenesisFunds m k =
     (genesisKeyPseudoTxIn m k addr, TxOut addr coin)
 
   isTxOutForKey :: TxOut era -> Bool
-  isTxOutForKey (TxOut addr _) = keyAddress m k == addr
+  isTxOutForKey (TxOut addr _) = keyAddress m modeNetworkId k == addr
 
 genesisExpenditure :: Mode mode era -> SigningKeyOf era -> Address era -> Lovelace -> TxFee -> TTL -> (Tx era, TxIn, TxOut era)
 genesisExpenditure m key addr (Lovelace coin) (Lovelace fee) ttl =
   (,,) tx txin txout
  where
    tx = mkTransaction m key 0 ttl (Lovelace fee)
-          [genesisKeyPseudoTxIn m key (keyAddress m key)]
+          [genesisKeyPseudoTxIn m key (keyAddress m modeNetworkId key)]
           [txout]
    txin = TxIn (getTxId $ getTxBody tx) (TxIx 0)
    txout = TxOut addr (Lovelace (coin - fee))
