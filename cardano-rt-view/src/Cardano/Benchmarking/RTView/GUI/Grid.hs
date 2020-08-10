@@ -20,8 +20,10 @@ import qualified Graphics.UI.Threepenny as UI
 import           Graphics.UI.Threepenny.Core (Element, UI, element, set, string, ( # ), ( #+ ),
                                               ( #. ))
 
-import           Cardano.Benchmarking.RTView.GUI.Elements (ElementName (..), NodeStateElements,
-                                                           NodesStateElements, PeerInfoItem (..))
+import           Cardano.Benchmarking.RTView.GUI.Elements (ElementName (..), HTMLClass (..),
+                                                           HTMLId (..), HTMLW3Class (..),
+                                                           NodeStateElements, NodesStateElements,
+                                                           PeerInfoItem (..), ( ## ), (<+>))
 import           Cardano.BM.Data.Configuration (RemoteAddrNamed (..))
 
 mkNodesGrid
@@ -43,10 +45,9 @@ mkNodesGrid _window acceptors = do
   let allRows = UI.tr #+ nodesRowCells : metricRows
 
   nodesGrid
-    <- UI.div #. "w3-container w3-margin" #+
-         [ UI.div #. "w3-responsive" #+
-             [ UI.table ## "nodesGrid"
-                        #. "w3-table w3-bordered nodes-grid" #+
+    <- UI.div #. [W3Container, W3Margin] <+> [] #+
+         [ UI.div #. show W3Responsive #+
+             [ UI.table #. [W3Table, W3Bordered] <+> [] #+
                  allRows
              ]
          ]
@@ -124,8 +125,8 @@ mkNodesRowCells
 mkNodesRowCells acceptors = do
   nodesRowCells
     <- forM acceptors $ \(RemoteAddrNamed nameOfNode _) ->
-         element <$> UI.th # set UI.id_ ("gridNodeTH-" <> T.unpack nameOfNode) #+
-                       [ UI.span #. "grid-node-name-label" #+ [string "Node: "]
+         element <$> UI.th ## (show GridNodeTH <> T.unpack nameOfNode) #+
+                       [ UI.span #. show GridNodeNameLabel #+ [string "Node: "]
                        , string $ T.unpack nameOfNode
                        ]
   -- To keep top-left corner cell empty.
@@ -142,7 +143,7 @@ mkRowCells nodesElements elemName = do
   -- It can be used to hide/show the whole column.
   tds <- forM nodesElements $ \(nameOfNode, nodeElements, _) ->
            element <$> UI.td ## (show elemName <> "-" <> T.unpack nameOfNode)
-                             #. "grid-row-cell"
+                             #. show GridRowCell
                              #+ [element $ nodeElements ! elemName]
   return $ [tagTd] ++ tds
 
@@ -166,20 +167,20 @@ mkNodeElements nameOfNode = do
   elRemainingKESPeriods  <- string "-"
 
   elMemoryUsageChart
-    <- UI.canvas ## ("grid-memoryUsageChart-" <> T.unpack nameOfNode)
-                 #. "grid-memory-usage-chart"
+    <- UI.canvas ## (show GridMemoryUsageChartId <> T.unpack nameOfNode)
+                 #. show GridMemoryUsageChart
                  #+ []
   elCPUUsageChart
-    <- UI.canvas ## ("grid-cpuUsageChart-" <> T.unpack nameOfNode)
-                 #. "grid-cpu-usage-chart"
+    <- UI.canvas ## (show GridCPUUsageChartId <> T.unpack nameOfNode)
+                 #. show GridCPUUsageChart
                  #+ []
   elDiskUsageChart
-    <- UI.canvas ## ("grid-diskUsageChart-" <> T.unpack nameOfNode)
-                 #. "grid-disk-usage-chart"
+    <- UI.canvas ## (show GridDiskUsageChartId <> T.unpack nameOfNode)
+                 #. show GridDiskUsageChart
                  #+ []
   elNetworkUsageChart
-    <- UI.canvas ## ("grid-networkUsageChart-" <> T.unpack nameOfNode)
-                 #. "grid-network-usage-chart"
+    <- UI.canvas ## (show GridNetworkUsageChartId <> T.unpack nameOfNode)
+                 #. show GridNetworkUsageChart
                  #+ []
 
   elEpoch              <- string "0"
@@ -230,6 +231,3 @@ mkNodeElements nameOfNode = do
       , (ElRTSGcNum,              elRTSGcNum)
       , (ElRTSGcMajorNum,         elRTSGcMajorNum)
       ]
-
-(##) :: UI Element -> String -> UI Element
-(##) el anId = el # set UI.id_ anId

@@ -26,8 +26,9 @@ library
                        Cardano.Benchmarking.RTView.GUI.Elements
                        Cardano.Benchmarking.RTView.GUI.Grid
                        Cardano.Benchmarking.RTView.GUI.Markup
-                       Cardano.Benchmarking.RTView.GUI.NodeWidget
+                       Cardano.Benchmarking.RTView.GUI.Pane
                        Cardano.Benchmarking.RTView.GUI.Updater
+                       Cardano.Benchmarking.RTView.GUI.CSS.Style
 
                        Cardano.Benchmarking.RTView.NodeState.Parsers
                        Cardano.Benchmarking.RTView.NodeState.Types
@@ -43,6 +44,7 @@ library
                      , bytestring
                      , cardano-config
                      , cardano-prelude
+                     , clay
                      , containers
                      , contra-tracer
                      , deepseq

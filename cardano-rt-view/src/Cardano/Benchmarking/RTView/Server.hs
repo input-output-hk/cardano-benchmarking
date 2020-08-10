@@ -15,6 +15,7 @@ import           Graphics.UI.Threepenny.Timer (interval, start, tick, timer)
 import           Cardano.BM.Data.Configuration (RemoteAddrNamed (..))
 
 import           Cardano.Benchmarking.RTView.CLI (RTViewParams (..))
+import           Cardano.Benchmarking.RTView.GUI.CSS.Style (ownCSS)
 import           Cardano.Benchmarking.RTView.GUI.Markup (mkPageBody)
 import           Cardano.Benchmarking.RTView.GUI.Updater (updateGUI)
 import           Cardano.Benchmarking.RTView.NodeState.Types (NodesState)
@@ -44,7 +45,7 @@ mainPage nsMVar params acceptors window = do
 
   -- It is assumed that CSS files are available at 'pathToStatic/css/'.
   UI.addStyleSheet window "w3.css"
-  UI.addStyleSheet window "cardano-rt-view.css"
+  embedOwnCSS window
 
   -- It is assumed that JS files are available at 'pathToStatic/js/'.
   addJavaScript window "chart.js"
@@ -69,4 +70,12 @@ addJavaScript
   -> UI ()
 addJavaScript w filename = void $ do
   el <- UI.mkElement "script" # set UI.src ("/static/js/" ++ filename)
+  UI.getHead w #+ [UI.element el]
+
+-- | We generate our own CSS using 'clay' package, so embed it in the page's header.
+embedOwnCSS
+  :: UI.Window
+  -> UI ()
+embedOwnCSS w = void $ do
+  el <- UI.mkElement "style" # set UI.html ownCSS
   UI.getHead w #+ [UI.element el]
