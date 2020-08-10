@@ -90,7 +90,7 @@ benchmarkConnectTxSubmit p localAddr remoteAddr myTxSubClient =
   peerMultiplex =
     simpleSingletonVersions
       n2nVer
-      (NtN.NodeToNodeVersionData { NtN.networkMagic = modeNetworkMagic p})
+      (NtN.NodeToNodeVersionData { NtN.networkMagic = modeNetworkMagicN2N p})
       (NtN.DictVersion NtN.nodeToNodeCodecCBORTerm) $
       NtN.nodeToNodeProtocols NtN.defaultMiniProtocolParameters $ \them _ ->
         NtN.NodeToNodeProtocols

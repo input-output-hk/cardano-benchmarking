@@ -92,7 +92,7 @@ newtype NumberOfOutputsPerTx =
   deriving (Eq, Ord, Num, Show)
 
 newtype NumberOfTxs =
-  NumberOfTxs Word64
+  NumberOfTxs { unNumberOfTxs :: Word64 }
   deriving (Eq, Ord, Num, Show)
 
 newtype TPSRate =
