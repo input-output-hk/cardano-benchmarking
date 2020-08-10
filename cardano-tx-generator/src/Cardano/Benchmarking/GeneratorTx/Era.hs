@@ -164,6 +164,7 @@ type ModeSupportsTxGen mode =
 
 type EraSupportsTxGen era =
   ( Eq (Address era)
+  , FromJSON (TxOut era)
   , Key (SigningKeyRoleOf era)
   , Ord (TxOut era)
   , Show (Tx era)
