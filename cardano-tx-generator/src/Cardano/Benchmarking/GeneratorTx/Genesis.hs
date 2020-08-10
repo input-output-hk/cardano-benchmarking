@@ -53,8 +53,9 @@ import           Cardano.Benchmarking.GeneratorTx.CLI.Parsers
 
 
 data GeneratorFunds
-  = FundsGenesis SigningKeyFile
-  | FundsUtxo    SigningKeyFile TxIn (TxOut Shelley)
+  = FundsGenesis   SigningKeyFile
+  | FundsUtxo      SigningKeyFile TxIn (TxOut Shelley)
+  | FundsSplitUtxo SigningKeyFile FilePath
   deriving Show
 
 parseGeneratorFunds :: Opt.Parser GeneratorFunds
@@ -70,6 +71,14 @@ parseGeneratorFunds =
         "UTxO funds signing key."
     <*> pTxIn
     <*> pTxOut)
+  <|>
+  (FundsSplitUtxo
+    <$> parseSigningKeysFile
+        "split-utxo-funds-key"
+        "UTxO funds signing key."
+    <*> parseFilePath
+        "split-utxo"
+        "UTxO funds file.")
 
 keyAddress :: Mode mode era -> SigningKeyOf era -> Address era
 keyAddress m = case modeEra m of

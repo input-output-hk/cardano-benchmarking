@@ -22,11 +22,8 @@ import           Data.Text
 import           Cardano.Prelude hiding (option)
 import           Control.Monad (fail)
 import           Control.Monad.Trans.Except.Extra (firstExceptT)
-import           Data.Text (Text, pack, unpack)
-import           Data.Version (showVersion)
 import qualified Options.Applicative as Opt
 import           Paths_cardano_tx_generator (version)
-import           Prelude (String)
 
 import qualified Cardano.Chain.Genesis as Genesis
 

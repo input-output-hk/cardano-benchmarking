@@ -10,7 +10,7 @@ import           Cardano.Prelude
 data TxGenError =
     CurrentlyCannotSendTxToRelayNode !FilePath
   -- ^ Relay nodes cannot currently be transaction recipients.
-  | InsufficientFundsForRecipientTx
+  | InsufficientFundsForRecipientTx !Lovelace
   -- ^ Error occurred while creating the target node address.
   | NeedMinimumThreeSigningKeyFiles ![FilePath]
   -- ^ Need at least 3 signing key files.
@@ -20,4 +20,5 @@ data TxGenError =
   | SecretKeyDeserialiseError !Text
   | SecretKeyReadError !Text
   | SplittingSubmissionError !Text
+  | UtxoReadFailure !Text
   deriving Show
