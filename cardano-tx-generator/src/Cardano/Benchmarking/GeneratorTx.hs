@@ -55,9 +55,8 @@ import           Network.Socket (AddrInfo (..), AddrInfoFlag (..), Family (..), 
                                  addrFamily, addrFlags, addrSocketType, defaultHints, getAddrInfo)
 
 import           Cardano.Chain.Common (decodeAddressBase58)
-import           Cardano.Config.Types
-                   ( NodeAddress (..), NodeHostAddress(..)
-                   , SigningKeyFile(..))
+import           Cardano.CLI.Types (SigningKeyFile (..))
+import           Cardano.Node.Types (NodeAddress (..), NodeHostAddress (..))
 
 import           Cardano.Api.TxSubmit
 import           Cardano.Api.Typed

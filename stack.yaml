@@ -1,4 +1,4 @@
-resolver: https://raw.githubusercontent.com/input-output-hk/cardano-prelude/316c854d1d3089f480708ad5cd5ecf8a74423ddd/snapshot.yaml
+resolver: https://raw.githubusercontent.com/input-output-hk/cardano-prelude/71ea865408f2e03e6d6832359423546699730849/snapshot.yaml
 compiler: ghc-8.6.5
 
 packages:
@@ -96,13 +96,13 @@ extra-deps:
     commit: dba4b563dac99ff52328db916d99d928bc4a80fb
 
   - git: https://github.com/input-output-hk/cardano-prelude
-    commit: 316c854d1d3089f480708ad5cd5ecf8a74423ddd
+    commit: 71ea865408f2e03e6d6832359423546699730849
     subdirs:
       - .
       - test
 
   - git: https://github.com/input-output-hk/cardano-node
-    commit: 42f17e5cb3050e489b7e7c879d1af809cedacf62
+    commit: e5cbc56a5330a7c1cbb82cc1653af9f2136f8bf8
     subdirs:
       - cardano-api
       - cardano-config
@@ -110,7 +110,7 @@ extra-deps:
       - cardano-node
 
   #- git: https://github.com/input-output-hk/cardano-db-sync
-  #  commit: 1185967393d5052f3c5af540e1e1f058599019cf
+  #  commit: e7a94d28c25d11800062b5354436b03c3aefae6e
   #  subdirs:
   #    - cardano-db
   #    - cardano-db-sync
@@ -119,7 +119,7 @@ extra-deps:
 
 
   - git: https://github.com/input-output-hk/cardano-base
-    commit: 7d795c3040ea7785812efa1c97864bbb41b15d3e
+    commit: df8687488449f71dce3d881800c21e41fe1b7fc1
     subdirs:
       - binary
       - binary/test
@@ -130,17 +130,11 @@ extra-deps:
   - git: https://github.com/input-output-hk/cardano-crypto
     commit: 2547ad1e80aeabca2899951601079408becbc92c
 
-  - git: https://github.com/input-output-hk/cardano-shell
-    commit: 601bb4324c258e3c8cbd2d532e5696fd09e2582e
-    subdirs:
-      - cardano-shell
-
   - git: https://github.com/input-output-hk/cardano-ledger-specs
-    commit: 183a70c001587d9b1977541deae28c3e44713907
+    commit: c75870c84338074a7ed57cc162a7f58cf028ce29
     subdirs:
       # small-steps
       - semantics/executable-spec
-      - semantics/small-steps-test
       # cs-ledger
       - byron/ledger/executable-spec
       - byron/ledger/impl
@@ -151,14 +145,14 @@ extra-deps:
       - byron/chain/executable-spec
       - shelley/chain-and-ledger/dependencies/non-integer
       - shelley/chain-and-ledger/executable-spec
-      - shelley/chain-and-ledger/executable-spec/test
+      - shelley/chain-and-ledger/shelley-spec-ledger-test
 
     # Needed for `cardano-ledger-specs`
   - git: https://github.com/input-output-hk/goblins
     commit: 26d35ad52fe9ade3391532dbfeb2f416f07650bc
 
   - git: https://github.com/input-output-hk/ouroboros-network
-    commit: ec74d1c463b6d18bdca2b714abe730c1d237cc32
+    commit: fbfae1dbed1f22ba4cceacd881e60a2bc25a39d3
     subdirs:
         - io-sim
         - io-sim-classes
@@ -181,7 +175,7 @@ extra-deps:
         - Win32-network
 
   - git: https://github.com/input-output-hk/iohk-monitoring-framework
-    commit: efa4b5ecd7f0a13124616b12679cd42517cd905a
+    commit: d4d668111800fc6dc0d24f17befa24356cccaded
     subdirs:
       - contra-tracer
       - iohk-monitoring

@@ -40,7 +40,7 @@ import           Cardano.Node.Logging
 import           Cardano.Node.Protocol.Cardano
 import           Cardano.Node.Protocol.Byron
 import           Cardano.Node.Protocol.Shelley
-import           Cardano.Node.Types hiding (Protocol)
+import           Cardano.Node.Types
 
 import           Cardano.Benchmarking.GeneratorTx
 import           Cardano.Benchmarking.GeneratorTx.Benchmark
@@ -164,8 +164,7 @@ runCommand (GenerateTxs logConfigFp
  where
    ncli :: NodeCLI
    ncli = NodeCLI
-          { nodeMode = RealProtocolMode
-          , nodeAddr = Nothing
+          { nodeAddr = Nothing
           , configFile = ConfigYamlFilePath logConfigFp
           , topologyFile = TopologyFile "" -- Tx generator doesn't use topology
           , databaseFile = DbFile ""       -- Tx generator doesn't use database

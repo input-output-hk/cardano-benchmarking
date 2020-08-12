@@ -142,14 +142,13 @@ import           Cardano.Api.TxSubmit
 import qualified Cardano.Api.Typed as Api
 
 -- Node imports
-import           Cardano.Config.Types (SocketPath(..))
-import           Cardano.Node.Logging (LOContent(..), LoggingLayer (..))
-import           Cardano.TracingOrphanInstances.Byron()
-import           Cardano.TracingOrphanInstances.Common()
-import           Cardano.TracingOrphanInstances.Consensus()
-import           Cardano.TracingOrphanInstances.Mock()
-import           Cardano.TracingOrphanInstances.Network()
-import           Cardano.TracingOrphanInstances.Shelley()
+import           Cardano.Node.Types (NodeAddress, SocketPath(..))
+import           Cardano.Node.Configuration.Logging (LOContent(..), LoggingLayer (..))
+import           Cardano.Tracing.OrphanInstances.Byron()
+import           Cardano.Tracing.OrphanInstances.Common()
+import           Cardano.Tracing.OrphanInstances.Consensus()
+import           Cardano.Tracing.OrphanInstances.Network()
+import           Cardano.Tracing.OrphanInstances.Shelley()
 
 import Cardano.Benchmarking.GeneratorTx.Benchmark
 

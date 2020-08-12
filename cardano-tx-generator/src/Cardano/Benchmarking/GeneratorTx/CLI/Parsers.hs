@@ -21,8 +21,8 @@ import qualified Options.Applicative as Opt
 import qualified Control.Arrow as Arr
 import           Network.Socket (PortNumber)
 import           Cardano.Api.Typed
-import           Cardano.Config.Types (NodeAddress (..), NodeHostAddress (..), SigningKeyFile (..),
-                                       SocketPath (..))
+import           Cardano.CLI.Types (SigningKeyFile (..))
+import           Cardano.Node.Types (NodeAddress (..), NodeHostAddress (..), SocketPath (..))
 import           Ouroboros.Consensus.Block.Abstract (SlotNo (..))
 
 
