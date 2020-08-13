@@ -54,9 +54,7 @@
             "--tps"                    tps
             "--init-cooldown"          init_cooldown
 
-            "--sig-key"                sigKey
-
-            "--genesis-file"           localNodeConf.nodeConfig.GenesisFile
+            "--genesis-funds-key"      sigKey
           ] ++
           __attrValues
             (__mapAttrs (name: { ip, port }: "--target-node '(\"${ip}\",${toString port})'")

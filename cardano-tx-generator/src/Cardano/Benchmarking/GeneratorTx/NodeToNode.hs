@@ -2,6 +2,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
@@ -49,8 +50,8 @@ import           Cardano.Benchmarking.GeneratorTx.Era
 
 
 benchmarkConnectTxSubmit
-  :: forall m era blk. (blk ~ BlockOf era, RunNode blk, m ~ IO)
-  => Era era
+  :: forall m mode era blk. (blk ~ HFCBlockOf mode, RunNode blk, m ~ IO)
+  => Mode mode era
   -> Maybe AddrInfo
   -- ^ local address information (typically local interface/port to use)
   -> AddrInfo
@@ -60,7 +61,7 @@ benchmarkConnectTxSubmit
   -> m ()
 benchmarkConnectTxSubmit p localAddr remoteAddr myTxSubClient =
   NtN.connectTo
-    (socketSnocket $ eraIOManager p)
+    (socketSnocket $ modeIOManager p)
     NetworkConnectTracers {
         nctMuxTracer       = nullTracer,
         nctHandshakeTracer = trConnect p
@@ -69,21 +70,27 @@ benchmarkConnectTxSubmit p localAddr remoteAddr myTxSubClient =
     (addrAddress <$> localAddr)
     (addrAddress remoteAddr)
  where
+  modeVer :: Mode mode era -> NodeToNodeVersion
+  modeVer = \case
+    ModeCardanoByron{}   -> NodeToNodeV_2
+    ModeCardanoShelley{} -> NodeToNodeV_2
+    ModeByron{}          -> NodeToNodeV_1
+    ModeShelley{}        -> NodeToNodeV_1
   n2nVer :: NodeToNodeVersion
-  n2nVer = NodeToNodeV_1
+  n2nVer = modeVer p
   blkN2nVer :: BlockNodeToNodeVersion blk
   blkN2nVer = supportedVers Map.! n2nVer
   supportedVers :: Map.Map NodeToNodeVersion (BlockNodeToNodeVersion blk)
   supportedVers = supportedNodeToNodeVersions (Proxy @blk)
   myCodecs :: Codecs blk DeserialiseFailure m
                 ByteString ByteString ByteString ByteString ByteString ByteString
-  myCodecs  = defaultCodecs (eraCodecConfig p) blkN2nVer
+  myCodecs  = defaultCodecs (modeCodecConfig p) blkN2nVer
   peerMultiplex :: Versions NtN.NodeToNodeVersion NtN.DictVersion
                      (OuroborosApplication InitiatorMode SockAddr ByteString IO () Void)
   peerMultiplex =
     simpleSingletonVersions
-      NtN.NodeToNodeV_1
-      (NtN.NodeToNodeVersionData { NtN.networkMagic = eraNetworkMagic p})
+      n2nVer
+      (NtN.NodeToNodeVersionData { NtN.networkMagic = modeNetworkMagic p})
       (NtN.DictVersion NtN.nodeToNodeCodecCBORTerm) $
       NtN.nodeToNodeProtocols NtN.defaultMiniProtocolParameters $ \them _ ->
         NtN.NodeToNodeProtocols

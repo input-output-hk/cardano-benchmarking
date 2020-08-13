@@ -31,10 +31,12 @@ library
 
   build-depends:       aeson
                      , async
+                     , attoparsec
                      , base >=4.12 && <5
                      , bytestring
                      , cardano-api
                      , cardano-binary
+                     , cardano-cli
                      , cardano-config
                      , cardano-crypto-class
                      , cardano-crypto-wrapper
@@ -49,6 +51,7 @@ library
                      , filepath
                      , formatting
                      , generic-monoid
+                     , generics-sop
                      , ghc-prim
                      , http-client
                      , http-types

@@ -36,8 +36,9 @@ Usage:
     --mnemonic-suffix SUFFIX
                         Profiling output will get an additional suffix
 
-    --shelley           Set era to Shelley.  Default
-    --byron             Set era to Byron
+    --shelley           Non-HFC mode, Shelley era.  Default
+    --byron             Non-HFC mode, Byron era
+    --cardano           Cardano/HFC mode, Shelley era
 
     --quiet             Don't print much.  The default
     --verbose           Be verbose about what's going on
@@ -164,6 +165,7 @@ do case "$1" in
 
            --shelley )            era='shelley';;
            --byron )              era='byron';;
+           --cardano )            era='cardano-shelley';;
 
            --quiet )              verbose=;;
            --verbose )            verbose=t;;

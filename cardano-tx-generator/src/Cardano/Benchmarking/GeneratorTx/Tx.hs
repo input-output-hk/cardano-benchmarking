@@ -11,7 +11,9 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE ViewPatterns #-}
 {-# OPTIONS_GHC -Wno-all-missed-specialisations #-}
 
 module Cardano.Benchmarking.GeneratorTx.Tx
@@ -38,12 +40,18 @@ import qualified Data.ByteString.Lazy as LB
 import qualified Data.List.NonEmpty as NonEmpty
 import qualified Data.Map.Strict as Map
 import qualified Data.Text as T
+-- import           Generics.SOP (K(..), I(..), hcollapse, hmap)
 
 -- Era-agnostic imports
 import           Cardano.Binary (Annotated (..), reAnnotate)
 import qualified Cardano.Crypto.Hash.Class as Crypto
-import           Ouroboros.Consensus.Block.Abstract (SlotNo (..))
+import           Ouroboros.Consensus.Block.Abstract (SlotNo(..))
+import qualified Ouroboros.Consensus.HardFork.Combinator.Unary as HFC
 import           Ouroboros.Consensus.Ledger.SupportsMempool hiding (TxId)
+import           Ouroboros.Consensus.TypeFamilyWrappers
+
+-- Cardano-specific imports
+import           Ouroboros.Consensus.Cardano.Block hiding (TxId)
 
 -- Byron-specific imports
 import qualified Cardano.Chain.Common as Byron
@@ -64,18 +72,30 @@ import           Cardano.Benchmarking.GeneratorTx.Era
 import           Cardano.Benchmarking.GeneratorTx.Tx.Byron
 
 
-castTxMode :: Tx era -> TxForMode (ModeOf era)
-castTxMode tx@ByronTx{}   = TxForByronMode  tx
-castTxMode tx@ShelleyTx{} = TxForShelleyMode tx
+castTxMode :: Mode mode era -> Tx era -> TxForMode mode
+castTxMode ModeByron{}          tx@ByronTx{}   = TxForByronMode  tx
+castTxMode ModeShelley{}        tx@ShelleyTx{} = TxForShelleyMode tx
+castTxMode ModeCardanoByron{}   tx@ByronTx{}   = TxForCardanoMode $ Left tx
+castTxMode ModeCardanoShelley{} tx@ShelleyTx{} = TxForCardanoMode $ Right tx
 
-toGenTx :: Tx era -> GenTx (BlockOf era)
-toGenTx (ShelleyTx tx) = Shelley.mkShelleyTx tx
-toGenTx (ByronTx tx)   = normalByronTxToGenTx tx
+toGenTx :: Mode mode era -> Tx era -> GenTx (HFCBlockOf mode)
+toGenTx ModeShelley{}        (ShelleyTx tx) = inject $ Shelley.mkShelleyTx tx
+toGenTx ModeByron{}          (ByronTx tx)   = inject $ normalByronTxToGenTx tx
+toGenTx ModeCardanoShelley{} (ShelleyTx tx) = GenTxShelley $ Shelley.mkShelleyTx tx
+toGenTx ModeCardanoByron{}   (ByronTx tx)   = GenTxByron   $ normalByronTxToGenTx tx
 
-fromGenTxId :: Era era -> GenTxId (BlockOf era) -> TxId
-fromGenTxId EraShelley{} (Shelley.ShelleyTxId (ShelleyLedger.TxId i))  = TxId (Crypto.castHash i)
-fromGenTxId EraByron{} (Byron.ByronTxId i) = fromByronTxId i
-fromGenTxId EraByron{} _ = error "fromGenTxId:  unhandled Byron GenTxId case"
+shelleyTxId :: GenTxId (BlockOf ShelleyMode) -> TxId
+shelleyTxId (Shelley.ShelleyTxId (ShelleyLedger.TxId i)) = TxId (Crypto.castHash i)
+
+fromGenTxId :: Mode mode era -> GenTxId (HFCBlockOf mode) -> TxId
+fromGenTxId ModeShelley{}
+  (HFC.project' (Proxy @(WrapGenTxId ShelleyBlock)) -> x) = shelleyTxId x
+fromGenTxId ModeByron{}
+  (HFC.project' (Proxy @(WrapGenTxId Byron.ByronBlock)) -> (Byron.ByronTxId i)) = fromByronTxId i
+fromGenTxId ModeCardanoShelley{} (GenTxIdShelley x)  = shelleyTxId x
+fromGenTxId ModeCardanoByron{}   (GenTxIdByron   (Byron.ByronTxId i))                           = fromByronTxId i
+fromGenTxId _ _ =
+  error "fromGenTxId:  unsupported protocol"
 
 fromByronTxId :: Byron.TxId -> TxId
 fromByronTxId =
@@ -115,14 +135,13 @@ toByronLovelace (Lovelace x) =
     Left  _  -> Nothing
     Right x' -> Just x'
 
-signTransaction :: Era era -> SigningKeyOf era -> TxBody era -> Tx era
-signTransaction p@EraByron{} k body =
-  signByronTransaction (eraNetworkId p) body [k]
-signTransaction EraShelley{} k body =
-  signShelleyTransaction body [WitnessPaymentKey k]
+signTransaction :: Mode mode era -> SigningKeyOf era -> TxBody era -> Tx era
+signTransaction p k body = case modeEra p of
+  EraByron   -> signByronTransaction (modeNetworkId p) body [k]
+  EraShelley -> signShelleyTransaction body [WitnessPaymentKey k]
 
-mkTransaction :: forall era
-  .  Era era
+mkTransaction :: forall mode era
+  .  Mode mode era
   -> SigningKeyOf era
   -> TxAdditionalSize
   -> TTL
@@ -133,17 +152,18 @@ mkTransaction :: forall era
 mkTransaction p key payloadSize ttl fee txins txouts =
   signTransaction p key $ makeTransaction p
  where
-   makeTransaction :: Era era -> TxBody era
-   makeTransaction EraShelley{} =
-     makeShelleyTransaction
-      (txExtraContentEmpty { txMetadata =
-                             if payloadSize == 0
-                             then Nothing
-                             else Just $ payloadShelley payloadSize })
-      ttl fee txins txouts
-   makeTransaction EraByron{} =
-     either (error . T.unpack) Prelude.id $
-     mkByronTransaction txins txouts
+   makeTransaction :: Mode mode era -> TxBody era
+   makeTransaction m = case modeEra m of
+     EraShelley ->
+       makeShelleyTransaction
+         (txExtraContentEmpty { txMetadata =
+                                if payloadSize == 0
+                                then Nothing
+                                else Just $ payloadShelley payloadSize })
+         ttl fee txins txouts
+     EraByron ->
+       either (error . T.unpack) Prelude.id $
+         mkByronTransaction txins txouts
 
    payloadShelley :: TxAdditionalSize -> TxMetadata
    payloadShelley = makeTransactionMetadata . Map.singleton 0 . TxMetaBytes . flip SB.replicate 42 . unTxAdditionalSize
@@ -206,7 +226,7 @@ mkTransaction p key payloadSize ttl fee txins txouts =
 
 mkTransactionGen
   :: r ~ Int
-  => Era era
+  => Mode mode era
   -> SigningKeyOf era
   -> NonEmpty (TxIn, TxOut era)
   -- ^ Non-empty list of (TxIn, TxOut) that will be used as

@@ -4,6 +4,20 @@ module Cardano.Benchmarking.GeneratorTx.CLI.Parsers
 where
 
 import           Cardano.Prelude hiding (option)
+import           Prelude (String)
+
+import           Control.Monad (fail)
+import qualified Data.Attoparsec.ByteString.Char8 as Atto
+import qualified Data.ByteString.Char8 as BSC
+import qualified Data.Char as Char
+import qualified Data.Text.Encoding as Text
+import qualified Data.Text as Text
+import           Options.Applicative
+                    ( Parser
+                    , auto, bashCompleter, completer, flag, help
+                    , long, metavar, option, strOption
+                    )
+import qualified Options.Applicative as Opt
 import qualified Control.Arrow as Arr
 import           Network.Socket (PortNumber)
 import           Options.Applicative (Parser, auto, bashCompleter, completer, flag, help, long,
@@ -88,3 +102,74 @@ parseGenesisPath =
         <> metavar "FILEPATH"
         <> help "Path to the genesis yaml file."
     )
+
+------------------------------------------------------------------
+-- Sadly the following isn't exported from:
+--   module Cardano.CLI.Shelley.Parsers
+pTxIn :: Parser TxIn
+pTxIn =
+  Opt.option (readerFromAttoParser parseTxIn)
+    (  Opt.long "tx-in"
+    <> Opt.metavar "TX-IN"
+    <> Opt.help "The input transaction as TxId#TxIx where TxId is the transaction hash and TxIx is the index."
+    )
+
+parseTxIn :: Atto.Parser TxIn
+parseTxIn = TxIn <$> parseTxId <*> (Atto.char '#' *> parseTxIx)
+
+renderTxIn :: TxIn -> Text
+renderTxIn (TxIn txid (TxIx txix)) =
+  mconcat
+    [ Text.decodeUtf8 (serialiseToRawBytesHex txid)
+    , "#"
+    , Text.pack (show txix)
+    ]
+
+parseTxId :: Atto.Parser TxId
+parseTxId = do
+  bstr <- Atto.takeWhile1 Char.isHexDigit
+  case deserialiseFromRawBytesHex AsTxId bstr of
+    Just addr -> return addr
+    Nothing -> fail $ "Incorrect transaction id format:: " ++ show bstr
+
+parseTxIx :: Atto.Parser TxIx
+parseTxIx = toEnum <$> Atto.decimal
+
+readerFromAttoParser :: Atto.Parser a -> Opt.ReadM a
+readerFromAttoParser p =
+    Opt.eitherReader (Atto.parseOnly (p <* Atto.endOfInput) . BSC.pack)
+
+pTxOut :: Parser (TxOut Shelley)
+pTxOut =
+  Opt.option (readerFromAttoParser parseTxOut)
+    (  Opt.long "tx-out"
+    <> Opt.metavar "TX-OUT"
+    <> Opt.help "The ouput transaction as Address+Lovelace where Address is \
+                \the Bech32-encoded address followed by the amount in \
+                \Lovelace."
+    )
+  where
+    parseTxOut :: Atto.Parser (TxOut Shelley)
+    parseTxOut =
+      TxOut <$> parseAddress <* Atto.char '+' <*> parseLovelace
+
+parseLovelace :: Atto.Parser Lovelace
+parseLovelace = Lovelace <$> Atto.decimal
+
+parseAddress :: Atto.Parser (Address Shelley)
+parseAddress = do
+    str <- lexPlausibleAddressString
+    case deserialiseAddress AsShelleyAddress str of
+      Nothing   -> fail "invalid address"
+      Just addr -> pure addr
+
+lexPlausibleAddressString :: Atto.Parser Text
+lexPlausibleAddressString =
+    Text.decodeLatin1 <$> Atto.takeWhile1 isPlausibleAddressChar
+  where
+    -- Covers both base58 and bech32 (with constrained prefixes)
+    isPlausibleAddressChar c =
+         (c >= 'a' && c <= 'z')
+      || (c >= 'A' && c <= 'Z')
+      || (c >= '0' && c <= '9')
+      || c == '_'

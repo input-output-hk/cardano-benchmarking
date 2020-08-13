@@ -27,8 +27,22 @@ set -e
 rm -rf ./db/* ./logs/*
 mkdir -p db logs/sockets
 
-# 1 prepare genesis
-./prepare_genesis_staked.sh
+# 1 prepare geneses for all eras & update configs
+rm -f 'configuration/start-time'
+. "$BASEDIR"/configuration/parameters
+./prepare_genesis_byron.sh
+./prepare_genesis_shelley_staked.sh
+
+case $era in
+        byron )     protocol='RealPBFT';;
+        shelley )   protocol='TPraos';;
+        cardano-* ) protocol='Cardano';; esac
+
+for cf in ${BASEDIR}/configuration/*.yaml
+do sed -i 's/^ShelleyGenesisHash:.*$/ShelleyGenesisHash: '"$(cat "$GENESISDIR_shelley"/GENHASH)"'/' "$cf"
+   sed -i 's/^ByronGenesisHash:.*$/ByronGenesisHash: '"$(cat "$GENESISDIR_byron"/GENHASH)"'/' "$cf"
+   sed -i 's/^Protocol:.*$/Protocol: '"$protocol"'/' "$cf"
+done
 
 # 2 run rt-view
 tmux select-window -t :0
@@ -50,7 +64,7 @@ do echo -n "."; sleep 1; done; echo
 # 4 run tx-gen
 tmux select-window -t :0
 tmux new-window -n TxGen \
-             "${TMUX_ENV_PASSTHROUGH[*]} ./run-tx-generator.sh; $SHELL"
+             "${TMUX_ENV_PASSTHROUGH[*]} ./run-tx-generator.sh $era; $SHELL"
 sleep 1
 
 tmux select-window -t Nodes

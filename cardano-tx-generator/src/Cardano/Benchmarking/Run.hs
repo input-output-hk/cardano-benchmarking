@@ -1,10 +1,11 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# OPTIONS_GHC -Wno-all-missed-specialisations #-}
+{-# OPTIONS_GHC -Wno-all-missed-specialisations -Wno-orphans #-}
 
 module Cardano.Benchmarking.Run
   ( parseCommand
@@ -12,6 +13,12 @@ module Cardano.Benchmarking.Run
   , runCommand
   ) where
 
+import           Prelude (String)
+import qualified Prelude
+import           Data.Version
+                    (showVersion )
+import           Data.Text
+                    (Text, pack, unpack)
 import           Cardano.Prelude hiding (option)
 import           Control.Monad (fail)
 import           Control.Monad.Trans.Except.Extra (firstExceptT)
@@ -26,21 +33,27 @@ import qualified Cardano.Chain.Genesis as Genesis
 import           Ouroboros.Network.Block (MaxSlotNo (..))
 import           Ouroboros.Network.NodeToClient (IOManager, withIOManager)
 
-import           Cardano.Api.Protocol
+import           Ouroboros.Consensus.Cardano (Protocol, ProtocolByron, ProtocolShelley, ProtocolCardano)
+
+import qualified Cardano.Api.Protocol as Api
+import           Cardano.Api.Typed
+import           Cardano.Api.TxSubmit
 import           Cardano.Config.Types
 import           Cardano.Node.Logging
+import           Cardano.Node.Protocol.Cardano
 import           Cardano.Node.Protocol.Byron
 import           Cardano.Node.Protocol.Shelley
 import           Cardano.Node.Types hiding (Protocol)
 
 import           Cardano.Benchmarking.GeneratorTx
 import           Cardano.Benchmarking.GeneratorTx.Benchmark
+import           Cardano.Benchmarking.GeneratorTx.Genesis
 import           Cardano.Benchmarking.GeneratorTx.CLI.Parsers
 import           Cardano.Benchmarking.GeneratorTx.Era
 
 
 data ProtocolError =
-    IncorrectProtocolSpecified  !Protocol
+    IncorrectProtocolSpecified  !Api.Protocol
   | ProtocolInstantiationError  !Text
   | GenesisBenchmarkRunnerError !TxGenError
   deriving Show
@@ -53,10 +66,10 @@ data CliError =
 
 data GeneratorCmd =
   GenerateTxs FilePath
-              GenesisFile
               SocketPath
               PartialBenchmark
-              SigningKeyFile
+              SomeEra
+              GeneratorFunds
 
 parserInfo :: String -> Opt.ParserInfo GeneratorCmd
 parserInfo t =
@@ -70,21 +83,27 @@ parseCommand =
     <$> parseConfigFile
           "config"
           "Configuration file for the cardano-node"
-    <*> (GenesisFile <$> parseGenesisPath)
     <*> parseSocketPath
           "socket-path"
           "Path to a cardano-node socket"
     <*> parsePartialBenchmark
-    <*> parseSigningKeysFile
-          "sig-key"
-          "Path to signing key file, for genesis UTxO using by generator."
+    <*> (fromMaybe (SomeEra defaultEra) <$>
+         (   parseFlag' Nothing (Just . SomeEra $ EraByron)
+             "byron"   "Initialise Cardano in Byron submode."
+         <|> parseFlag' Nothing (Just . SomeEra $ EraShelley)
+             "shelley" "Initialise Cardano in Shelley submode."
+         ))
+    <*> parseGeneratorFunds
+
+defaultEra :: Era Shelley
+defaultEra = EraShelley
 
 runCommand :: GeneratorCmd -> ExceptT CliError IO ()
 runCommand (GenerateTxs logConfigFp
-                        genFile
                         socketFp
                         cliPartialBenchmark
-                        keyFile) =
+                        someEra
+                        funds) =
   withIOManagerE $ \iocp -> do
     -- Logging layer
     loggingLayer <- firstExceptT (\(ConfigErrorFileNotFound fp) -> FileNotFoundError fp) $
@@ -96,15 +115,25 @@ runCommand (GenerateTxs logConfigFp
     p <- firstExceptT GenerateTxsError $
       case ncProtocolConfig nc of
         NodeProtocolConfigurationByron config -> do
-          let config' = config { npcByronGenesisFile = genFile }
-          ptcl <- firstExceptT (ProtocolInstantiationError . pack . show) $
-                    mkConsensusProtocolByron config' Nothing
-          pure . SomeEra $ mkEra ptcl iocp socketFp loggingLayer
+          ptcl :: Protocol IO ByronBlockHFC ProtocolByron
+               <- firstExceptT (ProtocolInstantiationError . pack . show) $
+                    mkConsensusProtocolByron config Nothing
+          pure . SomeMode $ mkMode ptcl EraByron iocp socketFp loggingLayer
         NodeProtocolConfigurationShelley config -> do
-          let config' = config { npcShelleyGenesisFile = genFile }
-          ptcl <- firstExceptT (ProtocolInstantiationError . pack . show) $
-                    mkConsensusProtocolShelley config' Nothing
-          pure . SomeEra $ mkEra ptcl iocp socketFp loggingLayer
+          ptcl :: Protocol IO ShelleyBlockHFC ProtocolShelley
+               <- firstExceptT (ProtocolInstantiationError . pack . show) $
+                    mkConsensusProtocolShelley config Nothing
+          pure . SomeMode $ mkMode ptcl EraShelley iocp socketFp loggingLayer
+        NodeProtocolConfigurationCardano byC shC hfC -> do
+          ptcl :: Protocol IO CardanoBlock ProtocolCardano
+               <- firstExceptT (ProtocolInstantiationError . pack . show) $
+                    mkConsensusProtocolCardano byC shC hfC Nothing
+          case someEra of
+            SomeEra era ->
+              pure . SomeMode $ mkMode ptcl era iocp socketFp loggingLayer
+          -- case someEra of
+          --   SomeEra EraByron ->
+          --     pure . SomeMode $ mkMode ptcl EraByron iocp socketFp loggingLayer
         x -> fail $ "Unsupported protocol: " <> show x
 
     firstExceptT GenerateTxsError $
@@ -112,8 +141,9 @@ runCommand (GenerateTxs logConfigFp
         case (p, mkBenchmark
                    (defaultBenchmark <> cliPartialBenchmark)) of
           (_, Left e) -> fail $ "Incomplete benchmark spec (is defaultBenchmark complete?):  " <> unpack e
-          (SomeEra era, Right bench) ->
-            genesisBenchmarkRunner bench era keyFile
+          (SomeMode mode, Right bench) ->
+            secureFunds bench mode funds
+            >>= uncurry (runBenchmark bench mode)
     liftIO $ do
       threadDelay (200*1000) -- Let the logging layer print out everything.
       shutdownLoggingLayer loggingLayer
@@ -142,3 +172,10 @@ runCommand (GenerateTxs logConfigFp
 
 withIOManagerE :: (IOManager -> ExceptT e IO a) -> ExceptT e IO a
 withIOManagerE k = ExceptT $ withIOManager (runExceptT . k)
+
+instance Prelude.Show (TxForMode a) where
+  show = \case
+    TxForByronMode          tx  -> Prelude.show tx
+    TxForShelleyMode        tx  -> Prelude.show tx
+    TxForCardanoMode (Left  tx) -> Prelude.show tx
+    TxForCardanoMode (Right tx) -> Prelude.show tx

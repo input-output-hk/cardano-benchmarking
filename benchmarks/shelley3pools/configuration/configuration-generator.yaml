@@ -1,3 +1,13 @@
+Protocol: 
+
+ByronGenesisFile: genesis-byron/genesis.json
+ByronGenesisHash: 
+ShelleyGenesisFile: genesis-shelley/genesis.json
+ShelleyGenesisHash: 
+
+RequiresNetworkMagic: RequiresMagic
+NumCoreNodes: 1
+
 # global filter; messages must have at least this severity to pass:
 minSeverity: Debug
 
@@ -78,19 +88,9 @@ options:
 ############### Cardano Node Configuration ###############
 ##########################################################
 
-
-NodeId:
-Protocol: TPraos
-GenesisFile: genesis/genesis.json
-NumCoreNodes: 1
-RequiresNetworkMagic: RequiresMagic
-PBftSignatureThreshold:
 TurnOnLogging: True
 ViewMode: SimpleView
 TurnOnLogMetrics: False
-SocketPath:
-
-
 
 #####    Update Parameters    #####
 
