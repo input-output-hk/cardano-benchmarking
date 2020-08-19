@@ -8,16 +8,13 @@ import           Cardano.Api.Typed
 import           Cardano.Prelude
 
 data TxGenError =
-    CurrentlyCannotSendTxToRelayNode !FilePath
-  -- ^ Relay nodes cannot currently be transaction recipients.
-  | InsufficientFundsForRecipientTx
-  -- ^ Error occurred while creating the target node address.
-  | NeedMinimumThreeSigningKeyFiles ![FilePath]
-  -- ^ Need at least 3 signing key files.
-  | TooSmallTPSRate !Double
-  -- ^ TPS is less than lower limit.
+    InsufficientFundsForRecipientTx !Lovelace !Lovelace
+  -- ^ The calculated expenditure (second value) was not available as a single
+  --   UTxO entry.  The first value is the largest single UTxO available.
   | TxFileError !(FileError TextEnvelopeError)
-  | SecretKeyDeserialiseError !Text
-  | SecretKeyReadError !Text
   | SplittingSubmissionError !Text
+  | UtxoReadFailure !Text
+  | SuppliedUtxoTooSmall !Int !Int
+  -- ^ The supplied UTxO size (second value) was less than the requested
+  --   number of transactions to send (first value).
   deriving Show

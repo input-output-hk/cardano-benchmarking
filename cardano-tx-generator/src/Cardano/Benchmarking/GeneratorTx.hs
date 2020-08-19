@@ -1,6 +1,8 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
@@ -9,6 +11,8 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections #-}
+{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE ViewPatterns #-}
 
 {-# OPTIONS_GHC -Wno-all-missed-specialisations #-}
 {-# OPTIONS_GHC -Wno-missed-specialisations #-}
@@ -27,7 +31,7 @@ module Cardano.Benchmarking.GeneratorTx
   ) where
 
 import           Cardano.Prelude
-import           Prelude (String, error, id)
+import           Prelude (error, id)
 
 import           Control.Concurrent (threadDelay)
 import           Control.Monad (fail, forM, forM_)
@@ -35,6 +39,8 @@ import           Control.Monad.Trans.Except (ExceptT)
 import           Control.Monad.Trans.Except.Extra (left, newExceptT, right)
 import           Control.Tracer (traceWith)
 
+import qualified Data.Aeson as A
+import qualified Data.ByteString.Lazy as BS
 import           Data.Foldable (find)
 import qualified Data.IP as IP
 import           Data.List.NonEmpty (NonEmpty (..))
@@ -43,12 +49,15 @@ import qualified Data.Map.Strict as Map
 import           Data.Maybe (Maybe (..))
 import           Data.Set (Set)
 import qualified Data.Set as Set
-import           Data.Text (Text)
+import           Data.Text (Text, pack)
 import           Data.Word (Word64)
 import           Network.Socket (AddrInfo (..), AddrInfoFlag (..), Family (..), SocketType (Stream),
                                  addrFamily, addrFlags, addrSocketType, defaultHints, getAddrInfo)
 
-import           Cardano.Config.Types (NodeAddress (..), NodeHostAddress (..), SigningKeyFile (..))
+import           Cardano.Chain.Common (decodeAddressBase58)
+import           Cardano.Config.Types
+                   ( NodeAddress (..), NodeHostAddress(..)
+                   , SigningKeyFile(..))
 
 import           Cardano.Api.TxSubmit
 import           Cardano.Api.Typed
@@ -80,12 +89,12 @@ secureFunds :: ConfigSupportsTxGen mode era
   => Benchmark
   -> Mode mode era
   -> GeneratorFunds
-  -> ExceptT TxGenError IO (SigningKeyOf era, (TxIn, TxOut era))
+  -> ExceptT TxGenError IO (SigningKeyOf era, Set (TxIn, TxOut era))
 
-secureFunds Benchmark{bTxFee, bInitialTTL} m (FundsGenesis keyF) = do
+secureFunds b@Benchmark{bTxFee, bInitialTTL} m (FundsGenesis keyF) = do
   key <- readSigningKey (modeEra m) keyF
   let (_, TxOut _ genesisCoin) = extractGenesisFunds m key
-      toAddr = keyAddress m key
+      toAddr = keyAddress m modeNetworkId key
       (tx, txin, txout) =
          genesisExpenditure m key toAddr genesisCoin bTxFee bInitialTTL
       txOfMode = castTxMode m tx
@@ -97,18 +106,56 @@ secureFunds Benchmark{bTxFee, bInitialTTL} m (FundsGenesis keyF) = do
       [ "******* Funding secured (", show txin, " -> ", show txout
       , "), submission result: " , show r ]
     e -> fail $ show e
-  pure (key, (txin, txout))
+  (key, ) <$> splitFunds b m key (txin, txout)
 
-secureFunds _ m@ModeShelley{} (FundsUtxo keyF txin txout) = do
+secureFunds b m@ModeShelley{} (FundsUtxo keyF txin txout) = do
   key <- readSigningKey (modeEra m) keyF
-  pure (key, (txin, txout))
+  (key, ) <$> splitFunds b m key (txin, txout)
 
-secureFunds _ m@ModeCardanoShelley{} (FundsUtxo keyF txin txout) = do
+secureFunds b m@ModeCardanoShelley{} (FundsUtxo keyF txin txout) = do
   key <- readSigningKey (modeEra m) keyF
-  pure (key, (txin, txout))
+  (key, ) <$> splitFunds b m key (txin, txout)
+
+secureFunds Benchmark{bTxCount=NumberOfTxs (fromIntegral -> ntxs)}
+            m (FundsSplitUtxo keyF utxoF) = do
+  key <- readSigningKey (modeEra m) keyF
+  utxo <- withExceptT (UtxoReadFailure . pack) . newExceptT $ A.eitherDecode <$> BS.readFile utxoF
+  when (Set.size utxo < ntxs) $
+    left $ SuppliedUtxoTooSmall ntxs (Set.size utxo)
+  pure (key, utxo)
 
 secureFunds _ m f =
   error $ "secureFunds:  unsupported config: " <> show m <> " / " <> show f
+
+parseAddress ::
+     Era era
+  -> Text
+  -> Address era
+parseAddress = \case
+  EraByron ->
+    either (panic . ("Bad Base58 address: " <>) . show) ByronAddress
+    . decodeAddressBase58
+  EraShelley -> \addr ->
+    fromMaybe (panic $ "Bad Shelley address: " <> addr) $
+    deserialiseAddress AsShelleyAddress addr
+
+instance FromJSON (Address Byron) where
+  parseJSON = A.withText "ByronAddress" $ pure . parseAddress EraByron
+
+instance FromJSON (Address Shelley) where
+  parseJSON = A.withText "ShelleyAddress" $ pure . parseAddress EraShelley
+
+instance FromJSON (Address era) => FromJSON (TxOut era) where
+  parseJSON = A.withObject "TxOut" $ \v ->
+    TxOut
+      <$> (             v A..: "addr")
+      <*> (Lovelace <$> v A..: "coin")
+
+instance FromJSON TxIn where
+  parseJSON = A.withObject "TxIn" $ \v -> do
+    TxIn
+      <$> (TxId <$> v A..: "txid")
+      <*> (TxIx <$> v A..: "txix")
 
 -----------------------------------------------------------------------------------------
 -- Obtain initial funds.
@@ -229,19 +276,14 @@ runBenchmark
   => Benchmark
   -> Mode mode era
   -> SigningKeyOf era
-  -> (TxIn, TxOut era)
+  -> Set (TxIn, TxOut era)
   -> ExceptT TxGenError IO ()
 runBenchmark b@Benchmark{ bTargets
                         , bTps
                         , bInitCooldown=InitCooldown initCooldown
                         }
-             m fundsKey funds = do
-  let recipientAddress = keyAddress m fundsKey
-
-  liftIO . traceWith (trTxSubmit m) . TraceBenchTxSubDebug
-    $ "******* Tx generator, phase 1: make enough available UTxO entries using: " <> (show funds :: String)
-  fundsWithSufficientCoins <-
-    splitFunds b m fundsKey funds
+             m fundsKey fundsWithSufficientCoins = do
+  let recipientAddress = keyAddress m modeNetworkIdOverridable fundsKey
 
   liftIO . traceWith (trTxSubmit m) . TraceBenchTxSubDebug
     $ "******* Tx generator: waiting " ++ show initCooldown ++ "s *******"
@@ -336,7 +378,10 @@ txGenerator Benchmark
             fundsWithSufficientCoins = do
   liftIO . traceWith (trTxSubmit m) . TraceBenchTxSubDebug
     $ " Generating " ++ show numOfTransactions
-      ++ " transactions, for " ++ show numOfTargetNodes ++ " peers"
+      ++ " transactions, for " ++ show numOfTargetNodes
+      ++ " peers, fee " ++ show bTxFee
+      ++ ", value " ++ show valueForRecipient
+      ++ ", totalValue " ++ show totalValue
   txs <- createMainTxs numOfTransactions numOfInsPerTx fundsWithSufficientCoins
   liftIO . traceWith (trTxSubmit m) . TraceBenchTxSubDebug
     $ " Done, " ++ show numOfTransactions ++ " were generated."
@@ -348,7 +393,7 @@ txGenerator Benchmark
                                   (repeat txOut)
   initRecipientIndex = 0 :: Int
   -- The same output for all transactions.
-  valueForRecipient = Lovelace 100000000 -- 100 ADA, discuss this value.
+  valueForRecipient = Lovelace 1000000 -- 10 ADA
   !txOut = TxOut recipientAddress valueForRecipient
   totalValue = valueForRecipient + bTxFee
   -- Send possible change to the same 'recipientAddress'.
@@ -395,7 +440,10 @@ txGenerator Benchmark
     -> ExceptT TxGenError IO ((TxIn, TxOut era), Set (TxIn, TxOut era))
   findAvailableFunds funds thresh =
     case find (predTxD thresh) funds of
-      Nothing    -> left InsufficientFundsForRecipientTx
+      Nothing    -> left $ InsufficientFundsForRecipientTx
+                             thresh
+                             (maximum [ coin
+                                      | (_, TxOut _ coin) <- Set.toList funds])
       Just found -> right (found, Set.delete found funds)
 
   -- Find the first tx output that contains sufficient amount of money.

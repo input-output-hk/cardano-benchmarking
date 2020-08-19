@@ -22,11 +22,8 @@ import           Data.Text
 import           Cardano.Prelude hiding (option)
 import           Control.Monad (fail)
 import           Control.Monad.Trans.Except.Extra (firstExceptT)
-import           Data.Text (Text, pack, unpack)
-import           Data.Version (showVersion)
 import qualified Options.Applicative as Opt
 import           Paths_cardano_tx_generator (version)
-import           Prelude (String)
 
 import qualified Cardano.Chain.Genesis as Genesis
 
@@ -69,6 +66,8 @@ data GeneratorCmd =
               SocketPath
               PartialBenchmark
               SomeEra
+              (Maybe NetworkMagic)
+              Bool
               GeneratorFunds
 
 parserInfo :: String -> Opt.ParserInfo GeneratorCmd
@@ -93,7 +92,20 @@ parseCommand =
          <|> parseFlag' Nothing (Just . SomeEra $ EraShelley)
              "shelley" "Initialise Cardano in Shelley submode."
          ))
+    <*> optional pMagicOverride
+    <*> parseFlag' False True
+          "addr-mainnet"
+          "Override address discriminator to mainnet."
     <*> parseGeneratorFunds
+ where
+   pMagicOverride :: Opt.Parser NetworkMagic
+   pMagicOverride =
+     NetworkMagic <$>
+     Opt.option Opt.auto
+     (  Opt.long "n2n-magic-override"
+       <> Opt.metavar "NATURAL"
+       <> Opt.help "Override the network magic for the node-to-node protocol."
+     )
 
 defaultEra :: Era Shelley
 defaultEra = EraShelley
@@ -103,6 +115,8 @@ runCommand (GenerateTxs logConfigFp
                         socketFp
                         cliPartialBenchmark
                         someEra
+                        nmagic_opt
+                        is_addr_mn
                         funds) =
   withIOManagerE $ \iocp -> do
     -- Logging layer
@@ -118,19 +132,19 @@ runCommand (GenerateTxs logConfigFp
           ptcl :: Protocol IO ByronBlockHFC ProtocolByron
                <- firstExceptT (ProtocolInstantiationError . pack . show) $
                     mkConsensusProtocolByron config Nothing
-          pure . SomeMode $ mkMode ptcl EraByron iocp socketFp loggingLayer
+          pure . SomeMode $ mkMode ptcl EraByron nmagic_opt is_addr_mn iocp socketFp loggingLayer
         NodeProtocolConfigurationShelley config -> do
           ptcl :: Protocol IO ShelleyBlockHFC ProtocolShelley
                <- firstExceptT (ProtocolInstantiationError . pack . show) $
                     mkConsensusProtocolShelley config Nothing
-          pure . SomeMode $ mkMode ptcl EraShelley iocp socketFp loggingLayer
+          pure . SomeMode $ mkMode ptcl EraShelley nmagic_opt is_addr_mn iocp socketFp loggingLayer
         NodeProtocolConfigurationCardano byC shC hfC -> do
           ptcl :: Protocol IO CardanoBlock ProtocolCardano
                <- firstExceptT (ProtocolInstantiationError . pack . show) $
                     mkConsensusProtocolCardano byC shC hfC Nothing
           case someEra of
             SomeEra era ->
-              pure . SomeMode $ mkMode ptcl era iocp socketFp loggingLayer
+              pure . SomeMode $ mkMode ptcl era nmagic_opt is_addr_mn iocp socketFp loggingLayer
           -- case someEra of
           --   SomeEra EraByron ->
           --     pure . SomeMode $ mkMode ptcl EraByron iocp socketFp loggingLayer

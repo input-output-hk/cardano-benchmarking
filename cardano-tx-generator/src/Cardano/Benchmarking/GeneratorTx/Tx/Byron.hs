@@ -6,9 +6,7 @@
 {-# OPTIONS_GHC -Wno-all-missed-specialisations -Wextra #-}
 
 module Cardano.Benchmarking.GeneratorTx.Tx.Byron
-  ( toCborTxAux
-  , normalByronTxToGenTx
-  , txSpendGenesisUTxOByronPBFT
+  ( normalByronTxToGenTx
   , byronGenesisUTxOTxIn
   )
 where
@@ -16,7 +14,6 @@ where
 import           Cardano.Prelude hiding (option, trace, (%))
 import           Prelude (error)
 
-import qualified Data.ByteString.Lazy as LB
 import qualified Data.Map.Strict as Map
 import           Data.Text (Text)
 import qualified Data.Text as T
@@ -25,55 +22,17 @@ import           Formatting (sformat, (%))
 import           Cardano.Chain.Common (Address)
 import qualified Cardano.Chain.Common as Common
 import           Cardano.Chain.Genesis as Genesis
-import           Cardano.Chain.UTxO (Tx (..), TxId, TxOut, annotateTxAux, mkTxAux)
 import qualified Cardano.Chain.UTxO as UTxO
-import           Cardano.Crypto (ProtocolMagicId, SigningKey (..))
-import qualified Cardano.Crypto.Hashing as Crypto
 import qualified Cardano.Crypto.Signing as Crypto
 
 import           Ouroboros.Consensus.Byron.Ledger (ByronBlock, GenTx (..))
 import qualified Ouroboros.Consensus.Byron.Ledger as Byron
 
 
-toCborTxAux :: UTxO.ATxAux ByteString -> LB.ByteString
-toCborTxAux = LB.fromStrict . UTxO.aTaAnnotation -- The ByteString anotation is the CBOR encoded version.
-
 -- | The 'GenTx' is all the kinds of transactions that can be submitted
 -- and \"normal\" Byron transactions are just one of the kinds.
 normalByronTxToGenTx :: UTxO.ATxAux ByteString -> GenTx ByronBlock
 normalByronTxToGenTx tx' = Byron.ByronTx (Byron.byronIdTx tx') tx'
-
--- | Generate a transaction spending genesis UTxO at a given address,
---   to given outputs, signed by the given key.
-txSpendGenesisUTxOByronPBFT
-  :: Genesis.Config
-  -> SigningKey
-  -> Address
-  -> NonEmpty TxOut
-  -> UTxO.ATxAux ByteString
-txSpendGenesisUTxOByronPBFT gc sk genAddr outs =
-    annotateTxAux $ mkTxAux tx (pure wit)
-  where
-    tx = UnsafeTx (pure txIn) outs txattrs
-
-    wit = byronSignTxId (configProtocolMagicId gc) sk (Crypto.serializeCborHash tx)
-
-    txIn :: UTxO.TxIn
-    txIn  = byronGenesisUTxOTxIn gc (Crypto.toVerification sk) genAddr
-
-    txattrs = Common.mkAttributes ()
-
--- | Given a Tx id, produce a UTxO Tx input witness, by signing it
---   with respect to a given protocol magic.
-byronSignTxId :: ProtocolMagicId -> SigningKey -> TxId -> UTxO.TxInWitness
-byronSignTxId pmid sk txid =
-  UTxO.VKWitness
-  (Crypto.toVerification sk)
-  (Crypto.sign
-    pmid
-    Crypto.SignTx
-    sk
-    (UTxO.TxSigData txid))
 
 -- | Given a genesis, and a pair of a genesis public key and address,
 --   reconstruct a TxIn corresponding to the genesis UTxO entry.

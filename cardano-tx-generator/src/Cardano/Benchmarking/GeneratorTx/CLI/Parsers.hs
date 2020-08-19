@@ -20,10 +20,6 @@ import           Options.Applicative
 import qualified Options.Applicative as Opt
 import qualified Control.Arrow as Arr
 import           Network.Socket (PortNumber)
-import           Options.Applicative (Parser, auto, bashCompleter, completer, flag, help, long,
-                                      metavar, option, strOption)
-import           Prelude (String)
-
 import           Cardano.Api.Typed
 import           Cardano.Config.Types (NodeAddress (..), NodeHostAddress (..), SigningKeyFile (..),
                                        SocketPath (..))
