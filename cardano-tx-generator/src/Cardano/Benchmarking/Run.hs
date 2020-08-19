@@ -115,8 +115,8 @@ runCommand (GenerateTxs logConfigFp
                         socketFp
                         cliPartialBenchmark
                         someEra
-                        nmo
-                        amm
+                        nmagic_opt
+                        is_addr_mn
                         funds) =
   withIOManagerE $ \iocp -> do
     -- Logging layer
@@ -132,19 +132,19 @@ runCommand (GenerateTxs logConfigFp
           ptcl :: Protocol IO ByronBlockHFC ProtocolByron
                <- firstExceptT (ProtocolInstantiationError . pack . show) $
                     mkConsensusProtocolByron config Nothing
-          pure . SomeMode $ mkMode ptcl EraByron nmo amm iocp socketFp loggingLayer
+          pure . SomeMode $ mkMode ptcl EraByron nmagic_opt is_addr_mn iocp socketFp loggingLayer
         NodeProtocolConfigurationShelley config -> do
           ptcl :: Protocol IO ShelleyBlockHFC ProtocolShelley
                <- firstExceptT (ProtocolInstantiationError . pack . show) $
                     mkConsensusProtocolShelley config Nothing
-          pure . SomeMode $ mkMode ptcl EraShelley nmo amm iocp socketFp loggingLayer
+          pure . SomeMode $ mkMode ptcl EraShelley nmagic_opt is_addr_mn iocp socketFp loggingLayer
         NodeProtocolConfigurationCardano byC shC hfC -> do
           ptcl :: Protocol IO CardanoBlock ProtocolCardano
                <- firstExceptT (ProtocolInstantiationError . pack . show) $
                     mkConsensusProtocolCardano byC shC hfC Nothing
           case someEra of
             SomeEra era ->
-              pure . SomeMode $ mkMode ptcl era nmo amm iocp socketFp loggingLayer
+              pure . SomeMode $ mkMode ptcl era nmagic_opt is_addr_mn iocp socketFp loggingLayer
           -- case someEra of
           --   SomeEra EraByron ->
           --     pure . SomeMode $ mkMode ptcl EraByron iocp socketFp loggingLayer

@@ -293,7 +293,7 @@ mkMode
   -> SocketPath
   -> LoggingLayer
   -> Mode mode era
-mkMode ptcl@Consensus.ProtocolByron{} EraByron nmo amm iom (SocketPath sock) ll =
+mkMode ptcl@Consensus.ProtocolByron{} EraByron nmagic_opt is_addr_mn iom (SocketPath sock) ll =
   ModeByron
     pInfoConfig
     (configCodec pInfoConfig)
@@ -302,13 +302,13 @@ mkMode ptcl@Consensus.ProtocolByron{} EraByron nmo amm iom (SocketPath sock) ll 
        (Api.Testnet . getNetworkMagic . configBlock $ pInfoConfig)
        -- TODO: get this from genesis
        (ByronMode (Byron.EpochSlots 21600) (SecurityParam 2160)))
-    nmo
-    amm
+    nmagic_opt
+    is_addr_mn
     iom
     (createTracers ll)
  where
    ProtocolInfo{pInfoConfig} = Consensus.protocolInfo ptcl
-mkMode ptcl@Consensus.ProtocolShelley{} EraShelley nmo amm iom (SocketPath sock) ll =
+mkMode ptcl@Consensus.ProtocolShelley{} EraShelley nmagic_opt is_addr_mn iom (SocketPath sock) ll =
   ModeShelley
     pInfoConfig
     (configCodec pInfoConfig)
@@ -316,13 +316,13 @@ mkMode ptcl@Consensus.ProtocolShelley{} EraShelley nmo amm iom (SocketPath sock)
        sock
        (Api.Testnet . getNetworkMagic . configBlock $ pInfoConfig)
        ShelleyMode)
-    nmo
-    amm
+    nmagic_opt
+    is_addr_mn
     iom
     (createTracers ll)
  where
    ProtocolInfo{pInfoConfig} = Consensus.protocolInfo ptcl
-mkMode ptcl@Consensus.ProtocolCardano{} EraByron nmo amm iom (SocketPath sock) ll =
+mkMode ptcl@Consensus.ProtocolCardano{} EraByron nmagic_opt is_addr_mn iom (SocketPath sock) ll =
   ModeCardanoByron
     pInfoConfig
     (configCodec pInfoConfig)
@@ -331,13 +331,13 @@ mkMode ptcl@Consensus.ProtocolCardano{} EraByron nmo amm iom (SocketPath sock) l
        (Api.Testnet . getNetworkMagic . configBlock $ pInfoConfig)
        -- TODO: get this from genesis
        (CardanoMode (Byron.EpochSlots 21600) (SecurityParam 2160)))
-    nmo
-    amm
+    nmagic_opt
+    is_addr_mn
     iom
     (createTracers ll)
  where
    ProtocolInfo{pInfoConfig} = Consensus.protocolInfo ptcl
-mkMode ptcl@Consensus.ProtocolCardano{} EraShelley nmo amm iom (SocketPath sock) ll =
+mkMode ptcl@Consensus.ProtocolCardano{} EraShelley nmagic_opt is_addr_mn iom (SocketPath sock) ll =
   ModeCardanoShelley
     pInfoConfig
     (configCodec pInfoConfig)
@@ -346,8 +346,8 @@ mkMode ptcl@Consensus.ProtocolCardano{} EraShelley nmo amm iom (SocketPath sock)
        (Api.Testnet . getNetworkMagic . configBlock $ pInfoConfig)
        -- TODO: get this from genesis
        (CardanoMode (Byron.EpochSlots 21600) (SecurityParam 2160)))
-    nmo
-    amm
+    nmagic_opt
+    is_addr_mn
     iom
     (createTracers ll)
  where
