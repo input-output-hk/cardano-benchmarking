@@ -414,9 +414,12 @@ allow-newer: base
 -- always write GHC env files, because they are needed by the doctests.
 write-ghc-environment-files: always
 
+<<<<<<< HEAD
 package ouroboros-consensus
   tests: False
 
+=======
+>>>>>>> release 1.19.0
 package ouroboros-consensus-byron
   tests: False
 

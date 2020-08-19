@@ -64,7 +64,6 @@ let
   jobs = {
     native = mapTestOn (__trace (__toJSON (packagePlatforms project)) (packagePlatforms project));
     "${mingwW64.config}" = mapTestOnCross mingwW64 (packagePlatformsCross (removeAttrs project [ "cardanoDbSyncHaskellPackages" "cardanoDbSync" ]));
-    "${mingwW64.config}" = mapTestOnCross mingwW64 (packagePlatformsCross project);
     cardano-rt-view-service-win64 = import ./nix/windows-release.nix {
       inherit pkgs project;
       exes = collectJobs jobs.${mingwW64.config}.exes;
