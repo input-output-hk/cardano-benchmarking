@@ -21,12 +21,11 @@ import           Cardano.BM.Data.LogItem
 import           Cardano.BM.Data.Tracer (emptyObject, mkObject, trStructured)
 import           Cardano.BM.Tracing
 
-import           Cardano.TracingOrphanInstances.Byron ()
-import           Cardano.TracingOrphanInstances.Common ()
-import           Cardano.TracingOrphanInstances.Consensus ()
-import           Cardano.TracingOrphanInstances.Mock ()
-import           Cardano.TracingOrphanInstances.Network ()
-import           Cardano.TracingOrphanInstances.Shelley ()
+import           Cardano.Tracing.OrphanInstances.Byron ()
+import           Cardano.Tracing.OrphanInstances.Common ()
+import           Cardano.Tracing.OrphanInstances.Consensus ()
+import           Cardano.Tracing.OrphanInstances.Network ()
+import           Cardano.Tracing.OrphanInstances.Shelley ()
 
 import qualified Cardano.Chain.UTxO as CC.UTxO
 

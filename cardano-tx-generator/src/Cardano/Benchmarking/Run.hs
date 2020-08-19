@@ -35,8 +35,7 @@ import           Ouroboros.Consensus.Cardano (Protocol, ProtocolByron, ProtocolS
 import qualified Cardano.Api.Protocol as Api
 import           Cardano.Api.Typed
 import           Cardano.Api.TxSubmit
-import           Cardano.Config.Types
-import           Cardano.Node.Logging
+import           Cardano.Node.Configuration.Logging
 import           Cardano.Node.Protocol.Cardano
 import           Cardano.Node.Protocol.Byron
 import           Cardano.Node.Protocol.Shelley
@@ -148,7 +147,7 @@ runCommand (GenerateTxs logConfigFp
           -- case someEra of
           --   SomeEra EraByron ->
           --     pure . SomeMode $ mkMode ptcl EraByron iocp socketFp loggingLayer
-        x -> fail $ "Unsupported protocol: " <> show x
+        -- x -> fail $ "Unsupported protocol: " <> show x
 
     firstExceptT GenerateTxsError $
       firstExceptT GenesisBenchmarkRunnerError $

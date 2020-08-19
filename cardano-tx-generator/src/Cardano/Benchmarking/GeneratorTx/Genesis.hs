@@ -34,7 +34,7 @@ import qualified Options.Applicative as Opt
 
 -- Era-agnostic imports
 import           Cardano.Api.Typed
-import           Cardano.Config.Types
+import           Cardano.CLI.Types
                    (SigningKeyFile(..))
 import qualified Ouroboros.Consensus.Cardano as Consensus
 

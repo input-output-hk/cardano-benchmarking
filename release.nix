@@ -56,8 +56,11 @@ let
 
   sources = import ./nix/sources.nix;
 
+  inherit (systems.examples) mingwW64 musl64;
+
   jobs = {
     native = mapTestOn (__trace (__toJSON (packagePlatforms project)) (packagePlatforms project));
+    "${mingwW64.config}" = mapTestOnCross mingwW64 (packagePlatformsCross (removeAttrs project [ "cardanoDbSyncHaskellPackages" "cardanoDbSync" ]));
   } // (mkRequiredJob (
       [
         jobs.native.cardano-tx-generator.x86_64-darwin

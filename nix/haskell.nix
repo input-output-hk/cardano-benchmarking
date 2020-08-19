@@ -66,7 +66,7 @@ let
         # Stamp executables with the git revision
         packages.cardano-tx-generator.components.exes.cardano-tx-generator.postInstall = setGitRev;
         # Work around Haskell.nix issue when setting postInstall on components
-        packages.cardano-tx-generator.components.all.postInstall = lib.mkForce setGitRev;
+        # packages.cardano-tx-generator.components.all.postInstall = lib.mkForce setGitRev;
       }
       {
         # Packages we wish to ignore version bounds of.

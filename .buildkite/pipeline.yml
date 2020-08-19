@@ -21,7 +21,7 @@ steps:
   #     system: x86_64-linux
 
   - label: 'Check Stylish Haskell'
-    command: 'nix-shell --pure --run ./.buildkite/check-stylish.sh nix/stack-shell.nix'
+    command: 'nix-shell --run ./.buildkite/check-stylish.sh nix/stack-shell.nix'
     agents:
       system: x86_64-linux
 

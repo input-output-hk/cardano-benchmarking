@@ -357,10 +357,7 @@ instance Show (Consensus.Protocol m blk p) where
   show Consensus.ProtocolByron{}   = "ProtocolByron"
   show Consensus.ProtocolShelley{} = "ProtocolShelley"
   show Consensus.ProtocolCardano{} = "ProtocolCardano"
-  show Consensus.ProtocolMockBFT{} = "ProtocolMockBFT"
-  show Consensus.ProtocolMockPBFT{} = "ProtocolMockPBFT"
-  show Consensus.ProtocolMockPraos{} = "ProtocolMockPraos"
-  show Consensus.ProtocolLeaderSchedule{} = "ProtocolLeaderSchedule"
+  -- show Consensus.ProtocolLeaderSchedule{} = "ProtocolLeaderSchedule"
 
 modeEra :: Mode mode era -> Era era
 modeEra = \case

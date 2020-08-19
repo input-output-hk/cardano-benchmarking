@@ -4,8 +4,8 @@ compiler: ghc-8.6.5
 packages:
   - cardano-rt-view
   - cardano-rt-view/test/analyzer
-  #- cardano-tx-generator
-  #- tx-generator-shelley
+  - cardano-tx-generator
+  - tx-generator-shelley
   - bm-timeline
 
   # references to git submodules only in development
@@ -67,6 +67,8 @@ extra-deps:
   - persistent-2.10.5.1
   - persistent-postgresql-2.10.1.2
   - persistent-template-2.8.2.3
+  - pipes-safe-2.3.2
+  - primitive-0.7.1.0
   - process-1.6.8.2
   - quiet-0.2
   - quickcheck-instances-0.3.19
@@ -86,6 +88,7 @@ extra-deps:
   - time-compat-1.9.3
   - time-units-1.0.0
   - transformers-except-0.1.1
+  - typerep-map-0.3.3.0
   - unix-2.7.2.2
   - webdriver-0.9.0.1
   - websockets-0.12.6.1
@@ -102,7 +105,7 @@ extra-deps:
       - test
 
   - git: https://github.com/input-output-hk/cardano-node
-    commit: e5cbc56a5330a7c1cbb82cc1653af9f2136f8bf8
+    commit: 4814003f14340d5a1fc02f3ac15437387a7ada9f
     subdirs:
       - cardano-api
       - cardano-config
@@ -131,10 +134,11 @@ extra-deps:
     commit: 2547ad1e80aeabca2899951601079408becbc92c
 
   - git: https://github.com/input-output-hk/cardano-ledger-specs
-    commit: c75870c84338074a7ed57cc162a7f58cf028ce29
+    commit: 370ee0ad806721fb35a3b8cee645c99e178a6ad9
     subdirs:
       # small-steps
       - semantics/executable-spec
+      - semantics/small-steps-test
       # cs-ledger
       - byron/ledger/executable-spec
       - byron/ledger/impl
@@ -152,7 +156,7 @@ extra-deps:
     commit: 26d35ad52fe9ade3391532dbfeb2f416f07650bc
 
   - git: https://github.com/input-output-hk/ouroboros-network
-    commit: fbfae1dbed1f22ba4cceacd881e60a2bc25a39d3
+    commit: aecfe77de784e6c75108172802ee59d2d7087eaf
     subdirs:
         - io-sim
         - io-sim-classes
@@ -175,7 +179,7 @@ extra-deps:
         - Win32-network
 
   - git: https://github.com/input-output-hk/iohk-monitoring-framework
-    commit: d4d668111800fc6dc0d24f17befa24356cccaded
+    commit: 8190b00d6930927a812baff97d02566176b6bd3b
     subdirs:
       - contra-tracer
       - iohk-monitoring
@@ -194,7 +198,7 @@ extra-deps:
 
     # Includes updated pretty printing function
   - git: https://github.com/well-typed/cborg.git
-    commit: 42a83192749774268337258f4f94c97584b80ca6
+    commit: 9968ee22686462b4eb49774bea3020ffc0d6f59a
     subdirs:
         - cborg
         - serialise

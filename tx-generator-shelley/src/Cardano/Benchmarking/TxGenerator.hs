@@ -20,7 +20,7 @@ import           Control.Monad.Trans.Except.Extra
 import qualified Data.List.NonEmpty as NE
 import           Network.Socket (AddrInfo)
 
-import           Cardano.Node.Logging (LoggingLayer (..))
+import           Cardano.Node.Configuration.Logging (LoggingLayer (..))
 
 import           Cardano.Benchmarking.TxGenerator.Error (TxGenError (..))
 import           Cardano.Benchmarking.TxGenerator.NodeToNode (BenchmarkTxSubmitTracers (..),
@@ -56,7 +56,7 @@ genesisBenchmarkRunner
 genesisBenchmarkRunner args loggingLayer iocp = do
   do
     let tps = unTPSRate $ P.tps args
-    when (tps < 0.05) $ left $ TooSmallTPSRate $ tps
+    when (tps < 0.05) $ left $ TooSmallTPSRate tps
 
   let ( benchTracer , connectTracer , submitMuxTracer , _lowLevelSubmitTracer , submitTracer )
           = createTracers loggingLayer
@@ -183,7 +183,7 @@ launchTxPeer
   -> IO (Async (), Async ())
 launchTxPeer tr1 tr2 tr3 iocp network termTM localAddr remoteAddr updROEnv txInChan = do
   tmv <- MSTM.newEmptyTMVarM
-  (,) <$> (async $ benchmarkConnectTxSubmit
+  (,) <$> async (benchmarkConnectTxSubmit
                      iocp
                      tr2
                      Ouroboros.protocolClientInfoShelley
@@ -191,4 +191,4 @@ launchTxPeer tr1 tr2 tr3 iocp network termTM localAddr remoteAddr updROEnv txInC
                      localAddr
                      remoteAddr
                      (txSubmissionClient tr3 tmv))
-      <*> (async $ bulkSubmission updROEnv tr1 termTM txInChan tmv)
+      <*> async (bulkSubmission updROEnv tr1 termTM txInChan tmv)
