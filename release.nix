@@ -22,6 +22,9 @@
 # The systems used for cross-compiling
 , supportedCrossSystems ? [ "x86_64-linux" ]
 
+# Cross compilation to Windows is currently only supported on linux.
+, windowsBuild ? builtins.elem "x86_64-linux" supportedCrossSystems
+
 # A Hydra option
 , scrubJobs ? true
 
@@ -61,12 +64,18 @@ let
   jobs = {
     native = mapTestOn (__trace (__toJSON (packagePlatforms project)) (packagePlatforms project));
     "${mingwW64.config}" = mapTestOnCross mingwW64 (packagePlatformsCross (removeAttrs project [ "cardanoDbSyncHaskellPackages" "cardanoDbSync" ]));
+    "${mingwW64.config}" = mapTestOnCross mingwW64 (packagePlatformsCross project);
+    cardano-rt-view-service-win64 = import ./nix/windows-release.nix {
+      inherit pkgs project;
+      exes = collectJobs jobs.${mingwW64.config}.exes;
+    };
   } // (mkRequiredJob (
       [
         jobs.native.cardano-tx-generator.x86_64-darwin
         jobs.native.cardano-tx-generator.x86_64-linux
         jobs.native.cardano-rt-view-service.x86_64-darwin
         jobs.native.cardano-rt-view-service.x86_64-linux
+        (windowsBuild jobs.cardano-rt-view-service-win64)
       ]));
 
 in jobs
