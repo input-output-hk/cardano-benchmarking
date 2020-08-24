@@ -40,7 +40,7 @@ import           Cardano.Benchmarking.ReferenceServer (txSubmissionServer)
 
 testTxPeer
   :: forall m block. (RunNode block, MonadSTM m , MonadAsync m, MonadTime m, MonadDelay m)
-  =>  [GenTx block] -> m [GenTx block]
+  =>  [GenTx block] -> m [(GenTx block, UTCTime)]
 testTxPeer txs = do
   tmv <- newEmptyTMVarM
   terminateEarly <- newTVarM False
@@ -54,15 +54,15 @@ testTxPeer txs = do
     updROEnv :: ROEnv (Mempool.GenTxId blk) (GenTx blk) -> ROEnv (Mempool.GenTxId blk) (GenTx blk)
     updROEnv defaultROEnv =
         ROEnv { targetBacklog     = targetBacklog defaultROEnv
-              , txNumServiceTime  = Just 0.1
+              , txNumServiceTime  = Just 1
               , txSizeServiceTime = Nothing
               }
 
 mockPipeline
-  :: forall m block. (RunNode block, MonadSTM m ) =>
+  :: forall m block. (RunNode block, MonadSTM m, MonadTime m) =>
      Tracer m NodeToNodeSubmissionTrace
      -> TMVar m (RPCTxSubmission m (GenTxId block) (GenTx block))
-     -> m [GenTx block]
+     -> m [(GenTx block, UTCTime)]
 mockPipeline tr3 tmv = do
   (receivedTxs, () , _terminalstate) <- connectPipelined [] server client
   return receivedTxs
@@ -81,16 +81,16 @@ mockPipeline tr3 tmv = do
           'AsServer
           'StIdle
           m
-          [GenTx block]
+          [(GenTx block, UTCTime)]
     server = txSubmissionServerPeerPipelined mockServer
 
 mockServer
-  :: forall m block. (RunNode block, Monad m)
+  :: forall m block. (RunNode block, MonadTime m)
   =>  TxSubmissionServerPipelined
        (GenTxId block)
        (GenTx block)
        m
-       [GenTx block]
+       [(GenTx block, UTCTime)]
 mockServer
   = txSubmissionServer
      nullTracer
@@ -115,7 +115,7 @@ dummyTx f = mkShelleyTx tx
 
 testPipeline :: [ GenTx Block ] -> Bool
 testPipeline sendTx
-  = (runSimOrThrow $ testTxPeer sendTx) == sendTx
+  = (map fst $ (runSimOrThrow $ testTxPeer sendTx)) == sendTx
 
 test :: Bool
 test = testPipeline $ map dummyTx [1..10]

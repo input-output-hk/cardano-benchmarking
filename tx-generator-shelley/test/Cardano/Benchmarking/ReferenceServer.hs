@@ -29,6 +29,7 @@ import           Data.Word (Word16)
 
 import           Control.Exception (assert)
 import           Control.Monad (when)
+import           Control.Monad.Class.MonadTime
 import           Control.Tracer (Tracer, traceWith)
 
 import           Network.TypedProtocol.Pipelined (N, Nat (..))
@@ -194,22 +195,22 @@ initialServerState = ServerState 0 Seq.empty Map.empty Map.empty 0
 -- and does not make any delta-Q info to optimises the pipelining decisions.
 --
 txSubmissionServer
-  :: forall txid tx m.
-     (Ord txid, Show txid, Show tx, Monad m)
+  :: forall txid tx m out.
+     (out ~ [ (tx,UTCTime) ], Ord txid, Show txid, Show tx, MonadTime m)
   => Tracer m (TraceEventServer txid tx)
   -> (tx -> txid)
   -> Word16  -- ^ Maximum number of unacknowledged txids
   -> Word16  -- ^ Maximum number of txids to request in any one go
   -> Word16  -- ^ Maximum number of txs to request in any one go
-  -> TxSubmissionServerPipelined txid tx m [tx]
+  -> TxSubmissionServerPipelined txid tx m out
 txSubmissionServer tracer txId maxUnacked maxTxIdsToRequest maxTxToRequest =
     TxSubmissionServerPipelined (pure $ serverIdle [] Zero initialServerState)
   where
     serverIdle :: forall (n :: N).
-                  [tx]
+                  out
                -> Nat n
                -> ServerState txid tx
-               -> ServerStIdle n txid tx m [tx]
+               -> ServerStIdle n txid tx m out
     serverIdle accum Zero st
         -- There are no replies in flight, but we do know some more txs we can
         -- ask for, so lets ask for them and more txids.
@@ -268,11 +269,11 @@ txSubmissionServer tracer txId maxUnacked maxTxIdsToRequest maxTxToRequest =
         not (Map.null (availableTxids st))
 
     handleReply :: forall (n :: N).
-                   [tx]
+                   out
                 -> Nat n
                 -> ServerState txid tx
                 -> Collect txid tx
-                -> m (ServerStIdle n txid tx m [tx])
+                -> m (ServerStIdle n txid tx m out)
     handleReply accum n st (CollectTxIds reqNo txids) =
       -- Upon receiving a batch of new txids we extend our available set,
       -- and extended the unacknowledged sequence.
@@ -284,7 +285,7 @@ txSubmissionServer tracer txId maxUnacked maxTxIdsToRequest maxTxToRequest =
                               <> Map.fromList txids
       }
 
-    handleReply accum n st (CollectTxs txids txs) =
+    handleReply accum n st (CollectTxs txids txs) = do
       -- When we receive a batch of transactions, in general we get a subset of
       -- those that we asked for, with the remainder now deemed unnecessary.
       -- But we still have to acknowledge the txids we were given. This combined
@@ -295,7 +296,8 @@ txSubmissionServer tracer txId maxUnacked maxTxIdsToRequest maxTxToRequest =
       -- We have to update the unacknowledgedTxIds here eagerly and not delay it
       -- to serverReqTxs, otherwise we could end up blocking in serverIdle on
       -- more pipelined results rather than being able to move on.
-      return $ serverIdle accum' n st {
+     t <- getCurrentTime
+     return $ serverIdle (accum ++ zip newTxs (repeat t)) n st {
         bufferedTxs         = bufferedTxs'',
         unacknowledgedTxIds = unacknowledgedTxIds',
         numTxsToAcknowledge = numTxsToAcknowledge st
@@ -320,8 +322,7 @@ txSubmissionServer tracer txId maxUnacked maxTxIdsToRequest maxTxToRequest =
           Seq.spanl (`Map.member` bufferedTxs') (unacknowledgedTxIds st)
 
         -- If so we can add the acknowledged txs to our accumulating result
-        accum' = accum
-              ++ foldr (\txid r -> maybe r (:r) (bufferedTxs' Map.! txid)) []
+        newTxs = foldr (\txid r -> maybe r (:r) (bufferedTxs' Map.! txid)) []
                        acknowledgedTxIds
 
         -- And remove acknowledged txs from our buffer
@@ -329,10 +330,10 @@ txSubmissionServer tracer txId maxUnacked maxTxIdsToRequest maxTxToRequest =
 
 
     serverReqTxs :: forall (n :: N).
-                    [tx]
+                    out
                  -> Nat n
                  -> ServerState txid tx
-                 -> ServerStIdle n txid tx m [tx]
+                 -> ServerStIdle n txid tx m out
     serverReqTxs accum n st =
         SendMsgRequestTxsPipelined
           (Map.keys txsToRequest)
@@ -349,10 +350,10 @@ txSubmissionServer tracer txId maxUnacked maxTxIdsToRequest maxTxToRequest =
           Map.splitAt (fromIntegral maxTxToRequest) (availableTxids st)
 
     serverReqTxIds :: forall (n :: N).
-                      [tx]
+                      out
                    -> Nat n
                    -> ServerState txid tx
-                   -> ServerStIdle n txid tx m [tx]
+                   -> ServerStIdle n txid tx m out
     serverReqTxIds accum n st
       | numTxIdsToRequest > 0
       = SendMsgRequestTxIdsPipelined
