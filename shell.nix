@@ -2,7 +2,7 @@
 # It just takes the shell attribute from default.nix.
 { config ? {}
 , sourcesOverride ? {}
-, withHoogle ? true
+, withHoogle ? false
 , pkgs ? import ./nix {
     inherit config sourcesOverride;
   }
@@ -24,24 +24,24 @@ let
 
     # These programs will be available inside the nix-shell.
     buildInputs = with haskellPackages; [
-      cardanoDbSync.cardano-db-sync
-      cardanoNode.cardano-cli
-      cardanoNode.cardano-node
-      cabal-install
-      stack
-      ghcid
-      hlint
+      #cardanoDbSync.cardano-db-sync
+      #cardanoNode.cardano-cli
+      #cardanoNode.cardano-node
+      #cabal-install
+      #stack
+      #ghcid
+      #hlint
       stylish-haskell
-      weeder
-      gnumeric
-      libreoffice
+      #weeder
+      #gnumeric
+      #libreoffice
       nix
       niv
-      pkgconfig
-      sqlite-interactive
-      tmux
-      git
-      postgresql
+      #pkgconfig
+      #sqlite-interactive
+      #tmux
+      #git
+      #postgresql
     ];
 
     # Prevents cabal from choosing alternate plans, so that

@@ -52,12 +52,11 @@ import qualified Data.Time.Clock as Clock
 
 import           Control.Tracer (Tracer, traceWith)
 
-import           Cardano.TracingOrphanInstances.Byron ()
-import           Cardano.TracingOrphanInstances.Common ()
-import           Cardano.TracingOrphanInstances.Consensus ()
-import           Cardano.TracingOrphanInstances.Mock ()
-import           Cardano.TracingOrphanInstances.Network ()
-import           Cardano.TracingOrphanInstances.Shelley ()
+import           Cardano.Tracing.OrphanInstances.Byron ()
+import           Cardano.Tracing.OrphanInstances.Common ()
+import           Cardano.Tracing.OrphanInstances.Consensus ()
+import           Cardano.Tracing.OrphanInstances.Network ()
+import           Cardano.Tracing.OrphanInstances.Shelley ()
 
 import           Ouroboros.Consensus.Ledger.SupportsMempool (txInBlockSize)
 import qualified Ouroboros.Consensus.Ledger.SupportsMempool as Mempool

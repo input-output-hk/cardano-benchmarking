@@ -64,13 +64,12 @@ import           Ouroboros.Consensus.Block.Abstract (SlotNo (..))
 import           Cardano.Api.Typed
 
 -- Node imports
-import           Cardano.Config.Types (NodeAddress)
-import           Cardano.TracingOrphanInstances.Byron ()
-import           Cardano.TracingOrphanInstances.Common ()
-import           Cardano.TracingOrphanInstances.Consensus ()
-import           Cardano.TracingOrphanInstances.Mock ()
-import           Cardano.TracingOrphanInstances.Network ()
-import           Cardano.TracingOrphanInstances.Shelley ()
+import           Cardano.Node.Types (NodeAddress)
+import           Cardano.Tracing.OrphanInstances.Byron ()
+import           Cardano.Tracing.OrphanInstances.Common ()
+import           Cardano.Tracing.OrphanInstances.Consensus ()
+import           Cardano.Tracing.OrphanInstances.Network ()
+import           Cardano.Tracing.OrphanInstances.Shelley ()
 
 import           Cardano.Benchmarking.GeneratorTx.CLI.Parsers
 

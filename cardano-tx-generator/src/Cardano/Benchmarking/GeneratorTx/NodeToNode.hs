@@ -4,7 +4,6 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
@@ -92,7 +91,7 @@ benchmarkConnectTxSubmit p localAddr remoteAddr myTxSubClient =
       n2nVer
       (NtN.NodeToNodeVersionData { NtN.networkMagic = modeNetworkMagicN2N p})
       (NtN.DictVersion NtN.nodeToNodeCodecCBORTerm) $
-      NtN.nodeToNodeProtocols NtN.defaultMiniProtocolParameters $ \them _ ->
+      NtN.nodeToNodeProtocols NtN.defaultMiniProtocolParameters ( \them _ ->
         NtN.NodeToNodeProtocols
           { NtN.chainSyncProtocol = InitiatorProtocolOnly $
                                       MuxPeer
@@ -112,7 +111,8 @@ benchmarkConnectTxSubmit p localAddr remoteAddr myTxSubClient =
                                            (trSubmitMux p)
                                            (cTxSubmissionCodec myCodecs)
                                            (txSubmissionClientPeer myTxSubClient)
-          }
+          } )
+        n2nVer
   -- Stolen from: Ouroboros/Consensus/Network/NodeToNode.hs
   aKeepAliveClient
     :: NodeToNodeVersion

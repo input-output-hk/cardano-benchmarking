@@ -20,7 +20,7 @@ import           Options.Applicative as Opt (Parser, ReadM, auto, bashCompleter,
 import qualified Control.Arrow as Arr
 import           Network.Socket (PortNumber)
 
-import           Cardano.Config.Types (NodeAddress (..), NodeHostAddress (..))
+import           Cardano.Node.Types (NodeAddress (..), NodeHostAddress (..))
 
 import           Cardano.Api.Typed
 import           Cardano.CLI.Shelley.Parsers (parseTxIn)

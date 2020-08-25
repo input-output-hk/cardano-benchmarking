@@ -3,7 +3,6 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
@@ -38,6 +37,7 @@ import           Ouroboros.Consensus.Node.NetworkProtocolVersion (supportedNodeT
 import           Ouroboros.Consensus.Network.NodeToNode (Codecs (..), defaultCodecs)
 import           Ouroboros.Consensus.Node.ProtocolInfo (ProtocolClientInfo, pClientInfoCodecConfig)
 import           Ouroboros.Consensus.Node.Run (RunNode)
+import           Ouroboros.Network.Channel (Channel (..))
 import           Ouroboros.Network.Driver (TraceSendRecv (..))
 import           Ouroboros.Network.Magic (NetworkMagic (..))
 import           Ouroboros.Network.Mux (MuxPeer (..), OuroborosApplication (..),
@@ -107,7 +107,7 @@ benchmarkConnectTxSubmit iocp trs cfg network localAddr remoteAddr myTxSubClient
       NtN.NodeToNodeV_1
       (NtN.NodeToNodeVersionData { NtN.networkMagic = toNetworkMagic network})
       (NtN.DictVersion NtN.nodeToNodeCodecCBORTerm) $
-      NtN.nodeToNodeProtocols NtN.defaultMiniProtocolParameters $ \_ _->
+      NtN.nodeToNodeProtocols NtN.defaultMiniProtocolParameters ( \peer _->
         NtN.NodeToNodeProtocols
           { NtN.chainSyncProtocol = InitiatorProtocolOnly $
                                       MuxPeer
@@ -124,7 +124,20 @@ benchmarkConnectTxSubmit iocp trs cfg network localAddr remoteAddr myTxSubClient
                                            (trSendRecvTxSubmission trs)
                                            (cTxSubmissionCodec myCodecs)
                                            (txSubmissionClientPeer myTxSubClient)
-          }
+          , NtN.keepAliveProtocol = InitiatorProtocolOnly $
+                                      MuxPeerRaw
+                                        (aKeepAliveClient NtN.NodeToNodeV_1 peer)
+          } )
+        NtN.NodeToNodeV_1
+    where
+      -- Stolen from: Ouroboros/Consensus/Network/NodeToNode.hs
+      aKeepAliveClient
+        :: NtN.NodeToNodeVersion
+        -> remotePeer
+        -> Channel m bKA
+        -> m ((), Maybe bKA)
+      aKeepAliveClient _version _them _channel =
+        forever (threadDelay 1000) >> return ((), Nothing)
 
 -- the null block fetch client
 blockFetchClientNull

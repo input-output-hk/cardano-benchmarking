@@ -41,6 +41,8 @@ let
     # `benchmarks` (only built, not run).
     benchmarks = collectComponents' "benchmarks" haskellPackages;
 
+    exes = collectComponents' "exes" haskellPackages;
+
     checks = recurseIntoAttrs {
       # `checks.tests` collect results of executing the tests:
       tests = collectChecks haskellPackages;
@@ -50,7 +52,7 @@ let
 
     shell = import ./shell.nix {
       inherit pkgs;
-      withHoogle = true;
+      withHoogle = false;
     };
   };
 in self

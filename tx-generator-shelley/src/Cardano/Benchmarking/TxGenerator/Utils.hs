@@ -10,8 +10,8 @@ import           Network.Socket (AddrInfo (..), AddrInfoFlag (..), Family (..), 
 
 import           Cardano.BM.Data.Tracer (ToLogObject (..))
 import           Cardano.BM.Trace (appendName)
-import           Cardano.Config.Types (NodeAddress (..), NodeHostAddress (..))
-import           Cardano.Node.Logging (LoggingLayer (..), Trace)
+import           Cardano.Node.Configuration.Logging (LoggingLayer (..), Trace)
+import           Cardano.Node.Types (NodeAddress (..), NodeHostAddress (..))
 
 import           Control.Tracer (Tracer)
 
