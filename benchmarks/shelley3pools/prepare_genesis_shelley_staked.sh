@@ -176,11 +176,11 @@ do
         --out-file "$gendir"/addresses/pool-owner$N.addr
 
     pool_id=$($cli shelley stake-pool id \
-              --verification-key-file   "$gendir"/node${N}/cold/operator.vkey)
+               --verification-key-file   "$gendir"/node${N}/cold/operator.vkey  --output-format hex)
     pool_vrf=$($cli shelley node key-hash-VRF \
                --verification-key-file  "$gendir"/node${N}/vrf.vkey)
     deleg_staking=$($cli shelley stake-address key-hash \
-                    --stake-verification-key-file "$gendir"/addresses/pool-owner${N}-stake.vkey)
+               --stake-verification-key-file "$gendir"/addresses/pool-owner${N}-stake.vkey)
     initial_addr=$($cli shelley address info --address $(cat "$gendir"/addresses/pool-owner$N.addr) |
                    jq '.base16' --raw-output)
     params=(
