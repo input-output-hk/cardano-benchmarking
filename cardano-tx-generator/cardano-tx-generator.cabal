@@ -115,14 +115,18 @@ executable cardano-tx-generator
 
 test-suite cardano-tx-generator-test
   hs-source-dirs:       test
-  main-is:              Spec.hs
+  main-is:              Main.hs
   type:                 exitcode-stdio-1.0
 
   build-depends:        base >=4.12 && <5
-                      , cardano-prelude
+                      , tasty-hunit
+                      , tasty-quickcheck
+                      , tasty
+                      , heredoc
+                      , optparse-applicative
+                      , cardano-tx-generator
 
   default-language:     Haskell2010
-  default-extensions:   NoImplicitPrelude
 
   ghc-options:          -Weverything
                         -fno-warn-missing-import-lists
