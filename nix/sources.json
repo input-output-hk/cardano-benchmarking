@@ -23,28 +23,16 @@
         "url": "https://github.com/input-output-hk/cardano-node/archive/4814003f14340d5a1fc02f3ac15437387a7ada9f.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
-    "cardano-sl": {
-        "branch": "develop",
-        "description": "Cryptographic currency implementing Ouroboros PoS protocol",
-        "homepage": "",
-        "owner": "input-output-hk",
-        "repo": "cardano-sl",
-        "rev": "d0cc2e6336e3c57771c775cafe831bc83db303d3",
-        "sha256": "1l0af54ivqs26ibsl4nih8800b99f99r1y33wcrnby28mjsph8s2",
-        "type": "tarball",
-        "url": "https://github.com/input-output-hk/cardano-sl/archive/d0cc2e6336e3c57771c775cafe831bc83db303d3.tar.gz",
-        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
-    },
     "haskell.nix": {
         "branch": "master",
         "description": "Alternative Haskell Infrastructure for Nixpkgs",
         "homepage": "https://input-output-hk.github.io/haskell.nix",
         "owner": "input-output-hk",
         "repo": "haskell.nix",
-        "rev": "27eff13aa0616e8ce5106e81339b0462f04af3bd",
-        "sha256": "0wn70ap5kgzcjpf7w3vm4z5h4d36a625fa2dhy1l79pjj6hj40ly",
+        "rev": "35b1ec8cd577bfc5abf7d0325f38aab01de5ed00",
+        "sha256": "0mg18i6g7nxd7qk0kaca6k8dsc3kam21772zlr19k03ff67ws55j",
         "type": "tarball",
-        "url": "https://github.com/input-output-hk/haskell.nix/archive/27eff13aa0616e8ce5106e81339b0462f04af3bd.tar.gz",
+        "url": "https://github.com/input-output-hk/haskell.nix/archive/35b1ec8cd577bfc5abf7d0325f38aab01de5ed00.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "iohk-nix": {

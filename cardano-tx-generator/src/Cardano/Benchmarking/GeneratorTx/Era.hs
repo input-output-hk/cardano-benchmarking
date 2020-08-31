@@ -142,7 +142,7 @@ import           Cardano.Api.TxSubmit
 import qualified Cardano.Api.Typed as Api
 
 -- Node imports
-import           Cardano.Node.Types (NodeAddress, SocketPath(..))
+import           Cardano.Node.Types (SocketPath(..))
 import           Cardano.Node.Configuration.Logging (LOContent(..), LoggingLayer (..))
 import           Cardano.Tracing.OrphanInstances.Byron()
 import           Cardano.Tracing.OrphanInstances.Common()
