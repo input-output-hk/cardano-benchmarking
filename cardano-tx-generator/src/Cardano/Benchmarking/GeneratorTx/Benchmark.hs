@@ -42,6 +42,7 @@ module Cardano.Benchmarking.GeneratorTx.Benchmark
   , UnAcked(..)
   , Unav(..)
   , UnReqd(..)
+  , SubmissionErrorPolicy(..)
 
   , SubmissionSummary(..)
   ) where
@@ -135,6 +136,11 @@ newtype Sent = Sent Int deriving (Enum, Eq, Generic, Integral, Num, Ord, Real, S
 -- | This many Txs requested by the peer, but not available for sending.
 newtype Unav = Unav Int deriving (Enum, Eq, Generic, Integral, Num, Ord, Real, Show)
 
+data SubmissionErrorPolicy
+  = FailOnError
+  | LogErrors
+  deriving (Eq, Show)
+
 instance ToJSON Sent
 instance ToJSON Unav
 instance ToJSON TPSRate
@@ -167,6 +173,7 @@ data SubmissionSummary
       , ssElapsed       :: !NominalDiffTime
       , ssEffectiveTps  :: !TPSRate
       , ssThreadwiseTps :: ![TPSRate]
+      , ssFailures      :: ![String]
       }
   deriving (Show, Generic)
 instance ToJSON SubmissionSummary
@@ -183,6 +190,7 @@ data Benchmark
       , bTxFanOut       :: !NumberOfOutputsPerTx
       , bTxFee          :: !Lovelace
       , bTxExtraPayload :: !TxAdditionalSize
+      , bErrorPolicy    :: !SubmissionErrorPolicy
       }
   deriving (Generic, Show)
 -- Warning:  make sure to maintain correspondence between the two data structures.
@@ -197,6 +205,7 @@ data PartialBenchmark
       , pbTxFanOut       :: !(Last NumberOfOutputsPerTx)
       , pbTxFee          :: !(Last Lovelace)
       , pbTxExtraPayload :: !(Last TxAdditionalSize)
+      , pbErrorPolicy    :: !(Last SubmissionErrorPolicy)
       }
   deriving (Generic, Show)
   deriving Semigroup via GenericSemigroup PartialBenchmark
@@ -235,6 +244,10 @@ parsePartialBenchmark =
     <*> (lastly $ parseTxAdditionalSize
           "add-tx-size"
           "Additional size of transaction, in bytes.")
+    <*> (lastly $ parseFlag'
+          LogErrors FailOnError
+          "fail-on-submission-errors"
+          "Fail on submission thread errors, instead of logging them.")
 
 defaultBenchmark :: PartialBenchmark
 defaultBenchmark =
@@ -248,6 +261,7 @@ defaultBenchmark =
   , pbTxFanOut       = pure 1
   , pbTxFee          = pure 1000
   , pbTxExtraPayload = pure 100
+  , pbErrorPolicy    = pure LogErrors
   }
 
 -- This is called at the last stage of the Partial Options Monoid approach.
@@ -263,6 +277,7 @@ mkBenchmark PartialBenchmark{..} = do
   bTxFanOut       <- mkComplete "bTxFanOut      " pbTxFanOut
   bTxFee          <- mkComplete "bTxFee         " pbTxFee
   bTxExtraPayload <- mkComplete "bTxExtraPayload" pbTxExtraPayload
+  bErrorPolicy    <- mkComplete "bErrorPolicy"    pbErrorPolicy
   pure Benchmark{..}
  where
    -- | Return an error if the @Last@ option is incomplete.

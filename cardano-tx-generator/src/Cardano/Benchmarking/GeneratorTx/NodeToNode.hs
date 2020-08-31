@@ -71,8 +71,8 @@ benchmarkConnectTxSubmit p localAddr remoteAddr myTxSubClient =
  where
   modeVer :: Mode mode era -> NodeToNodeVersion
   modeVer = \case
-    ModeCardanoByron{}   -> NodeToNodeV_2
-    ModeCardanoShelley{} -> NodeToNodeV_2
+    ModeCardanoByron{}   -> NodeToNodeV_3
+    ModeCardanoShelley{} -> NodeToNodeV_3
     ModeByron{}          -> NodeToNodeV_1
     ModeShelley{}        -> NodeToNodeV_1
   n2nVer :: NodeToNodeVersion

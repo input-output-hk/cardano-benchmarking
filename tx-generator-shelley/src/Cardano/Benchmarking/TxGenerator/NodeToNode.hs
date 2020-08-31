@@ -132,12 +132,29 @@ benchmarkConnectTxSubmit iocp trs cfg network localAddr remoteAddr myTxSubClient
     where
       -- Stolen from: Ouroboros/Consensus/Network/NodeToNode.hs
       aKeepAliveClient
-        :: NtN.NodeToNodeVersion
+        :: NodeToNodeVersion
         -> remotePeer
         -> Channel m bKA
         -> m ((), Maybe bKA)
-      aKeepAliveClient _version _them _channel =
-        forever (threadDelay 1000) >> return ((), Nothing)
+      aKeepAliveClient version them channel = do
+        labelThisThread "KeepAliveClient"
+        let kacApp = case version of
+                       -- Version 1 doesn't support keep alive protocol but Blockfetch
+                       -- still requires a PeerGSV per peer.
+                       NodeToNodeV_1 -> \_ -> forever (threadDelay 1000) >> return ((), Nothing)
+                       NodeToNodeV_2 -> \_ -> forever (threadDelay 1000) >> return ((), Nothing)
+                       _             -> \dqCtx -> do
+                         runPeerWithLimits
+                           nullTracer
+                           cKeepAliveCodec
+                           (byteLimitsKeepAlive (const 0)) -- TODO: Real Bytelimits, see #1727
+                           timeLimitsKeepAlive
+                           channel
+                           $ keepAliveClientPeer
+                           $ hKeepAliveClient version (neverStop (Proxy :: Proxy m)) them dqCtx
+                               (KeepAliveInterval 10)
+
+        bracketKeepAliveClient (getFetchClientRegistry kernel) them kacApp
 
 -- the null block fetch client
 blockFetchClientNull
