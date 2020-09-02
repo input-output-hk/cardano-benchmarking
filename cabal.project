@@ -2,6 +2,7 @@ index-state: 2020-07-15T00:00:00Z
 
 packages:
     cardano-rt-view
+    cardano-rt-view/test/rt-view-analyzer
     cardano-tx-generator
     tx-generator-shelley
     bm-timeline
