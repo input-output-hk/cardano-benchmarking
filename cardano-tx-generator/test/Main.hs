@@ -66,6 +66,9 @@ Available options:
   --outputs-per-tx INT     Number of outputs in each of transactions.
   --tx-fee INT             Fee per transaction, in Lovelaces.
   --add-tx-size INT        Additional size of transaction, in bytes.
+  --fail-on-submission-errors
+                           Fail on submission thread errors, instead of logging
+                           them.
   --byron                  Initialise Cardano in Byron submode.
   --shelley                Initialise Cardano in Shelley submode.
   --n2n-magic-override NATURAL

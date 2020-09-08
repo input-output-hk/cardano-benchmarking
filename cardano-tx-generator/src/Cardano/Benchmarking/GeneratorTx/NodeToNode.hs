@@ -14,33 +14,40 @@ module Cardano.Benchmarking.GeneratorTx.NodeToNode
   ( benchmarkConnectTxSubmit
   ) where
 
-import           Cardano.Prelude (Void, forever)
+import           Cardano.Prelude (Void, atomically, forever, liftIO)
 import           Prelude
 
 import           Codec.Serialise (DeserialiseFailure)
 import           Control.Monad.Class.MonadTimer (MonadTimer, threadDelay)
+import           Control.Monad.Class.MonadSTM.Strict (newTVar)
 import           Data.ByteString.Lazy (ByteString)
 import qualified Data.Map as Map
 import           Data.Proxy (Proxy (..))
 import           Network.Mux (MuxMode (InitiatorMode))
 import           Network.Socket (AddrInfo (..), SockAddr)
+import           System.Random (newStdGen)
 
 import           Control.Tracer (nullTracer)
 import           Ouroboros.Consensus.Byron.Ledger.Mempool (GenTx)
 import           Ouroboros.Consensus.Ledger.SupportsMempool (GenTxId)
-import           Ouroboros.Consensus.Network.NodeToNode (Codecs (..), defaultCodecs)
+import           Ouroboros.Consensus.Network.NodeToNode -- (Codecs (..), defaultCodecs)
 import           Ouroboros.Consensus.Node.NetworkProtocolVersion
 import           Ouroboros.Consensus.Node.Run (RunNode)
 
 import           Ouroboros.Network.Channel (Channel (..))
+import           Ouroboros.Network.DeltaQ (defaultGSV)
+import           Ouroboros.Network.Driver (runPeerWithLimits)
+import           Ouroboros.Network.KeepAlive
 import           Ouroboros.Network.Mux (MuxPeer (..), OuroborosApplication (..),
-                                        RunMiniProtocol (..))
+                                        RunMiniProtocol (..), continueForever)
 import           Ouroboros.Network.NodeToClient (chainSyncPeerNull)
 import           Ouroboros.Network.NodeToNode (NetworkConnectTracers (..))
 import qualified Ouroboros.Network.NodeToNode as NtN
 import           Ouroboros.Network.Protocol.BlockFetch.Client (BlockFetchClient (..),
                                                                blockFetchClientPeer)
 import           Ouroboros.Network.Protocol.Handshake.Version (Versions, simpleSingletonVersions)
+import           Ouroboros.Network.Protocol.KeepAlive.Codec
+import           Ouroboros.Network.Protocol.KeepAlive.Client
 import           Ouroboros.Network.Protocol.TxSubmission.Client (TxSubmissionClient,
                                                                  txSubmissionClientPeer)
 import           Ouroboros.Network.Snocket (socketSnocket)
@@ -105,7 +112,7 @@ benchmarkConnectTxSubmit p localAddr remoteAddr myTxSubClient =
                                          (blockFetchClientPeer blockFetchClientNull)
           , NtN.keepAliveProtocol = InitiatorProtocolOnly $
                                       MuxPeerRaw
-                                        (aKeepAliveClient n2nVer them)
+                                        (kaClient n2nVer them)
           , NtN.txSubmissionProtocol = InitiatorProtocolOnly $
                                          MuxPeer
                                            (trSubmitMux p)
@@ -114,13 +121,33 @@ benchmarkConnectTxSubmit p localAddr remoteAddr myTxSubClient =
           } )
         n2nVer
   -- Stolen from: Ouroboros/Consensus/Network/NodeToNode.hs
-  aKeepAliveClient
-    :: NodeToNodeVersion
+  kaClient
+    :: Ord remotePeer
+    => NodeToNodeVersion
     -> remotePeer
-    -> Channel m bKA
-    -> m ((), Maybe bKA)
-  aKeepAliveClient _version _them _channel =
-    forever (threadDelay 1000) >> return ((), Nothing)
+    -> Channel m ByteString
+    -> m ((), Maybe ByteString)
+  kaClient version them channel = do
+    case version of
+      -- Version 1 doesn't support keep alive protocol but Blockfetch
+      -- still requires a PeerGSV per peer.
+      NodeToNodeV_1 -> forever (threadDelay 1000) >> return ((), Nothing)
+      NodeToNodeV_2 -> forever (threadDelay 1000) >> return ((), Nothing)
+      _             -> do
+        keepAliveRng <- newStdGen
+        peerGSVMap <- liftIO . atomically . newTVar $ Map.singleton them defaultGSV
+        runPeerWithLimits
+          nullTracer
+          (cKeepAliveCodec myCodecs)
+          (byteLimitsKeepAlive (const 0)) -- TODO: Real Bytelimits, see #1727
+          timeLimitsKeepAlive
+          channel
+          $ keepAliveClientPeer
+          $ keepAliveClient
+              nullTracer
+              keepAliveRng
+              (continueForever (Proxy :: Proxy m)) them peerGSVMap
+              (KeepAliveInterval 10)
 
 -- the null block fetch client
 blockFetchClientNull
