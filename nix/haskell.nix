@@ -6,6 +6,7 @@
 , stdenv
 , haskell-nix
 , buildPackages
+, cardanoNodeHaskellPackages
 , config ? {}
 # GHC attribute name
 , compiler ? config.haskellNix.compiler or "ghc865"
@@ -27,7 +28,7 @@ let
   projectPackages = lib.attrNames (haskell-nix.haskellLib.selectProjectPackages
     (haskell-nix.cabalProject {
       inherit src;
-      compiler-nix-name = "ghc865";
+      compiler-nix-name = compiler;
     }));
 
   # This creates the Haskell package set.
@@ -38,12 +39,17 @@ let
     ghc = buildPackages.haskell-nix.compiler.${compiler};
   } // {
     inherit src;
+    inherit (cardanoNodeHaskellPackages) index-state;
     compiler-nix-name = compiler;
-    #ghc = buildPackages.haskell-nix.compiler.${compiler};
+
     pkg-def-extras = lib.optional stdenv.hostPlatform.isLinux (hackage: {
-      packages = {
-        "systemd" = (((hackage.systemd)."2.2.0").revisions).default;
-      };
+      # Force using same plan as cardano-node to improve caching
+      packages = lib.genAttrs
+        (lib.filter (p: hackage ? ${p} && cardanoNodeHaskellPackages.${p}.cabalFile or null != null)
+        (lib.attrNames cardanoNodeHaskellPackages)) (p:
+          let version = cardanoNodeHaskellPackages.${p}.identifier.version;
+          in hackage.${p}.${version}.revisions.default
+        );
     });
     modules = [
       { compiler.nix-name = compiler; }

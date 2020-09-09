@@ -39,13 +39,15 @@ let
 
         svcLib = import ./svclib.nix { inherit pkgs; };
 
-        cardanoNode = import sources.cardano-node {
-          inherit system crossSystem config sourcesOverride customConfig;
-        };
+        inherit (import (sources.cardano-node + "/nix") {
+          inherit system crossSystem config sourcesOverride;
+        }) cardanoNodeHaskellPackages cardano-node cardano-cli;
+
+        cardanoNode.scripts = callPackage (sources.cardano-node + "/nix/scripts.nix") { inherit customConfig; };
+
         cardanoDbSync = import sources.cardano-db-sync {
           inherit system crossSystem config sourcesOverride;
         };
-        cardanoNodeHaskellPackages = cardanoNode.haskellPackages;
         cardanoDbSyncHaskellPackages = cardanoDbSync.haskellPackages;
       })
       # And, of course, our haskell-nix-ified cabal project:
