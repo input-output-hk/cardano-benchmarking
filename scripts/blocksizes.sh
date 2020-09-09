@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 
-grep --no-filename -F 'MsgBlock' "$@" |
+grep --no-filename -F 'TraceAdoptedBlock' "$@" |
 jq ' map ( { at:    .at
-           , blkid: .data.msg."block hash"
-           , blksz: .data.msg."block size"
-           , txs:  (.data.msg."tx ids" | length)
+           , blkid: .data.blockHash
+           , blksz: .data.blockSize
+           , txs:  (.data.txIds | length)
            }
          )
    | sort_by (.at)
