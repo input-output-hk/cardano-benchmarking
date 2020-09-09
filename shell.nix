@@ -27,6 +27,7 @@ let
     buildInputs = with haskellPackages; [
       cabal-install
       stack
+      stylish-haskell
       nix
       niv
       pkgconfig
@@ -34,12 +35,10 @@ let
       # postgresql
     ] ++ lib.optionals (! minimal) [
       # cardanoDbSync.cardano-db-sync
-      cardanoNode.cardano-cli
-      cardanoNode.cardano-node
+      cardano-cli
+      cardano-node
       ghcid
       git
-      # gnumeric
-      # libreoffice
       hlint
       stylish-haskell
       sqlite-interactive
