@@ -62,11 +62,20 @@ let
           "xhtml"
           # "stm" "terminfo"
         ];
-
+      }
+      {
         # Stamp executables with the git revision
-        packages.cardano-tx-generator.components.exes.cardano-tx-generator.postInstall = setGitRev;
-        # Work around Haskell.nix issue when setting postInstall on components
-        # packages.cardano-tx-generator.components.all.postInstall = lib.mkForce setGitRev;
+        # And make sure that libsodium DLLs are available for windows binaries:
+        packages = lib.genAttrs projectPackages (name: {
+            postInstall = ''
+              if [ -d $out/bin ]; then
+                ${setGitRev}
+                ${lib.optionalString stdenv.hostPlatform.isWindows
+                  "ln -s ${libsodium}/bin/libsodium-23.dll $out/bin/libsodium-23.dll"
+                }
+              fi
+            '';
+          });
       }
       {
         # Packages we wish to ignore version bounds of.
@@ -80,9 +89,6 @@ let
       # TODO: Compile all local packages with -Werror:
       { packages.cardano-tx-generator.configureFlags = [
           "--ghc-option=-Wall"
-          "--ghc-option=-fprof-auto-top"
-          "--ghc-option=-fprof-auto-calls"
-          "--ghc-option=-fprof-cafs"
           #"--ghc-option=-Werror"
         ] ++ lib.optionals profiling [
           "--ghc-option=-fprof-auto-top"
