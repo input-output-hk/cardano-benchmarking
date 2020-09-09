@@ -17,6 +17,7 @@ library
 
   exposed-modules:     Cardano.Benchmarking.RTView
                        Cardano.Benchmarking.RTView.CLI
+                       Cardano.Benchmarking.RTView.Config
 
                        Cardano.Benchmarking.RTView.Acceptor
 
@@ -48,6 +49,8 @@ library
                      , containers
                      , contra-tracer
                      , deepseq
+                     , directory
+                     , filepath
                      , formatting
                      , iohk-monitoring
                      , lobemo-backend-trace-acceptor
@@ -58,6 +61,7 @@ library
                      , text
                      , time
                      , threepenny-gui
+                     , yaml
 
   default-language:    Haskell2010
   default-extensions:  NoImplicitPrelude

@@ -31,7 +31,7 @@ launchServer nsMVar params acceptors =
  where
   config = UI.defaultConfig
     { UI.jsStatic = Just $ rtvStatic params
-    , UI.jsPort   = Just $ fromIntegral (rtvPort params)
+    , UI.jsPort   = Just $ rtvPort params
     }
 
 mainPage
