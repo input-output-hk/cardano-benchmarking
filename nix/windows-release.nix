@@ -34,4 +34,8 @@ in pkgs.runCommand name {
   chmod -R +w .
 
   zip -r $out/${name}.zip .
+
+  dist_file=$(ls $out)
+  mkdir -p $out/nix-support
+  echo "file binary-dist $out/$dist_file" > $out/nix-support/hydra-build-products
 ''
