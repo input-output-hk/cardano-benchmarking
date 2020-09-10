@@ -35,7 +35,15 @@ in pkgs.runCommand name {
 
   zip -r $out/${name}.zip .
 
-  dist_file=$(ls $out)
+  cd ..
+
+  #dist_file=$(ls $out)
   mkdir -p $out/nix-support
-  echo "file binary-dist $out/$dist_file" > $out/nix-support/hydra-build-products
+  echo "file binary-dist $out/${name}.zip" > $out/nix-support/hydra-build-products
+
+  cd /tmp
+  mkdir -p output
+  cp -vf "$out/${name}.zip" output/
+  ls -lh output/
+  pwd
 ''

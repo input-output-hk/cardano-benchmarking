@@ -1,30 +1,21 @@
 steps:
-  - label: 'Chain-sync benchmark Mainnet'
-    command:
-      - nix-shell -A devops --run "niv update cardano-node"
-      - ./benchmarks/chain-sync/ci.sh mainnet
-      - nix-shell -A devops --run "niv show cardano-node | tee -a benchmark-results.log"
-    timeout_in_minutes: 300
-    artifact_paths:
-      - "benchmark-results.log"
-    agents:
-      system: x86_64-linux
-      queue: benchmark
-
   - label: 'rt-view-linux-release'
     command: 'nix-build release.nix -A cardano-rt-view-service-linux-release'
     agents:
       system: x86_64-linux
-      queue: benchmark
+        #queue: benchmark
+    artifact_paths:
+      - '/tmp/output/*'
 
   - label: 'rt-view-win64-release'
     command: 'nix-build release.nix -A cardano-rt-view-service-win64-release'
     agents:
       system: x86_64-linux
-      queue: benchmark
+        #queue: benchmark
+    artifact_paths:
+      - '/tmp/output/*'
 
   - label: 'rt-view-darwin-release'
     command: 'nix-build release.nix -A cardano-rt-view-service-darwin-release'
     agents:
       system: x86_64-darwin
-      queue: benchmark

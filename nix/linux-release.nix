@@ -48,7 +48,13 @@ in pkgs.runCommand name {
 
   ARCH=x86_64 appimage-run /tmp/appimagetool-x86_64.AppImage -v `pwd`/release/ $out/${name}.AppImage
 
-  dist_file=$(ls $out)
+  #dist_file=$(ls $out)
   mkdir -p $out/nix-support
-  echo "file binary-dist $out/$dist_file" > $out/nix-support/hydra-build-products
+  echo "file binary-dist $out/${name}.AppImage" > $out/nix-support/hydra-build-products
+
+  cd /tmp
+  mkdir -p output
+  cp -vf "$out/${name}.AppImage" output/
+  ls -lh output/
+  pwd
 ''
