@@ -10,11 +10,11 @@ TEMPFILE=$(mktemp)
   # grep from all log files passed in as arguments
 grep -h '"TraceAdoptedBlock"' $* |
   # reformat string of tx ids as list
-  sed -e 's/"txid: TxId {_TxId = \([0-9a-f]\+\)}"\(,\{0,1\}\)/"\1"\2/g' | 
-  # reformat 'HashHeader'
-  sed -e 's/HashHeader {unHashHeader = \([a-z0-9]\+\)}/\1/g' |
+  sed -e 's/\\"//g;s/"txid: TxId {_unTxId = \([0-9a-f]\+\)}"\(,\{0,1\}\)/"\1"\2/g' | 
+  # get rid of constructors, extract tx hash
+  sed -e 's/"[^"]\+_unTxId = \([a-z0-9]\+\)[^"]\+"/"\1"/g' |
   # extract specific data
-  jq -cr 'select(.data.kind=="TraceAdoptedBlock") | [ .data.slot, .at, .data.kind, .data."block hash", .data."block size", (.data."tx ids" | length), .data."tx ids" ]' |
+  jq -cr 'select(.data.kind=="TraceAdoptedBlock") | [ .data.slot, .at, .data.kind, .data.blockHash, .data.blockSize, (.data.txIds | length), .data.txIds ]' |
   # reformat timestamp
   sed -e 's/\([0-9-]\+\)T\([0-9:.]\+\)Z/\1 \2/;s/\\"//g' > ${TEMPFILE}
 
@@ -30,7 +30,7 @@ cat "${TEMPFILE}" | {
     if [ -n "$TXIDS" ]; then
       IFS=","
       for txid in ${TXIDS}; do
-        echo "\"${txid}\",\"${TSTAMP}\",${NODENUM},${SLOT}"
+        echo "${txid},\"${TSTAMP}\",${NODENUM},${SLOT}"
       done
     fi
 
