@@ -19,22 +19,16 @@ let
 
   haskellPackages = recRecurseIntoAttrs
     # the Haskell.nix package set, reduced to local packages.
-    (selectProjectPackages cardanoBenchmarkingHaskellPackages);
+    (cardanoBenchmarkingHaskellPackages.projectPackages);
 
   self = {
-    inherit
-      haskellPackages
-      cardanoBenchmarkingHaskellPackages
-      cardanoDbSyncHaskellPackages cardanoDbSync
-      cardanoNodeHaskellPackages cardanoNode;
+    inherit haskellPackages cardanoNode;
 
     # Grab the executable component of our package.
     inherit (haskellPackages.cardano-tx-generator.components.exes)
       cardano-tx-generator;
     inherit (haskellPackages.cardano-rt-view.components.exes)
       cardano-rt-view-service;
-
-    inherit (pkgs.iohkNix) checkCabalProject;
 
     # `tests` are the test suites which have been built.
     tests = collectComponents' "tests" haskellPackages;

@@ -59,7 +59,7 @@ fill_nix_executable_cache_entry() {
         vprint "filling the Nix executable cache for \"$pkg:$exe\" from ${pkgSet}.."
         NIX_BUILD=(
                 nix-build
-                "${__COMMON_SRCROOT}/default.nix"
+                "${__COMMON_SRCROOT}/nix"
                 --no-out-link
                 ${extra}
                 ${defaultnix_args}

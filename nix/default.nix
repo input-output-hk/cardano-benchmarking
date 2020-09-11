@@ -41,6 +41,7 @@ let
 
         inherit (import (sources.cardano-node + "/nix") {
           inherit system crossSystem config sourcesOverride;
+          gitrev = sources.cardano-node.rev;
         }) cardanoNodeHaskellPackages cardano-node cardano-cli;
 
         cardanoNode.scripts = callPackage (sources.cardano-node + "/nix/scripts.nix") { inherit customConfig; };

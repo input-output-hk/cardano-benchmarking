@@ -13,6 +13,78 @@ packages:
     --ext/cardano-db-sync.git/cardano-db
     --ext/cardano-db-sync.git/cardano-db-sync
 
+allow-newer: base
+
+-- related to cardano-ledger-specs:
+-- always write GHC env files, because they are needed by the doctests.
+write-ghc-environment-files: always
+
+package cardano-node
+  ghc-options: -Werror -Wall -Wredundant-constraints -Wincomplete-record-updates -Wincomplete-uni-patterns -Wpartial-fields
+
+package cardano-api
+  ghc-options: -Werror -Wall -Wredundant-constraints -Wincomplete-record-updates -Wincomplete-uni-patterns -Wpartial-fields
+
+package cardano-cli
+  ghc-options: -Werror -Wall -Wredundant-constraints -Wincomplete-record-updates -Wincomplete-uni-patterns -Wpartial-fields
+
+package cardano-config
+  ghc-options: -Werror -Wall -Wredundant-constraints -Wincomplete-record-updates -Wincomplete-uni-patterns -Wpartial-fields
+
+package cryptonite
+  -- Using RDRAND instead of /dev/urandom as an entropy source for key
+  -- generation is dubious. Set the flag so we use /dev/urandom by default.
+  flags: -support_rdrand
+
+-- If libsodium not available on your system, this need to go in cabal.project.local
+-- (for development only, not suitable for prod deployment):
+--package cardano-crypto-praos
+--  flags: -external-libsodium-vrf
+
+-- ---------------------------------------------------------
+-- Disable all tests by default
+
+tests: False
+
+test-show-details: direct
+
+-- Then enable specific tests in this repo
+
+package cardano-rt-view
+  tests: True
+
+package cardano-tx-generator
+  tests: True
+
+package tx-generator-shelley
+  tests: True
+
+package bm-timeline
+  tests: True
+
+-- required for nix:
+
+package byron-spec-ledger
+  tests: False
+
+package ouroboros-consensus-test
+  tests: False
+
+package ouroboros-consensus-cardano-test
+  tests: False
+
+package ouroboros-network
+  tests: False
+
+package ouroboros-network-framework
+  tests: False
+
+package small-steps
+  tests: False
+
+package small-steps-test
+  tests: False
+
 ---------- 8< -----------
 source-repository-package
   type: git
@@ -349,8 +421,7 @@ source-repository-package
 
 constraints:
   -- cardano-node's constraints:
-    ip < 1.5
-  , hedgehog >= 1.0
+    hedgehog >= 1.0
   , bimap >= 0.4.0
   , brick >= 0.47
   , libsystemd-journal >= 1.4.4
@@ -360,129 +431,5 @@ constraints:
   , quiet >= 0.2
   , vty < 5.27
 
-allow-newer: base
-
--- related to cardano-ledger-specs:
--- always write GHC env files, because they are needed by the doctests.
-write-ghc-environment-files: always
-
-package ouroboros-consensus
-  tests: False
-
-package ouroboros-consensus-byron
-  tests: False
-
-package ouroboros-consensus-cardano
-  tests: False
-
-package ouroboros-consensus-shelley
-  tests: False
-
-package cardano-node
-  tests: False
-
-package cardano-api
-  tests: False
-
-package cardano-cli
-  tests: False
-
-package cardano-config
-  tests: False
-
-package cardano-db
-  tests: False
-
-package cardano-db-sync
-  tests: False
-
-package byron-spec-chain
-  tests: False
-
-package byron-spec-ledger
-  tests: False
-
-package shelley-spec-ledger
-  tests: False
-
-package shelley-spec-ledger-test
-  tests: False
-
-package cardano-ledger
-  tests: False
-
-package cardano-ledger-test
-  tests: False
-
-package canonical-json
-  tests: False
-
-package cardano-crypto
-  tests: False
-
-package bech32
-  tests: False
-
-package cborg
-  tests: False
-
-package http-client
-  tests: False
-
-package goblins
-  tests: False
-
-package io-sim
-  tests: False
-
-package shelley-spec-non-integral
-  tests: False
-
-package network-mux
-  tests: False
-
-package typed-protocols
-  tests: False
-
-package typed-protocols-examples
-  tests: False
-
-package cardano-prelude
-  tests: False
-
-package iohk-monitoring
-  tests: False
-
-package cardano-binary
-  tests: False
-
-package cardano-sl-x509
-  tests: False
-
-package cardano-crypto-class
-  tests: False
-
-package cardano-crypto-test
-  tests: False
-
-package cardano-crypto-wrapper
-  tests: False
-
-package ouroboros-network-framework
-  tests: False
-
-package lobemo-backend-monitoring
-  tests: False
-
-package small-steps
-  tests: False
-
-package small-steps-test
-  tests: False
-
-package ouroboros-network
-  tests: False
-
-package cardano-crypto-praos
-  flags: -external-libsodium-vrf
-
+package comonad
+  flags: -test-doctests

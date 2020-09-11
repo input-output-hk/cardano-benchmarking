@@ -15,13 +15,7 @@ let
   shell = cardanoBenchmarkingHaskellPackages.shellFor {
     name = "cabal-dev-shell";
 
-    # If shellFor local packages selection is wrong,
-    # then list all local packages then include source-repository-package that cabal complains about:
-    packages = ps: with ps; [
-      cardano-rt-view
-      cardano-tx-generator
-      tx-generator-shelley
-    ];
+    packages = _: lib.attrValues cardanoBenchmarkingHaskellPackages.projectPackages;
 
     # These programs will be available inside the nix-shell.
     buildInputs = with haskellPackages; [
