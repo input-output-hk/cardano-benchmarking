@@ -19,7 +19,7 @@ let
 
   haskellPackages = recRecurseIntoAttrs
     # the Haskell.nix package set, reduced to local packages.
-    (selectProjectPackages cardanoBenchmarkingHaskellPackages);
+    (cardanoBenchmarkingHaskellPackages.projectPackages);
 
   self = {
     inherit
