@@ -57,6 +57,12 @@ with pkgs.lib;
 
 let
 
+  mkPins = inputs: pkgs.runCommand "ifd-pins" {} ''
+    mkdir $out
+    cd $out
+    ${lib.concatMapStringsSep "\n" (input: "ln -sv ${input.value} ${input.key}") (lib.attrValues (lib.mapAttrs (key: value: { inherit key value; }) inputs))}
+  '';
+
   # restrict supported systems to a subset where tests (if exist) are required to pass:
   testsSupportedSystems = intersectLists supportedSystems [ "x86_64-linux" "x86_64-darwin" ];
   # Recurse through an attrset, returning all derivations in a list matching test supported systems.
@@ -86,6 +92,8 @@ let
 
   inherit (systems.examples) mingwW64 musl64;
 
+  inherit (pkgs.commonLib) sources nixpkgs;
+
   jobs = {
     native =
       let filteredBuilds = mapAttrsRecursiveCond (a: !(isList a)) (path: value:
@@ -94,6 +102,11 @@ let
       in (mapTestOn (__trace (__toJSON filteredBuilds) filteredBuilds));
     musl64 = mapTestOnCross musl64 (packagePlatformsCross (filterProject noMusl64Build));
     "${mingwW64.config}" = mapTestOnCross mingwW64 (packagePlatformsCross (filterProject noCrossBuild));
+    ifd-pins = mkPins {
+      inherit (sources) iohk-nix "haskell.nix" cardano-node cardano-db-sync;
+      inherit nixpkgs;
+      inherit (pkgs.haskell-nix) hackageSrc stackageSrc;
+    };
   } // (mkRequiredJob (concatLists [
       (collectJobs jobs.native.checks)
       (collectJobs jobs.native.benchmarks)
