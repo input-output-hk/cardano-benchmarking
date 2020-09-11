@@ -12,6 +12,7 @@
 
 # Function arguments to pass to the project
 , projectArgs ? {
+    inherit sourcesOverride;
     config = { allowUnfree = false; inHydra = true; };
     gitrev = cardano-benchmarking.rev;
   }
@@ -19,8 +20,16 @@
 # The systems that the jobset will be built for.
 , supportedSystems ? [ "x86_64-linux" "x86_64-darwin" ]
 
-# The systems used for cross-compiling
-, supportedCrossSystems ? [ "x86_64-linux" ]
+# The systems used for cross-compiling (default: linux)
+, supportedCrossSystems ? [ (builtins.head supportedSystems) ]
+
+# Cross compilation to Windows is currently only supported on linux.
+, linuxBuild ? builtins.elem "x86_64-linux" supportedCrossSystems
+
+# Cross compilation to Windows is currently only supported on linux.
+, windowsBuild ? linuxBuild
+
+, darwinBuild ? builtins.elem "x86_64-darwin" supportedCrossSystems
 
 # A Hydra option
 , scrubJobs ? true
@@ -30,6 +39,10 @@
 
 # Import pkgs, including IOHK common nix lib
 , pkgs ? import ./nix { inherit sourcesOverride; }
+
+# Release version of cardano-benchmarking, corresponds to GitHub tag, for example
+# https://github.com/input-output-hk/cardano-benchmarking/releases/tag/1.15.0
+, releaseVersion ? "1.0.0"
 
 }:
 
@@ -44,29 +57,47 @@ with pkgs.lib;
 
 let
 
-  testsSupportedSystems = [ "x86_64-linux" "x86_64-darwin" ];
-  # Recurse through an attrset, returning all test derivations in a list.
-  collectTests' = ds: filter (d: elem d.system testsSupportedSystems) (collect isDerivation ds);
-  # Adds the package name to the test derivations for windows-testing-bundle.nix
+  # restrict supported systems to a subset where tests (if exist) are required to pass:
+  testsSupportedSystems = intersectLists supportedSystems [ "x86_64-linux" "x86_64-darwin" ];
+  # Recurse through an attrset, returning all derivations in a list matching test supported systems.
+  collectJobs' = ds: filter (d: elem d.system testsSupportedSystems) (collect isDerivation ds);
+  # Adds the package name to the derivations for windows-testing-bundle.nix
   # (passthru.identifier.name does not survive mapTestOn)
-  collectTests = ds: concatLists (
+  collectJobs = ds: concatLists (
     mapAttrsToList (packageName: package:
-      map (drv: drv // { inherit packageName; }) (collectTests' package)
+      map (drv: drv // { inherit packageName; }) (collectJobs' package)
     ) ds);
 
-  sources = import ./nix/sources.nix;
+  nonDefaultBuildSystems = tail supportedSystems;
+
+  # Paths or prefixes of paths of derivations to build only on the default system (ie. linux on hydra):
+  onlyBuildOnDefaultSystem = [ ["checks"] ];
+  # Paths or prefix of paths for which cross-builds (mingwW64, musl64) are disabled:
+  noCrossBuild = [ ["shell"] ]
+    ++ onlyBuildOnDefaultSystem;
+  noMusl64Build = [ ["checks"] ["tests"] ["benchmarks"] ["haskellPackages"] ]
+    ++ noCrossBuild;
+
+  # Remove build jobs for which cross compiling does not make sense.
+  filterProject = noBuildList: mapAttrsRecursiveCond (a: !(isDerivation a)) (path: value:
+    if (isDerivation value && (any (p: take (length p) path == p) noBuildList)) then null
+    else value
+  ) project;
 
   inherit (systems.examples) mingwW64 musl64;
 
   jobs = {
-    native = mapTestOn (__trace (__toJSON (packagePlatforms project)) (packagePlatforms project));
-    "${mingwW64.config}" = mapTestOnCross mingwW64 (packagePlatformsCross (removeAttrs project [ "cardanoDbSyncHaskellPackages" "cardanoDbSync" ]));
-  } // (mkRequiredJob (
-      [
-        jobs.native.cardano-tx-generator.x86_64-darwin
-        jobs.native.cardano-tx-generator.x86_64-linux
-        jobs.native.cardano-rt-view-service.x86_64-darwin
-        jobs.native.cardano-rt-view-service.x86_64-linux
-      ]));
+    native =
+      let filteredBuilds = mapAttrsRecursiveCond (a: !(isList a)) (path: value:
+        if (any (p: take (length p) path == p) onlyBuildOnDefaultSystem) then filter (s: !(elem s nonDefaultBuildSystems)) value else value)
+        (packagePlatforms project);
+      in (mapTestOn (__trace (__toJSON filteredBuilds) filteredBuilds));
+    musl64 = mapTestOnCross musl64 (packagePlatformsCross (filterProject noMusl64Build));
+    "${mingwW64.config}" = mapTestOnCross mingwW64 (packagePlatformsCross (filterProject noCrossBuild));
+  } // (mkRequiredJob (concatLists [
+      (collectJobs jobs.native.checks)
+      (collectJobs jobs.native.benchmarks)
+      (collectJobs jobs.native.exes)
+    ]));
 
 in jobs
