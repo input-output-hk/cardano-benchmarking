@@ -16,7 +16,7 @@ else
 fi
 
 # if FUSE is not an option, we can still extract the AppImage and run it directly
-# appimagetool-x86_64.AppImage --appimage-extract && mv squashfs-root 
+# appimagetool-x86_64.AppImage --appimage-extract && mv squashfs-root
 if [ -d appimagetool-x86_64.squashfs ]; then
   RUNAPPIMG="./appimagetool-x86_64.squashfs/AppRun"
 else
@@ -33,13 +33,10 @@ cd ${OUTDIR}
 cp -iv ${EXE} .
 
 # copy resources
-cp ../resources/cardano-rt-view.desktop .
-cp ../resources/cardano-rt-view.png .
-cp ../resources/rt-view.yaml0 .
+cp ../resources/* .
 
 cp -rv ../static .
 
-cp ../resources/AppRun .
 chmod 700 AppRun
 
 # create appimage
