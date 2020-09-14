@@ -1,6 +1,7 @@
 {-# LANGUAGE QuasiQuotes #-}
 module Main (main) where
 
+import           Data.Maybe
 import           Test.Tasty
 import           Test.Tasty.HUnit
 import           Text.Heredoc
@@ -22,15 +23,23 @@ tests =  testGroup "cardano-tx-generator"
   ]
   
 mockServer = testGroup "direct/pure client-server connect"
-    [ testCase "tx-send == tx-received" $ assertBool "tx-send == tx-received" True -- TODO !
-    ]
+  [ testCase "tx-send == tx-received" $ assertBool "tx-send == tx-received" True -- TODO !
+  ]
 
 cliArgs = testGroup "cli arguments"
-  [  -- Also update readmes and documentation when the help-messages changes.
-     testCase "check help message against pinned version"
-     $ assertBool "help message == pinned help message" $ helpMessage == pinnedHelpMessage
+  [
+  -- Also update readme and documentation when the help-messages changes.
+    testCase "check help message against pinned version"
+      $ assertBool "help message == pinned help message" $ helpMessage == pinnedHelpMessage
+  -- examples for calling the tx-generator found in the shell scripts.
+  , testCmdLine [here|--config /work/cli-tests/benchmarks/shelley3pools/configuration/configuration-generator.yaml --socket-path /work/cli-tests/benchmarks/shelley3pools/logs/sockets/1 --num-of-txs 1000 --add-tx-size 0 --inputs-per-tx 1 --outputs-per-tx 1 --tx-fee 1000000 --tps 10 --init-cooldown 5 --target-node ("127.0.0.1",3000) --target-node ("127.0.0.1",3001) --target-node ("127.0.0.1",3002) --genesis-funds-key configuration/genesis-shelley/utxo-keys/utxo1.skey|]
   ]
   where
+    testCmdLine :: String -> TestTree
+    testCmdLine l = testCase "check that example cmd line parses" $ assertBool l $ isJust
+                        $ getParseResult $ execParserPure defaultPrefs (info parseCommand fullDesc)
+                           $ words l
+
     helpMessage = show $ parserFailure defaultPrefs (info parseCommand fullDesc ) ShowHelpText []
     pinnedHelpMessage = [here|ParserFailure (Usage: <program> --config FILEPATH --socket-path FILEPATH 
                  [--target-node (HOST,PORT)] [--init-cooldown INT] 
