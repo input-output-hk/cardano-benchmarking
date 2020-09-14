@@ -22,7 +22,7 @@ let
     (cardanoBenchmarkingHaskellPackages.projectPackages);
 
   self = {
-    inherit haskellPackages cardanoNode;
+    inherit haskellPackages cardanoNode pkgs;
 
     # Grab the executable component of our package.
     inherit (haskellPackages.cardano-tx-generator.components.exes)
