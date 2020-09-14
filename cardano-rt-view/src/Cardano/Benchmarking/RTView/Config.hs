@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE LambdaCase #-}
@@ -10,16 +11,26 @@ module Cardano.Benchmarking.RTView.Config
 
 import           Cardano.Prelude
 
+#if !defined(mingw32_HOST_OS)
 import           Control.Monad (forM_)
+#endif
 import           Data.List (nub, nubBy)
 import           Data.Text (Text)
 import qualified Data.Text as T
 import           Data.Text.IO as TIO
 import           Data.Yaml (ParseException, decodeFileEither, encodeFile)
-import           System.Directory (XdgDirectory (..), createDirectoryIfMissing, doesFileExist,
-                                   getTemporaryDirectory, getXdgDirectory, listDirectory,
-                                   removeFile)
-import           System.FilePath ((</>), takeDirectory)
+import           System.Directory (XdgDirectory (..), doesFileExist,
+                                   getTemporaryDirectory, getXdgDirectory)
+#if !defined(mingw32_HOST_OS)
+import           System.Directory (createDirectoryIfMissing, listDirectory, removeFile)
+#endif
+
+import           System.FilePath ((</>))
+#if defined(mingw32_HOST_OS)
+import           System.FilePath (dropDrive)
+#else
+import           System.FilePath (takeDirectory)
+#endif
 import qualified System.Exit as Ex
 import           Text.Read (readMaybe)
 
@@ -214,8 +225,14 @@ maximumPort = 65535
 
 defaultPipesDir :: IO FilePath
 defaultPipesDir = do
-  tmp <- getTemporaryDirectory
-  return $ tmp </> "rt-view-pipes"
+  tmp0 <- getTemporaryDirectory
+  let tmp =
+#if defined(mingw32_HOST_OS)
+          "\\\\.\\pipe\\" ++ (T.unpack . T.replace "\\" "-" . T.pack) (dropDrive tmp0) ++ "_"
+#else
+          tmp0 ++ "/"
+#endif
+  return $ tmp ++ "rt-view-pipes"
 
 askAboutNodesNumber :: IO Int
 askAboutNodesNumber = do
@@ -311,14 +328,25 @@ askAboutLocationForPipes nodesNumber = do
     then do
       defDir <- defaultPipesDir
       TIO.putStrLn $ "Ok, default directory \"" <> T.pack defDir <> "\" will be used."
-      createDirectoryIfMissing True defDir
-      return $ map (\defName -> RemotePipe (defDir </> T.unpack defName))
-                   $ defaultNodesNames nodesNumber
+      mkdir defDir
+      return $ mkpipe defDir
     else do
       TIO.putStrLn $ "Ok, directory \"" <> dir <> "\" will be used for the pipes."
-      createDirectoryIfMissing True (T.unpack dir)
-      return $ map (\defName -> RemotePipe ((T.unpack dir) </> (T.unpack defName)))
-                   $ defaultNodesNames nodesNumber
+      mkdir (T.unpack dir)
+      return $ mkpipe (T.unpack dir)
+ where
+  mkdir :: FilePath -> IO ()
+  prepname :: FilePath -> Text -> FilePath
+#if defined(mingw32_HOST_OS)
+  mkdir _ = pure ()
+  prepname d n = d <> "_" <> T.unpack n
+#else
+  mkdir = createDirectoryIfMissing True
+  prepname d n = d </> T.unpack n
+#endif
+  mkpipe :: FilePath -> [RemoteAddr]
+  mkpipe d = map (\defName -> RemotePipe (prepname d defName)) $
+                 defaultNodesNames nodesNumber
 
 askAboutFirstPortForSockets :: Int -> IO [RemoteAddr]
 askAboutFirstPortForSockets nodesNumber = do
@@ -361,6 +389,9 @@ askAboutStaticDir = do
       return $ T.unpack dir
 
 rmPipesIfNeeded :: [RemoteAddrNamed] -> IO ()
+#if defined(mingw32_HOST_OS)
+rmPipesIfNeeded _ = pure ()
+#else
 rmPipesIfNeeded acceptors = do
   let pipesDirs = map collectPipesDirs acceptors
   forM_ pipesDirs $ \dir ->
@@ -371,6 +402,7 @@ rmPipesIfNeeded acceptors = do
  where
   collectPipesDirs (RemoteAddrNamed _ (RemoteSocket _ _)) = ""
   collectPipesDirs (RemoteAddrNamed _ (RemotePipe path)) = takeDirectory path
+#endif
 
 saveConfigurationForNextSessions :: Configuration -> IO ()
 saveConfigurationForNextSessions config = do
