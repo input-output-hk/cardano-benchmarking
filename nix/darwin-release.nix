@@ -7,14 +7,14 @@
 ############################################################################
 
 { pkgs
-, releaseVersion
+, project
 , exes
 , staticDir
 }:
 
 let
   lib = pkgs.lib;
-  name = "cardano-rt-view-service-${releaseVersion}-darwin";
+  name = "cardano-rt-view-service-${project.version}-darwin";
   rtViewServiceExe = lib.head (lib.filter (exe: lib.hasInfix "cardano-rt-view-service" exe.name) exes);
 
 in pkgs.runCommand name {

@@ -7,7 +7,7 @@
 ############################################################################
 
 { pkgs
-, releaseVersion
+, project
 , exes
 , staticDir
 , resourcesDir
@@ -15,7 +15,7 @@
 
 let
   lib = pkgs.lib;
-  name = "cardano-rt-view-service-${releaseVersion}-linux-x86_64";
+  name = "cardano-rt-view-service-${project.version}-linux-x86_64";
   rtViewServiceExe = lib.head (lib.filter (exe: lib.hasInfix "cardano-rt-view-service" exe.name) exes);
   appimagetool = pkgs.fetchurl {
     url = https://github.com/AppImage/AppImageKit/releases/download/12/appimagetool-x86_64.AppImage;
