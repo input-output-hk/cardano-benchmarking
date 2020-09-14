@@ -1,5 +1,5 @@
 name:                  tx-generator-shelley
-version:               0.2.0
+version:               1.19.1
 description:           The transaction generator for shelley
 author:                IOHK
 maintainer:            operations@iohk.io
