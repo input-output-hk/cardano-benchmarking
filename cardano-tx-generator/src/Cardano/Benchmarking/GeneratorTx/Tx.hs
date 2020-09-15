@@ -61,7 +61,7 @@ import qualified Ouroboros.Consensus.Byron.Ledger as Byron hiding (TxId)
 
 -- Shelley-specific imports
 import qualified Ouroboros.Consensus.Shelley.Ledger.Mempool as Shelley
-import           Ouroboros.Consensus.Shelley.Protocol.Crypto (TPraosStandardCrypto)
+import           Ouroboros.Consensus.Shelley.Protocol (StandardShelley)
 import qualified Shelley.Spec.Ledger.Address as Shelley
 import qualified Shelley.Spec.Ledger.Coin as Shelley
 import qualified Shelley.Spec.Ledger.TxData as ShelleyLedger
@@ -110,7 +110,7 @@ fromByronTxOut :: Byron.TxOut -> TxOut Byron
 fromByronTxOut (Byron.TxOut addr coin) =
   TxOut (ByronAddress addr) (Lovelace $ Byron.lovelaceToInteger coin)
 
-fromShelleyAddr :: Shelley.Addr TPraosStandardCrypto -> Address Shelley
+fromShelleyAddr :: Shelley.Addr StandardShelley -> Address Shelley
 fromShelleyAddr (Shelley.Addr nw pc scr) = ShelleyAddress nw pc scr
 fromShelleyAddr _                        = error "fromShelleyAddr:  unhandled Shelley.Addr case"
 
