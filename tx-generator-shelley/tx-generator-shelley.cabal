@@ -58,6 +58,7 @@ library
                      , ouroboros-consensus-cardano
                      , ouroboros-network
                      , ouroboros-network-framework
+                     , random
                      , shelley-spec-ledger
                      , serialise
                      , stm

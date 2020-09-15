@@ -17,44 +17,52 @@ module Cardano.Benchmarking.TxGenerator.NodeToNode
   , benchmarkConnectTxSubmit
   ) where
 
-import           Cardano.Prelude (Void, forever)
+import           Cardano.Prelude (Void, atomically, forever, liftIO)
 import           Prelude
 
-import qualified Codec.CBOR.Term as CBOR
 import           Codec.Serialise (DeserialiseFailure)
 import           Control.Monad.Class.MonadTimer (MonadTimer, threadDelay)
+import           Control.Monad.Class.MonadSTM.Strict (newTVar)
 import           Data.ByteString.Lazy (ByteString)
-import           Data.Map as Map
+import qualified Data.Map as Map
 import           Data.Proxy (Proxy (..))
-import           Network.Mux (MuxMode (InitiatorMode), WithMuxBearer (..))
+import           Network.Mux (MuxMode (InitiatorMode), WithMuxBearer)
 import           Network.Socket (AddrInfo (..), SockAddr)
+import           System.Random (newStdGen)
 
-import           Control.Tracer (Tracer (..), nullTracer)
+import           Control.Tracer (Tracer, nullTracer)
 import           Ouroboros.Consensus.Byron.Ledger.Mempool (GenTx)
 import           Ouroboros.Consensus.Ledger.SupportsMempool (GenTxId)
-import           Ouroboros.Consensus.Node.NetworkProtocolVersion (supportedNodeToNodeVersions)
-
-import           Ouroboros.Consensus.Network.NodeToNode (Codecs (..), defaultCodecs)
-import           Ouroboros.Consensus.Node.ProtocolInfo (ProtocolClientInfo, pClientInfoCodecConfig)
+import           Ouroboros.Consensus.Network.NodeToNode -- (Codecs (..), defaultCodecs)
+import           Ouroboros.Consensus.Node.NetworkProtocolVersion
 import           Ouroboros.Consensus.Node.Run (RunNode)
+
 import           Ouroboros.Network.Channel (Channel (..))
-import           Ouroboros.Network.Driver (TraceSendRecv (..))
-import           Ouroboros.Network.Magic (NetworkMagic (..))
+import           Ouroboros.Network.DeltaQ (defaultGSV)
+import           Ouroboros.Network.Driver (runPeerWithLimits)
+import           Ouroboros.Network.KeepAlive
 import           Ouroboros.Network.Mux (MuxPeer (..), OuroborosApplication (..),
-                                        RunMiniProtocol (..))
-import           Ouroboros.Network.NodeToClient (IOManager, chainSyncPeerNull)
+                                        RunMiniProtocol (..), continueForever)
+import           Ouroboros.Network.NodeToClient (chainSyncPeerNull)
 import           Ouroboros.Network.NodeToNode (NetworkConnectTracers (..))
 import qualified Ouroboros.Network.NodeToNode as NtN
 import           Ouroboros.Network.Protocol.BlockFetch.Client (BlockFetchClient (..),
                                                                blockFetchClientPeer)
-import           Ouroboros.Network.Protocol.Handshake.Type (Handshake)
 import           Ouroboros.Network.Protocol.Handshake.Version (Versions, simpleSingletonVersions)
+import           Ouroboros.Network.Protocol.KeepAlive.Codec
+import           Ouroboros.Network.Protocol.KeepAlive.Client
 import           Ouroboros.Network.Protocol.TxSubmission.Client (TxSubmissionClient,
                                                                  txSubmissionClientPeer)
 import           Ouroboros.Network.Snocket (socketSnocket)
 
 import           Cardano.Api.Typed (NetworkId)
 import qualified Cardano.Api.Typed as Api
+
+import qualified Codec.CBOR.Term as CBOR
+import           Ouroboros.Consensus.Node.ProtocolInfo
+import           Ouroboros.Network.NodeToClient (Handshake, IOManager)
+import           Ouroboros.Network.Driver (TraceSendRecv (..))
+
 import           Cardano.Benchmarking.TxGenerator.Types
 
 type SendRecvConnect = WithMuxBearer
@@ -126,35 +134,38 @@ benchmarkConnectTxSubmit iocp trs cfg network localAddr remoteAddr myTxSubClient
                                            (txSubmissionClientPeer myTxSubClient)
           , NtN.keepAliveProtocol = InitiatorProtocolOnly $
                                       MuxPeerRaw
-                                        (aKeepAliveClient NtN.NodeToNodeV_1 peer)
+                                        (kaClient NtN.NodeToNodeV_1 peer)
           } )
         NtN.NodeToNodeV_1
     where
-      -- Stolen from: Ouroboros/Consensus/Network/NodeToNode.hs
-      aKeepAliveClient
-        :: NodeToNodeVersion
-        -> remotePeer
-        -> Channel m bKA
-        -> m ((), Maybe bKA)
-      aKeepAliveClient version them channel = do
-        labelThisThread "KeepAliveClient"
-        let kacApp = case version of
-                       -- Version 1 doesn't support keep alive protocol but Blockfetch
-                       -- still requires a PeerGSV per peer.
-                       NodeToNodeV_1 -> \_ -> forever (threadDelay 1000) >> return ((), Nothing)
-                       NodeToNodeV_2 -> \_ -> forever (threadDelay 1000) >> return ((), Nothing)
-                       _             -> \dqCtx -> do
-                         runPeerWithLimits
-                           nullTracer
-                           cKeepAliveCodec
-                           (byteLimitsKeepAlive (const 0)) -- TODO: Real Bytelimits, see #1727
-                           timeLimitsKeepAlive
-                           channel
-                           $ keepAliveClientPeer
-                           $ hKeepAliveClient version (neverStop (Proxy :: Proxy m)) them dqCtx
-                               (KeepAliveInterval 10)
-
-        bracketKeepAliveClient (getFetchClientRegistry kernel) them kacApp
+  -- Stolen from: Ouroboros/Consensus/Network/NodeToNode.hs
+  kaClient
+    :: Ord remotePeer
+    => NodeToNodeVersion
+    -> remotePeer
+    -> Channel m ByteString
+    -> m ((), Maybe ByteString)
+  kaClient version them channel = do
+    case version of
+      -- Version 1 doesn't support keep alive protocol but Blockfetch
+      -- still requires a PeerGSV per peer.
+      NodeToNodeV_1 -> forever (threadDelay 1000) >> return ((), Nothing)
+      NodeToNodeV_2 -> forever (threadDelay 1000) >> return ((), Nothing)
+      _             -> do
+        keepAliveRng <- newStdGen
+        peerGSVMap <- liftIO . atomically . newTVar $ Map.singleton them defaultGSV
+        runPeerWithLimits
+          nullTracer
+          (cKeepAliveCodec myCodecs)
+          (byteLimitsKeepAlive (const 0)) -- TODO: Real Bytelimits, see #1727
+          timeLimitsKeepAlive
+          channel
+          $ keepAliveClientPeer
+          $ keepAliveClient
+              nullTracer
+              keepAliveRng
+              (continueForever (Proxy :: Proxy m)) them peerGSVMap
+              (KeepAliveInterval 10)
 
 -- the null block fetch client
 blockFetchClientNull
@@ -163,6 +174,6 @@ blockFetchClientNull
 blockFetchClientNull
   = BlockFetchClient $ forever $ threadDelay (24 * 60 * 60) {- one day in seconds -}
 
-toNetworkMagic :: NetworkId -> NetworkMagic
-toNetworkMagic  Api.Mainnet     = NetworkMagic 764824073
+toNetworkMagic :: NetworkId -> Api.NetworkMagic
+toNetworkMagic  Api.Mainnet     = Api.NetworkMagic 764824073
 toNetworkMagic (Api.Testnet nm) = nm
