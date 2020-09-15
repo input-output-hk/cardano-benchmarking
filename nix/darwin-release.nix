@@ -19,19 +19,24 @@ let
 
 in pkgs.runCommand name {
     buildInputs = with pkgs.buildPackages; [
+      binutils
+      darwin.cctools
+      nix
       haskellBuildUtils.package
       zip
     ];
   } ''
   mkdir -p $out release
 
-  rewrite-libs release ${rtViewServiceExe}/bin/*
-
   cd release
   mkdir ./static
   cp -R ${staticDir}/* ./static/
 
+  cp ${rtViewServiceExe}/bin/* .
+
   chmod -R +w .
+
+  rewrite-libs ./ ${rtViewServiceExe}/bin/*
 
   dist_file=$out/${name}.zip
   zip -r $dist_file .
