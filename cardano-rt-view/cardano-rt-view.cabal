@@ -1,5 +1,5 @@
 name:                  cardano-rt-view
-version:               1.0.0
+version:               1.19.1
 description:           Real-time view service for cardano node
 author:                IOHK
 maintainer:            operations@iohk.io

@@ -40,10 +40,6 @@
 # Import pkgs, including IOHK common nix lib
 , pkgs ? import ./nix { inherit sourcesOverride; }
 
-# Release version of cardano-benchmarking, corresponds to GitHub tag, for example
-# https://github.com/input-output-hk/cardano-benchmarking/releases/tag/1.15.0
-, releaseVersion ? "1.0.0"
-
 }:
 
 with (import pkgs.iohkNix.release-lib) {
@@ -95,19 +91,18 @@ let
     musl64 = mapTestOnCross musl64 (packagePlatformsCross (filterProject noMusl64Build));
     "${mingwW64.config}" = mapTestOnCross mingwW64 (packagePlatformsCross (filterProject noCrossBuild));
     cardano-rt-view-service-win64-release = import ./nix/windows-release.nix {
-      inherit pkgs releaseVersion;
+      inherit pkgs project;
       exes = collectJobs jobs.${mingwW64.config}.exes.cardano-rt-view;
       staticDir = ./cardano-rt-view/static;
     };
     cardano-rt-view-service-linux-release = import ./nix/linux-release.nix {
-      inherit pkgs releaseVersion;
+      inherit pkgs project;
       exes = collectJobs jobs.musl64.exes.cardano-rt-view;
       staticDir = ./cardano-rt-view/static;
       resourcesDir = ./cardano-rt-view/resources;
     };
     cardano-rt-view-service-darwin-release = import ./nix/darwin-release.nix {
-      inherit releaseVersion;
-      inherit (pkgsFor "x86_64-darwin") pkgs;
+      inherit (pkgsFor "x86_64-darwin") pkgs project;
       exes = filter (p: p.system == "x86_64-darwin") (collectJobs jobs.native.exes.cardano-rt-view);
       staticDir = ./cardano-rt-view/static;
     };
