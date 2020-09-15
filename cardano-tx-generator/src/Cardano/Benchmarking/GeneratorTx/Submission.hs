@@ -211,18 +211,23 @@ tpsLimitedTxFeeder
      pure (now, delay)
 
 consumeTxs
-  :: forall m era
+  :: forall m blk era
   . (MonadIO m)
-  => Submission m era -> Req -> m (Bool, UnReqd (Tx era))
-consumeTxs Submission{sTxSendQueue} req
-  = liftIO . STM.atomically $ go req []
+  => Submission m era -> TokBlockingStyle blk -> Req -> m (Bool, UnReqd (Tx era))
+consumeTxs Submission{sTxSendQueue} blk req
+  = liftIO . STM.atomically $ go blk req []
  where
-   go :: Req -> [Tx era] -> STM (Bool, UnReqd (Tx era))
-   go 0 acc = pure (False, UnReqd acc)
-   go n acc = STM.readTBQueue sTxSendQueue >>=
-              \case
-                Nothing -> pure (True, UnReqd acc)
-                Just tx -> go (n - 1) (tx:acc)
+   go :: TokBlockingStyle a -> Req -> [Tx era] -> STM (Bool, UnReqd (Tx era))
+   go _ 0 acc = pure (False, UnReqd acc)
+   go TokBlocking n acc = STM.readTBQueue sTxSendQueue >>=
+     \case
+       Nothing -> pure (True, UnReqd acc)
+       Just tx -> go TokBlocking (n - 1) (tx:acc)
+   go TokNonBlocking _ _ = STM.tryReadTBQueue sTxSendQueue >>=
+     \case
+       Nothing -> pure (False, UnReqd [])
+       Just Nothing -> pure (True, UnReqd [])
+       Just (Just tx) -> pure (False, UnReqd [tx])
 
 {-------------------------------------------------------------------------------
   The submission client
@@ -272,7 +277,7 @@ txSubmissionClient m tr bmtr sub threadIx =
 
         (exhausted, unReqd) <-
           if done then pure (True, UnReqd [])
-          else consumeTxs sub req
+          else consumeTxs sub blocking req
 
         r' <- decideAnnouncement blocking ack unReqd unAcked
         (ann@(ToAnnce annNow), newUnacked@(UnAcked outs), Acked acked)
@@ -289,20 +294,25 @@ txSubmissionClient m tr bmtr sub threadIx =
         let newStats = stats { stsAcked =
                                stsAcked stats + ack }
 
-        case (NE.nonEmpty annNow, blocking) of
-          (Nothing, TokBlocking) -> do
+        case (exhausted, NE.nonEmpty annNow, blocking) of
+          (_, Nothing, TokBlocking) -> do
             traceWith tr EndOfProtocol
             SendMsgDone <$> (submitReport newStats
                              -- The () return type is forced by
                              --   Ouroboros.Network.NodeToNode.connectTo
                              >> pure ())
 
-          (Just neAnnNow, TokBlocking) ->
+          (_, Just neAnnNow, TokBlocking) ->
             pure $ SendMsgReplyTxIds
                      (BlockingReply $ txToIdSize <$> neAnnNow)
                      (client exhausted newUnacked newStats)
 
-          (_, TokNonBlocking) ->
+          (False, Nothing, TokNonBlocking) -> do
+            pure $ SendMsgReplyTxIds
+                     (NonBlockingReply [])
+                     (client exhausted newUnacked newStats)
+
+          (_, _, TokNonBlocking) ->
             pure $ SendMsgReplyTxIds
                      (NonBlockingReply $ txToIdSize <$> annNow)
                      (client exhausted newUnacked newStats)
