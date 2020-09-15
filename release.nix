@@ -102,7 +102,8 @@ let
       resourcesDir = ./cardano-rt-view/resources;
     };
     cardano-rt-view-service-darwin-release = import ./nix/darwin-release.nix {
-      inherit pkgs project;
+      inherit releaseVersion;
+      inherit (pkgsFor "x86_64-darwin") pkgs;
       exes = filter (p: p.system == "x86_64-darwin") (collectJobs jobs.native.exes.cardano-rt-view);
       staticDir = ./cardano-rt-view/static;
     };

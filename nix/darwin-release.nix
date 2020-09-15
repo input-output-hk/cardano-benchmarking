@@ -24,18 +24,18 @@ in pkgs.runCommand name {
     ];
   } ''
   mkdir -p $out release
+
+  rewrite-libs release ${rtViewServiceExe}/bin/*
+
   cd release
-
-  cp -n --remove-destination -v ${rtViewServiceExe}/bin/* ./
-
   mkdir ./static
   cp -R ${staticDir}/* ./static/
 
   chmod -R +w .
 
-  zip -r $out/${name}.zip .
+  dist_file=$out/${name}.zip
+  zip -r $dist_file .
 
-  dist_file=$(ls $out)
   mkdir -p $out/nix-support
-  echo "file binary-dist $out/$dist_file" > $out/nix-support/hydra-build-products
+  echo "file binary-dist $dist_file" > $out/nix-support/hydra-build-products
 ''
