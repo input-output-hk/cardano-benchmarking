@@ -72,12 +72,14 @@ import           Cardano.Benchmarking.GeneratorTx.Era
 import           Cardano.Benchmarking.GeneratorTx.Tx.Byron
 
 
+-- https://github.com/input-output-hk/cardano-node/issues/1858 is the proper solution.
 castTxMode :: Mode mode era -> Tx era -> TxForMode mode
 castTxMode ModeByron{}          tx@ByronTx{}   = TxForByronMode  tx
 castTxMode ModeShelley{}        tx@ShelleyTx{} = TxForShelleyMode tx
 castTxMode ModeCardanoByron{}   tx@ByronTx{}   = TxForCardanoMode $ Left tx
 castTxMode ModeCardanoShelley{} tx@ShelleyTx{} = TxForCardanoMode $ Right tx
 
+-- https://github.com/input-output-hk/cardano-node/issues/1853 would be the long-term solution.
 toGenTx :: Mode mode era -> Tx era -> GenTx (HFCBlockOf mode)
 toGenTx ModeShelley{}        (ShelleyTx tx) = inject $ Shelley.mkShelleyTx tx
 toGenTx ModeByron{}          (ByronTx tx)   = inject $ normalByronTxToGenTx tx
@@ -87,6 +89,7 @@ toGenTx ModeCardanoByron{}   (ByronTx tx)   = GenTxByron   $ normalByronTxToGenT
 shelleyTxId :: GenTxId (BlockOf ShelleyMode) -> TxId
 shelleyTxId (Shelley.ShelleyTxId (ShelleyLedger.TxId i)) = TxId (Crypto.castHash i)
 
+-- https://github.com/input-output-hk/cardano-node/issues/1859 is the proper solution.
 fromGenTxId :: Mode mode era -> GenTxId (HFCBlockOf mode) -> TxId
 fromGenTxId ModeShelley{}
   (HFC.project' (Proxy @(WrapGenTxId ShelleyBlock)) -> x) = shelleyTxId x
@@ -151,6 +154,7 @@ mkTransaction :: forall mode era
   -> Tx era
 mkTransaction p key payloadSize ttl fee txins txouts =
   signTransaction p key $ makeTransaction p
+  -- https://github.com/input-output-hk/cardano-node/issues/1854 would be the long-term solution.
  where
    makeTransaction :: Mode mode era -> TxBody era
    makeTransaction m = case modeEra m of

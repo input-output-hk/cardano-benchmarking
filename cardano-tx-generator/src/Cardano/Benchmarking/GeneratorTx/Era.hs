@@ -178,6 +178,7 @@ type ConfigSupportsTxGen mode era =
 
 deriving instance Eq (Address era) => Ord (Address era)
 
+-- https://github.com/input-output-hk/cardano-node/issues/1855 would be the proper solution.
 deriving instance (Generic TxIn)
 deriving instance (Ord TxIn)
 instance ToJSON TxIn
