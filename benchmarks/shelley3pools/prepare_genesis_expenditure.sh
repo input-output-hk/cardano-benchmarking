@@ -85,6 +85,7 @@ wait_seconds() {
         while printf "\b\b\b%3d" $n
               test $n -gt 0
         do n=$((n-1)); sleep 1s; done
+        echo
 } >&2
 
 query_addr_txin() {
@@ -141,7 +142,7 @@ move_utxo_shelley() {
         txin="$(query_addr_txin "$srcaddr" "$coin" --cardano-mode)"
         if test -z "$txin"
         then echo "ERROR: couldn't determine initial TxIn for addr $srcaddr">&2; exit 1; fi
-        echo "-- shelley TxIn:        $txin" >&2
+        echo "-- shelley TxIn:              $txin" >&2
 
         local txbody
         txbody=$(new_temp_file "move.txbody")
@@ -229,7 +230,6 @@ get_funds_poor_via_shelley() {
 
 wait_seconds 105 "until the first epoch passes"
 
-set -x
 # src_key=$byron_delegate_key
 src_key=$byron_poor_key
 echo "-- Byron funds source key:    $src_key" >&2

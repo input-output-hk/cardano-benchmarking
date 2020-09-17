@@ -18,6 +18,7 @@ TMUX_ENV_PASSTHROUGH=(
          "export DEFAULT_DEBUG=${DEFAULT_DEBUG};"
          "export DEFAULT_VERBOSE=${DEFAULT_VERBOSE};"
          "export DEFAULT_TRACE=${DEFAULT_TRACE};"
+         "export allow_path_exes=${allow_path_exes};"
          "$(nix_cache_passthrough)"
 )
 
@@ -47,24 +48,25 @@ done
 # 2 run rt-view
 tmux select-window -t :0
 tmux new-window -n RTview \
-             "${TMUX_ENV_PASSTHROUGH[*]} ./run-rt-view.sh; $SHELL"
+             "${TMUX_ENV_PASSTHROUGH[*]} bash ./run-rt-view.sh; $SHELL"
 sleep 1
 
 # 3 run pools
 tmux select-window -t :0
 tmux new-window -n Nodes \
-             "${TMUX_ENV_PASSTHROUGH[*]} ./run-3pools.sh; $SHELL"
+             "${TMUX_ENV_PASSTHROUGH[*]} bash ./run-3pools.sh; $SHELL"
 sleep 2
 
 tmux select-window -t :0
 echo -n "Waiting for node socket to appear ($BASEDIR/logs/sockets/1): "
-while test ! -e $BASEDIR/logs/sockets/1
+while ! test -e $BASEDIR/logs/sockets/1 -a -e $BASEDIR/logs/sockets/2 -a -e $BASEDIR/logs/sockets/3
 do echo -n "."; sleep 1; done; echo
+sleep 3s
 
 # 4 run tx-gen
 tmux select-window -t :0
 tmux new-window -n TxGen \
-             "${TMUX_ENV_PASSTHROUGH[*]} ./run-tx-generator.sh $era; $SHELL"
+             "${TMUX_ENV_PASSTHROUGH[*]} bash ./run-tx-generator.sh $era; $SHELL"
 sleep 1
 
 tmux select-window -t Nodes

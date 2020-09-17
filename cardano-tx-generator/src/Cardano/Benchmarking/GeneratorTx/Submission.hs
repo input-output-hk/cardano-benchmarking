@@ -24,17 +24,18 @@
 
 module Cardano.Benchmarking.GeneratorTx.Submission
   ( SubmissionParams(..)
-  , Submission
+  , Submission(sParams)
   , SubmissionThreadReport
   , mkSubmission
   , mkSubmissionSummary
+  , submitThreadReport
   , txSubmissionClient
   , simpleTxFeeder
   , tpsLimitedTxFeeder
   ) where
 
 import           Cardano.Prelude hiding (ByteString, atomically, retry, threadDelay)
-import           Prelude (fail)
+import           Prelude (String, fail)
 
 import           Control.Arrow ((&&&))
 import           Control.Concurrent (threadDelay)
@@ -71,6 +72,7 @@ import           Ouroboros.Network.Protocol.TxSubmission.Type (BlockingReplyList
 import           Cardano.Api.Typed
 
 import           Cardano.Benchmarking.GeneratorTx.Era
+import           Cardano.Benchmarking.GeneratorTx.Benchmark
 import           Cardano.Benchmarking.GeneratorTx.Tx
 
 
@@ -80,9 +82,10 @@ import           Cardano.Benchmarking.GeneratorTx.Tx
 
 data SubmissionParams
   = SubmissionParams
-      { spTps      :: !TPSRate
-      , spTargets  :: !Natural
-      , spQueueLen :: !Natural
+      { spTps           :: !TPSRate
+      , spTargets       :: !Natural
+      , spQueueLen      :: !Natural
+      , spErrorPolicy   :: !SubmissionErrorPolicy
       }
 
 data Submission (m :: Type -> Type) (era :: Type)
@@ -91,7 +94,7 @@ data Submission (m :: Type -> Type) (era :: Type)
       , sStartTime   :: !UTCTime
       , sThreads     :: !Natural
       , sTxSendQueue :: !(TBQueue (Maybe (Tx era)))
-      , sReportsRefs :: ![STM.TMVar SubmissionThreadReport]
+      , sReportsRefs :: ![STM.TMVar (Either String SubmissionThreadReport)]
       , sTrace       :: !(Tracer m (TraceBenchTxSubmit TxId))
       }
 
@@ -105,6 +108,15 @@ mkSubmission sTrace sParams@SubmissionParams{spTargets=sThreads, spQueueLen} = l
   sTxSendQueue <- STM.newTBQueueIO spQueueLen
   sReportsRefs <- STM.atomically $ replicateM (fromIntegral sThreads) STM.newEmptyTMVar
   pure Submission{..}
+
+submitThreadReport
+  :: MonadIO m
+  => Submission m era
+  -> Natural
+  -> Either String SubmissionThreadReport
+  -> m ()
+submitThreadReport Submission{sReportsRefs} threadIx =
+ liftIO . STM.atomically . STM.putTMVar (sReportsRefs L.!! fromIntegral threadIx)
 
 {-------------------------------------------------------------------------------
   Results
@@ -130,13 +142,15 @@ mkSubmissionSummary
 mkSubmissionSummary
   Submission{ sStartTime, sReportsRefs}
  = do
-  reports <- sequence (liftIO . STM.atomically . STM.readTMVar <$> sReportsRefs)
+  results <- sequence (liftIO . STM.atomically . STM.readTMVar <$> sReportsRefs)
+  let (failures, reports) = partitionEithers results
   now <- liftIO Clock.getCurrentTime
   let ssElapsed = Clock.diffUTCTime now sStartTime
       ssTxSent@(Sent sent) = sum $ stsSent . strStats <$> reports
       ssTxUnavailable = sum $ stsUnavailable . strStats <$> reports
       ssEffectiveTps = txDiffTimeTPS sent ssElapsed
       ssThreadwiseTps = threadReportTps <$> reports
+      ssFailures = failures
   pure SubmissionSummary{..}
  where
    txDiffTimeTPS :: Int -> NominalDiffTime -> TPSRate
@@ -158,15 +172,15 @@ simpleTxFeeder
   => Submission m era -> [Tx era] -> m ()
 simpleTxFeeder
  Submission{sTrace, sThreads, sTxSendQueue} txs = do
-  foldM_ (const feedTx) () txs
+  foldM_ (const feedTx) () (zip txs [0..])
   -- Issue the termination notifications.
   replicateM_ (fromIntegral sThreads) $
     liftIO $ STM.atomically $ STM.writeTBQueue sTxSendQueue Nothing
  where
-   feedTx :: Tx era -> m ()
-   feedTx tx = do
+   feedTx :: (Tx era, Int) -> m ()
+   feedTx (tx, ix) = do
      liftIO $ STM.atomically $ STM.writeTBQueue sTxSendQueue (Just tx)
-     traceWith sTrace $ TraceBenchTxSubServFed [getTxId $ getTxBody tx]
+     traceWith sTrace $ TraceBenchTxSubServFed [getTxId $ getTxBody tx] ix
 
 tpsLimitedTxFeeder
   :: forall m era
@@ -175,16 +189,20 @@ tpsLimitedTxFeeder
 tpsLimitedTxFeeder
  Submission{ sParams=SubmissionParams{spTps=TPSRate rate}
            , sThreads
+           , sTrace
            , sTxSendQueue } txs = do
   now <- liftIO Clock.getCurrentTime
-  foldM_ feedTx (now, 0) txs
+  foldM_ feedTx (now, 0) (zip txs [0..])
   -- Issue the termination notifications.
   replicateM_ (fromIntegral sThreads) .
     liftIO . STM.atomically $ STM.writeTBQueue sTxSendQueue Nothing
  where
-   feedTx :: (UTCTime, NominalDiffTime) -> Tx era -> m (UTCTime, NominalDiffTime)
-   feedTx (lastPreDelay, lastDelay) tx = do
+   feedTx :: (UTCTime, NominalDiffTime)
+          -> (Tx era, Int)
+          -> m (UTCTime, NominalDiffTime)
+   feedTx (lastPreDelay, lastDelay) (tx, ix) = do
      liftIO . STM.atomically $ STM.writeTBQueue sTxSendQueue (Just tx)
+     traceWith sTrace $ TraceBenchTxSubServFed [getTxId $ getTxBody tx] ix
      now <- liftIO Clock.getCurrentTime
      let targetDelay = realToFrac $ 1.0 / rate
          loopCost = (now `Clock.diffUTCTime` lastPreDelay) - lastDelay
@@ -193,18 +211,23 @@ tpsLimitedTxFeeder
      pure (now, delay)
 
 consumeTxs
-  :: forall m era
+  :: forall m blk era
   . (MonadIO m)
-  => Submission m era -> Req -> m (Bool, UnReqd (Tx era))
-consumeTxs Submission{sTxSendQueue} req
-  = liftIO . STM.atomically $ go req []
+  => Submission m era -> TokBlockingStyle blk -> Req -> m (Bool, UnReqd (Tx era))
+consumeTxs Submission{sTxSendQueue} blk req
+  = liftIO . STM.atomically $ go blk req []
  where
-   go :: Req -> [Tx era] -> STM (Bool, UnReqd (Tx era))
-   go 0 acc = pure (False, UnReqd acc)
-   go n acc = STM.readTBQueue sTxSendQueue >>=
-              \case
-                Nothing -> pure (True, UnReqd acc)
-                Just tx -> go (n - 1) (tx:acc)
+   go :: TokBlockingStyle a -> Req -> [Tx era] -> STM (Bool, UnReqd (Tx era))
+   go _ 0 acc = pure (False, UnReqd acc)
+   go TokBlocking n acc = STM.readTBQueue sTxSendQueue >>=
+     \case
+       Nothing -> pure (True, UnReqd acc)
+       Just tx -> go TokBlocking (n - 1) (tx:acc)
+   go TokNonBlocking _ _ = STM.tryReadTBQueue sTxSendQueue >>=
+     \case
+       Nothing -> pure (False, UnReqd [])
+       Just Nothing -> pure (True, UnReqd [])
+       Just (Just tx) -> pure (False, UnReqd [tx])
 
 {-------------------------------------------------------------------------------
   The submission client
@@ -225,10 +248,7 @@ txSubmissionClient
   -> Natural
   -- This return type is forced by Ouroboros.Network.NodeToNode.connectTo
   -> TxSubmissionClient gentxid gentx m ()
-txSubmissionClient
-    m tr bmtr
-    sub@Submission{sReportsRefs}
-    threadIx =
+txSubmissionClient m tr bmtr sub threadIx =
   TxSubmissionClient $
     pure $ client False (UnAcked []) (SubmissionThreadStats 0 0 0)
  where
@@ -257,7 +277,7 @@ txSubmissionClient
 
         (exhausted, unReqd) <-
           if done then pure (True, UnReqd [])
-          else consumeTxs sub req
+          else consumeTxs sub blocking req
 
         r' <- decideAnnouncement blocking ack unReqd unAcked
         (ann@(ToAnnce annNow), newUnacked@(UnAcked outs), Acked acked)
@@ -274,20 +294,25 @@ txSubmissionClient
         let newStats = stats { stsAcked =
                                stsAcked stats + ack }
 
-        case (NE.nonEmpty annNow, blocking) of
-          (Nothing, TokBlocking) -> do
+        case (exhausted, NE.nonEmpty annNow, blocking) of
+          (_, Nothing, TokBlocking) -> do
             traceWith tr EndOfProtocol
-            SendMsgDone <$> (submitThreadReport newStats
+            SendMsgDone <$> (submitReport newStats
                              -- The () return type is forced by
                              --   Ouroboros.Network.NodeToNode.connectTo
                              >> pure ())
 
-          (Just neAnnNow, TokBlocking) ->
+          (_, Just neAnnNow, TokBlocking) ->
             pure $ SendMsgReplyTxIds
                      (BlockingReply $ txToIdSize <$> neAnnNow)
                      (client exhausted newUnacked newStats)
 
-          (_, TokNonBlocking) ->
+          (False, Nothing, TokNonBlocking) -> do
+            pure $ SendMsgReplyTxIds
+                     (NonBlockingReply [])
+                     (client exhausted newUnacked newStats)
+
+          (_, _, TokNonBlocking) ->
             pure $ SendMsgReplyTxIds
                      (NonBlockingReply $ txToIdSize <$> annNow)
                      (client exhausted newUnacked newStats)
@@ -312,15 +337,15 @@ txSubmissionClient
                     stsUnavailable stats + Unav (length missIds)})
     , recvMsgKThxBye = do
         traceWith tr KThxBye
-        void $ submitThreadReport stats
+        void $ submitReport stats
     }
 
-   submitThreadReport :: SubmissionThreadStats -> m SubmissionThreadReport
-   submitThreadReport strStats = do
+   submitReport :: SubmissionThreadStats -> m SubmissionThreadReport
+   submitReport strStats = do
      strEndOfProtocol <- liftIO Clock.getCurrentTime
      let strThreadIndex = threadIx
          report = SubmissionThreadReport{..}
-     liftIO . STM.atomically $ STM.putTMVar (sReportsRefs L.!! fromIntegral threadIx) report
+     submitThreadReport sub threadIx (Right report)
      pure report
 
    txToIdSize :: tx -> (gentxid, TxSizeInBytes)

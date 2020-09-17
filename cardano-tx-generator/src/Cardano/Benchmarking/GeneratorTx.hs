@@ -329,9 +329,10 @@ runBenchmark b@Benchmark{ bTargets
         $ "******* Tx generator, launching Tx peers:  " ++ show (NE.length remoteAddresses) ++ " of them"
     submission <- mkSubmission (trTxSubmit m) $
                     SubmissionParams
-                    { spTps      = bTps
-                    , spTargets  = numTargets
-                    , spQueueLen = 32
+                    { spTps           = bTps
+                    , spTargets       = numTargets
+                    , spQueueLen      = 32
+                    , spErrorPolicy   = bErrorPolicy b
                     }
     allAsyncs <- forM (zip [0..] $ NE.toList remoteAddresses) $
       \(i, remoteAddr) ->
@@ -471,7 +472,18 @@ launchTxPeer
   -> Natural
   -- Thread index
   -> IO (Async ())
-launchTxPeer m localAddr remoteAddr ss ix =
+launchTxPeer m localAddr remoteAddr sub tix =
   async $
-    benchmarkConnectTxSubmit m localAddr remoteAddr
-      (txSubmissionClient m (trN2N m) (trTxSubmit m) ss ix)
+   handle
+     (\(SomeException err) -> do
+         let errDesc = mconcat
+               [ "Exception while talking to peer #", show tix
+               , " (", show (addrAddress remoteAddr), "): "
+               , show err]
+         submitThreadReport sub tix (Left errDesc)
+         case spErrorPolicy $ sParams sub of
+           FailOnError -> throwIO err
+           LogErrors   -> traceWith (trTxSubmit m) $
+             TraceBenchTxSubError (pack errDesc))
+     $ benchmarkConnectTxSubmit m localAddr remoteAddr
+        (txSubmissionClient m (trN2N m) (trTxSubmit m) sub tix)

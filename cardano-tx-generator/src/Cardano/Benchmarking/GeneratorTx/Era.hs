@@ -529,8 +529,8 @@ data TraceBenchTxSubmit txid
   -- ^ Transactions outstanding.
   | TraceBenchTxSubServUnav [txid]
   -- ^ Transactions requested, but unavailable in the outstanding set.
-  | TraceBenchTxSubServFed [txid]
-  -- ^ Transactions fed by the feeder.
+  | TraceBenchTxSubServFed [txid] Int
+  -- ^ Transactions fed by the feeder, accompanied by sequence number.
   | TraceBenchTxSubServCons [txid]
   -- ^ Transactions consumed by a submitter.
   | TraceBenchTxSubIdle
@@ -698,7 +698,7 @@ instance ToObject (TraceBenchTxSubmit TxId) where
       TraceBenchTxSubServDrop _  -> mkObject ["kind" .= A.String "TraceBenchTxSubServDrop"]
       TraceBenchTxSubServOuts _  -> mkObject ["kind" .= A.String "TraceBenchTxSubServOuts"]
       TraceBenchTxSubServUnav _  -> mkObject ["kind" .= A.String "TraceBenchTxSubServUnav"]
-      TraceBenchTxSubServFed _   -> mkObject ["kind" .= A.String "TraceBenchTxSubServFed"]
+      TraceBenchTxSubServFed _ _ -> mkObject ["kind" .= A.String "TraceBenchTxSubServFed"]
       TraceBenchTxSubServCons _  -> mkObject ["kind" .= A.String "TraceBenchTxSubServCons"]
       TraceBenchTxSubIdle        -> mkObject ["kind" .= A.String "TraceBenchTxSubIdle"]
       TraceBenchTxSubRateLimit _ -> mkObject ["kind" .= A.String "TraceBenchTxSubRateLimit"]
@@ -739,9 +739,10 @@ instance ToObject (TraceBenchTxSubmit TxId) where
         mkObject [ "kind"  .= A.String "TraceBenchTxSubServUnav"
                  , "txIds" .= toJSON txIds
                  ]
-      TraceBenchTxSubServFed txIds ->
+      TraceBenchTxSubServFed txIds ix ->
         mkObject [ "kind"  .= A.String "TraceBenchTxSubServFed"
                  , "txIds" .= toJSON txIds
+                 , "index" .= toJSON ix
                  ]
       TraceBenchTxSubServCons txIds ->
         mkObject [ "kind"  .= A.String "TraceBenchTxSubServCons"

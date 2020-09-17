@@ -22,6 +22,7 @@ Usage:
     --stack             stack run ...
                           Default _iff_ ./.stack-work exists.
     --stack-nix         stack run --nix ...
+    --no-path-exes      Forbid using binaries from PATH
 
     --cls               Clear the TTY before anything happens..
 
@@ -140,6 +141,7 @@ export era=${era:-'shelley'}
 export profile=
 export verbose=
 export debug=
+export allow_path_exes=t
 
 default_mode='nix'
 
@@ -154,6 +156,7 @@ do case "$1" in
            --cabal )              SCRIPTS_LIB_SH_MODE='cabal'; cmdline_mode=t;;
            --stack )              SCRIPTS_LIB_SH_MODE='stack'; cmdline_mode=t;;
            --stack-nix )          SCRIPTS_LIB_SH_MODE='stack-nix'; cmdline_mode=t;;
+           --no-path-exes )       allow_path_exes=;;
 
            --cls )                echo -en "\ec";;
 

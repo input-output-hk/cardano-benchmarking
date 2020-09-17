@@ -82,7 +82,7 @@ run_quiet()
            * ) break;; esac; shift; done
         case ${SCRIPTS_LIB_SH_MODE} in
                 nix )               bld_extra="--no-build-output --quiet ${bld_extra}";;
-                cabal )             bld_extra="-v0 ${bld_extra}";;
+                cabal )             bld_extra="${bld_extra}";;
                 stack | stack-nix ) bld_extra="--silent ${bld_extra}";; esac;
 
         actually_run --build-extra "${bld_extra}" "$@"
@@ -200,26 +200,24 @@ actually_run()
         else local rob='run'   dash2="--" stackprep=
         fi
 
-        local PATH_SHADOWABLE= CMD=()
+        local CMD=()
         case ${SCRIPTS_LIB_SH_MODE} in
-        nix )       CMD=(run_nix_executable              $pkg     $exe
+        nix )       ## Disallow using binaries from PATH for Nix method:
+                    allow_path_exes=
+                    CMD=(run_nix_executable              $pkg     $exe
                          "${toolargs}${build_only:+ --build-only}");;
-                    ## Allow using binaries from PATH for non-Nix methods:
-        cabal )     PATH_SHADOWABLE=t
-                    CMD=(cabal v2-${rob} ${toolargs}     $pkg:exe:$exe ${dash2});;
-        stack )     PATH_SHADOWABLE=t
-                    CMD=(stack           ${toolargs} ${rob}       ${stackprep}$exe ${dash2});;
-        stack-nix ) PATH_SHADOWABLE=t
-                    CMD=(stack           ${toolargs} ${rob} --nix ${stackprep}$exe ${dash2});;
+        cabal )     CMD=(cabal v2-${rob} ${toolargs} -v0 $pkg:exe:$exe ${dash2});;
+        stack )     CMD=(stack           ${toolargs} ${rob}       ${stackprep}$exe ${dash2});;
+        stack-nix ) CMD=(stack           ${toolargs} ${rob} --nix ${stackprep}$exe ${dash2});;
         * ) echo "INTERNAL ERROR: unknown mode:  $SCRIPTS_LIB_SH_MODE" >&2; return 1;;
         esac
         if test -z "${build_only}"
-        then if test -n "${PATH_SHADOWABLE}" -a -n "$(command -v "$exe")"
+        then if test -n "${allow_path_exes}" -a -n "$(command -v "$exe")"
              then vprint "Using $exe from PATH:  $(command -v "$exe")"
                   CMD=($exe)
              fi
              CMD+=(${rtsopts} "${ARGS[@]}")
-        elif test -n "${PATH_SHADOWABLE}" && command -v "$exe"
+        elif test -n "${allow_path_exes}" && command -v "$exe"
         then return 0
         fi
 

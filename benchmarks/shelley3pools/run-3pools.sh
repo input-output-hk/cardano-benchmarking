@@ -22,7 +22,8 @@ TMUX_ENV_PASSTHROUGH=(
          "export __COMMON_SRCROOT=${__COMMON_SRCROOT};"
          "export DEFAULT_DEBUG=${DEFAULT_DEBUG};"
          "export DEFAULT_VERBOSE=${DEFAULT_VERBOSE};"
-         "export DEFAULT_TRACE=${DEFAULT_TRACE}"
+         "export DEFAULT_TRACE=${DEFAULT_TRACE};"
+         "export allow_path_exes=${allow_path_exes};"
          "$(nix_cache_passthrough)"
 )
 

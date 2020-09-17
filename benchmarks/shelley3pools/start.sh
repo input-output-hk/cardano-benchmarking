@@ -9,5 +9,5 @@ set -e
 # set-window-option -g mouse on
 # set -g default-terminal "tmux-256color"
 
-tmux new-s -E -s Shelley3Pools -n Main "./benchmark.sh $*; $SHELL"
+tmux new-s -E -s Shelley3Pools -n Main "/usr/bin/env bash ./benchmark.sh $*; $SHELL"
 

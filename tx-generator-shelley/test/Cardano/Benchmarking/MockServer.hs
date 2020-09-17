@@ -27,7 +27,6 @@ import           Cardano.Benchmarking.TxGenerator.Submission
 import           Cardano.Benchmarking.TxGenerator.Types as T
 import           Network.TypedProtocol.Core (Peer, PeerRole (..))
 import           Network.TypedProtocol.Pipelined (PeerPipelined)
-import           Network.TypedProtocol.Pipelined (PeerPipelined)
 import           Ouroboros.Network.Protocol.TxSubmission.Type (TxSubmission (..))
 
 import           Cardano.Api.Typed as Api

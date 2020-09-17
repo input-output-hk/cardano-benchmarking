@@ -67,6 +67,7 @@ library
                      , ouroboros-consensus-shelley
                      , ouroboros-network
                      , ouroboros-network-framework
+                     , random
                      , safe-exceptions
                      , serialise
                      , shelley-spec-ledger
