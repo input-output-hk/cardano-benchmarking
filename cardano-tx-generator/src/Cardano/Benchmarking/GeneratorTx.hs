@@ -126,6 +126,7 @@ secureFunds Benchmark{bTxCount=NumberOfTxs (fromIntegral -> ntxs)}
 secureFunds _ m f =
   error $ "secureFunds:  unsupported config: " <> show m <> " / " <> show f
 
+-- https://github.com/input-output-hk/cardano-node/issues/1857
 parseAddress ::
      Era era
   -> Text

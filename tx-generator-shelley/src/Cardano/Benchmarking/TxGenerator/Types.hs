@@ -32,13 +32,13 @@ import qualified Cardano.Chain.UTxO as CC.UTxO
 import           Ouroboros.Consensus.Byron.Ledger.Mempool as Mempool (GenTx)
 import           Ouroboros.Consensus.Ledger.SupportsMempool as Mempool (GenTxId, TxId)
 import           Ouroboros.Consensus.Shelley.Ledger.Block (ShelleyBlock)
-import           Ouroboros.Consensus.Shelley.Protocol.Crypto (TPraosStandardCrypto)
+import           Ouroboros.Consensus.Shelley.Protocol (StandardShelley)
 import           Ouroboros.Network.Driver (TraceSendRecv (..))
 import qualified Ouroboros.Network.Protocol.TxSubmission.Type as TS
 
 import           Control.Monad.Class.MonadSTM (TMVar)
 
-type              Block = ShelleyBlock  TPraosStandardCrypto
+type              Block = ShelleyBlock  StandardShelley
 type              Transaction = CC.UTxO.ATxAux ByteString
 
 newtype NumberOfTxs = NumberOfTxs {unNumberOfTxs :: Int}

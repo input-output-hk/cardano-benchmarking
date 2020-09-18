@@ -91,6 +91,7 @@ keyAddress m toNetId = case modeEra m of
       (PaymentCredentialByKey $ verificationKeyHash $ getVerificationKey k)
       NoStakeAddress
 
+-- https://github.com/input-output-hk/cardano-node/issues/1856 would be the proper solution.
 genesisKeyPseudoTxIn :: Mode mode era -> SigningKeyOf era -> Address era -> TxIn
 genesisKeyPseudoTxIn m@ModeShelley{} key _ =
   genesisUTxOPseudoTxIn
@@ -108,6 +109,7 @@ genesisKeyPseudoTxIn m@ModeByron{}
 genesisKeyPseudoTxIn m _ _ =
   error $ "genesisKeyPseudoTxIn:  unsupported mode: " <> show m
 
+-- https://github.com/input-output-hk/cardano-node/issues/1861 would be the proper solution.
 modeGenesisFunds :: Mode mode era
                    -> [(Address era, Lovelace)]
 modeGenesisFunds = \case

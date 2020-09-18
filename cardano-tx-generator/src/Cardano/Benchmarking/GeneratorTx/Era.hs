@@ -109,7 +109,7 @@ import           Network.Mux (WithMuxBearer(..))
 import           Ouroboros.Consensus.Block.Abstract (CodecConfig)
 import qualified Ouroboros.Consensus.Cardano as Consensus
 import           Ouroboros.Consensus.Config
-                   ( SecurityParam(..), TopLevelConfig(..)
+                   ( TopLevelConfig(..)
                    , configBlock, configCodec, configLedger)
 import           Ouroboros.Consensus.Config.SupportsNode
                    (ConfigSupportsNode(..), getNetworkMagic)
@@ -119,6 +119,8 @@ import qualified Ouroboros.Consensus.Ledger.SupportsMempool as Mempool
 import           Ouroboros.Consensus.Node.ProtocolInfo
                    (ProtocolInfo (..))
 import           Ouroboros.Consensus.Node.Run (RunNode)
+import           Ouroboros.Consensus.Shelley.Protocol
+                   (StandardCrypto, StandardShelley)
 import           Ouroboros.Network.Driver (TraceSendRecv (..))
 import           Ouroboros.Network.Protocol.TxSubmission.Type (TxSubmission)
 import           Ouroboros.Network.NodeToClient (Handshake, IOManager)
@@ -134,7 +136,6 @@ import           Ouroboros.Consensus.HardFork.Combinator.Unary
 -- Shelley-specific imports
 import qualified Ouroboros.Consensus.Cardano.ShelleyHFC as Shelley
 import qualified Ouroboros.Consensus.Shelley.Ledger.Block as Shelley
-import           Ouroboros.Consensus.Shelley.Protocol.Crypto (TPraosStandardCrypto)
 
 -- Node API imports
 import           Cardano.Api.Typed
@@ -177,6 +178,7 @@ type ConfigSupportsTxGen mode era =
 
 deriving instance Eq (Address era) => Ord (Address era)
 
+-- https://github.com/input-output-hk/cardano-node/issues/1855 would be the proper solution.
 deriving instance (Generic TxIn)
 deriving instance (Ord TxIn)
 instance ToJSON TxIn
@@ -188,9 +190,9 @@ instance ToJSON TxIx where
 deriving instance Eq (Address era) => (Eq (TxOut era))
 deriving instance Eq (Address era) => (Ord (TxOut era))
 
-type ShelleyBlock    = Shelley.ShelleyBlock    TPraosStandardCrypto
-type ShelleyBlockHFC = Shelley.ShelleyBlockHFC TPraosStandardCrypto
-type CardanoBlock    = Consensus.CardanoBlock  TPraosStandardCrypto
+type ShelleyBlock    = Shelley.ShelleyBlock    StandardShelley
+type ShelleyBlockHFC = Shelley.ShelleyBlockHFC StandardShelley
+type CardanoBlock    = Consensus.CardanoBlock  StandardCrypto
 
 type family BlockOf mode :: Type where
   BlockOf ByronMode      = ByronBlock
@@ -300,7 +302,7 @@ mkMode ptcl@Consensus.ProtocolByron{} EraByron nmagic_opt is_addr_mn iom (Socket
        sock
        (Api.Testnet . getNetworkMagic . configBlock $ pInfoConfig)
        -- TODO: get this from genesis
-       (ByronMode (Byron.EpochSlots 21600) (SecurityParam 2160)))
+       (ByronMode (Byron.EpochSlots 21600)))
     nmagic_opt
     is_addr_mn
     iom
@@ -329,7 +331,7 @@ mkMode ptcl@Consensus.ProtocolCardano{} EraByron nmagic_opt is_addr_mn iom (Sock
        sock
        (Api.Testnet . getNetworkMagic . configBlock $ pInfoConfig)
        -- TODO: get this from genesis
-       (CardanoMode (Byron.EpochSlots 21600) (SecurityParam 2160)))
+       (CardanoMode (Byron.EpochSlots 21600)))
     nmagic_opt
     is_addr_mn
     iom
@@ -344,7 +346,7 @@ mkMode ptcl@Consensus.ProtocolCardano{} EraShelley nmagic_opt is_addr_mn iom (So
        sock
        (Api.Testnet . getNetworkMagic . configBlock $ pInfoConfig)
        -- TODO: get this from genesis
-       (CardanoMode (Byron.EpochSlots 21600) (SecurityParam 2160)))
+       (CardanoMode (Byron.EpochSlots 21600)))
     nmagic_opt
     is_addr_mn
     iom

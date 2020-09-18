@@ -61,7 +61,7 @@ import qualified Ouroboros.Consensus.Byron.Ledger as Byron hiding (TxId)
 
 -- Shelley-specific imports
 import qualified Ouroboros.Consensus.Shelley.Ledger.Mempool as Shelley
-import           Ouroboros.Consensus.Shelley.Protocol.Crypto (TPraosStandardCrypto)
+import           Ouroboros.Consensus.Shelley.Protocol (StandardShelley)
 import qualified Shelley.Spec.Ledger.Address as Shelley
 import qualified Shelley.Spec.Ledger.Coin as Shelley
 import qualified Shelley.Spec.Ledger.TxData as ShelleyLedger
@@ -72,12 +72,14 @@ import           Cardano.Benchmarking.GeneratorTx.Era
 import           Cardano.Benchmarking.GeneratorTx.Tx.Byron
 
 
+-- https://github.com/input-output-hk/cardano-node/issues/1858 is the proper solution.
 castTxMode :: Mode mode era -> Tx era -> TxForMode mode
 castTxMode ModeByron{}          tx@ByronTx{}   = TxForByronMode  tx
 castTxMode ModeShelley{}        tx@ShelleyTx{} = TxForShelleyMode tx
 castTxMode ModeCardanoByron{}   tx@ByronTx{}   = TxForCardanoMode $ Left tx
 castTxMode ModeCardanoShelley{} tx@ShelleyTx{} = TxForCardanoMode $ Right tx
 
+-- https://github.com/input-output-hk/cardano-node/issues/1853 would be the long-term solution.
 toGenTx :: Mode mode era -> Tx era -> GenTx (HFCBlockOf mode)
 toGenTx ModeShelley{}        (ShelleyTx tx) = inject $ Shelley.mkShelleyTx tx
 toGenTx ModeByron{}          (ByronTx tx)   = inject $ normalByronTxToGenTx tx
@@ -87,6 +89,7 @@ toGenTx ModeCardanoByron{}   (ByronTx tx)   = GenTxByron   $ normalByronTxToGenT
 shelleyTxId :: GenTxId (BlockOf ShelleyMode) -> TxId
 shelleyTxId (Shelley.ShelleyTxId (ShelleyLedger.TxId i)) = TxId (Crypto.castHash i)
 
+-- https://github.com/input-output-hk/cardano-node/issues/1859 is the proper solution.
 fromGenTxId :: Mode mode era -> GenTxId (HFCBlockOf mode) -> TxId
 fromGenTxId ModeShelley{}
   (HFC.project' (Proxy @(WrapGenTxId ShelleyBlock)) -> x) = shelleyTxId x
@@ -110,7 +113,7 @@ fromByronTxOut :: Byron.TxOut -> TxOut Byron
 fromByronTxOut (Byron.TxOut addr coin) =
   TxOut (ByronAddress addr) (Lovelace $ Byron.lovelaceToInteger coin)
 
-fromShelleyAddr :: Shelley.Addr TPraosStandardCrypto -> Address Shelley
+fromShelleyAddr :: Shelley.Addr StandardShelley -> Address Shelley
 fromShelleyAddr (Shelley.Addr nw pc scr) = ShelleyAddress nw pc scr
 fromShelleyAddr _                        = error "fromShelleyAddr:  unhandled Shelley.Addr case"
 
@@ -151,6 +154,7 @@ mkTransaction :: forall mode era
   -> Tx era
 mkTransaction p key payloadSize ttl fee txins txouts =
   signTransaction p key $ makeTransaction p
+  -- https://github.com/input-output-hk/cardano-node/issues/1854 would be the long-term solution.
  where
    makeTransaction :: Mode mode era -> TxBody era
    makeTransaction m = case modeEra m of
