@@ -19,9 +19,6 @@ allow-newer: base
 -- always write GHC env files, because they are needed by the doctests.
 write-ghc-environment-files: always
 
-package cardano-node
-  ghc-options: -Werror -Wall -Wredundant-constraints -Wincomplete-record-updates -Wincomplete-uni-patterns -Wpartial-fields
-
 package cardano-api
   ghc-options: -Werror -Wall -Wredundant-constraints -Wincomplete-record-updates -Wincomplete-uni-patterns -Wpartial-fields
 
@@ -29,6 +26,9 @@ package cardano-cli
   ghc-options: -Werror -Wall -Wredundant-constraints -Wincomplete-record-updates -Wincomplete-uni-patterns -Wpartial-fields
 
 package cardano-config
+  ghc-options: -Werror -Wall -Wredundant-constraints -Wincomplete-record-updates -Wincomplete-uni-patterns -Wpartial-fields
+
+package cardano-node
   ghc-options: -Werror -Wall -Wredundant-constraints -Wincomplete-record-updates -Wincomplete-uni-patterns -Wpartial-fields
 
 package cryptonite
@@ -85,7 +85,13 @@ package small-steps
 package small-steps-test
   tests: False
 
----------- 8< -----------
+-- ---------------------------------------------------------
+
+
+-- The two following one-liners will restore / cut off the remainder of this file (for nix-shell users):
+-- git checkout HEAD "$(git rev-parse --show-toplevel)"/cabal.project
+-- sed -ni '1,/--- 8< ---/ p' "$(git rev-parse --show-toplevel)"/cabal.project
+-- Please do not put any `source-repository-package` clause above this line.
 source-repository-package
   type: git
   location: https://github.com/input-output-hk/cardano-node
@@ -114,19 +120,8 @@ source-repository-package
   --sha256: 0pvhn2kh838284cwxy74mm24g6mgws2vxs3ipdsr1cx2mzpcrsxr
   subdir: cardano-node
 
--- source-repository-package
---   type: git
---   location: https://github.com/input-output-hk/cardano-db-sync
---   tag: e7a94d28c25d11800062b5354436b03c3aefae6e
---   --sha256: 0zghl2gp4ghazry1znsvvyp56f3z42fj675agld91ngpgmk4dj39
---   subdir: cardano-db
 
--- source-repository-package
---   type: git
---   location: https://github.com/input-output-hk/cardano-db-sync
---   tag: e7a94d28c25d11800062b5354436b03c3aefae6e
---   --sha256: 0zghl2gp4ghazry1znsvvyp56f3z42fj675agld91ngpgmk4dj39
---   subdir: cardano-db-sync
+---------- >8 -----------
 
 source-repository-package
   type: git
@@ -412,24 +407,12 @@ source-repository-package
   --sha256: 0zxmp001mixrba1fzjgzcjf6vl6i5d3q837267njyvmkajdrxgx7
   subdir: Win32-network
 
-source-repository-package
-  type: git
-  location: https://github.com/snoyberg/http-client.git
-  tag: 1a75bdfca014723dd5d40760fad854b3f0f37156
-  --sha256: 0537bjhk9bzhvl76haswsv7xkkyzrmv5xfph3fydcd953q08hqdb
-  subdir: http-client
-
 constraints:
-  -- cardano-node's constraints:
     hedgehog >= 1.0
   , bimap >= 0.4.0
   , brick >= 0.47
   , libsystemd-journal >= 1.4.4
   , systemd >= 2.3.0
-  -- Local extras over cardano-node:
-  , katip >= 0.8.4.0
-  , quiet >= 0.2
-  , vty < 5.27
 
 package comonad
   flags: -test-doctests
