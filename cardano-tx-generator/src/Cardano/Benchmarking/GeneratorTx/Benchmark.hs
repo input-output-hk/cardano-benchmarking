@@ -65,7 +65,7 @@ import           Ouroboros.Consensus.Block.Abstract (SlotNo (..))
 import           Cardano.Api.Typed
 
 -- Node imports
-import           Cardano.Node.Types (NodeAddress)
+import           Cardano.Node.Types
 import           Cardano.Tracing.OrphanInstances.Byron ()
 import           Cardano.Tracing.OrphanInstances.Common ()
 import           Cardano.Tracing.OrphanInstances.Consensus ()
@@ -181,7 +181,7 @@ instance ToJSON SubmissionSummary
 -- | Specification for a benchmark run.
 data Benchmark
   = Benchmark
-      { bTargets        :: !(NonEmpty NodeAddress)
+      { bTargets        :: !(NonEmpty NodeIPv4Address)
       , bInitCooldown   :: !InitCooldown
       , bInitialTTL     :: !SlotNo
       , bTxCount        :: !NumberOfTxs
@@ -196,7 +196,7 @@ data Benchmark
 -- Warning:  make sure to maintain correspondence between the two data structures.
 data PartialBenchmark
   = PartialBenchmark
-      { pbTargets        :: !(Last (NonEmpty NodeAddress))
+      { pbTargets        :: !(Last (NonEmpty NodeIPv4Address))
       , pbInitCooldown   :: !(Last InitCooldown)
       , pbInitialTTL     :: !(Last SlotNo)
       , pbTxCount        :: !(Last NumberOfTxs)

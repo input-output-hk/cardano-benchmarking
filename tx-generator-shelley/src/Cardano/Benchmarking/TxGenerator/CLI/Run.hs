@@ -19,9 +19,9 @@ import           Ouroboros.Network.Block (MaxSlotNo (..))
 import           Ouroboros.Network.NodeToClient (IOManager, withIOManager)
 
 import           Cardano.Node.Configuration.Logging (createLoggingLayer)
+import           Cardano.Node.Configuration.POM
 
-import           Cardano.Node.Types (ConfigError (..), ConfigYamlFilePath (..), DbFile (..),
-                     NodeCLI (..), ProtocolFilepaths (..), SocketPath (..), TopologyFile (..))
+import           Cardano.Node.Types
 
 import           Cardano.Benchmarking.TxGenerator (genesisBenchmarkRunner)
 import qualified Cardano.Benchmarking.TxGenerator.CLI.Parsers as P (GenerateTxs (..))
@@ -36,28 +36,30 @@ data CliError = FileNotFoundError !FilePath
 runCommand :: P.GenerateTxs -> ExceptT CliError IO ()
 runCommand args =
   withIOManagerE $ \iocp -> do
-    let ncli = NodeCLI
-               { nodeAddr = Nothing
-               , configFile = ConfigYamlFilePath $ P.logConfig args
-               , topologyFile = TopologyFile "" -- Tx generator doesn't use topology
-               , databaseFile = DbFile ""       -- Tx generator doesn't use database
-               , socketFile = Just $ SocketPath $ P.socketPath args
-               , protocolFiles = ProtocolFilepaths {
-                    byronCertFile = Just ""
-                  , byronKeyFile = Just ""
-                  , shelleyKESFile = Nothing
-                  , shelleyVRFFile = Nothing
-                  , shelleyCertFile = Nothing
+    let configFp = ConfigYamlFilePath $ P.logConfig args
+        filesPc = defaultPartialNodeConfiguration
+                  { pncProtocolFiles = Last . Just $
+                    ProtocolFilepaths
+                    { byronCertFile = Just ""
+                    , byronKeyFile = Just ""
+                    , shelleyKESFile = Just ""
+                    , shelleyVRFFile = Just ""
+                    , shelleyCertFile = Just ""
+                    }
+                  , pncValidateDB = Last $ Just False
+                  , pncShutdownIPC = Last $ Just Nothing
+                  , pncShutdownOnSlotSynced = Last $ Just NoMaxSlotNo
+                  , pncConfigFile = Last $ Just configFp
                   }
-               , validateDB = False
-               , shutdownIPC = Nothing
-               , shutdownOnSlotSynced = NoMaxSlotNo
-               }
+    configYamlPc <- liftIO . parseNodeConfigurationFP . Just $ configFp
+    nc <- case makeNodeConfiguration $ configYamlPc <> filesPc of
+            Left err -> panic $ "Error in creating the NodeConfiguration: " <> pack err
+            Right nc' -> return nc'
 
     loggingLayer <- firstExceptT (\(ConfigErrorFileNotFound fp) -> FileNotFoundError fp) $
                              createLoggingLayer
                                  (pack $ showVersion version)
-                                 ncli
+                                 nc
 
     firstExceptT GenesisBenchmarkRunnerError $
       genesisBenchmarkRunner args loggingLayer iocp

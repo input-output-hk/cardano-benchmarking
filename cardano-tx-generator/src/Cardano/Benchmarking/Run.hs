@@ -27,7 +27,7 @@ import           Paths_cardano_tx_generator (version)
 
 import qualified Cardano.Chain.Genesis as Genesis
 
-import           Ouroboros.Network.Block (MaxSlotNo (..))
+import           Ouroboros.Network.Block (MaxSlotNo(..))
 import           Ouroboros.Network.NodeToClient (IOManager, withIOManager)
 
 import           Ouroboros.Consensus.Cardano (Protocol, ProtocolByron, ProtocolShelley, ProtocolCardano)
@@ -36,6 +36,7 @@ import qualified Cardano.Api.Protocol as Api
 import           Cardano.Api.Typed
 import           Cardano.Api.TxSubmit
 import           Cardano.Node.Configuration.Logging
+import           Cardano.Node.Configuration.POM
 import           Cardano.Node.Protocol.Cardano
 import           Cardano.Node.Protocol.Byron
 import           Cardano.Node.Protocol.Shelley
@@ -118,12 +119,31 @@ runCommand (GenerateTxs logConfigFp
                         is_addr_mn
                         funds) =
   withIOManagerE $ \iocp -> do
+    let configFp = ConfigYamlFilePath logConfigFp
+        filesPc = defaultPartialNodeConfiguration
+                  { pncProtocolFiles = Last . Just $
+                    ProtocolFilepaths
+                    { byronCertFile = Just ""
+                    , byronKeyFile = Just ""
+                    , shelleyKESFile = Just ""
+                    , shelleyVRFFile = Just ""
+                    , shelleyCertFile = Just ""
+                    , shelleyBulkCredsFile = Just ""
+                    }
+                  , pncValidateDB = Last $ Just False
+                  , pncShutdownIPC = Last $ Just Nothing
+                  , pncShutdownOnSlotSynced = Last $ Just NoMaxSlotNo
+                  , pncConfigFile = Last $ Just configFp
+                  }
+    configYamlPc <- liftIO . parseNodeConfigurationFP . Just $ configFp
+    nc <- case makeNodeConfiguration $ configYamlPc <> filesPc of
+            Left err -> panic $ "Error in creating the NodeConfiguration: " <> pack err
+            Right nc' -> return nc'
+
     -- Logging layer
     loggingLayer <- firstExceptT (\(ConfigErrorFileNotFound fp) -> FileNotFoundError fp) $
                              createLoggingLayer (pack $ showVersion version)
-                             ncli
-
-    nc <- liftIO . parseNodeConfigurationFP $ ConfigYamlFilePath logConfigFp
+                             nc
 
     p <- firstExceptT GenerateTxsError $
       case ncProtocolConfig nc of
@@ -160,25 +180,6 @@ runCommand (GenerateTxs logConfigFp
     liftIO $ do
       threadDelay (200*1000) -- Let the logging layer print out everything.
       shutdownLoggingLayer loggingLayer
- where
-   ncli :: NodeCLI
-   ncli = NodeCLI
-          { nodeAddr = Nothing
-          , configFile = ConfigYamlFilePath logConfigFp
-          , topologyFile = TopologyFile "" -- Tx generator doesn't use topology
-          , databaseFile = DbFile ""       -- Tx generator doesn't use database
-          , socketFile = Just socketFp
-          , protocolFiles = ProtocolFilepaths {
-               byronCertFile = Just ""
-             , byronKeyFile = Just ""
-             , shelleyKESFile = Nothing
-             , shelleyVRFFile = Nothing
-             , shelleyCertFile = Nothing
-             }
-          , validateDB = False
-          , shutdownIPC = Nothing
-          , shutdownOnSlotSynced = NoMaxSlotNo
-          }
 
 ----------------------------------------------------------------------------
 
