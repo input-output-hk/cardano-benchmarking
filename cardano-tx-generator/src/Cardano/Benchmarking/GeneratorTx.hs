@@ -42,7 +42,6 @@ import           Control.Tracer (traceWith)
 import qualified Data.Aeson as A
 import qualified Data.ByteString.Lazy as BS
 import           Data.Foldable (find)
-import qualified Data.IP as IP
 import           Data.List.NonEmpty (NonEmpty (..))
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map.Strict as Map
@@ -56,7 +55,7 @@ import           Network.Socket (AddrInfo (..), AddrInfoFlag (..), Family (..), 
 
 import           Cardano.Chain.Common (decodeAddressBase58)
 import           Cardano.CLI.Types (SigningKeyFile (..))
-import           Cardano.Node.Types (NodeAddress (..), NodeHostAddress (..))
+import           Cardano.Node.Types
 
 import           Cardano.Api.TxSubmit
 import           Cardano.Api.Typed
@@ -296,18 +295,15 @@ runBenchmark b@Benchmark{ bTargets
       localAddr = Nothing
 
   remoteAddresses <- forM bTargets $ \targetNodeAddress -> do
-    let (anAddrFamily, targetNodeHost) =
-          case unNodeHostAddress $ naHostAddress targetNodeAddress of
-              Just (IP.IPv4 ipv4) -> (AF_INET,  show ipv4)
-              Just (IP.IPv6 ipv6) -> (AF_INET6, show ipv6)
-              _ -> panic "Target node's IP-address is undefined!"
+    let targetNodeHost =
+          show . unNodeHostIPv4Address $ naHostAddress targetNodeAddress
 
     let targetNodePort = show $ naPort targetNodeAddress
 
     let hints :: AddrInfo
         hints = defaultHints
           { addrFlags      = [AI_PASSIVE]
-          , addrFamily     = anAddrFamily
+          , addrFamily     = AF_INET
           , addrSocketType = Stream
           , addrCanonName  = Nothing
           }

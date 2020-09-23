@@ -22,7 +22,7 @@ import qualified Control.Arrow as Arr
 import           Network.Socket (PortNumber)
 import           Cardano.Api.Typed
 import           Cardano.CLI.Types (SigningKeyFile (..))
-import           Cardano.Node.Types (NodeAddress (..), NodeHostAddress (..), SocketPath (..))
+import           Cardano.Node.Types
 import           Ouroboros.Consensus.Block.Abstract (SlotNo (..))
 
 
@@ -38,7 +38,7 @@ parseFlag' :: a -> a -> String -> String -> Parser a
 parseFlag' def active optname desc =
   flag def active $ long optname <> help desc
 
-parseTargetNodeAddress :: String -> String -> Parser NodeAddress
+parseTargetNodeAddress :: String -> String -> Parser NodeIPv4Address
 parseTargetNodeAddress optname desc =
   option
     ( uncurry NodeAddress
@@ -50,8 +50,8 @@ parseTargetNodeAddress optname desc =
       <> metavar "(HOST,PORT)"
       <> help desc
 
-parseHostAddress :: String -> NodeHostAddress
-parseHostAddress = NodeHostAddress . Just .
+parseHostAddress :: String -> NodeHostIPv4Address
+parseHostAddress = NodeHostIPv4Address .
   maybe (panic "Bad host of target node") identity . readMaybe
 
 parsePort :: Word16 -> PortNumber

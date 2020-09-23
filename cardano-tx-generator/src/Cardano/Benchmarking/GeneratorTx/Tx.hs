@@ -64,7 +64,7 @@ import qualified Ouroboros.Consensus.Shelley.Ledger.Mempool as Shelley
 import           Ouroboros.Consensus.Shelley.Protocol (StandardShelley)
 import qualified Shelley.Spec.Ledger.Address as Shelley
 import qualified Shelley.Spec.Ledger.Coin as Shelley
-import qualified Shelley.Spec.Ledger.TxData as ShelleyLedger
+import qualified Shelley.Spec.Ledger.TxBody as ShelleyLedger
 
 import           Cardano.Api.TxSubmit
 import           Cardano.Api.Typed
