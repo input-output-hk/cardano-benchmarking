@@ -34,6 +34,33 @@ for N in 1 2 3
 do N1=$((N - 1))
    N13=$(printf "%03d" $N1)
    tmux select-pane -t $N1
+
+   common_args=(
+           --topology               configuration/topology-node-"$N".json
+           --database-path          db/"$N"
+           --socket-path            logs/sockets/"$N"
+           --host-addr              "$HOSTADDR" --port $((PORTBASE + N - 1))
+           --config                 configuration/configuration-node-"$N".yaml
+           --signing-key            "$GENESISDIR_byron"/delegate-keys."$N13".key
+           --delegation-certificate "$GENESISDIR_byron"/delegation-cert."$N13".json
+   )
+   if test "$N" -le "$num_pools"
+   then # Pools nodes come first
+           ix=$N
+           mode_args=(
+            --shelley-kes-key                 "$GENESISDIR_shelley"/pools/kes"$ix".skey
+            --shelley-vrf-key                 "$GENESISDIR_shelley"/pools/vrf"$ix".skey
+            --shelley-operational-certificate "$GENESISDIR_shelley"/pools/opcert"$ix".cert
+            )
+   else # BFT node is last
+           ix=$((N - num_pools))
+           mode_args=(
+            --shelley-kes-key                 "$GENESISDIR_shelley"/delegate-keys/delegate"$ix".kes.skey
+            --shelley-vrf-key                 "$GENESISDIR_shelley"/delegate-keys/delegate"$ix".vrf.skey
+            --shelley-operational-certificate "$GENESISDIR_shelley"/delegate-keys/opcert"$ix".cert
+            )
+   fi
+
    tmux send-keys \
      "${TMUX_ENV_PASSTHROUGH[*]}
 
@@ -43,18 +70,7 @@ do N1=$((N - 1))
       . ${__COMMON_SRCROOT}/scripts/lib-nix.sh;
       . ${__COMMON_SRCROOT}/scripts/lib-node.sh;
 
-      ${NODECMD} run \
-            --topology configuration/topology-node-${N}.json \
-            --database-path db/${N} \
-            --socket-path logs/sockets/${N} \
-            --host-addr ${HOSTADDR} --port $((PORTBASE + N - 1)) \
-            --config configuration/configuration-node-${N}.yaml \
-            --signing-key            ${GENESISDIR_byron}/delegate-keys.$N13.key \
-            --delegation-certificate ${GENESISDIR_byron}/delegation-cert.$N13.json \
-            --shelley-kes-key ${GENESISDIR_shelley}/node${N}/kes.skey \
-            --shelley-vrf-key ${GENESISDIR_shelley}/node${N}/vrf.skey \
-            --shelley-operational-certificate ${GENESISDIR_shelley}/node${N}/node.cert \
-            " ${REDIRSTDERR} \
+      ${NODECMD} run ${common_args[*]} ${mode_args[*]} " $REDIRSTDERR \
      C-m
 done
 tmux select-pane -t 0
