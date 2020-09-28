@@ -2,16 +2,7 @@
 
 # cardano-benchmarking
 
-This repository contains two important tools for `cardano-node` benchmarking:
-
-1. [cardano-tx-generator](https://github.com/input-output-hk/cardano-benchmarking/tree/master/cardano-tx-generator)
-2. [cardano-rt-view-service](https://github.com/input-output-hk/cardano-benchmarking/tree/master/cardano-rt-view)
-
-The first one is a generator of transactions, both for Byron and Shelley. For more details please [see the project](https://github.com/input-output-hk/cardano-benchmarking/tree/master/cardano-tx-generator).
-
-The second one is a service that allows to see the state of running `cardano-node` processes in the real time. For more details please [see the project](https://github.com/input-output-hk/cardano-benchmarking/tree/master/cardano-rt-view).
-
-[![RTView screenshot](https://github.com/input-output-hk/cardano-benchmarking/blob/master/cardano-rt-view/screenshot-small.png)](https://github.com/input-output-hk/cardano-benchmarking/tree/master/cardano-rt-view)
+This repository contains important tool for `cardano-node` benchmarking - [cardano-tx-generator](https://github.com/input-output-hk/cardano-benchmarking/tree/master/cardano-tx-generator). This is a generator of transactions, both for Byron and Shelley. For more details please [see the project](https://github.com/input-output-hk/cardano-benchmarking/tree/master/cardano-tx-generator).
 
 ## Preparation
 

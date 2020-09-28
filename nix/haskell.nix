@@ -156,10 +156,6 @@ let
           "--ghc-option=-fprof-auto-calls"
           "--ghc-option=-fprof-cafs"
         ];
-        packages.cardano-rt-view.configureFlags = [
-          "--ghc-option=-Wall"
-          #"--ghc-option=-Werror"
-        ];
       }
       (lib.optionalAttrs profiling {
         enableLibraryProfiling = true;
