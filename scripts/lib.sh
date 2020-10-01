@@ -52,7 +52,7 @@ fail() {
 
 prebuild() {
         local exe="$1"
-        vprint "prebuilding the \"${exe}\" executable in \"${SCRIPTS_LIB_SH_MODE}\" mode.."
+        oprint "prebuilding the \"${exe}\" executable in \"${SCRIPTS_LIB_SH_MODE}\" mode.."
         run --build-only "${exe}"
 }
 export -f prebuild
@@ -203,7 +203,7 @@ actually_run()
         local CMD=()
         case ${SCRIPTS_LIB_SH_MODE} in
         nix )       ## Disallow using binaries from PATH for Nix method:
-                    allow_path_exes=
+                    allow_path_exes='no'
                     CMD=(run_nix_executable              $pkg     $exe
                          "${toolargs}${build_only:+ --build-only}");;
         cabal )     CMD=(cabal v2-${rob} ${toolargs} -v0 $pkg:exe:$exe ${dash2});;
@@ -212,12 +212,12 @@ actually_run()
         * ) echo "INTERNAL ERROR: unknown mode:  $SCRIPTS_LIB_SH_MODE" >&2; return 1;;
         esac
         if test -z "${build_only}"
-        then if test -n "${allow_path_exes}" -a -n "$(command -v "$exe")"
+        then if test "${allow_path_exes}" = 'yes' -a -n "$(command -v "$exe")"
              then vprint "Using $exe from PATH:  $(command -v "$exe")"
                   CMD=($exe)
              fi
              CMD+=(${rtsopts} "${ARGS[@]}")
-        elif test -n "${allow_path_exes}" && command -v "$exe"
+        elif test "${allow_path_exes}" = 'yes' && command -v "$exe"
         then return 0
         fi
 

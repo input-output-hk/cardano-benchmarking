@@ -17,5 +17,5 @@ else
   rm $Sockets/*
 fi
 
-$RTVIEWCMD --config ${RTviewConfig} --static static --port ${RTviewPort}
+# $RTVIEWCMD --config ${RTviewConfig} --static static --port ${RTviewPort}
 
