@@ -44,14 +44,21 @@ do N1=$((N - 1))
            --signing-key            "$GENESISDIR_byron"/delegate-keys."$N13".key
            --delegation-certificate "$GENESISDIR_byron"/delegation-cert."$N13".json
    )
-   if test "$N" -le "$num_pools"
-   then # Pools nodes come first
+   if test "$N" -le "$num_non_bulk_pools"
+   then # Non-bulk pools come first
            ix=$N
            mode_args=(
             --shelley-kes-key                 "$GENESISDIR_shelley"/pools/kes"$ix".skey
             --shelley-vrf-key                 "$GENESISDIR_shelley"/pools/vrf"$ix".skey
             --shelley-operational-certificate "$GENESISDIR_shelley"/pools/opcert"$ix".cert
-            )
+           )
+   elif test "$N" -le "$num_pools"
+   then # Bulk pools then
+           ix=$((N - num_non_bulk_pools))
+           mode_args=(
+            --bulk-credentials-file           "$GENESISDIR_shelley"/pools/bulk"$ix".creds
+            +RTS -N4 -RTS
+           )
    else # BFT node is last
            ix=$((N - num_pools))
            mode_args=(
@@ -63,6 +70,16 @@ do N1=$((N - 1))
 
    tmux send-keys \
      "${TMUX_ENV_PASSTHROUGH[*]}
+
+      if test -n \"${DEFAULT_VERBOSE}\"
+      then verbose=t
+      fi
+      if test -n \"${DEFAULT_DEBUG}\"
+      then verbose=t; debug=t
+      fi
+      if test -n \"${DEFAULT_TRACE}\"
+      then verbose=t; debug=t; trace=t; set -x
+      fi
 
       cd '${BASEDIR}';
       . ${__COMMON_SRCROOT}/scripts/lib.sh;

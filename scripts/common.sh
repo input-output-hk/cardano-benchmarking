@@ -135,7 +135,7 @@ export era=${era:-'shelley'}
 export profile=
 export verbose=
 export debug=
-export allow_path_exes=t
+export allow_path_exes=${allow_path_exes:-'yes'}
 
 default_mode='nix'
 
@@ -148,7 +148,7 @@ while test -n "$1"
 do case "$1" in
            --nix )                SCRIPTS_LIB_SH_MODE='nix'; cmdline_mode=t;;
            --cabal )              SCRIPTS_LIB_SH_MODE='cabal'; cmdline_mode=t;;
-           --no-path-exes )       allow_path_exes=;;
+           --no-path-exes )       allow_path_exes=no;;
 
            --cls )                echo -en "\ec";;
 

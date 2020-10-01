@@ -70,34 +70,30 @@ TracingVerbosity: MaximalVerbosity
 # configuration below. The logging backend is called Katip.
 setupBackends:
   - KatipBK
-  - TraceForwarderBK
 
-# This specifies the default backends that trace output is sent to if it
+# specifies the default backends that trace output is sent to if it
 # is not specifically configured to be sent to other backends.
 defaultBackends:
   - KatipBK
-  - TraceForwarderBK
 
 # EKG is a simple metrics monitoring system. Uncomment the following to enable
 # this backend and listen on the given local port and point your web browser to
 # http://localhost:12788/
-hasEKG: 12788
+# hasEKG: 12788
 
 # The Prometheus monitoring system exports EKG metrics. Uncomment the following
 # to listen on the given port. Output is provided on
-# http://localhost:12798/metrics
-hasPrometheus:
-  - "127.0.0.1"
-  - 12798
+# http://localhost:12789/metrics
+# hasPrometheus: 12789
 
 # To enable the 'TraceForwarder' backend, uncomment the following setting. Log
 # items are then forwarded based on an entry in 'mapBackends' to a separate
 # process running a 'TraceAcceptor'.
 # Example using UNIX pipes:
-traceForwardTo:
-   tag: RemotePipe
-   contents: "logs/sockets/pool1"
-# 
+# traceForwardTo:
+#    tag: RemotePipe
+#    contents: "logs/sockets/pool1"
+#
 # Example using Windows named pipes:
 # traceForwardTo:
 #   tag: RemotePipe
@@ -122,17 +118,12 @@ setupScribes:
   - scKind: FileSK
     scName: "logs/node1.json"
     scFormat: ScJson
-  - scKind: FileSK
-    scName: "logs/node1.log"
-    scFormat: ScText
 
 # For the Katip logging backend this specifies the default scribes that trace
 # output is sent to if it is not configured to be sent to other scribes.
 defaultScribes:
   - - FileSK
     - "logs/node1.json"
-  - - FileSK
-    - "logs/node1.log"
 
 # The default file rotation settings for katip scribes, unless overridden
 # in the setupScribes above for specific scribes.
@@ -243,38 +234,27 @@ options:
   # go to the default backend, only to the explicitly listed backends.
   mapBackends:
     cardano.node.BlockFetchDecision.peers:
-      - TraceForwarderBK
       - EKGViewBK
       - kind: UserDefinedBK
         name: LiveViewBackend
     cardano.node.ChainDB.metrics:
-      - TraceForwarderBK
       - EKGViewBK
       - kind: UserDefinedBK
         name: LiveViewBackend
     cardano.node.metrics:
-      - TraceForwarderBK
-      - EKGViewBK  
+      - EKGViewBK
+      - KatipBK
       - kind: UserDefinedBK
         name: LiveViewBackend
     cardano.node.Forge.metrics:
-      - TraceForwarderBK
       - EKGViewBK
+      - KatipBK
     cardano.node.release:
-      - TraceForwarderBK
       - KatipBK
     cardano.node.version:
-      - TraceForwarderBK
       - KatipBK
     cardano.node.commit:
-      - TraceForwarderBK
       - KatipBK
-
-  # redirects traced values to a specific scribe which is identified by its
-  # type and its name, separated by "::":
-  mapScribes:
-    cardano.node-metrics:
-      - "FileSK::logs/node1.json"
 
   # apply a filter on message severity on messages in a specific named context.
   # this filter is applied additionally to the global 'minSeverity' and thus
@@ -282,4 +262,3 @@ options:
   mapSeverity:
     cardano.node.ChainDB: Info
     cardano.node.DnsSubscription: Info
-

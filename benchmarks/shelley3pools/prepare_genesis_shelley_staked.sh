@@ -108,8 +108,10 @@ params=(--genesis-dir      "$gendir"
         --start-time       "$(date --iso-8601=s --date=@$start_time --utc | cut -c-19)Z"
         --supply           "$((TOTAL_SUPPLY - POOL_SUPPLY))"
         --supply-delegated "$POOL_SUPPLY"
-        --gen-pools        "$num_pools"
-        --gen-stake-delegs "$num_pools"
+        --gen-pools        $((num_bulk_pool_pools + num_non_bulk_pools))
+        --gen-stake-delegs $((num_bulk_pool_pools + num_non_bulk_pools))
+        --bulk-pool-cred-files 1
+        --bulk-pools-per-file  $num_bulk_pool_pools
        )
 
 ## extend template with final parameters
