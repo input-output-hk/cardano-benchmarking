@@ -106,7 +106,7 @@ extra-deps:
       - test
 
   - git: https://github.com/input-output-hk/cardano-node
-    commit: f8178d8e21a6acf6aecdea17ffbc2e3b5ccd23f5
+    commit: 7543f6bffc49397e126ab262b8a29cca624f8382
     subdirs:
       - cardano-api
       - cardano-config
@@ -135,7 +135,7 @@ extra-deps:
     commit: 2547ad1e80aeabca2899951601079408becbc92c
 
   - git: https://github.com/input-output-hk/cardano-ledger-specs
-    commit: 2ae53965017e18b6a02988762e5e80f07e7709ed
+    commit: 4edcdab87510b2657c62bcf14035817ce6e23455
     subdirs:
       # small-steps
       - semantics/executable-spec
@@ -157,7 +157,7 @@ extra-deps:
     commit: cde90a2b27f79187ca8310b6549331e59595e7ba
 
   - git: https://github.com/input-output-hk/ouroboros-network
-    commit: 7cda58405b6ee0d335b11e88e5c9989c7a3a6e03
+    commit: f56e5d7ad2ebf5f8750f13a430bb93f8036f5e9d
     subdirs:
         - io-sim
         - io-sim-classes
@@ -177,7 +177,7 @@ extra-deps:
         - Win32-network
 
   - git: https://github.com/input-output-hk/iohk-monitoring-framework
-    commit: 14143b6e39e89ac0cba6ef1509f19e5ee54bd03c
+    commit: 743f266cfe5fff11d18602faf510f22a544ea295
     subdirs:
       - contra-tracer
       - iohk-monitoring
