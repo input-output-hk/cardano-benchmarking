@@ -4,6 +4,7 @@
 , sourcesOverride ? {}
 , minimal ? false
 , withHoogle ? (! minimal)
+, withUpstreamDeps ? false
 , pkgs ? import ./nix {
     inherit config sourcesOverride;
   }
@@ -15,7 +16,20 @@ let
   shell = cardanoBenchmarkingHaskellPackages.shellFor {
     name = "cabal-dev-shell";
 
-    packages = _: lib.attrValues cardanoBenchmarkingHaskellPackages.projectPackages;
+    packages = _:
+      with haskellPackages;
+      lib.attrValues cardanoBenchmarkingHaskellPackages.projectPackages
+      ++ lib.optionals withUpstreamDeps
+        (with cardanoNodeHaskellPackages; [
+          cardano-api
+          cardano-config
+          cardano-cli
+          cardano-node
+          ouroboros-consensus
+          ouroboros-consensus-byron
+          ouroboros-consensus-cardano
+          ouroboros-consensus-shelley
+        ]);
 
     # These programs will be available inside the nix-shell.
     buildInputs = with haskellPackages; [
@@ -44,26 +58,14 @@ let
     exactDeps = true;
 
     inherit withHoogle;
-  };
 
-  devops = pkgs.stdenv.mkDerivation {
-    name = "devops-shell";
-    buildInputs = [
-      niv
-    ];
     shellHook = ''
-      echo "DevOps Tools" \
-      | ${figlet}/bin/figlet -f banner -c \
-      | ${lolcat}/bin/lolcat
+      echo "Modifying cabal.project to allow Cabal pick up Nix-provided dependencies:"
 
-      echo "NOTE: you may need to export GITHUB_TOKEN if you hit rate limits with niv"
-      echo "Commands:
-        * niv update <package> - update package
-
-      "
+      ./scripts/cabal-inside-nix-shell.sh
     '';
   };
 
 in
 
- shell // { inherit devops; }
+ shell

@@ -6,12 +6,14 @@ packages:
     cardano-tx-generator
     tx-generator-shelley
     bm-timeline
-    --ext/cardano-node.git/cardano-api
-    --ext/cardano-node.git/cardano-cli
-    --ext/cardano-node.git/cardano-node
-    --ext/cardano-node.git/cardano-config
-    --ext/cardano-db-sync.git/cardano-db
-    --ext/cardano-db-sync.git/cardano-db-sync
+    -- ../ouroboros-network/ouroboros-consensus
+    -- ../ouroboros-network/ouroboros-consensus-byron
+    -- ../ouroboros-network/ouroboros-consensus-cardano
+    -- ../ouroboros-network/ouroboros-consensus-shelley
+    -- ../cardano-node/cardano-api
+    -- ../cardano-node/cardano-cli
+    -- ../cardano-node/cardano-node
+    -- ../cardano-node/cardano-config
 
 allow-newer: base
 
