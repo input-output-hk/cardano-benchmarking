@@ -5,7 +5,6 @@ BASEDIR=$(realpath $(dirname "$0"))
 . "${BASEDIR}"/../../scripts/common.sh
 
 prebuild 'cardano-tx-generator' || exit 1
-prebuild 'cardano-rt-view-service' || exit 1
 prebuild 'cardano-node' || exit 1
 prebuild 'cardano-cli' || exit 1
 

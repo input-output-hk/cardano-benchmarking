@@ -60,7 +60,7 @@ let
     inherit withHoogle;
 
     shellHook = ''
-      echo "Modifying cabal.project to allow Cabal pick up Nix-provided dependencies:"
+      echo "Modifying cabal.project for interactive development"
 
       ./scripts/cabal-inside-nix-shell.sh
     '';

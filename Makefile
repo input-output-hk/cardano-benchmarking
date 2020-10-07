@@ -1,4 +1,5 @@
-MODE ?= stack
+MODE ?= cabal
+CABAL_OPTIONS ?= -j8 --ghc-options="+RTS -qn8 -A32M -RTS"
 
 all: help
 
@@ -9,57 +10,55 @@ help:
 	@echo
 	@echo "Available targets:"
 	@echo
-	@echo "Build:"
-	@echo
-	@echo "  build-stack"
-	@echo
-	@echo "Run:"
-	@echo
-	@echo "  cluster3nodes (+ aliases: nix cabal stack cabal-in-nix-shell)"
-	@echo "  analyse"
+	@echo "  sync:     sync cabal.project to ../cardano-node"
+	@echo "  shell:    enter the Nix shell"
+	@echo "  setup:    post-nix-shell-entrance interactive development setup"
+	@echo "  cabal:    run the default local cluster benchmark in cabal mode"
+	@echo "  nix:      run the default local cluster benchmark in Nix mode"
 	@echo
 	@echo "Clean:"
 	@echo
-	@echo "  clean clean-all clean-cabal clean-stack clean-runtime"
+	@echo "  clean clean-all clean-cabal clean-runtime"
 	@echo
 
-###
-###
-###
-build: build-${MODE}
-
-build-stack:
-	stack --nix build --copy-bins
+EXES=cardano-node cardano-cli cardano-tx-generator
 
 ###
 ###
 ###
 nix:                      MODE=nix
 cabal:                    MODE=cabal
-stack:                    MODE=stack
-cabal-in-nix-shell cabsh: MODE=cabal
-cabal-in-nix-shell cabsh: PRELUDE=sed -ni '1,/--- 8< ---/ p' "$$(git rev-parse --show-toplevel)"/cabal.project
-nix cabal stack cabsh cabal-in-shell run-cluster3nodes run: cluster3nodes
+cabal:                    EXTRA_OPTS=--no-path-exes
+nix cabal: cluster
 
-cluster3nodes:
-	$(or ${PRELUDE},true)
-	./benchmarks/cluster3nodes/start.sh --${MODE}
+sync-shell: sync shell
 
-analyse:
-	cd benchmarks/cluster3nodes && ../../scripts/analyse.sh
+build:
+	cabal build ${CABAL_OPTIONS} ${EXES}
+
+sync:
+	@echo "Syncing 'cabal.project' to ../cardano-node"
+	./scripts/sync-to.sh
+
+shell:
+	nix-shell --max-jobs 8 --cores 0
+
+setup:
+	@echo "Modifying 'cabal.project' for interactive development"
+	./scripts/cabal-inside-nix-shell.sh
+
+cluster:
+	cd ./benchmarks/shelley3pools; ./start.sh --${MODE} ${EXTRA_OPTS}
 
 ###
 ###
 ###
 clean: clean-all
 
-clean-all: clean-cabal clean-stack clean-runtime
+clean-all: clean-cabal clean-runtime
 
 clean-cabal:
 	cabal clean
-
-clean-stack:
-	stack clean
 
 clean-runtime:
 	rm -rf db db-* logs logs-*
