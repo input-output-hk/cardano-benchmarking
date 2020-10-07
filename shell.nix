@@ -4,7 +4,7 @@
 , sourcesOverride ? {}
 , minimal ? false
 , withHoogle ? (! minimal)
-, withUpstreamDeps ? false
+, withUpstreamDeps ? true
 , pkgs ? import ./nix {
     inherit config sourcesOverride;
   }
