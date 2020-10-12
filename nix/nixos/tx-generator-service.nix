@@ -5,7 +5,7 @@
         (__fromJSON (__readFile ../../configuration/defaults/generator/configuration.json))
         // {
           "Protocol"    = cfg.localNodeConf.nodeConfig.Protocol;
-          "GenesisFile" = cfg.localNodeConf.nodeConfig.GenesisFile;
+          "GenesisFile" = cfg.localNodeConf.nodeConfig.ShelleyGenesisFile;
         };
     in
     { svcName = "tx-generator";
