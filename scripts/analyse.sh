@@ -56,8 +56,7 @@ extract_recvs() {
           select (.data.kind == "Recv" and .data.msg.kind == "MsgBlock")
         | .at as $at           # bind timestamp
         | .data.msg.txIds      # narrow to the txid list
-        | map ( .[23:87]       # cut the extra stuff
-              | "\(.);\($at)") # produce the resulting string
+        | map ( "\(.);\($at)") # produce the resulting string
         | .[]              # merge string lists over all messages
         ' $1 |
         tr -d '"'
@@ -139,7 +138,7 @@ then join -1 1       -2 1 -v 1 -t ";" \
      then rm -f rtx_*-missing.*
      else cat <<EOF
 -- Lost Txs:             ${count_missing}: or $(((count_missing * 100 / count_sent)))% of sent
--- Missing sends:        ${extra_prefix}analysis/rtx_stime-missing.1 ${extra_prefix}analysis/rtx_stime-missing.2
+-- Missing sends:        ${extra_prefix}/analysis/rtx_stime-missing.1 ${extra_prefix}analysis/rtx_stime-missing.2
 EOF
      fi
 
@@ -150,7 +149,7 @@ EOF
      then rm -f rtx_*-martian.*
      else cat <<EOF
 -- Martian Txs:          ${count_martian}: or $(((count_martian * 100 / count_recvd)))% of received
--- Martian receipts:     ${extra_prefix}analysis/rtx_rtime-martian.1
+-- Martian receipts:     ${extra_prefix}/analysis/rtx_rtime-martian.1
 EOF
      fi
 fi
