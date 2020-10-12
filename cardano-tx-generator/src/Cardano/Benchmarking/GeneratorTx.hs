@@ -89,7 +89,8 @@ secureFunds :: ConfigSupportsTxGen mode era
   -> GeneratorFunds
   -> ExceptT TxGenError IO (SigningKeyOf era, Set (TxIn, TxOut era))
 
-secureFunds b@Benchmark{bTxFee, bInitialTTL} m (FundsGenesis keyF) = do
+secureFunds b@Benchmark{bTxFee, bInitialTTL, bInitCooldown=InitCooldown cooldown} m
+ (FundsGenesis keyF) = do
   key <- readSigningKey (modeEra m) keyF
   let (_, TxOut _ genesisCoin) = extractGenesisFunds m key
       toAddr = keyAddress m modeNetworkId key
@@ -104,6 +105,7 @@ secureFunds b@Benchmark{bTxFee, bInitialTTL} m (FundsGenesis keyF) = do
       [ "******* Funding secured (", show txin, " -> ", show txout
       , "), submission result: " , show r ]
     e -> fail $ show e
+  liftIO $ threadDelay (cooldown*1000*1000)
   (key, ) <$> splitFunds b m key (txin, txout)
 
 secureFunds b m@ModeShelley{} (FundsUtxo keyF txin txout) = do
