@@ -31,7 +31,14 @@ mkdir -p db logs/sockets
 rm -f 'configuration/start-time'
 . "$BASEDIR"/configuration/parameters
 ./prepare_genesis_byron.sh
-./prepare_genesis_shelley_staked.sh
+if test -z "$reuse_genesis"
+then ./prepare_genesis_shelley_staked.sh
+else sed -i 's/"systemStart": ".*"/"systemStart": "'"$(date \
+       --iso-8601=seconds \
+       --date=@$(cat "$BASEDIR"/configuration/start-time))"'"/
+       ' "$GENESISDIR_shelley"/genesis.json
+     ./hash_genesis.sh
+fi
 
 case $era in
         byron )     protocol='RealPBFT';;

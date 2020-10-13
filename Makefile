@@ -29,8 +29,9 @@ EXES=cardano-node cardano-cli cardano-tx-generator
 ###
 nix:                      MODE=nix
 cabal:                    MODE=cabal
-cabal:                    EXTRA_OPTS=--no-path-exes
+cabal:                    EXTRA_OPTS+=--no-path-exes
 nix cabal: cluster
+recabal: cabal
 
 sync:
 	@echo "Syncing 'cabal.project' to ../cardano-node"
@@ -53,6 +54,8 @@ setup:
 build: setup
 	cabal v2-build ${CABAL_OPTIONS} $(foreach exe,${EXES},${exe}:exe:${exe})
 
+recluster: EXTRA_OPTS+=--reuse-genesis
+recluster: cluster
 cluster: build
 	cd ./benchmarks/shelley3pools; ./start.sh --${MODE} ${EXTRA_OPTS}
 

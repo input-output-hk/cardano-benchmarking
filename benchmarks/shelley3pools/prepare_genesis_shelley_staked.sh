@@ -118,5 +118,4 @@ params=(--genesis-dir      "$gendir"
 ## extend template with final parameters
 $cli shelley genesis create-staked "${params[@]}"
 
-$cli shelley genesis hash --genesis "$gendir"/genesis.json |
-        tr -d '"' > "$gendir"/GENHASH
+"$basedir"/hash_genesis.sh

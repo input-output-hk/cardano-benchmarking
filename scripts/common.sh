@@ -142,7 +142,7 @@ default_mode='nix'
 SCRIPTS_LIB_SH_MODE=${SCRIPTS_LIB_SH_MODE:-default}
 cmdline_mode=
 mnemonic_suffix=${mnemonic_suffix:-}
-force_genesis=
+reuse_genesis=
 
 while test -n "$1"
 do case "$1" in
@@ -155,8 +155,7 @@ do case "$1" in
            --profile )            profile=$2; shift;;
            --mnemonic-suffix )    mnemonic_suffix=$2; shift;;
 
-           ## Should be moved to lib-node.sh?
-           --force-genesis )      force_genesis=t;;
+           --reuse-genesis )      reuse_genesis=t;;
 
            --shelley )            era='shelley';;
            --byron )              era='byron';;

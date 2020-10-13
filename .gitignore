@@ -21,10 +21,14 @@ analysis
 /db
 /logs
 /profile
+/runs*
 
 *.csv
+*.eventlog
+*.tgz
 benchmark-results.log
 launch_node
 result*
 state-*
+start-time
 timeline-*
