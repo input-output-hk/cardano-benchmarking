@@ -6,7 +6,8 @@ set -e
 # to arrange the nodes and the transaction generator.
 
 if test -n "$(pgrep -fal tmux)"
-then tmux kill-session -t Shelley3Pools
+then echo "ERROR:  can't co-exist with existing tmux sessions, sorry!" >&2
+     exit 1
 fi
 tmux new-s -E -s Shelley3Pools -n Main "/usr/bin/env bash ./benchmark.sh $*; $SHELL"
 

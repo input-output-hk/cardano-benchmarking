@@ -109,9 +109,10 @@ params=(--genesis-dir      "$gendir"
         --supply           "$((TOTAL_SUPPLY - POOL_SUPPLY))"
         --supply-delegated "$POOL_SUPPLY"
         --gen-pools        $((num_bulk_pool_pools + num_non_bulk_pools))
-        --gen-stake-delegs $((num_bulk_pool_pools + num_non_bulk_pools))
+        --gen-stake-delegs $((num_bulk_pool_pools * num_delegators_per_pool + num_non_bulk_pools))
         --bulk-pool-cred-files 1
         --bulk-pools-per-file  $num_bulk_pool_pools
+        --num-stuffed-utxo $num_stuffed_utxo
        )
 
 ## extend template with final parameters

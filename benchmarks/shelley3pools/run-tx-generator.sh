@@ -61,4 +61,14 @@ cardano-shelley )
 *) echo "ERROR:  unknown era '$era'" >&2;;
 esac
 
+wait_seconds() {
+        n=$1 expl="$2"
+        echo -n "--( waiting $expl:  $n"
+        while printf "\b\b\b%3d" $n
+              test $n -gt 0
+        do n=$((n-1)); sleep 1s; done
+        echo
+} >&2
+
+wait_seconds 15 'for the mempool transactions to settle in blocks'
 ../../scripts/analyse.sh

@@ -63,7 +63,7 @@ minSeverity: Debug
 
 # Log items can be rendered with more or less verbose detail.
 # Verbosity ranges from MinimalVerbosity, NormalVerbosity to MaximalVerbosity
-TracingVerbosity: MaximalVerbosity
+TracingVerbosity: NormalVerbosity
 
 # The system supports a number of backends for logging and monitoring.
 # This setting lists the the backends that will be available to use in the
@@ -116,14 +116,14 @@ defaultBackends:
 # be specified in the defaults below or overidden on a per-scribe basis here.
 setupScribes:
   - scKind: FileSK
-    scName: "logs/node1.json"
+    scName: "logs/node-1.json"
     scFormat: ScJson
 
 # For the Katip logging backend this specifies the default scribes that trace
 # output is sent to if it is not configured to be sent to other scribes.
 defaultScribes:
   - - FileSK
-    - "logs/node1.json"
+    - "logs/node-1.json"
 
 # The default file rotation settings for katip scribes, unless overridden
 # in the setupScribes above for specific scribes.

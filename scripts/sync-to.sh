@@ -112,7 +112,7 @@ sed -ni '1,/--- >8 ---/  p'  "$this_project"
 
 ## Copy over the entire 'source-repository-package' section:
 sed -n  '1,/--- 8< ---/! p' "$other_project" |
-grep -v "Please do not"   >> "$this_project"
+grep -v   "Please do not" >> "$this_project" || true
 
 ## Copy over the index-state
 other_state_line=$(sed -n '/index-state:/  p' "$other_project")
