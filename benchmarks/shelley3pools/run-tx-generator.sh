@@ -70,5 +70,7 @@ wait_seconds() {
         echo
 } >&2
 
-wait_seconds 15 'for the mempool transactions to settle in blocks'
-../../scripts/analyse.sh
+wait_seconds 30 'for the mempool transactions to settle in blocks'
+# ../../scripts/analyse.sh
+
+./kill-session.sh

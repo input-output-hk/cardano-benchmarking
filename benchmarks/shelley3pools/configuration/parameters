@@ -33,13 +33,13 @@ num_bulk_pool_pools=100
 num_non_bulk_pools=1
 
 # number of non-bulk pools
-num_delegators_per_pool=5000
+num_delegators_per_pool=5
 
 # number of fake UTxO entries
-num_stuffed_utxo=500000
+num_stuffed_utxo=5000
 
 # the number of transactions to enter into the chain
-numtx=1000
+numtx=10000
 
 # inter-phase cooldown, seconds
 init_cooldown=5
@@ -57,7 +57,7 @@ inputstx=1
 outputstx=1
 
 # the transactions per seconds that the generator tries to achieve
-tps=10
+tps=1
 
 # cli benchmarking commands
 utxo_keys=3
@@ -74,6 +74,6 @@ NUM_OF_ADDRESSES=1000
 start_time_file=configuration/start-time
 if test -f $start_time_file
 then start_time=$(cat $start_time_file)
-else start_time=$(date --date='500 seconds' +%s)
+else start_time=$(date --date='10 seconds' +%s)
      echo -n $start_time > $start_time_file
 fi
