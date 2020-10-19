@@ -27,6 +27,7 @@ set -e
 rm -rf ./db/* ./logs/*
 mkdir -p db logs/sockets
 
+oprint "preparing genesis.."
 # 1 prepare geneses for all eras & update configs
 rm -f 'configuration/start-time'
 . "$BASEDIR"/configuration/parameters

@@ -4,7 +4,9 @@
 , sourcesOverride ? {}
 , minimal ? false
 , withHoogle ? (! minimal)
-, withUpstreamDeps ? true
+, withConsensusDeps ? true
+, withMonitoringDeps ? true
+, withNodeDeps ? withConsensusDeps || withMonitoringDeps
 , pkgs ? import ./nix {
     inherit config sourcesOverride;
   }
@@ -19,16 +21,27 @@ let
     packages = _:
       with haskellPackages;
       lib.attrValues cardanoBenchmarkingHaskellPackages.projectPackages
-      ++ lib.optionals withUpstreamDeps
+      ++ lib.optionals withConsensusDeps
+        (with cardanoNodeHaskellPackages; [
+          ouroboros-consensus
+          ouroboros-consensus-byron
+          ouroboros-consensus-cardano
+          ouroboros-consensus-shelley
+        ])
+      ++ lib.optionals withMonitoringDeps
+        (with cardanoNodeHaskellPackages; [
+          iohk-monitoring
+          lobemo-backend-aggregation
+          lobemo-backend-ekg
+          lobemo-backend-monitoring
+          lobemo-backend-trace-forwarder
+        ])
+      ++ lib.optionals withNodeDeps
         (with cardanoNodeHaskellPackages; [
           cardano-api
           cardano-config
           cardano-cli
           cardano-node
-          ouroboros-consensus
-          ouroboros-consensus-byron
-          ouroboros-consensus-cardano
-          ouroboros-consensus-shelley
         ]);
 
     # These programs will be available inside the nix-shell.

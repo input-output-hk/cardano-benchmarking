@@ -35,11 +35,11 @@ recabal: cabal
 
 sync:
 	@echo "Syncing 'cabal.project' to ../cardano-node"
-	./scripts/sync-to.sh
+	./scripts/sync-to.sh --stage-changes
 
 strict-sync strict:
 	@echo "Strictly syncing 'cabal.project' to ../cardano-node"
-	./scripts/sync-to.sh --strict-coherence
+	./scripts/sync-to.sh --stage-changes --strict-coherence
 
 shell: sync
 	nix-shell --max-jobs 8 --cores 0

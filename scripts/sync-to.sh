@@ -6,11 +6,14 @@ this_repo=$(git rev-parse --show-toplevel)
 this_project=$this_repo/cabal.project
 
 strict_coherence=
+stage_changes=
 
 while test -n "$1"
 do case "$1" in
            --strict | --strict-coherence )
                                   strict_coherence=t;;
+           --stage | --stage-changes )
+                                  stage_changes=t;;
            --help )               usage; exit 1;;
            * ) break;; esac; shift; done
 set -u
@@ -22,6 +25,7 @@ other_name=$(basename "$other_repo")
 repos=(
         cardano-node
         ouroboros-network
+        iohk-monitoring-framework
 )
 
 repo_path() {
@@ -138,3 +142,7 @@ do update_sources_pin "$this_repo" "$pin" \
                       $(repo_sources_pin_commit "$other_repo" "$pin") \
                       $(repo_sources_pin_hash   "$other_repo" "$pin")
 done
+
+if test -n "$stage_changes"
+then git add "$this_project" "$this_repo"/nix/sources.json
+fi
