@@ -83,7 +83,6 @@ run_quiet()
         case ${SCRIPTS_LIB_SH_MODE} in
                 nix )               bld_extra="--no-build-output --quiet ${bld_extra}";;
                 cabal )             bld_extra="${bld_extra}";;
-                stack | stack-nix ) bld_extra="--silent ${bld_extra}";; esac;
 
         actually_run --build-extra "${bld_extra}" "$@"
 }
@@ -207,8 +206,6 @@ actually_run()
                     CMD=(run_nix_executable              $pkg     $exe
                          "${toolargs}${build_only:+ --build-only}");;
         cabal )     CMD=(cabal v2-${rob} ${toolargs} -v0 $pkg:exe:$exe ${dash2});;
-        stack )     CMD=(stack           ${toolargs} ${rob}       ${stackprep}$exe ${dash2});;
-        stack-nix ) CMD=(stack           ${toolargs} ${rob} --nix ${stackprep}$exe ${dash2});;
         * ) echo "INTERNAL ERROR: unknown mode:  $SCRIPTS_LIB_SH_MODE" >&2; return 1;;
         esac
         if test -z "${build_only}"

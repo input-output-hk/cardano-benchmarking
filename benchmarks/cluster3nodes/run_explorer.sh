@@ -19,4 +19,4 @@ run 'cardano-db-sync' \
   --config ${CONFIGFILE} \
   --genesis-file ${GENESISJSON} \
   --socket-path ${BASEDIR}/sockets/0 \
-  --schema-dir ${BASEDIR}/../../ext/cardano-db-sync.git/schema \
+  # --schema-dir ${BASEDIR}/../../ext/cardano-db-sync.git/schema \ # TODO: fix it, there is no more 'ext' dir!

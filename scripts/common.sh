@@ -19,9 +19,6 @@ Usage:
                           This is the default mode, unless -- read on:
     --cabal             cabal v2-run exe:...
                           Default _iff_ ./dist-newstyle exists.
-    --stack             stack run ...
-                          Default _iff_ ./.stack-work exists.
-    --stack-nix         stack run --nix ...
     --no-path-exes      Forbid using binaries from PATH
 
     --cls               Clear the TTY before anything happens..
@@ -29,8 +26,8 @@ Usage:
     --[no-]stats        Output end-of-run RTS stats into a .stats file.
     --profile MODE      Enable library & executable profiling, with
                          .prof/.hp and profiteur/profiterole's .html output.
-                        The Nix case works end-to-end, while cabal&stack
-                        need to be manually set up to provide correspondingly
+                        The Nix case works end-to-end, while cabal need
+                        to be manually set up to provide correspondingly
                         capable binaries before this works.
                         MODE is one of:
        time space space-module space-closure space-type space-retainer space-bio
@@ -82,9 +79,9 @@ setup_executables() {
         then explain="of --${SCRIPTS_LIB_SH_MODE} in the command line"
         elif test "${SCRIPTS_LIB_SH_MODE}" != 'default'
         then case "${SCRIPTS_LIB_SH_MODE}" in
-             nix | cabal | stack | stack-nix )
+             nix | cabal )
              explain="SCRIPTS_LIB_SH_MODE was inherited from the environment";;
-             * ) fprint "SCRIPTS_LIB_SH_MODE is not among { cabal nix stack stack-nix }, but: ${SCRIPTS_LIB_SH_MODE}"; exit 1;;
+             * ) fprint "SCRIPTS_LIB_SH_MODE is not among { cabal nix }, but: ${SCRIPTS_LIB_SH_MODE}"; exit 1;;
              esac
         elif test -n "${SCRIPTS_LIB_SH_RECURSE_MODE}"
         then SCRIPTS_LIB_SH_MODE=${SCRIPTS_LIB_SH_RECURSE_MODE}
@@ -92,10 +89,7 @@ setup_executables() {
         elif test -d "${__COMMON_SRCROOT}/dist-newstyle"
         then explain="${__COMMON_SRCROOT}/dist-newstyle exists"
              SCRIPTS_LIB_SH_MODE='cabal'
-        elif test -d "${__COMMON_SRCROOT}/.stack-work"
-        then explain="${__COMMON_SRCROOT}/.stack-work exists"
-             SCRIPTS_LIB_SH_MODE='stack'
-        else explain="that is the default (use --cabal or --stack to override)"
+        else explain="that is the default (use --cabal to override)"
              SCRIPTS_LIB_SH_MODE=$default_mode
         fi
         export SCRIPTS_LIB_SH_RECURSE_MODE=${SCRIPTS_LIB_SH_MODE}
@@ -154,8 +148,6 @@ while test -n "$1"
 do case "$1" in
            --nix )                SCRIPTS_LIB_SH_MODE='nix'; cmdline_mode=t;;
            --cabal )              SCRIPTS_LIB_SH_MODE='cabal'; cmdline_mode=t;;
-           --stack )              SCRIPTS_LIB_SH_MODE='stack'; cmdline_mode=t;;
-           --stack-nix )          SCRIPTS_LIB_SH_MODE='stack-nix'; cmdline_mode=t;;
            --no-path-exes )       allow_path_exes=;;
 
            --cls )                echo -en "\ec";;

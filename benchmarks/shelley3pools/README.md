@@ -14,9 +14,8 @@
 
 3. start the benchmark
 
-    * with stack: `./start.sh --stack-nix`
     * with nix: `./start.sh --nix`
-    * default, with cabal: `./start.sh `
+    * default, with cabal: `./start.sh`
 
 4. observe the benchmarking: http://localhost:12799/
 
@@ -40,7 +39,7 @@ done
 
 reconstruct timeline:
 ```
-stack --nix run reconstruct-timeline -- ${NNODES} ${OUTDIR} | tee -a ${OUTDIR}/timeline.txt
+cabal --enable-nix run reconstruct-timeline -- ${NNODES} ${OUTDIR} | tee -a ${OUTDIR}/timeline.txt
 cp timeline.csv ${OUTDIR}/
 ```
 

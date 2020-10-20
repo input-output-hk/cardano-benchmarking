@@ -10,7 +10,7 @@ The CLI command will reset the networkMagic to "42" every time, so we stick to t
 
 (https://github.com/input-output-hk/cardano-node/blob/master/doc/shelley-genesis.md)
 
-CLICMD="stack --nix exec cardano-cli --"
+CLICMD="cabal --enable-nix exec cardano-cli --"
 
 GENESISDIR=genesis01
 

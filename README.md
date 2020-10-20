@@ -4,19 +4,10 @@
 
 This repository contains important tool for `cardano-node` benchmarking - [cardano-tx-generator](https://github.com/input-output-hk/cardano-benchmarking/tree/master/cardano-tx-generator). This is a generator of transactions, both for Byron and Shelley. For more details please [see the project](https://github.com/input-output-hk/cardano-benchmarking/tree/master/cardano-tx-generator).
 
-## Preparation
-
-After first checkout of the repository, update the submodules:
-
-```
-$ git submodule update --init
-```
-
 ## Building on Linux / macOS
 
-Please see our [wiki page](https://github.com/input-output-hk/cardano-benchmarking/wiki/BuildingOnUnix).
+Please see [Unix building instructions](https://github.com/input-output-hk/cardano-benchmarking/wiki/BuildingOnUnix).
 
 ## Building on Windows
 
-Install _MinGW_ (64 bit) ![MinGW](https://raw.githubusercontent.com/wiki/input-output-hk/cardano-benchmarking/mingw64.png) environment and run `stack` in it to compile _cardano-benchmarking_ and all its dependencies.
-(see our [wiki page](https://github.com/input-output-hk/cardano-benchmarking/wiki/BuildingOnWindows))
+Please see [Windows building instructions](https://github.com/input-output-hk/cardano-benchmarking/wiki/BuildingOnWindows).

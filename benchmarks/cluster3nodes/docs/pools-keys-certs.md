@@ -6,7 +6,7 @@
     generate a VRF operational key; and
     issue an operational certificate
 
-CLICMD="stack --nix exec cardano-cli --"
+CLICMD="cabal --enable-nix exec cardano-cli --"
 
 ## make KES (Key Evolving Scheme) and VRF keys
 

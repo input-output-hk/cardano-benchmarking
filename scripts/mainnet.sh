@@ -14,7 +14,7 @@ This syncs the mainnet chain.
 
     --profile MODE        enable profiling of the benchmarked node, where MODE is:
        time space space-module space-closure space-type space-retainer space-bio 
-    --nix / --cabal / --stack  
+    --nix / --cabal
                           pick your poison
     --help                see for more common options
 

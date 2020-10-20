@@ -2,8 +2,8 @@
 
 this summarizes somes of the [Pioneer's testnet docs](https://github.com/input-output-hk/cardano-tutorials/tree/master/pioneers-testnet)
 
-CLICMD="stack --nix exec cardano-cli --"
-NODECMD="stack --nix exec cardano-node --"
+CLICMD="cabal --enable-nix exec cardano-cli --"
+NODECMD="cabal --enable-nix exec cardano-node --"
 
 
 ## start a passive node which follow's the node
