@@ -1,15 +1,16 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC1090
 
-BASEDIR=$(realpath $(dirname "$0"))
-. ${BASEDIR}/../../scripts/common.sh
-. ${BASEDIR}/configuration/parameters
+BASEDIR="$(realpath "$(dirname "$0")")"
+. "$(realpath "${BASEDIR}"/../../scripts/common.sh)"
 
 RTVIEW_EXE=cardano-rt-view
 RTVIEW_ACHIVE=$RTVIEW_EXE.tar.gz
 RTVIEW_DIR=/tmp/rt-view
 
 RTVIEW_WEB_PORT=12799
-RTVIEW_CONFIG=$BASEDIR/configuration/configuration-rt-view.yaml
+CONFIG_DIR=${BASEDIR}/configuration-$era
+RTVIEW_CONFIG=${CONFIG_DIR}/configuration-rt-view.yaml
 
 PIPES_DIR=logs/sockets
 if [ ! -d $PIPES_DIR ]; then

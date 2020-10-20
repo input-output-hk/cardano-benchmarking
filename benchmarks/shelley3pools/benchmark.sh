@@ -46,7 +46,7 @@ done
 
 # 2 run rt-view
 tmux select-window -t :0
-tmux new-window -n RTview \
+tmux new-window -n RTView \
              "${TMUX_ENV_PASSTHROUGH[*]} bash ./run-rt-view.sh; $SHELL"
 sleep 1
 

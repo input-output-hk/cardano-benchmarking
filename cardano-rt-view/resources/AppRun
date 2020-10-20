@@ -1,6 +1,0 @@
-#!/usr/bin/env bash
-
-echo "Starting RTview..."
-
-exec ${APPDIR}/cardano-rt-view-service
-

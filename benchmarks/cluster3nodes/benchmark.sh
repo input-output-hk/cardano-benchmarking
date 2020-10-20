@@ -8,7 +8,7 @@ BASEDIR="$(realpath "$(dirname "$0")")"
 
 create_new_genesis=1
 clean_explorer_db=0
-run_rt_view_service=1
+run_rt_view=1
 run_cluster_nodes=1
 run_second_cluster=1
 run_explorer=0
@@ -18,7 +18,7 @@ while test $# -ge 1
 do case "$1" in
            --no-genesis )        create_new_genesis=0;;
            --explorer )          clean_explorer_db=1; run_explorer=1;;
-           --no-rtview )         run_rt_view_service=0;;
+           --no-rtview )         run_rt_view=0;;
            --no-second-cluster ) run_second_cluster=0;;
            --no-generator )      run_tx_generator=0;;
            * ) break;; esac; shift; done
@@ -65,13 +65,13 @@ fi
 
 node_mode=local
 
-# 3) run rt-view service. If it enabled, it should be launched BEFORE
+# 3) run cardano-rt-view. If it enabled, it should be launched BEFORE
 # the cluster, to avoid TraceForwarderConnectionError.
-if [ $run_rt_view_service -eq 1 ]; then
+if [ $run_rt_view -eq 1 ]; then
   node_mode=rt-view
   tmux select-window -t :0
   tmux new-window -n RTView \
-               "${TMUX_ENV_PASSTHROUGH[*]} ./run_rt_view_service.sh; $SHELL"
+               "${TMUX_ENV_PASSTHROUGH[*]} ./run_rt_view.sh; $SHELL"
   sleep 2
 fi
 
