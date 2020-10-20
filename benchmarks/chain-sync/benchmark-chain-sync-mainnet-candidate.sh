@@ -19,10 +19,7 @@ rm node-0*
 
 date --iso-8601=seconds > STARTTIME
 
-if [[ $1 == 'stack' ]]; then
-  NODE="stack --nix exec cardano-node -- "
-  shift
-elif [[ $1 == 'cabal' ]]; then
+if [[ $1 == 'cabal' ]]; then
   NODE="cabal v2-run exe:cardano-node -- "
   shift
 else

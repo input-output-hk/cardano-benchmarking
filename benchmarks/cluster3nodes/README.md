@@ -1,6 +1,6 @@
-## run the benchmark using 'stack'
+## run the benchmark
 
-`./start.sh --stack-nix`
+`./start.sh`
 
 
 ## analyse timeline of run
@@ -18,7 +18,7 @@ done
 
 reconstruct timeline:
 ```
-stack --nix run reconstruct-timeline -- ${NNODES} ${OUTDIR} | tee -a ${OUTDIR}/timeline.txt
+cabal --enable-nix run reconstruct-timeline -- ${NNODES} ${OUTDIR} | tee -a ${OUTDIR}/timeline.txt
 cp timeline.csv ${OUTDIR}/
 ```
 

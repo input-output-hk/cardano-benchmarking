@@ -11,7 +11,7 @@ Make some payment and stake addresses
                   account for pool rewards
 
 ## settings
-CLICMD="stack --nix exec cardano-cli --"
+CLICMD="cabal --enable-nix exec cardano-cli --"
 
 GENESISDIR=configuration/genesis
 MAGIC=42

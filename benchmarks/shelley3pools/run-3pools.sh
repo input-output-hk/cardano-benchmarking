@@ -4,7 +4,6 @@ BASEDIR=$(realpath $(dirname "$0"))
 . ${BASEDIR}/../../scripts/common.sh
 . ${BASEDIR}/configuration/parameters
 
-#NODECMD="stack --nix exec cardano-node --"
 NODECMD=${NODECMD:-"run cardano-node"}
 
 # the host address and interface the node listens:

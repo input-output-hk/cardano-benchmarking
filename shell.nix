@@ -34,7 +34,6 @@ let
     # These programs will be available inside the nix-shell.
     buildInputs = with haskellPackages; [
       cabal-install
-      stack
       stylish-haskell
       nix
       niv

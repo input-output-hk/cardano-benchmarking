@@ -70,10 +70,10 @@ It means that `cardano-tx-submit-webapi` is listening to the port `8101` and rea
 
 ## Run transaction Generator
 
-Go to `cardano-node` repository again and run transaction generator. For example, if you have built it using `stack`:
+Go to `cardano-node` repository again and run transaction generator. For example, if you have built it using `cabal`:
 
 ```
-$ stack exec -- cardano-cli generate-txs --config /path-to/tx-gen-log-config.yaml --signing-key /path-to/cardano-node/configuration/genesis/delegate-keys.000.key --delegation-certificate /path-to/cardano-node/configuration/genesis/delegation-cert.000.json --genesis-file /path-to/cardano-node/configuration/genesis/genesis.json --socket-path /path-to/cardano-node/socket/0 --num-of-txs 100 --add-tx-size 0 --inputs-per-tx 1 --outputs-per-tx 1 --tx-fee 10000000 --tps 2 --sig-key /path-to/cardano-node/configuration/genesis/delegate-keys.000.key --sig-key /path-to/cardano-node/configuration/genesis/delegate-keys.001.key --sig-key /path-to/cardano-node/configuration/genesis/delegate-keys.002.key --submit-to-api "http://localhost:8101/api/submit/tx" --target-node '("127.0.0.1",3000)'
+$ cabal exec -- cardano-cli generate-txs --config /path-to/tx-gen-log-config.yaml --signing-key /path-to/cardano-node/configuration/genesis/delegate-keys.000.key --delegation-certificate /path-to/cardano-node/configuration/genesis/delegation-cert.000.json --genesis-file /path-to/cardano-node/configuration/genesis/genesis.json --socket-path /path-to/cardano-node/socket/0 --num-of-txs 100 --add-tx-size 0 --inputs-per-tx 1 --outputs-per-tx 1 --tx-fee 10000000 --tps 2 --sig-key /path-to/cardano-node/configuration/genesis/delegate-keys.000.key --sig-key /path-to/cardano-node/configuration/genesis/delegate-keys.001.key --sig-key /path-to/cardano-node/configuration/genesis/delegate-keys.002.key --submit-to-api "http://localhost:8101/api/submit/tx" --target-node '("127.0.0.1",3000)'
 ```
 
 In this example 100 transactions will be generated. Please note that this number **does not** include genesis transaction and splitting transactions, so technically **103** tranactions will be generated: 1 genesis transaction + 2 splitting transactions + 100 main transactions. You can see it in the output of `cardano-tx-submit-webapi`:
