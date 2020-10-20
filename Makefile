@@ -25,7 +25,7 @@ help:
 EXES=cardano-node cardano-cli cardano-tx-generator
 
 ###
-###
+### Dev env
 ###
 nix:                      MODE=nix
 cabal:                    MODE=cabal
@@ -54,10 +54,22 @@ setup:
 build: setup
 	cabal v2-build ${CABAL_OPTIONS} $(foreach exe,${EXES},${exe}:exe:${exe})
 
+###
+### Cluster
+###
+genesis:
+	cd ./benchmarks/shelley3pools; ./prepare-genesis.sh --${MODE}
+
 recluster: EXTRA_OPTS+=--reuse-genesis
 recluster: cluster
 cluster: build
 	cd ./benchmarks/shelley3pools; ./start.sh --${MODE} ${EXTRA_OPTS}
+
+###
+### Analyses
+###
+leads leaderships:
+	./benchmarks/shelley3pools/analyse-leaderships.sh
 
 ###
 ###

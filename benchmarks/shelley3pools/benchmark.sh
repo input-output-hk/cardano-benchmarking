@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC1090
 
 # preparation
 BASEDIR=$(realpath $(dirname "$0"))
