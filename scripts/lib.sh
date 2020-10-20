@@ -195,8 +195,8 @@ actually_run()
 
         ## Handle --build-only (ugh..)
         if test -n "${build_only}"
-        then local rob='build' dash2= stackprep="$pkg:exe:"
-        else local rob='run'   dash2="--" stackprep=
+        then local rob='build' dash2=
+        else local rob='run'   dash2="--"
         fi
 
         local CMD=()

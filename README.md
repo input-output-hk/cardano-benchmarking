@@ -2,7 +2,7 @@
 
 # cardano-benchmarking
 
-This repository contains important tool for `cardano-node` benchmarking - [cardano-tx-generator](https://github.com/input-output-hk/cardano-benchmarking/tree/master/cardano-tx-generator). This is a generator of transactions, both for Byron and Shelley. For more details please [see the project](https://github.com/input-output-hk/cardano-benchmarking/tree/master/cardano-tx-generator).
+This repository contains important tool for `cardano-node` benchmarking - [cardano-tx-generator](https://github.com/input-output-hk/cardano-benchmarking/tree/master/cardano-tx-generator). This is a generator of transactions, both for Byron and Shelley protocols. For more details please [see the project](https://github.com/input-output-hk/cardano-benchmarking/tree/master/cardano-tx-generator).
 
 ## Building on Linux / macOS
 
