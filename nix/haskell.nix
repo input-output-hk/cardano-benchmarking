@@ -7,6 +7,7 @@
 , haskell-nix
 , buildPackages
 , cardanoNodeHaskellPackages
+, cardanoNodeEventlogHaskellPackages
 , config ? {}
 # GHC attribute name
 , compiler ? config.haskellNix.compiler or "ghc865"

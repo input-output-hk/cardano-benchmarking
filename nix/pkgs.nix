@@ -8,6 +8,7 @@ pkgs: _: with pkgs; {
       haskell-nix
       buildPackages
       cardanoNodeHaskellPackages
+      cardanoNodeEventlogHaskellPackages
       ;
   };
 }
