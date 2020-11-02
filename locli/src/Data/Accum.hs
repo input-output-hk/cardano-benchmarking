@@ -8,6 +8,8 @@
 module Data.Accum
   ( Accum(..)
   , mkAccum
+  , divAccum
+  , mulAccum
   , updateAccum
   , zeroUTCTime
   -- Various accumulators
@@ -31,6 +33,16 @@ data Accum a b
 
 mkAccum :: a -> b -> (NominalDiffTime -> a -> a -> b) -> Accum a b
 mkAccum a b update = Accum update zeroUTCTime a b
+
+-- | Given an 'Accum', produce one that returns results downscaled by N.
+divAccum :: Accum a Word64 -> Word64 -> Accum a Word64
+divAccum a@Accum{..} n =
+  a { aUpdate = \dt prev val -> aUpdate dt prev val `div` n }
+
+-- | Given an 'Accum', produce one that returns results upscaled by N.
+mulAccum :: Accum a Word64 -> Word64 -> Accum a Word64
+mulAccum a@Accum{..} n =
+  a { aUpdate = \dt prev val -> aUpdate dt prev val * n }
 
 updateAccum :: UTCTime -> a -> Accum a b -> Accum a b
 updateAccum now val a@Accum{..} =

@@ -8,6 +8,8 @@ module Cardano.Unlog.Resources
   , extractResAccums
   , ResDistribProjections
   , computeResDistrib
+  , ResContinuity
+  , discardObsoleteValues
   -- * Re-exports
   , Resources(..)
   ) where
@@ -32,9 +34,9 @@ mkResAccums =
   , rCentiMut    = mkAccumTicksShare
   , rGcsMajor    = mkAccumDelta
   , rGcsMinor    = mkAccumDelta
-  , rAlloc       = mkAccumDelta
-  , rLive        = mkAccumNew
-  , rRSS         = mkAccumNew
+  , rAlloc       = mkAccumDelta `divAccum` 1024
+  , rLive        = mkAccumNew   `divAccum` 1024
+  , rRSS         = mkAccumNew   `divAccum` 1024
   , rCentiBlkIO  = mkAccumTicksShare
   , rThreads     = mkAccumNew
   }
@@ -47,16 +49,34 @@ updateResAccums now rs ra =
 extractResAccums :: ResAccums -> Resources Word64
 extractResAccums = (aCurrent <$>)
 
-type ResDistribProjections a = Resources (a -> Word64)
+type ResDistribProjections a = Resources (a -> Maybe Word64)
 
 computeResDistrib ::
   forall a
-  .  [Float]
+  .  [PercSpec Float]
   -> ResDistribProjections a
   -> Seq.Seq a
   -> Resources (Distribution Float Word64)
 computeResDistrib percentiles projs xs =
   compDist <$> projs
  where
-   compDist :: (a -> Word64) -> Distribution Float Word64
-   compDist proj = computeDistribution percentiles (proj <$> xs)
+   compDist :: (a -> Maybe Word64) -> Distribution Float Word64
+   compDist proj = computeDistribution percentiles
+     (Seq.fromList . catMaybes . toList $ proj <$> xs)
+
+type ResContinuity a = Resources (a -> Maybe a)
+
+discardObsoleteValues :: ResContinuity a
+discardObsoleteValues =
+  Resources
+  { rCentiCpu    = const Nothing
+  , rCentiGC     = const Nothing
+  , rCentiMut    = const Nothing
+  , rGcsMajor    = const Nothing
+  , rGcsMinor    = const Nothing
+  , rAlloc       = const Nothing
+  , rLive        = Just
+  , rRSS         = Just
+  , rCentiBlkIO  = const Nothing
+  , rThreads     = Just
+  }

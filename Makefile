@@ -68,8 +68,14 @@ cluster: build
 ###
 ### Analyses
 ###
+SHELLEY3POOLS_LOGS=benchmarks/shelley3pools/logs
+SHELLEY3POOLS_GENESIS=benchmarks/shelley3pools/configuration/genesis-shelley/genesis.json
+SHELLEY3POOLS_NODES=node-1 node-2 node-3
 leads leaderships:
-	./benchmarks/shelley3pools/analyse-leaderships.sh
+	./benchmarks/shelley3pools/analyse-leaderships.sh ${SHELLEY3POOLS_LOGS} ${SHELLEY3POOLS_GENESIS} ${SHELLEY3POOLS_NODES}
+
+run-leads:
+	./benchmarks/shelley3pools/analyse-leaderships.sh 'runs-last'
 
 ###
 ###

@@ -116,14 +116,14 @@ defaultBackends:
 # be specified in the defaults below or overidden on a per-scribe basis here.
 setupScribes:
   - scKind: FileSK
-    scName: "logs/node-3.json"
+    scName: "logs/analysis/logs-node-3/node-3.json"
     scFormat: ScJson
 
 # For the Katip logging backend this specifies the default scribes that trace
 # output is sent to if it is not configured to be sent to other scribes.
 defaultScribes:
   - - FileSK
-    - "logs/node-3.json"
+    - "logs/analysis/logs-node-3/node-3.json"
 
 # The default file rotation settings for katip scribes, unless overridden
 # in the setupScribes above for specific scribes.

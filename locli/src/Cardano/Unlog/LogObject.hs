@@ -37,15 +37,15 @@ readLogObjectStream (JsonLogfile f) =
     <&> catMaybes . fmap AE.decode . LBS.split (fromIntegral $ fromEnum '\n')
 
 newtype JsonLogfile
-  = JsonLogfile FilePath
+  = JsonLogfile { unJsonLogfile :: FilePath }
   deriving (Show, Eq)
 
 newtype JsonOutputFile
-  = JsonOutputFile FilePath
+  = JsonOutputFile { unJsonOutputFile :: FilePath }
   deriving (Show, Eq)
 
 newtype TextOutputFile
-  = TextOutputFile FilePath
+  = TextOutputFile { unTextOutputFile :: FilePath }
   deriving (Show, Eq)
 
 data LogObject
@@ -68,6 +68,7 @@ interpreters = Map.fromList
     \v -> LOTraceStartLeadershipCheck
             <$> v .: "slot"
             <*> v .: "utxoSize"
+            <*> v .: "chainDensity"
 
   , (,) "TraceNodeIsLeader" $
     \v -> LOTraceNodeIsLeader
@@ -89,7 +90,7 @@ logObjectStreamInterpreterKeys :: [Text]
 logObjectStreamInterpreterKeys = Map.keys interpreters
 
 data LOBody
-  = LOTraceStartLeadershipCheck !Word64 !Word64
+  = LOTraceStartLeadershipCheck !Word64 !Word64 !Float
   | LOTraceNodeIsLeader !Word64
   | LOResources !ResourceStats
   | LOMempoolTxs !Word64

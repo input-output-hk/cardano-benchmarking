@@ -1,6 +1,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
@@ -15,6 +16,7 @@ module Cardano.Unlog.Analysis
 import           Prelude (error)
 import           Cardano.Prelude
 
+import           Control.Applicative (ZipList(..))
 import           Control.Monad.Trans.Except (ExceptT)
 import           Control.Monad.Trans.Except.Extra (firstExceptT)
 
@@ -60,9 +62,9 @@ renderAnalysisCmdError cmd err =
 --
 
 runAnalysisCommand :: AnalysisCommand -> ExceptT AnalysisCmdError IO ()
-runAnalysisCommand (LeadershipChecks startTime mJDumpFile mTDumpFile logfiles) =
+runAnalysisCommand (LeadershipChecks startTime mJDumpFile mTDumpFile mJOutFile logfiles) =
   firstExceptT AnalysisCmdError $
-    runLeadershipCheckCmd startTime mJDumpFile mTDumpFile logfiles
+    runLeadershipCheckCmd startTime mJDumpFile mTDumpFile mJOutFile logfiles
 runAnalysisCommand SubstringKeys =
   liftIO $ mapM_ putStrLn logObjectStreamInterpreterKeys
 
@@ -70,30 +72,45 @@ runLeadershipCheckCmd ::
      ChainParams
   -> Maybe JsonOutputFile
   -> Maybe TextOutputFile
+  -> Maybe JsonOutputFile
   -> [JsonLogfile]
   -> ExceptT Text IO ()
 runLeadershipCheckCmd ChainParams{..}
- mLeadershipsDumpFile mPrettyDumpFile logfiles = do
+ mLeadershipsDumpFile mPrettyDumpFile mJOutFile logfiles = do
   objs :: [LogObject] <- liftIO $
     concat <$> mapM readLogObjectStream logfiles
   -- liftIO $ withFile "lodump.json" WriteMode $ \hnd ->
   --   forM_ objs $ LBS.hPutStrLn hnd . Aeson.encode
-  leads <- computeLeadershipStats objs
+  leads' <- computeLeadershipStats objs
   liftIO $ do
     case mLeadershipsDumpFile of
       Nothing -> pure ()
       Just (JsonOutputFile f) ->
         withFile f WriteMode $ \hnd ->
-          forM_ leads $ LBS.hPutStrLn hnd . Aeson.encode
+          forM_ leads' $ LBS.hPutStrLn hnd . Aeson.encode
+    let cleanLeads = cleanupSlotStats leads'
+        summary :: Summary
+        summary = analysisSummary cleanLeads
+        analysisOutput :: LBS.ByteString
+        analysisOutput = Aeson.encode summary
     case mPrettyDumpFile of
       Nothing -> pure ()
       Just (TextOutputFile f) ->
-        withFile f WriteMode $ \hnd ->
-          forM_ (zip (toList leads) [(0 :: Int)..]) $ \(l, i) -> do
-            when (i `mod` 20 == 0) $
+        withFile f WriteMode $ \hnd -> do
+          hPutStrLn hnd . Text.pack $
+            printf "--- input: %s"
+                   (intercalate " " $ unJsonLogfile <$> logfiles)
+          forM_ (toDistribLines summary) $
+            hPutStrLn hnd
+          forM_ (zip (toList cleanLeads) [(0 :: Int)..]) $ \(l, i) -> do
+            when (i `mod` 33 == 0) $
               hPutStrLn hnd leadershipHeader
             hPutStrLn hnd $ toLeadershipLine l
-    LBS.putStrLn $ Aeson.encode $ analysisSummary leads
+    case mJOutFile of
+      Nothing -> LBS.putStrLn analysisOutput
+      Just (JsonOutputFile f) ->
+        withFile f WriteMode $ \hnd ->
+          LBS.hPutStrLn hnd analysisOutput
  where
    slotStart :: Word64 -> UTCTime
    slotStart = flip Time.addUTCTime cpSystemStart . (* cpSlotLength) . fromIntegral
@@ -116,7 +133,7 @@ runLeadershipCheckCmd ChainParams{..}
 
    go :: Analysis -> LogObject -> ExceptT Text IO Analysis
    go a@Analysis{aLeads=cur:rSLs, ..} = \case
-     lo@LogObject{loAt, loBody=LOTraceStartLeadershipCheck slot _} ->
+     lo@LogObject{loAt, loBody=LOTraceStartLeadershipCheck slot _ _} ->
        if slSlot cur > slot
        then pure $
             a { aLeads = cur
@@ -144,7 +161,8 @@ runLeadershipCheckCmd ChainParams{..}
      LogObject{loAt, loBody=LOResources rs} -> pure $
        -- Update resource stats accumulators & record values current slot.
        a { aResAccums = accs
-         , aLeads = cur { slResources = extractResAccums accs
+         , aResTimestamp = loAt
+         , aLeads = cur { slResources = Just <$> extractResAccums accs
                         } : rSLs
          }
       where accs = updateResAccums loAt rs aResAccums
@@ -157,8 +175,8 @@ runLeadershipCheckCmd ChainParams{..}
    go a = pure . const a
 
    updateOnNewSlot :: LogObject -> Analysis -> Analysis
-   updateOnNewSlot LogObject{loAt, loBody=LOTraceStartLeadershipCheck slot utxo} a =
-     extendAnalysis slot loAt 1 utxo a
+   updateOnNewSlot LogObject{loAt, loBody=LOTraceStartLeadershipCheck slot utxo density} a =
+     extendAnalysis slot loAt 1 utxo density a
    updateOnNewSlot _ _ =
      error "Internal invariant violated: updateSlot called for a non-LOTraceStartLeadershipCheck LogObject."
 
@@ -166,12 +184,14 @@ runLeadershipCheckCmd ChainParams{..}
    patchSlotCheckGap 0 _ a = a
    patchSlotCheckGap n slot a@Analysis{aLeads=cur:_,..} =
      patchSlotCheckGap (n - 1) (slot + 1) $
-     extendAnalysis slot (slotStart slot) 0 (slUtxoSize cur) a
+     extendAnalysis slot (slotStart slot) 0 (slUtxoSize cur) (slDensity cur) a
    patchSlotCheckGap _ _ _ =
      error "Internal invariant violated: patchSlotCheckGap called with empty Analysis chain."
 
-   extendAnalysis :: Word64 -> UTCTime -> Word64 -> Word64 -> Analysis -> Analysis
-   extendAnalysis slot time checks utxo a@Analysis{..} =
+   extendAnalysis ::
+        Word64 -> UTCTime -> Word64 -> Word64 -> Float
+     -> Analysis -> Analysis
+   extendAnalysis slot time checks utxo density a@Analysis{..} =
      let (epoch, epochSlot) = slot `divMod` cpEpochSlots in
        a { aLeads = SlotStats
            { slSlot        = slot
@@ -183,12 +203,17 @@ runLeadershipCheckCmd ChainParams{..}
              -- Updated as we see repeats:
            , slCountChecks = checks
            , slCountLeads  = 0
-           , slSpan        = realToFrac (0 :: Int)
+           , slSpan        = time `Time.diffUTCTime` slotStart slot
            , slMempoolTxs  = aMempoolTxs
            , slUtxoSize    = utxo
-           , slResources   = extractResAccums aResAccums
+           , slDensity     = density
+           , slResources   = maybeDiscard
+                             <$> discardObsoleteValues
+                             <*> extractResAccums aResAccums
            } : aLeads
          }
+       where maybeDiscard :: (Word64 -> Maybe Word64) -> Word64 -> Maybe Word64
+             maybeDiscard f = f
 
 data Summary
   = Summary
@@ -197,6 +222,7 @@ data Summary
     , sMissDistrib       :: !(Distribution Float Float)
     , sLeadsDistrib      :: !(Distribution Float Word64)
     , sUtxoDistrib       :: !(Distribution Float Word64)
+    , sDensityDistrib    :: !(Distribution Float Float)
     , sCheckspanDistrib  :: !(Distribution Float NominalDiffTime)
     , sResourceDistribs  :: !(Resources (Distribution Float Word64))
     }
@@ -205,6 +231,7 @@ data Summary
 instance ToJSON Summary where
   toJSON Summary{..} = Aeson.Array $ V.fromList
     [ extendObject "kind" "utxo"      $ toJSON sUtxoDistrib
+    , extendObject "kind" "density"   $ toJSON sDensityDistrib
     , extendObject "kind" "leads"     $ toJSON sLeadsDistrib
     , extendObject "kind" "checkspan" $ toJSON sCheckspanDistrib
     , extendObject "kind" "misses"    $ toJSON sMissDistrib
@@ -213,10 +240,22 @@ instance ToJSON Summary where
     , extendObject "kind" "rss"       $ toJSON (rRSS      sResourceDistribs)
     ]
 
+-- | Initial and trailing data are noisy outliers: drop that.
+--
+--   The initial part is useless until the node actually starts
+--   to interact with the blockchain, so we drop all slots until
+--   they start getting non-zero chain density reported.
+--
+--   On the trailing part, we drop everything since the last leadership check.
+cleanupSlotStats :: Seq SlotStats -> Seq SlotStats
+cleanupSlotStats =
+  Seq.dropWhileL ((== 0) . slDensity) .
+  Seq.dropWhileR ((== 0) . slCountChecks)
+
 analysisSummary :: Seq SlotStats -> Summary
 -- Insist on having at least three items: first, content and tail:
 --   0th/last 5 slots are transient
-analysisSummary (_ :<| (((((slots :|> _) :|> _) :|> _) :|> _) :|> _)) =
+analysisSummary slots =
   Summary
   { sMaxChecks        = maxChecks
   , sSlotMisses       = misses
@@ -225,13 +264,24 @@ analysisSummary (_ :<| (((((slots :|> _) :|> _) :|> _) :|> _) :|> _)) =
       computeDistribution pctiles (slCountLeads <$> slots)
   , sUtxoDistrib      =
       computeDistribution pctiles (slUtxoSize <$> slots)
+  , sDensityDistrib   =
+      computeDistribution pctiles (slDensity <$> slots)
   , sCheckspanDistrib =
       computeDistribution pctiles (slSpan <$> slots)
   , sResourceDistribs =
       computeResDistrib pctiles resDistProjs slots
   }
  where
-   pctiles          = [0.5, 0.75, 0.95, 0.99]
+   pctiles = sortBy (compare `on` psFrac)
+     [ PercAnon 0.01, PercAnon 0.05
+     , PercAnon 0.1, PercAnon 0.2, PercAnon 0.3, PercAnon 0.4
+     , PercAnon 0.5, PercAnon 0.6, PercAnon 0.7, PercAnon 0.8, PercAnon 0.9
+     , PercAnon 0.95, PercAnon 0.97, PercAnon 0.98, PercAnon 0.99
+     , PercAnon 0.995, PercAnon 0.997, PercAnon 0.998, PercAnon 0.999
+     , PercAnon 0.9995, PercAnon 0.9997, PercAnon 0.9998, PercAnon 0.9999
+     , psNamedAbove "CPU85" 85 . catMaybes . toList $
+         rCentiCpu . slResources <$> slots
+     ]
 
    checkCounts      = slCountChecks <$> slots
    maxChecks        = maximum checkCounts
@@ -254,13 +304,13 @@ analysisSummary (_ :<| (((((slots :|> _) :|> _) :|> _) :|> _) :|> _)) =
 
    missRatio :: Word64 -> Float
    missRatio = (/ fromIntegral maxChecks) . fromIntegral
-analysisSummary _ = zeroSummary
 
 data Analysis
   = Analysis
-    { aResAccums  :: !ResAccums
-    , aMempoolTxs :: !Word64
-    , aLeads      :: ![SlotStats]
+    { aResAccums    :: !ResAccums
+    , aResTimestamp :: !UTCTime
+    , aMempoolTxs   :: !Word64
+    , aLeads        :: ![SlotStats]
     }
 
 data SlotStats
@@ -276,46 +326,106 @@ data SlotStats
     , slSpan        :: !NominalDiffTime
     , slMempoolTxs  :: !Word64
     , slUtxoSize    :: !Word64
-    , slResources   :: !(Resources Word64)
+    , slDensity     :: !Float
+    , slResources   :: !(Resources (Maybe Word64))
     }
   deriving (Generic, Show)
 
 instance ToJSON SlotStats
 
-leadershipHeader :: Text
+toDistribLines :: Summary -> [Text]
+toDistribLines Summary{..} =
+  (statsHeader :) $ getZipList $
+  distribLine
+    <$> ZipList (pctSpec <$> dPercentiles sMissDistrib)
+    <*> ZipList (max 1 . ceiling . (* fromIntegral (dCount sMissDistrib))
+                 . (1.0 -) . pctFrac
+                     <$> dPercentiles sMissDistrib)
+    <*> ZipList (pctSpans  <$> dPercentiles sMissDistrib)
+    <*> ZipList (pctSample <$> dPercentiles sMissDistrib)
+    <*> ZipList (pctSample <$> dPercentiles sCheckspanDistrib)
+    <*> ZipList (pctSample <$> dPercentiles sDensityDistrib)
+    <*> ZipList (pctSample <$> dPercentiles (rCentiCpu sResourceDistribs))
+    <*> ZipList (pctSample <$> dPercentiles (rCentiGC sResourceDistribs))
+    <*> ZipList (pctSample <$> dPercentiles (rCentiMut sResourceDistribs))
+    <*> ZipList (pctSample <$> dPercentiles (rGcsMajor sResourceDistribs))
+    <*> ZipList (pctSample <$> dPercentiles (rGcsMinor sResourceDistribs))
+    -- <*> ZipList (pctSample <$> dPercentiles ( sResourceDistribs))
+    <*> ZipList (pctSample <$> dPercentiles (rLive sResourceDistribs))
+    <*> ZipList (pctSample <$> dPercentiles (rAlloc sResourceDistribs))
+    <*> ZipList (pctSample <$> dPercentiles (rRSS sResourceDistribs))
+    <*> ZipList (pctSpans  <$> dPercentiles (rCentiCpu sResourceDistribs))
+    <*> ZipList (pctSpanLenAvg  <$> dPercentiles (rCentiCpu sResourceDistribs))
+    <*> ZipList (pctSpanLenMax  <$> dPercentiles (rCentiCpu sResourceDistribs))
+ where
+   distribLine ::
+        PercSpec Float -> Int -> Int
+     -> Float -> NominalDiffTime -> Float
+     -> Word64 -> Word64 -> Word64
+     -> Word64 -> Word64
+     -> Word64 -> Word64 -> Word64
+     -> Int -> Int -> Int -> Text
+   distribLine ps count misSp miss chkdt' dens cpu gc mut majg ming liv alc rss cpuSp cpuSpAvg cpuSpMax = Text.pack $
+     printf (Text.unpack statsFormat)
+    (renderPercSpec 6 ps) count misSp miss chkdt dens cpu gc mut majg ming     liv alc rss cpuSp cpuSpAvg cpuSpMax
+    where chkdt = show chkdt' :: Text
+
+statsHeader, statsFormat, leadershipHeader :: Text
+statsHeader =
+  "%tile Count MissSp MissR  CheckΔt  Dens  CPU  GC MUT Maj Min         Live   Alloc   RSS    CPU% Spans/Avg/MaxLen"
+statsFormat =
+  "%6s %5d %4d %0.2f    %6s  %0.3f  %3d %3d %3d %2d %3d       %8d %8d %7d %4d %4d %4d"
 leadershipHeader =
-  "abs.  slot     lead  leader check    %CPU      GCs   Produc-   Memory use, kB   Alloc rate Mempool  UTxO   Absolute" <>"\n"<>
-  "slot#   epoch checks ships  span  all/GC/mut maj/min tivity  Live   Alloc   RSS  / mut sec  txs  entries   slot start time"
+  "abs.  slot     lead  leader check chain       %CPU      GCs   Produc-   Memory use, kB      Alloc rate  Mempool  UTxO   Absolute" <>"\n"<>
+  "slot#   epoch checks ships  span  density all/ GC/mut maj/min tivity  Live   Alloc   RSS     / mut sec   txs  entries   slot start time"
 
 toLeadershipLine :: SlotStats -> Text
 toLeadershipLine SlotStats{..} = Text.pack $
-  printf "%5d %4d:%2d %4d    %2d %8s %3d %2d  %2d  %2d %2d  %0.2f %7d %7d %7d %7d %4d %9d  %s"
-    slSlot
-    slEpochSlot
-    slEpoch
-    slCountChecks
-    slCountLeads
-    (show slSpan :: Text)
-    (rCentiCpu slResources)
-    (rCentiGC  slResources)
-    (rCentiMut slResources)
-    (rGcsMajor slResources)
-    (rGcsMinor slResources)
-    (fromIntegral (rCentiMut slResources) / fromIntegral (rCentiCpu slResources) :: Float)
-    (rLive     slResources `div` 1024)
-    (rAlloc    slResources `div` 1024)
-    (rRSS      slResources * 4)
-    ((ceiling :: Float -> Int) $ fromIntegral (100 * rAlloc slResources) / fromIntegral (rCentiMut slResources * 1024))
-    slMempoolTxs
-    slUtxoSize
-    (show slStart :: Text)
+  printf "%5d %4d:%2d %4d    %2d %8s  %0.3f  %3s %3s %3s %2s %3s   %4s %7s %7s %7s % 8s %4d %9d  %s"
+          sl epsl epo chks  lds span dens cpu gc mut majg ming   pro liv alc rss atm mpo utx star
+ where sl   = slSlot
+       epsl = slEpochSlot
+       epo  = slEpoch
+       chks = slCountChecks
+       lds  = slCountLeads
+       span = show slSpan :: Text
+       cpu  = d 3 $ rCentiCpu slResources
+       dens = slDensity
+       gc   = d 2 $ rCentiGC  slResources
+       mut  = d 2 $ rCentiMut slResources
+       majg = d 2 $ rGcsMajor slResources
+       ming = d 2 $ rGcsMinor slResources
+       pro  = f 2 $ calcProd <$> (fromIntegral <$> rCentiMut slResources :: Maybe Float)
+                             <*> (fromIntegral <$> rCentiCpu slResources)
+       liv  = d 7 (rLive     slResources)
+       alc  = d 7 (rAlloc    slResources)
+       rss  = d 7 (rRSS      slResources)
+       atm  = d 8 $
+              (ceiling :: Float -> Int)
+              <$> ((/) <$> (fromIntegral . (100 *) <$> rAlloc slResources)
+                       <*> (fromIntegral . max 1 . (1024 *) <$> rCentiMut slResources))
+       mpo  = slMempoolTxs
+       utx  = slUtxoSize
+       star = show slStart :: Text
+
+       calcProd :: Float -> Float -> Float
+       calcProd mut' cpu' = if cpu' == 0 then 1 else mut' / cpu'
+
+       d, f :: PrintfArg a => Int -> Maybe a -> Text
+       d width = \case
+         Just x  -> Text.pack $ printf ("%"<>show width<>"d") x
+         Nothing -> mconcat (replicate width "-")
+       f width = \case
+         Just x  -> Text.pack $ printf ("%0."<>show width<>"f") x
+         Nothing -> mconcat (replicate width "-")
 
 zeroAnalysis :: Analysis
 zeroAnalysis =
   Analysis
-  { aResAccums  = mkResAccums
-  , aMempoolTxs = 0
-  , aLeads      = [zeroLeadership]
+  { aResAccums    = mkResAccums
+  , aResTimestamp = zeroUTCTime
+  , aMempoolTxs   = 0
+  , aLeads        = [zeroLeadership]
   }
  where
    zeroLeadership =
@@ -331,17 +441,6 @@ zeroAnalysis =
      , slSpan = realToFrac (0 :: Int)
      , slMempoolTxs = 0
      , slUtxoSize = 0
-     , slResources = pure 0
+     , slDensity = 0
+     , slResources = pure Nothing
      }
-
-zeroSummary :: Summary
-zeroSummary =
-  Summary
-  { sMaxChecks        = 0
-  , sSlotMisses       = mempty
-  , sMissDistrib      = zeroDistribution
-  , sLeadsDistrib     = zeroDistribution
-  , sUtxoDistrib      = zeroDistribution
-  , sCheckspanDistrib = zeroDistribution
-  , sResourceDistribs = pure zeroDistribution
-  }
