@@ -46,8 +46,10 @@ locli_analyse_cmd_mach_args() {
 
         echo --dump-leaderships
         echo "$logdir"/analysis/logs-"$mach".leaderships.json
-        echo --dump-pretty-timeline
-        echo "$logdir"/analysis/logs-"$mach".leaderships.pretty.json
+        echo --pretty-timeline
+        echo "$logdir"/analysis/logs-"$mach".leaderships.pretty.txt
+        echo --export-timeline
+        echo "$logdir"/analysis/logs-"$mach".leaderships.export.txt
         echo --analysis-output
         echo "$logdir"/analysis/logs-"$mach".leadership-analysis.json
 }

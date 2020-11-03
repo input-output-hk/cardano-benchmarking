@@ -62,9 +62,9 @@ renderAnalysisCmdError cmd err =
 --
 
 runAnalysisCommand :: AnalysisCommand -> ExceptT AnalysisCmdError IO ()
-runAnalysisCommand (LeadershipChecks startTime mJDumpFile mTDumpFile mJOutFile logfiles) =
+runAnalysisCommand (LeadershipChecks startTime mJDumpFile mPDumpFile mEDumpFile mJOutFile logfiles) =
   firstExceptT AnalysisCmdError $
-    runLeadershipCheckCmd startTime mJDumpFile mTDumpFile mJOutFile logfiles
+    runLeadershipCheckCmd startTime mJDumpFile mPDumpFile mEDumpFile mJOutFile logfiles
 runAnalysisCommand SubstringKeys =
   liftIO $ mapM_ putStrLn logObjectStreamInterpreterKeys
 
@@ -72,46 +72,58 @@ runLeadershipCheckCmd ::
      ChainParams
   -> Maybe JsonOutputFile
   -> Maybe TextOutputFile
+  -> Maybe TextOutputFile
   -> Maybe JsonOutputFile
   -> [JsonLogfile]
   -> ExceptT Text IO ()
 runLeadershipCheckCmd ChainParams{..}
- mLeadershipsDumpFile mPrettyDumpFile mJOutFile logfiles = do
+ mLeadershipsDumpFile mPrettyDumpFile mExportDumpFile mJOutFile logfiles = do
   objs :: [LogObject] <- liftIO $
     concat <$> mapM readLogObjectStream logfiles
   -- liftIO $ withFile "lodump.json" WriteMode $ \hnd ->
   --   forM_ objs $ LBS.hPutStrLn hnd . Aeson.encode
-  leads' <- computeLeadershipStats objs
+  noisyLeads <- computeLeadershipStats objs
   liftIO $ do
     case mLeadershipsDumpFile of
       Nothing -> pure ()
       Just (JsonOutputFile f) ->
         withFile f WriteMode $ \hnd ->
-          forM_ leads' $ LBS.hPutStrLn hnd . Aeson.encode
-    let cleanLeads = cleanupSlotStats leads'
+          forM_ noisyLeads $ LBS.hPutStrLn hnd . Aeson.encode
+    let leads = cleanupSlotStats noisyLeads
         summary :: Summary
-        summary = analysisSummary cleanLeads
+        summary = analysisSummary leads
         analysisOutput :: LBS.ByteString
         analysisOutput = Aeson.encode summary
-    case mPrettyDumpFile of
-      Nothing -> pure ()
-      Just (TextOutputFile f) ->
-        withFile f WriteMode $ \hnd -> do
-          hPutStrLn hnd . Text.pack $
-            printf "--- input: %s"
-                   (intercalate " " $ unJsonLogfile <$> logfiles)
-          forM_ (toDistribLines summary) $
-            hPutStrLn hnd
-          forM_ (zip (toList cleanLeads) [(0 :: Int)..]) $ \(l, i) -> do
-            when (i `mod` 33 == 0) $
-              hPutStrLn hnd leadershipHeader
-            hPutStrLn hnd $ toLeadershipLine l
+    maybe (pure ()) (renderSummaryPretty False leads summary logfiles) mPrettyDumpFile
+    maybe (pure ()) (renderSummaryExport  True leads summary logfiles) mExportDumpFile
     case mJOutFile of
       Nothing -> LBS.putStrLn analysisOutput
       Just (JsonOutputFile f) ->
         withFile f WriteMode $ \hnd ->
           LBS.hPutStrLn hnd analysisOutput
  where
+   renderSummaryPretty, renderSummaryExport ::
+        Bool -> Seq SlotStats -> Summary -> [JsonLogfile] -> TextOutputFile -> IO ()
+   renderSummaryPretty =
+     renderSummary statsHeadP statsFormatP leadershipHeadP leadershipFormatP
+   renderSummaryExport =
+     renderSummary statsHeadE statsFormatE leadershipHeadE leadershipFormatE
+
+   renderSummary ::
+        Text -> Text -> Text -> Text -> Bool
+     -> Seq SlotStats -> Summary -> [JsonLogfile] -> TextOutputFile -> IO ()
+   renderSummary statHead statFmt leadHead leadFmt zPad leads summary srcs outf = do
+     withFile (unTextOutputFile outf) WriteMode $ \hnd -> do
+       hPutStrLn hnd . Text.pack $
+         printf "--- input: %s" (intercalate " " $ unJsonLogfile <$> srcs)
+       hPutStrLn hnd statHead
+       forM_ (toDistribLines statFmt summary) $
+         hPutStrLn hnd
+       forM_ (zip (toList leads) [(0 :: Int)..]) $ \(l, i) -> do
+         when (i `mod` 33 == 0) $
+           hPutStrLn hnd leadHead
+         hPutStrLn hnd $ toLeadershipLine zPad leadFmt l
+
    slotStart :: Word64 -> UTCTime
    slotStart = flip Time.addUTCTime cpSystemStart . (* cpSlotLength) . fromIntegral
 
@@ -253,8 +265,6 @@ cleanupSlotStats =
   Seq.dropWhileR ((== 0) . slCountChecks)
 
 analysisSummary :: Seq SlotStats -> Summary
--- Insist on having at least three items: first, content and tail:
---   0th/last 5 slots are transient
 analysisSummary slots =
   Summary
   { sMaxChecks        = maxChecks
@@ -333,9 +343,9 @@ data SlotStats
 
 instance ToJSON SlotStats
 
-toDistribLines :: Summary -> [Text]
-toDistribLines Summary{..} =
-  (statsHeader :) $ getZipList $
+toDistribLines :: Text -> Summary -> [Text]
+toDistribLines statsF Summary{..} =
+  getZipList $
   distribLine
     <$> ZipList (pctSpec <$> dPercentiles sMissDistrib)
     <*> ZipList (max 1 . ceiling . (* fromIntegral (dCount sMissDistrib))
@@ -366,23 +376,32 @@ toDistribLines Summary{..} =
      -> Word64 -> Word64 -> Word64
      -> Int -> Int -> Int -> Text
    distribLine ps count misSp miss chkdt' dens cpu gc mut majg ming liv alc rss cpuSp cpuSpAvg cpuSpMax = Text.pack $
-     printf (Text.unpack statsFormat)
+     printf (Text.unpack statsF)
     (renderPercSpec 6 ps) count misSp miss chkdt dens cpu gc mut majg ming     liv alc rss cpuSp cpuSpAvg cpuSpMax
     where chkdt = show chkdt' :: Text
 
-statsHeader, statsFormat, leadershipHeader :: Text
-statsHeader =
+statsHeadE, statsFormatE, leadershipHeadE, leadershipFormatE :: Text
+statsHeadP, statsFormatP, leadershipHeadP, leadershipFormatP :: Text
+statsHeadP =
   "%tile Count MissSp MissR  CheckΔt  Dens  CPU  GC MUT Maj Min         Live   Alloc   RSS    CPU% Spans/Avg/MaxLen"
-statsFormat =
+statsHeadE =
+  "%tile Count MissSp MissR CheckΔ ChainDensity CPU GC MUT GcMaj GcMin Live Alloc RSS CPU% Spans/Avg/MaxLen"
+statsFormatP =
   "%6s %5d %4d %0.2f    %6s  %0.3f  %3d %3d %3d %2d %3d       %8d %8d %7d %4d %4d %4d"
-leadershipHeader =
+statsFormatE =
+  "%s %d %d %0.2f %s %0.3f %d %d %d %d %d %d %d %d %d %d %d"
+leadershipHeadP =
   "abs.  slot     lead  leader check chain       %CPU      GCs   Produc-   Memory use, kB      Alloc rate  Mempool  UTxO   Absolute" <>"\n"<>
   "slot#   epoch checks ships  span  density all/ GC/mut maj/min tivity  Live   Alloc   RSS     / mut sec   txs  entries   slot start time"
+leadershipHeadE =
+  "abs.slot# slot epoch leadChecks leadShips chainDens %CPU %GC %MUT Productiv MemLiveKb MemAllocKb MemRSSKb AllocRate/Mut MempoolTxs UTxO AbsoluteSlotTime"
+leadershipFormatP = "%5d %4d:%2d %4d    %2d %8s  %0.3f  %3s %3s %3s %2s %3s   %4s %7s %7s %7s % 8s %4d %9d  %s"
+leadershipFormatE = "%d %d %d %d %d %s %0.3f %s %s %s %s %s %s %s %s %s %s %d %d %s"
 
-toLeadershipLine :: SlotStats -> Text
-toLeadershipLine SlotStats{..} = Text.pack $
-  printf "%5d %4d:%2d %4d    %2d %8s  %0.3f  %3s %3s %3s %2s %3s   %4s %7s %7s %7s % 8s %4d %9d  %s"
-          sl epsl epo chks  lds span dens cpu gc mut majg ming   pro liv alc rss atm mpo utx star
+toLeadershipLine :: Bool -> Text -> SlotStats -> Text
+toLeadershipLine zPad leadershipF SlotStats{..} = Text.pack $
+  printf (Text.unpack leadershipF)
+         sl epsl epo chks  lds span dens cpu gc mut majg ming   pro liv alc rss atm mpo utx star
  where sl   = slSlot
        epsl = slEpochSlot
        epo  = slEpoch
@@ -413,7 +432,8 @@ toLeadershipLine SlotStats{..} = Text.pack $
 
        d, f :: PrintfArg a => Int -> Maybe a -> Text
        d width = \case
-         Just x  -> Text.pack $ printf ("%"<>show width<>"d") x
+         Just x  -> Text.pack $ printf ("%"<>(if zPad then "0" else "")
+                                           <>show width<>"d") x
          Nothing -> mconcat (replicate width "-")
        f width = \case
          Just x  -> Text.pack $ printf ("%0."<>show width<>"f") x
