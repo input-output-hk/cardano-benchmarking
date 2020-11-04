@@ -2,15 +2,19 @@
 # shellcheck disable=SC1090,SC2046,SC2206,SC2207
 
 basedir=$(realpath "$(dirname "$0")")
-. "$basedir"/../../scripts/common.sh
-. "$basedir"/configuration/parameters
+. "$basedir"/common.sh
 
-logdir=${1:-"$basedir"/logs}
+logdir_default=runs-last
+logdir=${1:-$logdir_default}
+if test "$logdir" = '-';   then logdir=$logdir_default; fi
+if test -d runs/"$logdir"; then logdir=runs/"$logdir"; fi
 if test $# -gt 0; then shift; fi
 test -d "$logdir" ||
         fail "logdir absent: $logdir"
 
-genesis=${1:-"$logdir"/genesis.json}
+genesis_default="$logdir"/genesis.json
+genesis=${1:-$genesis_default}
+if test "$genesis" = '-'; then genesis=$genesis_default; fi
 if test $# -gt 0; then shift; fi
 test -f "$genesis" -a -r "$genesis" ||
         fail "genesis absent: $genesis"
@@ -29,6 +33,8 @@ prebuild 'locli' || exit 1
 set -eo pipefail
 
 oprint "querying genesis params.."
+jq '. + { staking: {}, initialFunds: {} }' "$genesis" > "$genesis". &&
+        mv "$genesis". "$genesis"
 locli_analyse_leadership_cmd=(
         run locli 'analyse' 'leadership'
         --slot-length  "$(jq .slotLength  "$genesis" -r)"
@@ -68,7 +74,7 @@ do ## 1. enumerate
         > "$mach_consolidated"
 
    ## 3. analyse
-   oprint "analysing logs of:  $mach  ($(wc -l "$mach_consolidated"))"
+   oprint "analysing logs of:  $mach  (lines: $(wc -l "$mach_consolidated"))"
    ${locli_analyse_leadership_cmd[*]}                     \
          $(locli_analyse_cmd_mach_args "$logdir" "$mach") \
          "$mach_consolidated"

@@ -69,14 +69,14 @@ type ResContinuity a = Resources (a -> Maybe a)
 discardObsoleteValues :: ResContinuity a
 discardObsoleteValues =
   Resources
-  { rCentiCpu    = const Nothing
-  , rCentiGC     = const Nothing
-  , rCentiMut    = const Nothing
+  { rCentiCpu    = Just
+  , rCentiGC     = Just
+  , rCentiMut    = Just
   , rGcsMajor    = const Nothing
   , rGcsMinor    = const Nothing
   , rAlloc       = const Nothing
   , rLive        = Just
   , rRSS         = Just
-  , rCentiBlkIO  = const Nothing
+  , rCentiBlkIO  = Just
   , rThreads     = Just
   }

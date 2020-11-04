@@ -72,10 +72,13 @@ SHELLEY3POOLS_LOGS=benchmarks/shelley3pools/logs
 SHELLEY3POOLS_GENESIS=benchmarks/shelley3pools/configuration/genesis-shelley/genesis.json
 SHELLEY3POOLS_NODES=node-1 node-2 node-3
 leads leaderships:
-	./benchmarks/shelley3pools/analyse-leaderships.sh ${SHELLEY3POOLS_LOGS} ${SHELLEY3POOLS_GENESIS} ${SHELLEY3POOLS_NODES}
+	./scripts/runs-analyse.sh ${SHELLEY3POOLS_LOGS} ${SHELLEY3POOLS_GENESIS} ${SHELLEY3POOLS_NODES}
 
 run-leads:
-	./benchmarks/shelley3pools/analyse-leaderships.sh 'runs-last'
+	./scripts/runs-analyse.sh 'runs-last'
+
+run-leads-small:
+	./scripts/runs-analyse.sh 'runs-last' - 'node-0' 'node-1' 'node-3' 'node-10' 'node-20'
 
 ###
 ###

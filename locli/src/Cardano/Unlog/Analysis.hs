@@ -21,8 +21,9 @@ import           Control.Monad.Trans.Except (ExceptT)
 import           Control.Monad.Trans.Except.Extra (firstExceptT)
 
 import qualified Data.Aeson as Aeson
-import           Data.Aeson (ToJSON(..))
+import           Data.Aeson
 import qualified Data.ByteString.Lazy.Char8 as LBS
+import qualified Data.HashMap.Strict as HashMap
 import qualified Data.Sequence as Seq
 import           Data.Sequence (Seq(..))
 import qualified Data.Text as Text
@@ -112,17 +113,18 @@ runLeadershipCheckCmd ChainParams{..}
    renderSummary ::
         Text -> Text -> Text -> Text -> Bool
      -> Seq SlotStats -> Summary -> [JsonLogfile] -> TextOutputFile -> IO ()
-   renderSummary statHead statFmt leadHead leadFmt zPad leads summary srcs outf = do
+   renderSummary statHead statFmt leadHead leadFmt exportMode leads summary srcs outf = do
      withFile (unTextOutputFile outf) WriteMode $ \hnd -> do
-       hPutStrLn hnd . Text.pack $
-         printf "--- input: %s" (intercalate " " $ unJsonLogfile <$> srcs)
+       unless exportMode $
+         hPutStrLn hnd . Text.pack $
+           printf "--- input: %s" (intercalate " " $ unJsonLogfile <$> srcs)
        hPutStrLn hnd statHead
        forM_ (toDistribLines statFmt summary) $
          hPutStrLn hnd
        forM_ (zip (toList leads) [(0 :: Int)..]) $ \(l, i) -> do
          when (i `mod` 33 == 0) $
            hPutStrLn hnd leadHead
-         hPutStrLn hnd $ toLeadershipLine zPad leadFmt l
+         hPutStrLn hnd $ toLeadershipLine exportMode leadFmt l
 
    slotStart :: Word64 -> UTCTime
    slotStart = flip Time.addUTCTime cpSystemStart . (* cpSlotLength) . fromIntegral
@@ -231,11 +233,15 @@ data Summary
   = Summary
     { sMaxChecks         :: !Word64
     , sSlotMisses        :: !(Seq Word64)
+    , sSpanLensCPU85     :: !(Seq Int)
+    -- distributions
     , sMissDistrib       :: !(Distribution Float Float)
     , sLeadsDistrib      :: !(Distribution Float Word64)
     , sUtxoDistrib       :: !(Distribution Float Word64)
     , sDensityDistrib    :: !(Distribution Float Float)
     , sCheckspanDistrib  :: !(Distribution Float NominalDiffTime)
+    , sSpanLensCPU85Distrib
+                         :: !(Distribution Float Int)
     , sResourceDistribs  :: !(Resources (Distribution Float Word64))
     }
   deriving Show
@@ -250,6 +256,9 @@ instance ToJSON Summary where
     , extendObject "kind" "cpu"       $ toJSON (rCentiCpu sResourceDistribs)
     , extendObject "kind" "gc"        $ toJSON (rCentiGC  sResourceDistribs)
     , extendObject "kind" "rss"       $ toJSON (rRSS      sResourceDistribs)
+    , extendObject "kind" "spanLensCPU85Distrib"  $ toJSON sSpanLensCPU85Distrib
+    , Aeson.Object $ HashMap.fromList
+        [ "kind" .= String "spanLensCPU85", "xs" .= toJSON sSpanLensCPU85]
     ]
 
 -- | Initial and trailing data are noisy outliers: drop that.
@@ -269,6 +278,8 @@ analysisSummary slots =
   Summary
   { sMaxChecks        = maxChecks
   , sSlotMisses       = misses
+  , sSpanLensCPU85    = spanLensCPU85
+  --
   , sMissDistrib      = computeDistribution pctiles missRatios
   , sLeadsDistrib     =
       computeDistribution pctiles (slCountLeads <$> slots)
@@ -278,6 +289,8 @@ analysisSummary slots =
       computeDistribution pctiles (slDensity <$> slots)
   , sCheckspanDistrib =
       computeDistribution pctiles (slSpan <$> slots)
+  , sSpanLensCPU85Distrib
+                      = computeDistribution pctiles spanLensCPU85
   , sResourceDistribs =
       computeResDistrib pctiles resDistProjs slots
   }
@@ -289,14 +302,16 @@ analysisSummary slots =
      , PercAnon 0.95, PercAnon 0.97, PercAnon 0.98, PercAnon 0.99
      , PercAnon 0.995, PercAnon 0.997, PercAnon 0.998, PercAnon 0.999
      , PercAnon 0.9995, PercAnon 0.9997, PercAnon 0.9998, PercAnon 0.9999
-     , psNamedAbove "CPU85" 85 . catMaybes . toList $
-         rCentiCpu . slResources <$> slots
      ]
 
    checkCounts      = slCountChecks <$> slots
    maxChecks        = maximum checkCounts
    misses           = (maxChecks -) <$> checkCounts
    missRatios       = missRatio <$> misses
+   spanLensCPU85    = Seq.fromList $ length <$>
+                        spans (>=85)
+                          ((rCentiCpu . slResources <$> toList slots)
+                           & catMaybes)
 
    resDistProjs     =
      Resources
@@ -351,7 +366,6 @@ toDistribLines statsF Summary{..} =
     <*> ZipList (max 1 . ceiling . (* fromIntegral (dCount sMissDistrib))
                  . (1.0 -) . pctFrac
                      <$> dPercentiles sMissDistrib)
-    <*> ZipList (pctSpans  <$> dPercentiles sMissDistrib)
     <*> ZipList (pctSample <$> dPercentiles sMissDistrib)
     <*> ZipList (pctSample <$> dPercentiles sCheckspanDistrib)
     <*> ZipList (pctSample <$> dPercentiles sDensityDistrib)
@@ -364,32 +378,35 @@ toDistribLines statsF Summary{..} =
     <*> ZipList (pctSample <$> dPercentiles (rLive sResourceDistribs))
     <*> ZipList (pctSample <$> dPercentiles (rAlloc sResourceDistribs))
     <*> ZipList (pctSample <$> dPercentiles (rRSS sResourceDistribs))
-    <*> ZipList (pctSpans  <$> dPercentiles (rCentiCpu sResourceDistribs))
-    <*> ZipList (pctSpanLenAvg  <$> dPercentiles (rCentiCpu sResourceDistribs))
-    <*> ZipList (pctSpanLenMax  <$> dPercentiles (rCentiCpu sResourceDistribs))
+    <*> ZipList (pctSample <$> dPercentiles sSpanLensCPU85Distrib)
+    <*> ZipList (pctSampleIndex
+                           <$> dPercentiles sSpanLensCPU85Distrib)
+    <*> ZipList (pctSamplePrev
+                           <$> dPercentiles sSpanLensCPU85Distrib)
  where
    distribLine ::
-        PercSpec Float -> Int -> Int
+        PercSpec Float -> Int
      -> Float -> NominalDiffTime -> Float
      -> Word64 -> Word64 -> Word64
      -> Word64 -> Word64
      -> Word64 -> Word64 -> Word64
-     -> Int -> Int -> Int -> Text
-   distribLine ps count misSp miss chkdt' dens cpu gc mut majg ming liv alc rss cpuSp cpuSpAvg cpuSpMax = Text.pack $
+     -> Int -> Int -> Int
+     -> Text
+   distribLine ps count miss chkdt' dens cpu gc mut majg ming liv alc rss cpu85Sp cpu85SpIdx cpu85SpPrev = Text.pack $
      printf (Text.unpack statsF)
-    (renderPercSpec 6 ps) count misSp miss chkdt dens cpu gc mut majg ming     liv alc rss cpuSp cpuSpAvg cpuSpMax
+    (renderPercSpec 6 ps) count miss chkdt dens cpu gc mut majg ming     liv alc rss cpu85Sp cpu85SpIdx cpu85SpPrev
     where chkdt = show chkdt' :: Text
 
 statsHeadE, statsFormatE, leadershipHeadE, leadershipFormatE :: Text
 statsHeadP, statsFormatP, leadershipHeadP, leadershipFormatP :: Text
 statsHeadP =
-  "%tile Count MissSp MissR  CheckΔt  Dens  CPU  GC MUT Maj Min         Live   Alloc   RSS    CPU% Spans/Avg/MaxLen"
+  "%tile Count MissR  CheckΔt   Dens  CPU  GC MUT Maj Min         Live   Alloc   RSS    CPU85%-SpanLengths/Idx/Prev"
 statsHeadE =
-  "%tile Count MissSp MissR CheckΔ ChainDensity CPU GC MUT GcMaj GcMin Live Alloc RSS CPU% Spans/Avg/MaxLen"
+  "%tile Count MissR CheckΔ ChainDensity CPU GC MUT GcMaj GcMin Live Alloc RSS CPU85%-SpanLengths/Idx/Prev"
 statsFormatP =
-  "%6s %5d %4d %0.2f    %6s  %0.3f  %3d %3d %3d %2d %3d       %8d %8d %7d %4d %4d %4d"
+  "%6s %5d %0.2f   %6s  %0.3f  %3d %3d %3d %2d %3d      %8d %8d %7d %4d %4d %4d"
 statsFormatE =
-  "%s %d %d %0.2f %s %0.3f %d %d %d %d %d %d %d %d %d %d %d"
+  "%s %d %0.2f %s %0.3f %d %d %d %d %d %d %d %d %d %d %d"
 leadershipHeadP =
   "abs.  slot     lead  leader check chain       %CPU      GCs   Produc-   Memory use, kB      Alloc rate  Mempool  UTxO   Absolute" <>"\n"<>
   "slot#   epoch checks ships  span  density all/ GC/mut maj/min tivity  Live   Alloc   RSS     / mut sec   txs  entries   slot start time"
@@ -399,7 +416,7 @@ leadershipFormatP = "%5d %4d:%2d %4d    %2d %8s  %0.3f  %3s %3s %3s %2s %3s   %4
 leadershipFormatE = "%d %d %d %d %d %s %0.3f %s %s %s %s %s %s %s %s %s %s %d %d %s"
 
 toLeadershipLine :: Bool -> Text -> SlotStats -> Text
-toLeadershipLine zPad leadershipF SlotStats{..} = Text.pack $
+toLeadershipLine exportMode leadershipF SlotStats{..} = Text.pack $
   printf (Text.unpack leadershipF)
          sl epsl epo chks  lds span dens cpu gc mut majg ming   pro liv alc rss atm mpo utx star
  where sl   = slSlot
@@ -432,7 +449,7 @@ toLeadershipLine zPad leadershipF SlotStats{..} = Text.pack $
 
        d, f :: PrintfArg a => Int -> Maybe a -> Text
        d width = \case
-         Just x  -> Text.pack $ printf ("%"<>(if zPad then "0" else "")
+         Just x  -> Text.pack $ printf ("%"<>(if exportMode then "0" else "")
                                            <>show width<>"d") x
          Nothing -> mconcat (replicate width "-")
        f width = \case

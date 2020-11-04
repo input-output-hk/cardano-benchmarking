@@ -1,3 +1,4 @@
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
@@ -10,6 +11,7 @@ module Data.Distribution
   , Distribution(..)
   , computeDistribution
   , zeroDistribution
+  , spans
   , PercSpec(..)
   , renderPercSpec
   , Percentile(..)
@@ -55,11 +57,10 @@ renderPercSpec width = \case
 
 data Percentile a b =
   Percentile
-  { pctSpec       :: !(PercSpec a)
-  , pctSample     :: !b
-  , pctSpans      :: !Int
-  , pctSpanLenAvg :: !Int
-  , pctSpanLenMax :: !Int
+  { pctSpec        :: !(PercSpec a)
+  , pctSampleIndex :: !Int
+  , pctSamplePrev  :: !Int
+  , pctSample      :: !b
   }
   deriving (Generic, Show)
 
@@ -82,34 +83,33 @@ spans f = go []
  where
    go :: [[a]] -> [a] -> [[a]]
    go acc [] = reverse acc
-   go acc xs = go (ac:acc) rest
-     where (ac, rest) = span f $ dropWhile (not . f) xs
+   go acc xs =
+     case span f $ dropWhile (not . f) xs of
+       ([], rest) -> go acc rest
+       (ac, rest) -> go (ac:acc) rest
 
--- data SliceSpec
---   = Percentile Float
---   | FixedValue ()
+
+countSeq :: Eq a => a -> Seq a -> Int
+countSeq x = foldl' (\n e -> if e == x then n + 1 else n) 0
 
 computeDistribution :: (RealFrac a, Real v, ToRealFrac v a) => [PercSpec a] -> Seq v -> Distribution a v
 computeDistribution _ Seq.Empty = Distribution 0 0 []
-computeDistribution percentiles unsorted@(Seq.sort -> sorted) =
+computeDistribution percentiles (Seq.sort -> sorted) =
   Distribution
   { dAverage     = toRealFrac (F.sum sorted) / fromIntegral size
   , dCount       = size
-  , dPercentiles = (Percentile (PercAnon 0) mini 1 size size:) .
-                    (<> [Percentile (PercAnon 1.0) maxi 1 1 1]) $
+  , dPercentiles =
+    (Percentile     (PercAnon 0)   size (countSeq mini sorted) mini:) .
+    (<> [Percentile (PercAnon 1.0) 1    (countSeq maxi sorted) maxi]) $
     percentiles <&>
       \spec ->
         let sample = Seq.index sorted sampleIndex
             sampleIndex :: Int = floor $ fromIntegral (size - 1) * psFrac spec
-            spans' = spans (> sample) (toList unsorted)
-            spanLens = length <$> spans'
         in Percentile
              spec
+             (size - sampleIndex)
+             (countSeq sample sorted)
              sample
-             (length spans')
-             ((ceiling :: Float -> Int) $
-              fromIntegral (sum spanLens) / fromIntegral (length spans'))
-             (maximum spanLens)
   }
   where size   = Seq.length sorted
         (,) mini maxi = (index sorted 0, index sorted $ size - 1)
