@@ -13,6 +13,7 @@ module Cardano.Unlog.Commands
   , JsonLogfile (..)
   , JsonOutputFile (..)
   , TextOutputFile (..)
+  , EpsOutputFile (..)
   ) where
 
 import           Prelude
@@ -36,7 +37,7 @@ import           Cardano.Unlog.LogObject
 -- | All the CLI subcommands under \"analysis\".
 --
 data AnalysisCommand
-  = LeadershipChecks ChainParams (Maybe JsonOutputFile) (Maybe TextOutputFile) (Maybe TextOutputFile) (Maybe JsonOutputFile) [JsonLogfile]
+  = LeadershipChecks ChainParams (Maybe JsonOutputFile) (Maybe TextOutputFile) (Maybe TextOutputFile) (Maybe EpsOutputFile) (Maybe JsonOutputFile) [JsonLogfile]
   | SubstringKeys
   deriving (Show)
 
@@ -62,6 +63,9 @@ parseAnalysisCommands =
                        <*> optional
                            (argTextOutputFile "export-timeline"
                               "Dump pretty timeline of extracted slot leadership summaries, as a side-effect of log analysis")
+                       <*> optional
+                           (argEpsOutputFile "cpu-spans-histogram"
+                              "Write an EPS file with the CPU spans histogram")
                        <*> optional
                            (argJsonOutputFile "analysis-output"
                               "Write analysis JSON to this file, if specified -- otherwise print to stdout.")
@@ -95,6 +99,14 @@ argTextOutputFile optname desc =
     Opt.option Opt.str
       $ long optname
       <> metavar "TEXT-OUTFILE"
+      <> help desc
+
+argEpsOutputFile :: String -> String -> Parser EpsOutputFile
+argEpsOutputFile optname desc =
+  fmap EpsOutputFile $
+    Opt.option Opt.str
+      $ long optname
+      <> metavar "EPS-OUTFILE"
       <> help desc
 
 optUTCTime :: String -> String -> UTCTime -> Parser UTCTime

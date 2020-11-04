@@ -42,6 +42,8 @@ library
                      , directory
                      , filepath
                      , file-embed
+                     , gnuplot
+                     , Histogram
                      , iohk-monitoring
                      , optparse-applicative
                      , process

@@ -13,7 +13,7 @@ module Cardano.Unlog.Analysis
   , runAnalysisCommand
   ) where
 
-import           Prelude (error)
+import           Prelude (String, error)
 import           Cardano.Prelude
 
 import           Control.Applicative (ZipList(..))
@@ -28,6 +28,9 @@ import qualified Data.Sequence as Seq
 import           Data.Sequence (Seq(..))
 import qualified Data.Text as Text
 import qualified Data.Vector as V
+
+import qualified Graphics.Histogram as Hist
+import qualified Graphics.Gnuplot.Frame.OptionSet as Opts
 
 import           Data.Time.Clock (UTCTime, NominalDiffTime)
 import qualified Data.Time.Clock as Time
@@ -63,9 +66,9 @@ renderAnalysisCmdError cmd err =
 --
 
 runAnalysisCommand :: AnalysisCommand -> ExceptT AnalysisCmdError IO ()
-runAnalysisCommand (LeadershipChecks startTime mJDumpFile mPDumpFile mEDumpFile mJOutFile logfiles) =
+runAnalysisCommand (LeadershipChecks startTime mJDumpFile mPDumpFile mEDumpFile mHistoOutFile mJOutFile logfiles) =
   firstExceptT AnalysisCmdError $
-    runLeadershipCheckCmd startTime mJDumpFile mPDumpFile mEDumpFile mJOutFile logfiles
+    runLeadershipCheckCmd startTime mJDumpFile mPDumpFile mEDumpFile mHistoOutFile mJOutFile logfiles
 runAnalysisCommand SubstringKeys =
   liftIO $ mapM_ putStrLn logObjectStreamInterpreterKeys
 
@@ -74,11 +77,12 @@ runLeadershipCheckCmd ::
   -> Maybe JsonOutputFile
   -> Maybe TextOutputFile
   -> Maybe TextOutputFile
+  -> Maybe EpsOutputFile
   -> Maybe JsonOutputFile
   -> [JsonLogfile]
   -> ExceptT Text IO ()
 runLeadershipCheckCmd ChainParams{..}
- mLeadershipsDumpFile mPrettyDumpFile mExportDumpFile mJOutFile logfiles = do
+ mLeadershipsDumpFile mPrettyDumpFile mExportDumpFile mHistoOutFile mJOutFile logfiles = do
   objs :: [LogObject] <- liftIO $
     concat <$> mapM readLogObjectStream logfiles
   -- liftIO $ withFile "lodump.json" WriteMode $ \hnd ->
@@ -97,12 +101,25 @@ runLeadershipCheckCmd ChainParams{..}
         analysisOutput = Aeson.encode summary
     maybe (pure ()) (renderSummaryPretty False leads summary logfiles) mPrettyDumpFile
     maybe (pure ()) (renderSummaryExport  True leads summary logfiles) mExportDumpFile
+    maybe (pure ())
+      (renderHistogram "CPU usage spans over 85%" "Span length"
+        (toList $ Seq.sort $ sSpanLensCPU85 summary))
+      mHistoOutFile
     case mJOutFile of
       Nothing -> LBS.putStrLn analysisOutput
       Just (JsonOutputFile f) ->
         withFile f WriteMode $ \hnd ->
           LBS.hPutStrLn hnd analysisOutput
  where
+   renderHistogram :: Integral a
+     => String -> String -> [a] -> EpsOutputFile -> IO ()
+   renderHistogram desc ylab xs (EpsOutputFile f) =
+     Hist.plotAdv f opts hist >> pure ()
+    where
+      hist = Hist.histogram Hist.binFreedmanDiaconis $ fromIntegral <$> xs
+      opts = Opts.title desc $ Opts.yLabel ylab $ Opts.xLabel "Population" $
+             Hist.defOpts hist
+
    renderSummaryPretty, renderSummaryExport ::
         Bool -> Seq SlotStats -> Summary -> [JsonLogfile] -> TextOutputFile -> IO ()
    renderSummaryPretty =
@@ -122,7 +139,7 @@ runLeadershipCheckCmd ChainParams{..}
        forM_ (toDistribLines statFmt summary) $
          hPutStrLn hnd
        forM_ (zip (toList leads) [(0 :: Int)..]) $ \(l, i) -> do
-         when (i `mod` 33 == 0) $
+         when (i `mod` 33 == 0 && not exportMode) $
            hPutStrLn hnd leadHead
          hPutStrLn hnd $ toLeadershipLine exportMode leadFmt l
 
@@ -248,17 +265,22 @@ data Summary
 
 instance ToJSON Summary where
   toJSON Summary{..} = Aeson.Array $ V.fromList
-    [ extendObject "kind" "utxo"      $ toJSON sUtxoDistrib
-    , extendObject "kind" "density"   $ toJSON sDensityDistrib
-    , extendObject "kind" "leads"     $ toJSON sLeadsDistrib
+    [ Aeson.Object $ HashMap.fromList
+        [ "kind" .= String "spanLensCPU85"
+        , "xs" .= toJSON sSpanLensCPU85]
+    , Aeson.Object $ HashMap.fromList
+        [ "kind" .= String "spanLensCPU85Sorted"
+        , "xs" .= toJSON (Seq.sort sSpanLensCPU85)]
     , extendObject "kind" "checkspan" $ toJSON sCheckspanDistrib
-    , extendObject "kind" "misses"    $ toJSON sMissDistrib
     , extendObject "kind" "cpu"       $ toJSON (rCentiCpu sResourceDistribs)
     , extendObject "kind" "gc"        $ toJSON (rCentiGC  sResourceDistribs)
+    , extendObject "kind" "density"   $ toJSON sDensityDistrib
+    , extendObject "kind" "utxo"      $ toJSON sUtxoDistrib
+    , extendObject "kind" "leads"     $ toJSON sLeadsDistrib
+    , extendObject "kind" "misses"    $ toJSON sMissDistrib
     , extendObject "kind" "rss"       $ toJSON (rRSS      sResourceDistribs)
-    , extendObject "kind" "spanLensCPU85Distrib"  $ toJSON sSpanLensCPU85Distrib
-    , Aeson.Object $ HashMap.fromList
-        [ "kind" .= String "spanLensCPU85", "xs" .= toJSON sSpanLensCPU85]
+    , extendObject "kind" "spanLensCPU85Distrib"  $
+                                        toJSON sSpanLensCPU85Distrib
     ]
 
 -- | Initial and trailing data are noisy outliers: drop that.

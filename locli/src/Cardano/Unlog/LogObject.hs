@@ -5,6 +5,7 @@
 
 module Cardano.Unlog.LogObject
   ( JsonLogfile (..)
+  , EpsOutputFile (..)
   , JsonOutputFile (..)
   , TextOutputFile (..)
   , LogObject (..)
@@ -46,6 +47,10 @@ newtype JsonOutputFile
 
 newtype TextOutputFile
   = TextOutputFile { unTextOutputFile :: FilePath }
+  deriving (Show, Eq)
+
+newtype EpsOutputFile
+  = EpsOutputFile { unEpsOutputFile :: FilePath }
   deriving (Show, Eq)
 
 data LogObject

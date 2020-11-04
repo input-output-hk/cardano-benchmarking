@@ -58,6 +58,8 @@ locli_analyse_cmd_mach_args() {
         echo "$logdir"/analysis/logs-"$mach".leaderships.export.txt
         echo --analysis-output
         echo "$logdir"/analysis/logs-"$mach".leadership-analysis.json
+        echo --cpu-spans-histogram
+        echo "$logdir"/analysis/logs-"$mach".cpu85-span-lens.png
 }
 
 ## 0. compute filter subset

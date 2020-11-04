@@ -47,6 +47,7 @@ let
     # These programs will be available inside the nix-shell.
     buildInputs = with haskellPackages; [
       cabal-install
+      pkgs.gnuplot
       stylish-haskell
       nix
       niv
