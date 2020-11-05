@@ -75,6 +75,10 @@ interpreters = Map.fromList
             <*> v .: "utxoSize"
             <*> v .: "chainDensity"
 
+  , (,) "TraceBlockContext" $
+    \v -> LOBlockContext
+            <$> v .: "tipBlockNo"
+
   , (,) "TraceNodeIsLeader" $
     \v -> LOTraceNodeIsLeader
             <$> v .: "slot"
@@ -86,6 +90,12 @@ interpreters = Map.fromList
   , (,) "TraceMempoolRemoveTxs" $
     \v -> do mps :: Object <- v .: "mempoolSize"
              LOMempoolTxs <$> mps .: "numTxs"
+
+  , (,) "TraceMempoolRejectedTx" $
+    \_ -> pure LOMempoolRejectedTx
+
+  , (,) "TraceLedgerEvent.TookSnapshot" $
+    \_ -> pure LOLedgerTookSnapshot
 
   , (,) "Resources" $
     \v -> LOResources <$> parseJSON (Object v)
@@ -99,6 +109,9 @@ data LOBody
   | LOTraceNodeIsLeader !Word64
   | LOResources !ResourceStats
   | LOMempoolTxs !Word64
+  | LOMempoolRejectedTx
+  | LOLedgerTookSnapshot
+  | LOBlockContext !Word64
   | LOAny !Object
   deriving (Generic, Show)
 

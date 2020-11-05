@@ -202,6 +202,19 @@ runLeadershipCheckCmd ChainParams{..}
          , aLeads      = cur { slMempoolTxs = txCount
                              } : rSLs
          }
+     LogObject{loBody=LOBlockContext blockNo} -> pure $
+       a { aBlockNo    = blockNo
+         , aLeads      = cur { slBlockNo = blockNo
+                             } : rSLs
+         }
+     LogObject{loBody=LOLedgerTookSnapshot} -> pure $
+       a { aLeads      = cur { slChainDBSnap = slChainDBSnap cur + 1
+                             } : rSLs
+         }
+     LogObject{loBody=LOMempoolRejectedTx} -> pure $
+       a { aLeads      = cur { slRejectedTx = slRejectedTx cur + 1
+                             } : rSLs
+         }
      _ -> pure a
    go a = pure . const a
 
@@ -238,6 +251,9 @@ runLeadershipCheckCmd ChainParams{..}
            , slMempoolTxs  = aMempoolTxs
            , slUtxoSize    = utxo
            , slDensity     = density
+           , slChainDBSnap = 0
+           , slRejectedTx  = 0
+           , slBlockNo     = aBlockNo
            , slResources   = maybeDiscard
                              <$> discardObsoleteValues
                              <*> extractResAccums aResAccums
@@ -357,6 +373,7 @@ data Analysis
     { aResAccums    :: !ResAccums
     , aResTimestamp :: !UTCTime
     , aMempoolTxs   :: !Word64
+    , aBlockNo      :: !Word64
     , aLeads        :: ![SlotStats]
     }
 
@@ -368,6 +385,9 @@ data SlotStats
     , slStart       :: !UTCTime
     , slCountChecks :: !Word64
     , slCountLeads  :: !Word64
+    , slChainDBSnap :: !Word64
+    , slRejectedTx  :: !Word64
+    , slBlockNo     :: !Word64
     , slOrderViol   :: !Word64
     , slEarliest    :: !UTCTime
     , slSpan        :: !NominalDiffTime
@@ -440,31 +460,33 @@ leadershipFormatE = "%d %d %d %d %d %s %0.3f %s %s %s %s %s %s %s %s %s %s %d %d
 toLeadershipLine :: Bool -> Text -> SlotStats -> Text
 toLeadershipLine exportMode leadershipF SlotStats{..} = Text.pack $
   printf (Text.unpack leadershipF)
-         sl epsl epo chks  lds span dens cpu gc mut majg ming   pro liv alc rss atm mpo utx star
- where sl   = slSlot
-       epsl = slEpochSlot
-       epo  = slEpoch
-       chks = slCountChecks
-       lds  = slCountLeads
-       span = show slSpan :: Text
-       cpu  = d 3 $ rCentiCpu slResources
-       dens = slDensity
-       gc   = d 2 $ rCentiGC  slResources
-       mut  = d 2 $ rCentiMut slResources
-       majg = d 2 $ rGcsMajor slResources
-       ming = d 2 $ rGcsMinor slResources
-       pro  = f 2 $ calcProd <$> (fromIntegral <$> rCentiMut slResources :: Maybe Float)
-                             <*> (fromIntegral <$> rCentiCpu slResources)
-       liv  = d 7 (rLive     slResources)
-       alc  = d 7 (rAlloc    slResources)
-       rss  = d 7 (rRSS      slResources)
-       atm  = d 8 $
-              (ceiling :: Float -> Int)
-              <$> ((/) <$> (fromIntegral . (100 *) <$> rAlloc slResources)
-                       <*> (fromIntegral . max 1 . (1024 *) <$> rCentiMut slResources))
-       mpo  = slMempoolTxs
-       utx  = slUtxoSize
-       star = show slStart :: Text
+         sl epsl epo blk chks  lds cdbsn rejtx span dens cpu gc mut majg ming   pro liv alc rss atm mpo utx
+ where sl    = slSlot
+       epsl  = slEpochSlot
+       epo   = slEpoch
+       blk   = slBlockNo
+       chks  = slCountChecks
+       lds   = slCountLeads
+       cdbsn = slChainDBSnap
+       rejtx = slRejectedTx
+       span  = show slSpan :: Text
+       cpu   = d 3 $ rCentiCpu slResources
+       dens  = slDensity
+       gc    = d 2 $ rCentiGC  slResources
+       mut   = d 2 $ rCentiMut slResources
+       majg  = d 2 $ rGcsMajor slResources
+       ming  = d 2 $ rGcsMinor slResources
+       pro   = f 2 $ calcProd <$> (fromIntegral <$> rCentiMut slResources :: Maybe Float)
+                              <*> (fromIntegral <$> rCentiCpu slResources)
+       liv   = d 7 (rLive     slResources)
+       alc   = d 7 (rAlloc    slResources)
+       rss   = d 7 (rRSS      slResources)
+       atm   = d 8 $
+               (ceiling :: Float -> Int)
+               <$> ((/) <$> (fromIntegral . (100 *) <$> rAlloc slResources)
+                        <*> (fromIntegral . max 1 . (1024 *) <$> rCentiMut slResources))
+       mpo   = slMempoolTxs
+       utx   = slUtxoSize
 
        calcProd :: Float -> Float -> Float
        calcProd mut' cpu' = if cpu' == 0 then 1 else mut' / cpu'
@@ -484,6 +506,7 @@ zeroAnalysis =
   { aResAccums    = mkResAccums
   , aResTimestamp = zeroUTCTime
   , aMempoolTxs   = 0
+  , aBlockNo      = 0
   , aLeads        = [zeroLeadership]
   }
  where
@@ -502,4 +525,7 @@ zeroAnalysis =
      , slUtxoSize = 0
      , slDensity = 0
      , slResources = pure Nothing
+     , slChainDBSnap = 0
+     , slRejectedTx = 0
+     , slBlockNo = 0
      }
