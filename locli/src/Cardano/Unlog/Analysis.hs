@@ -66,9 +66,9 @@ renderAnalysisCmdError cmd err =
 --
 
 runAnalysisCommand :: AnalysisCommand -> ExceptT AnalysisCmdError IO ()
-runAnalysisCommand (LeadershipChecks startTime mJDumpFile mPDumpFile mEDumpFile mHistoOutFile mJOutFile logfiles) =
+runAnalysisCommand (LeadershipChecks startTime mJDumpFile mPDumpFile mETimelineFile mEStatsFile mHistoOutFile mJOutFile logfiles) =
   firstExceptT AnalysisCmdError $
-    runLeadershipCheckCmd startTime mJDumpFile mPDumpFile mEDumpFile mHistoOutFile mJOutFile logfiles
+    runLeadershipCheckCmd startTime mJDumpFile mPDumpFile mETimelineFile mEStatsFile mHistoOutFile mJOutFile logfiles
 runAnalysisCommand SubstringKeys =
   liftIO $ mapM_ putStrLn logObjectStreamInterpreterKeys
 
@@ -77,12 +77,13 @@ runLeadershipCheckCmd ::
   -> Maybe JsonOutputFile
   -> Maybe TextOutputFile
   -> Maybe TextOutputFile
+  -> Maybe TextOutputFile
   -> Maybe EpsOutputFile
   -> Maybe JsonOutputFile
   -> [JsonLogfile]
   -> ExceptT Text IO ()
 runLeadershipCheckCmd ChainParams{..}
- mLeadershipsDumpFile mPrettyDumpFile mExportDumpFile mHistoOutFile mJOutFile logfiles = do
+ mLeadershipsDumpFile mPrettyDumpFile mExportTimelineFile mExportStatsFile mHistoOutFile mJOutFile logfiles = do
   objs :: [LogObject] <- liftIO $
     concat <$> mapM readLogObjectStream logfiles
   -- liftIO $ withFile "lodump.json" WriteMode $ \hnd ->
@@ -99,8 +100,9 @@ runLeadershipCheckCmd ChainParams{..}
         summary = analysisSummary leads
         analysisOutput :: LBS.ByteString
         analysisOutput = Aeson.encode summary
-    maybe (pure ()) (renderSummaryPretty False leads summary logfiles) mPrettyDumpFile
-    maybe (pure ()) (renderSummaryExport  True leads summary logfiles) mExportDumpFile
+    maybe (pure ()) (renderPrettySummary leads summary logfiles) mPrettyDumpFile
+    maybe (pure ()) (renderExportStats summary) mExportStatsFile
+    maybe (pure ()) (renderExportTimeline leads) mExportTimelineFile
     maybe (pure ())
       (renderHistogram "CPU usage spans over 85%" "Span length"
         (toList $ Seq.sort $ sSpanLensCPU85 summary))
@@ -120,26 +122,33 @@ runLeadershipCheckCmd ChainParams{..}
       opts = Opts.title desc $ Opts.yLabel ylab $ Opts.xLabel "Population" $
              Hist.defOpts hist
 
-   renderSummaryPretty, renderSummaryExport ::
-        Bool -> Seq SlotStats -> Summary -> [JsonLogfile] -> TextOutputFile -> IO ()
-   renderSummaryPretty =
-     renderSummary statsHeadP statsFormatP leadershipHeadP leadershipFormatP
-   renderSummaryExport =
-     renderSummary statsHeadE statsFormatE leadershipHeadE leadershipFormatE
+   renderPrettySummary ::
+        Seq SlotStats -> Summary -> [JsonLogfile] -> TextOutputFile -> IO ()
+   renderPrettySummary xs s srcs o =
+     withFile (unTextOutputFile o) WriteMode $ \hnd -> do
+       hPutStrLn hnd . Text.pack $
+         printf "--- input: %s" (intercalate " " $ unJsonLogfile <$> srcs)
+       renderStats   statsHeadP statsFormatP s hnd
+       renderTimeline leadershipHeadP leadershipFormatP False xs hnd
+   renderExportStats :: Summary -> TextOutputFile -> IO ()
+   renderExportStats s o =
+     withFile (unTextOutputFile o) WriteMode $
+       renderStats statsHeadE statsFormatE s
+   renderExportTimeline :: Seq SlotStats -> TextOutputFile -> IO ()
+   renderExportTimeline xs o =
+     withFile (unTextOutputFile o) WriteMode $
+       renderTimeline leadershipHeadE leadershipFormatE True xs
 
-   renderSummary ::
-        Text -> Text -> Text -> Text -> Bool
-     -> Seq SlotStats -> Summary -> [JsonLogfile] -> TextOutputFile -> IO ()
-   renderSummary statHead statFmt leadHead leadFmt exportMode leads summary srcs outf = do
-     withFile (unTextOutputFile outf) WriteMode $ \hnd -> do
-       unless exportMode $
-         hPutStrLn hnd . Text.pack $
-           printf "--- input: %s" (intercalate " " $ unJsonLogfile <$> srcs)
+   renderStats :: Text -> Text -> Summary -> Handle -> IO ()
+   renderStats statHead statFmt summary hnd = do
        hPutStrLn hnd statHead
        forM_ (toDistribLines statFmt summary) $
          hPutStrLn hnd
+
+   renderTimeline :: Text -> Text -> Bool -> Seq SlotStats -> Handle -> IO ()
+   renderTimeline leadHead leadFmt exportMode leads hnd = do
        forM_ (zip (toList leads) [(0 :: Int)..]) $ \(l, i) -> do
-         when (i `mod` 33 == 0 && not exportMode) $
+         when (i `mod` 33 == 0 && (i == 0 || not exportMode)) $
            hPutStrLn hnd leadHead
          hPutStrLn hnd $ toLeadershipLine exportMode leadFmt l
 
@@ -444,18 +453,18 @@ statsHeadP, statsFormatP, leadershipHeadP, leadershipFormatP :: Text
 statsHeadP =
   "%tile Count MissR  CheckΔt   Dens  CPU  GC MUT Maj Min         Live   Alloc   RSS    CPU85%-SpanLengths/Idx/Prev"
 statsHeadE =
-  "%tile Count MissR CheckΔ ChainDensity CPU GC MUT GcMaj GcMin Live Alloc RSS CPU85%-SpanLengths/Idx/Prev"
+  "%tile,Count,MissR,CheckΔ,ChainDensity,CPU,GC,MUT,GcMaj,GcMin,Live,Alloc,RSS,CPU85%-SpanLens,/Idx,/Prev"
 statsFormatP =
   "%6s %5d %0.2f   %6s  %0.3f  %3d %3d %3d %2d %3d      %8d %8d %7d %4d %4d %4d"
 statsFormatE =
-  "%s %d %0.2f %s %0.3f %d %d %d %d %d %d %d %d %d %d %d"
+  "%s,%d,%0.2f,%s,%0.3f,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d"
 leadershipHeadP =
-  "abs.  slot     lead  leader check chain       %CPU      GCs   Produc-   Memory use, kB      Alloc rate  Mempool  UTxO   Absolute" <>"\n"<>
-  "slot#   epoch checks ships  span  density all/ GC/mut maj/min tivity  Live   Alloc   RSS     / mut sec   txs  entries   slot start time"
+  "abs.  slot    block lead  leader CDB rej check chain       %CPU      GCs   Produc-   Memory use, kB      Alloc rate  Mempool  UTxO" <>"\n"<>
+  "slot#   epoch  no. checks ships snap txs span  density all/ GC/mut maj/min tivity  Live   Alloc   RSS     / mut sec   txs  entries"
 leadershipHeadE =
-  "abs.slot# slot epoch leadChecks leadShips chainDens %CPU %GC %MUT Productiv MemLiveKb MemAllocKb MemRSSKb AllocRate/Mut MempoolTxs UTxO AbsoluteSlotTime"
-leadershipFormatP = "%5d %4d:%2d %4d    %2d %8s  %0.3f  %3s %3s %3s %2s %3s   %4s %7s %7s %7s % 8s %4d %9d  %s"
-leadershipFormatE = "%d %d %d %d %d %s %0.3f %s %s %s %s %s %s %s %s %s %s %d %d %s"
+  "abs.slot#,slot,epoch,block,leadChecks,leadShips,cdbSnap,rejTx,checkSpan,chainDens,%CPU,%GC,%MUT,Productiv,MemLiveKb,MemAllocKb,MemRSSKb,AllocRate/Mut,MempoolTxs,UTxO"
+leadershipFormatP = "%5d %4d:%2d %4d    %2d   %2d    %2d %2d %8s %0.3f  %3s %3s %3s %2s %3s   %4s %7s %7s %7s % 8s %4d %9d"
+leadershipFormatE = "%d,%d,%d,%d,%d,%d,%d,%d,%s,%0.3f,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%d,%d"
 
 toLeadershipLine :: Bool -> Text -> SlotStats -> Text
 toLeadershipLine exportMode leadershipF SlotStats{..} = Text.pack $

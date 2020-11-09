@@ -37,7 +37,7 @@ import           Cardano.Unlog.LogObject
 -- | All the CLI subcommands under \"analysis\".
 --
 data AnalysisCommand
-  = LeadershipChecks ChainParams (Maybe JsonOutputFile) (Maybe TextOutputFile) (Maybe TextOutputFile) (Maybe EpsOutputFile) (Maybe JsonOutputFile) [JsonLogfile]
+  = LeadershipChecks ChainParams (Maybe JsonOutputFile) (Maybe TextOutputFile) (Maybe TextOutputFile) (Maybe TextOutputFile) (Maybe EpsOutputFile) (Maybe JsonOutputFile) [JsonLogfile]
   | SubstringKeys
   deriving (Show)
 
@@ -62,7 +62,10 @@ parseAnalysisCommands =
                               "Dump pretty timeline of extracted slot leadership summaries, as a side-effect of log analysis")
                        <*> optional
                            (argTextOutputFile "export-timeline"
-                              "Dump pretty timeline of extracted slot leadership summaries, as a side-effect of log analysis")
+                              "Dump CSV of the timeline")
+                       <*> optional
+                           (argTextOutputFile "export-stats"
+                              "Dump CSV of the timeline statistics")
                        <*> optional
                            (argEpsOutputFile "cpu-spans-histogram"
                               "Write an EPS file with the CPU spans histogram")
