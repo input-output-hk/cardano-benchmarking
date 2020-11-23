@@ -1,26 +1,31 @@
 # This file is used by nix-shell.
 # It just takes the shell attribute from default.nix.
 { config ? {}
+, customConfig ? {}
 , sourcesOverride ? {}
-, minimal ? false
-, withHoogle ? (! minimal)
+, withHoogle ? true
+, pkgs ? import ./nix {
+    inherit config sourcesOverride;
+}
+# Benchmarking specifics:
 , withConsensusDeps ? true
 , withMonitoringDeps ? true
 , withNodeDeps ? withConsensusDeps || withMonitoringDeps
-, pkgs ? import ./nix {
-    inherit config sourcesOverride;
-  }
 }:
 with pkgs;
 let
   # This provides a development environment that can be used with nix-shell or
   # lorri. See https://input-output-hk.github.io/haskell.nix/user-guide/development/
+  # NOTE: due to some cabal limitation,
+  #  you have to remove all `source-repository-package` entries from cabal.project
+  #  after entering nix-shell for cabal to use nix provided dependencies for them.
   shell = cardanoBenchmarkingHaskellPackages.shellFor {
     name = "cabal-dev-shell";
 
-    packages = _:
+    # packages = ps: lib.attrValues (haskell-nix.haskellLib.selectProjectPackages ps);
+    packages = ps:
       with haskellPackages;
-      lib.attrValues cardanoBenchmarkingHaskellPackages.projectPackages
+      lib.attrValues (haskell-nix.haskellLib.selectProjectPackages ps)
       ++ lib.optionals withConsensusDeps
         (with cardanoNodeHaskellPackages; [
           ouroboros-consensus
@@ -47,23 +52,23 @@ let
     # These programs will be available inside the nix-shell.
     buildInputs = with haskellPackages; [
       cabal-install
-      pkgs.gnuplot
-      stylish-haskell
-      nix
-      niv
-      pkgconfig
-      tmux
-      # postgresql
-    ] ++ lib.optionals (! minimal) [
-      # cardanoDbSync.cardano-db-sync
-      cardano-cli
-      cardano-node
+      ghc-prof-flamegraph
       ghcid
-      git
+      pkgs.git
+      pkgs.gnuplot
       hlint
-      stylish-haskell
+      niv
+      nix
+      pkgconfig
+      profiterole
+      profiteur
       sqlite-interactive
+      stylish-haskell
+      tmux
       weeder
+      # from devops-shell:
+      python3Packages.supervisor
+      python3Packages.ipython
     ];
 
     # Prevents cabal from choosing alternate plans, so that
@@ -71,12 +76,6 @@ let
     exactDeps = true;
 
     inherit withHoogle;
-
-    shellHook = ''
-      echo "Modifying cabal.project for interactive development"
-
-      ./scripts/cabal-inside-nix-shell.sh
-    '';
   };
 
 in
