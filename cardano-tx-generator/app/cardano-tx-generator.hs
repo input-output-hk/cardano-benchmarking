@@ -3,9 +3,7 @@
 
 import           Cardano.Prelude hiding (option)
 
-import           Control.Monad.Trans.Except.Extra (runExceptT)
 import qualified Options.Applicative as Opt
-import           System.Exit (exitFailure)
 
 import           Cardano.Benchmarking.Run
 

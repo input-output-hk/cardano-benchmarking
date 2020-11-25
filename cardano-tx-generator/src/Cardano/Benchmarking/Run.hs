@@ -1,9 +1,12 @@
+{-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE Unsafe #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_GHC -Wno-all-missed-specialisations -Wno-orphans #-}
 
@@ -13,42 +16,40 @@ module Cardano.Benchmarking.Run
   , runCommand
   ) where
 
-import           Prelude (String, id)
-import qualified Prelude
-import           Data.Version
-                    (showVersion )
-import           Data.Text
-                    (Text, pack, unpack)
-import           Cardano.Prelude hiding (option)
-import           Control.Arrow ((&&&))
-import           Control.Monad (fail)
-import           Control.Monad.Trans.Except.Extra (firstExceptT)
-import qualified Options.Applicative as Opt
-import           Paths_cardano_tx_generator (version)
+import Prelude (String, id)
+import Prelude qualified
+import Data.Version (showVersion)
+import Data.Text (pack, unpack)
+import Cardano.Prelude hiding (option)
+import Control.Arrow ((&&&))
+import Control.Monad (fail)
+import Control.Monad.Trans.Except.Extra (firstExceptT)
+import Options.Applicative qualified as Opt
+import Paths_cardano_tx_generator (version)
 
-import qualified Cardano.Chain.Genesis as Genesis
+import Cardano.Chain.Genesis qualified as Genesis
 
-import           Ouroboros.Network.Block (MaxSlotNo(..))
-import           Ouroboros.Network.NodeToClient (IOManager, withIOManager)
+import Ouroboros.Network.Block (MaxSlotNo(..))
+import Ouroboros.Network.NodeToClient (IOManager, withIOManager)
 
-import           Ouroboros.Consensus.Block.Abstract (BlockProtocol)
-import           Ouroboros.Consensus.Cardano (Protocol, ProtocolByron, ProtocolShelley, ProtocolCardano)
+import Ouroboros.Consensus.Block.Abstract (BlockProtocol)
+import Ouroboros.Consensus.Cardano (Protocol, ProtocolByron, ProtocolShelley, ProtocolCardano)
 
-import qualified Cardano.Api.Protocol as Api
-import           Cardano.Api.Typed
-import           Cardano.Api.TxSubmit
-import           Cardano.Node.Configuration.Logging
-import           Cardano.Node.Configuration.POM
-import           Cardano.Node.Protocol.Cardano
-import           Cardano.Node.Protocol.Byron
-import           Cardano.Node.Protocol.Shelley
-import           Cardano.Node.Types
+import Cardano.Api.Protocol qualified as Api
+import Cardano.Api.Typed
+import Cardano.Api.TxSubmit
+import Cardano.Node.Configuration.Logging
+import Cardano.Node.Configuration.POM
+import Cardano.Node.Protocol.Cardano
+import Cardano.Node.Protocol.Byron
+import Cardano.Node.Protocol.Shelley
+import Cardano.Node.Types
 
-import           Cardano.Benchmarking.GeneratorTx
-import           Cardano.Benchmarking.GeneratorTx.Benchmark
-import           Cardano.Benchmarking.GeneratorTx.Genesis
-import           Cardano.Benchmarking.GeneratorTx.CLI.Parsers
-import           Cardano.Benchmarking.GeneratorTx.Era
+import Cardano.Benchmarking.GeneratorTx
+import Cardano.Benchmarking.GeneratorTx.Benchmark
+import Cardano.Benchmarking.GeneratorTx.Genesis
+import Cardano.Benchmarking.GeneratorTx.CLI.Parsers
+import Cardano.Benchmarking.GeneratorTx.Era
 
 
 data ProtocolError =
@@ -56,13 +57,13 @@ data ProtocolError =
   | ProtocolInstantiationError  !Text
   | GenesisBenchmarkRunnerError !TxGenError
   | ConfigNotFoundError         !FilePath
-  deriving Show
+  deriving stock Show
 
 data CliError =
     GenesisReadError !FilePath !Genesis.GenesisDataError
   | GenerateTxsError !ProtocolError
   | FileNotFoundError !FilePath
-  deriving Show
+  deriving stock Show
 
 data GeneratorCmd =
   GenerateTxs FilePath
