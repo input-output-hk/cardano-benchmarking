@@ -106,7 +106,7 @@ genesisKeyPseudoTxIn m@ModeShelley{} key _ =
 genesisKeyPseudoTxIn m@ModeByron{}
                      (getVerificationKey -> ByronVerificationKey key)
                      (AddressInEra _ (ByronAddress genAddr)) =
-  fromByronTxIn $ byronGenesisUTxOTxIn (modeLedgerConfig m) key genAddr
+  fromByronTxIn $ byronGenesisUTxOTxIn (modeGenesis m) key genAddr
 genesisKeyPseudoTxIn m _ _ =
   error $ "genesisKeyPseudoTxIn:  unsupported mode: " <> show m
 
@@ -118,15 +118,14 @@ modeGenesisFunds = \case
     fmap (fromShelleyAddr m *** fromShelleyLovelace)
     . Map.toList
     . Consensus.sgInitialFunds
-    . Shelley.shelleyLedgerGenesis
-    $ modeLedgerConfig m
+    $ modeGenesis m
   m@ModeByron{} ->
     fmap (\(TxOut addr (TxOutAdaOnly AdaOnlyInByronEra coin)) -> (addr, coin))
     . map (fromByronTxOut . Byron.fromCompactTxOut . snd)
     . Map.toList
     . Byron.unUTxO
     . Byron.genesisUtxo
-    $ modeLedgerConfig m
+    $ modeGenesis m
   m -> error $ "modeGenesisFunds:  unsupported mode: " <> show m
 
 extractGenesisFunds

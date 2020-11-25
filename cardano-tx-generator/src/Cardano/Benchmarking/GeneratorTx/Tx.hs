@@ -71,6 +71,7 @@ import qualified Shelley.Spec.Ledger.Coin as Shelley
 import qualified Shelley.Spec.Ledger.TxBody as ShelleyLedger
 
 import           Cardano.API
+import           Cardano.Api.Shelley
 import           Cardano.Api.TxSubmit
 import           Cardano.Api.Typed
 import           Cardano.Benchmarking.GeneratorTx.Era
