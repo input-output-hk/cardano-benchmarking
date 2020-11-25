@@ -13,13 +13,14 @@ module Cardano.Benchmarking.Run
   , runCommand
   ) where
 
-import           Prelude (String)
+import           Prelude (String, id)
 import qualified Prelude
 import           Data.Version
                     (showVersion )
 import           Data.Text
                     (Text, pack, unpack)
 import           Cardano.Prelude hiding (option)
+import           Control.Arrow ((&&&))
 import           Control.Monad (fail)
 import           Control.Monad.Trans.Except.Extra (firstExceptT)
 import qualified Options.Applicative as Opt
@@ -30,6 +31,7 @@ import qualified Cardano.Chain.Genesis as Genesis
 import           Ouroboros.Network.Block (MaxSlotNo(..))
 import           Ouroboros.Network.NodeToClient (IOManager, withIOManager)
 
+import           Ouroboros.Consensus.Block.Abstract (BlockProtocol)
 import           Ouroboros.Consensus.Cardano (Protocol, ProtocolByron, ProtocolShelley, ProtocolCardano)
 
 import qualified Cardano.Api.Protocol as Api
@@ -53,6 +55,7 @@ data ProtocolError =
     IncorrectProtocolSpecified  !Api.Protocol
   | ProtocolInstantiationError  !Text
   | GenesisBenchmarkRunnerError !TxGenError
+  | ConfigNotFoundError         !FilePath
   deriving Show
 
 data CliError =
@@ -140,30 +143,31 @@ runCommand (GenerateTxs logConfigFp
             Left err -> panic $ "Error in creating the NodeConfiguration: " <> pack err
             Right nc' -> return nc'
 
-    -- Logging layer
-    loggingLayer <- firstExceptT (\(ConfigErrorFileNotFound fp) -> FileNotFoundError fp) $
-                             createLoggingLayer (pack $ showVersion version)
-                             nc
-
-    p <- firstExceptT GenerateTxsError $
+    (p, loggingLayer) <- firstExceptT GenerateTxsError $
       case ncProtocolConfig nc of
         NodeProtocolConfigurationByron config -> do
           ptcl :: Protocol IO ByronBlockHFC ProtocolByron
                <- firstExceptT (ProtocolInstantiationError . pack . show) $
                     mkConsensusProtocolByron config Nothing
-          pure . SomeMode $ mkMode ptcl EraByron nmagic_opt is_addr_mn iocp socketFp loggingLayer
+          mkLoggingLayer nc ptcl <&>
+            (SomeMode . mkMode ptcl EraByron nmagic_opt is_addr_mn iocp socketFp
+             &&& id)
         NodeProtocolConfigurationShelley config -> do
           ptcl :: Protocol IO ShelleyBlockHFC ProtocolShelley
                <- firstExceptT (ProtocolInstantiationError . pack . show) $
                     mkConsensusProtocolShelley config Nothing
-          pure . SomeMode $ mkMode ptcl EraShelley nmagic_opt is_addr_mn iocp socketFp loggingLayer
+          mkLoggingLayer nc ptcl <&>
+            (SomeMode . mkMode ptcl EraShelley nmagic_opt is_addr_mn iocp socketFp
+             &&& id)
         NodeProtocolConfigurationCardano byC shC hfC -> do
           ptcl :: Protocol IO CardanoBlock ProtocolCardano
                <- firstExceptT (ProtocolInstantiationError . pack . show) $
                     mkConsensusProtocolCardano byC shC hfC Nothing
           case someEra of
             SomeEra era ->
-              pure . SomeMode $ mkMode ptcl era nmagic_opt is_addr_mn iocp socketFp loggingLayer
+              mkLoggingLayer nc ptcl <&>
+                (SomeMode . mkMode ptcl era nmagic_opt is_addr_mn iocp socketFp
+                 &&& id)
           -- case someEra of
           --   SomeEra EraByron ->
           --     pure . SomeMode $ mkMode ptcl EraByron iocp socketFp loggingLayer
@@ -180,6 +184,11 @@ runCommand (GenerateTxs logConfigFp
     liftIO $ do
       threadDelay (200*1000) -- Let the logging layer print out everything.
       shutdownLoggingLayer loggingLayer
+ where
+   mkLoggingLayer :: NodeConfiguration -> Protocol IO blk (BlockProtocol blk) -> ExceptT ProtocolError IO LoggingLayer
+   mkLoggingLayer nc ptcl =
+     firstExceptT (\(ConfigErrorFileNotFound fp) -> ConfigNotFoundError fp) $
+       createLoggingLayer (pack $ showVersion version) nc ptcl
 
 ----------------------------------------------------------------------------
 

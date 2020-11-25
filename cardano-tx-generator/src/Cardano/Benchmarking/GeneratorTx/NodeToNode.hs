@@ -4,6 +4,7 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
@@ -97,8 +98,7 @@ benchmarkConnectTxSubmit p localAddr remoteAddr myTxSubClient =
       (NtN.NodeToNodeVersionData
        { NtN.networkMagic = modeNetworkMagicN2N p
        , NtN.diffusionMode = NtN.InitiatorOnlyDiffusionMode
-       })
-      (NtN.nodeToNodeDictVersion n2nVer) $
+       }) $
       NtN.nodeToNodeProtocols NtN.defaultMiniProtocolParameters ( \them _ ->
         NtN.NodeToNodeProtocols
           { NtN.chainSyncProtocol = InitiatorProtocolOnly $
@@ -152,7 +152,7 @@ benchmarkConnectTxSubmit p localAddr remoteAddr myTxSubClient =
 
 -- the null block fetch client
 blockFetchClientNull
-  :: forall block m a.  MonadTimer m
-  => BlockFetchClient block m a
+  :: forall block point m a.  MonadTimer m
+  => BlockFetchClient block point m a
 blockFetchClientNull
   = BlockFetchClient $ forever $ threadDelay (24 * 60 * 60) {- one day in seconds -}

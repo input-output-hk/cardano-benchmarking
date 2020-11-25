@@ -234,7 +234,7 @@ consumeTxs Submission{sTxSendQueue} blk req
 -------------------------------------------------------------------------------}
 txSubmissionClient
   :: forall m mode era tx txid gentx gentxid .
-     ( MonadIO m
+     ( MonadIO m, MonadFail m
      , ConfigSupportsTxGen mode era
      , tx      ~ Tx era
      , txid    ~ TxId

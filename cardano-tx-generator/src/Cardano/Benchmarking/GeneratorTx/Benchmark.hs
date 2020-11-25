@@ -145,8 +145,6 @@ instance ToJSON Sent
 instance ToJSON Unav
 instance ToJSON TPSRate
 
-deriving instance Num Lovelace
-
 parseNumberOfTxs :: String -> String -> Parser NumberOfTxs
 parseNumberOfTxs opt desc = NumberOfTxs <$> parseIntegral opt desc
 

@@ -15,6 +15,7 @@
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE TypeInType #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE ViewPatterns #-}
 
@@ -35,12 +36,15 @@ module Cardano.Benchmarking.GeneratorTx.Era
   , Mode(..)
   , SomeEra(..)
   , Era(..)
+  , ReifyEra(..)
   , ByronBlockHFC
   , ShelleyBlock
   , ShelleyBlockHFC
+  , CardanoBlock
+
   , SigningKeyOf
   , SigningKeyRoleOf
-  , CardanoBlock
+  -- , EraAdaOnlyInEra
 
   , InitCooldown(..)
   , NumberOfInputsPerTx(..)
@@ -120,7 +124,7 @@ import           Ouroboros.Consensus.Node.ProtocolInfo
                    (ProtocolInfo (..))
 import           Ouroboros.Consensus.Node.Run (RunNode)
 import           Ouroboros.Consensus.Shelley.Protocol
-                   (StandardCrypto, StandardShelley)
+                   (StandardCrypto)
 import           Ouroboros.Network.Driver (TraceSendRecv (..))
 import           Ouroboros.Network.Protocol.TxSubmission.Type (TxSubmission)
 import           Ouroboros.Network.NodeToClient (Handshake, IOManager)
@@ -131,15 +135,16 @@ import qualified Cardano.Chain.Slotting as Byron
 import           Ouroboros.Consensus.Byron.Ledger (ByronBlock (..))
 import           Ouroboros.Consensus.Cardano.ByronHFC
 import           Ouroboros.Consensus.HardFork.Combinator.Basics
-import           Ouroboros.Consensus.HardFork.Combinator.Unary
+import           Ouroboros.Consensus.HardFork.Combinator.Embed.Unary
 
 -- Shelley-specific imports
 import qualified Ouroboros.Consensus.Cardano.ShelleyHFC as Shelley
 import qualified Ouroboros.Consensus.Shelley.Ledger.Block as Shelley
 
 -- Node API imports
-import           Cardano.Api.Typed
+import           Cardano.API
 import           Cardano.Api.TxSubmit
+import           Cardano.Api.Typed
 import qualified Cardano.Api.Typed as Api
 
 -- Node imports
@@ -166,17 +171,15 @@ type ModeSupportsTxGen mode =
   , RunNode (HFCBlockOf mode))
 
 type EraSupportsTxGen era =
-  ( Eq (Address era)
+  ( IsCardanoEra era
+  , Eq (Address era)
   , FromJSON (TxOut era)
   , Key (SigningKeyRoleOf era)
-  , Ord (TxOut era)
-  , Show (Tx era)
-  , Show (TxOut era))
+  , Show (TxOut (ApiEra era))
+  , Show (Tx era))
 
 type ConfigSupportsTxGen mode era =
   (ModeSupportsTxGen mode, EraSupportsTxGen era)
-
-deriving instance Eq (Address era) => Ord (Address era)
 
 -- https://github.com/input-output-hk/cardano-node/issues/1855 would be the proper solution.
 deriving instance (Generic TxIn)
@@ -186,9 +189,6 @@ instance ToJSON TxId where
   toJSON (TxId x) = toJSON x
 instance ToJSON TxIx where
   toJSON (TxIx x) = toJSON x
-
-deriving instance Eq (Address era) => (Eq (TxOut era))
-deriving instance Eq (Address era) => (Ord (TxOut era))
 
 type ShelleyBlock    = Shelley.ShelleyBlock    StandardShelley
 type ShelleyBlockHFC = Shelley.ShelleyBlockHFC StandardShelley
@@ -213,13 +213,25 @@ type family SigningKeyRoleOf era :: Type where
 
 type SigningKeyOf era = SigningKey (SigningKeyRoleOf era)
 
+type family ApiEra era where
+  ApiEra Byron   = ByronEra
+  ApiEra Shelley = ShelleyEra
+
+class ReifyEra era where
+  reifyEra :: Era era
+
+instance ReifyEra Byron where
+  reifyEra = EraByron
+instance ReifyEra Shelley where
+  reifyEra = EraShelley
+
 type GenTxOf   mode = GenTx   (HFCBlockOf mode)
 type GenTxIdOf mode = GenTxId (HFCBlockOf mode)
 
 type family ModeOfProtocol p :: Type where
   ModeOfProtocol Consensus.ProtocolByron   = ByronMode
   ModeOfProtocol Consensus.ProtocolShelley = ShelleyMode
-  ModeOfProtocol (HardForkProtocol '[ByronBlock, ShelleyBlock]) = CardanoMode
+  ModeOfProtocol Consensus.ProtocolCardano = CardanoMode
   ModeOfProtocol t = TypeError (Ty.Text "Unsupported protocol: "  :<>: ShowType t)
 
 data SomeMode =
@@ -284,8 +296,7 @@ instance Show (Era era) where
 
 mkMode
   :: forall blok era mode ptcl
-  . ( mode ~ ModeOfProtocol ptcl
-    )
+  . ()
   => Consensus.Protocol IO blok ptcl
   -> Era era
   -> Maybe NetworkMagic
@@ -293,7 +304,7 @@ mkMode
   -> IOManager
   -> SocketPath
   -> LoggingLayer
-  -> Mode mode era
+  -> Mode (ModeOfProtocol ptcl) era
 mkMode ptcl@Consensus.ProtocolByron{} EraByron nmagic_opt is_addr_mn iom (SocketPath sock) ll =
   ModeByron
     pInfoConfig
