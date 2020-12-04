@@ -117,7 +117,9 @@ let
       })
       {
         packages = lib.genAttrs projectPackages
-          (name: { configureFlags = [ "--ghc-option=-Werror" ]; });
+          (name: { configureFlags = [
+                     # "--ghc-option=-Werror"
+                   ]; });
       }
       # TODO: Compile all local packages with -Werror:
       { packages.cardano-tx-generator.configureFlags = [
