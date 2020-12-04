@@ -200,5 +200,4 @@ instance Prelude.Show (TxForMode a) where
   show = \case
     TxForByronMode          tx  -> Prelude.show tx
     TxForShelleyMode        tx  -> Prelude.show tx
-    TxForCardanoMode (Left  tx) -> Prelude.show tx
-    TxForCardanoMode (Right tx) -> Prelude.show tx
+    TxForCardanoMode (InAnyCardanoEra _ tx)  -> Prelude.show tx

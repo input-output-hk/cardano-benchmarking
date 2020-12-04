@@ -13,7 +13,13 @@ extra-source-files:    README.md
 library
 
   hs-source-dirs:      src
-  ghc-options:         -Wextra
+  ghc-options:          -Wall
+                        -Wincomplete-record-updates
+                        -Wincomplete-uni-patterns
+                        -Wredundant-constraints
+                        -Wpartial-fields
+                        -Wcompat
+                        -threaded -rtsopts -with-rtsopts=-N -with-rtsopts=-T
 
   exposed-modules:     Cardano.Benchmarking.GeneratorTx
                        Cardano.Benchmarking.GeneratorTx.Benchmark
@@ -37,7 +43,6 @@ library
                      , cardano-api
                      , cardano-binary
                      , cardano-cli
-                     , cardano-config
                      , cardano-crypto-class
                      , cardano-crypto-wrapper
                      , cardano-ledger
@@ -46,18 +51,12 @@ library
                      , contra-tracer
                      , cborg >= 0.2.2 && < 0.3
                      , containers
-                     , directory
                      , extra
-                     , filepath
                      , formatting
                      , generic-monoid
-                     , generics-sop
                      , ghc-prim
-                     , http-client
-                     , http-types
                      , io-sim-classes
                      , iohk-monitoring
-                     , iproute
                      , network
                      , network-mux
                      , optparse-applicative
@@ -68,19 +67,14 @@ library
                      , ouroboros-network
                      , ouroboros-network-framework
                      , random
-                     , safe-exceptions
                      , serialise
                      , shelley-spec-ledger
-                     , split
                      , stm
                      , text
                      , time
-                     , time-compat
-                     , tracer-transformers
                      , transformers
                      , transformers-except
                      , unordered-containers
-                     , yaml
 
   default-language:    Haskell2010
   default-extensions:  NoImplicitPrelude

@@ -149,7 +149,16 @@ extractGenesisFunds m k =
   isTxOutForKey :: TxOut era -> Bool
   isTxOutForKey (TxOut addr _) = keyAddress m modeNetworkId k == addr
 
-genesisExpenditure :: Mode mode era -> SigningKeyOf era -> AddressInEra era -> Lovelace -> TxFee -> TTL -> (Tx era, TxIn, TxOut era)
+genesisExpenditure
+  :: forall mode era
+  .  (IsCardanoEra era)
+  => Mode mode era
+  -> SigningKeyOf era
+  -> AddressInEra era
+  -> Lovelace
+  -> Lovelace
+  -> SlotNo
+  -> (Tx era, TxIn, TxOut era)
 genesisExpenditure m key addr (Lovelace coin) (Lovelace fee) ttl =
   (,,) tx txin txout
  where

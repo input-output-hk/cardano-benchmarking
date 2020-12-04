@@ -71,7 +71,7 @@ import qualified Shelley.Spec.Ledger.Coin as Shelley
 import qualified Shelley.Spec.Ledger.TxBody as ShelleyLedger
 
 import           Cardano.API
-import           Cardano.Api.Shelley
+import           Cardano.Api.Shelley hiding (fromShelleyAddr)
 import           Cardano.Api.TxSubmit
 import           Cardano.Api.Typed
 import           Cardano.Benchmarking.GeneratorTx.Era
@@ -82,14 +82,14 @@ import           Cardano.Benchmarking.GeneratorTx.Tx.Byron
 castTxMode :: Mode mode era -> Tx era -> TxForMode mode
 castTxMode ModeByron{}          tx@ByronTx{}   = TxForByronMode  tx
 castTxMode ModeShelley{}        tx@ShelleyTx{} = TxForShelleyMode tx
-castTxMode ModeCardanoByron{}   tx@ByronTx{}   = TxForCardanoMode $ Left tx
-castTxMode ModeCardanoShelley{} tx@ShelleyTx{} = TxForCardanoMode $ Right tx
+castTxMode ModeCardanoByron{}   tx@ByronTx{}   = TxForCardanoMode $ InAnyCardanoEra ByronEra tx
+castTxMode ModeCardanoShelley{} tx@ShelleyTx{} = TxForCardanoMode $ InAnyCardanoEra ShelleyEra tx
 
 -- https://github.com/input-output-hk/cardano-node/issues/1853 would be the long-term solution.
 toGenTx :: Mode mode era -> Tx era -> GenTx (HFCBlockOf mode)
-toGenTx ModeShelley{}        (ShelleyTx tx) = inject $ Shelley.mkShelleyTx tx
+toGenTx ModeShelley{}        (ShelleyTx _ tx) = inject $ Shelley.mkShelleyTx tx
 toGenTx ModeByron{}          (ByronTx tx)   = inject $ normalByronTxToGenTx tx
-toGenTx ModeCardanoShelley{} (ShelleyTx tx) = GenTxShelley $ Shelley.mkShelleyTx tx
+toGenTx ModeCardanoShelley{} (ShelleyTx _ tx) = GenTxShelley $ Shelley.mkShelleyTx tx
 toGenTx ModeCardanoByron{}   (ByronTx tx)   = GenTxByron   $ normalByronTxToGenTx tx
 
 shelleyTxId :: GenTxId (BlockOf ShelleyMode) -> TxId
@@ -167,12 +167,13 @@ signTransaction p k body = case modeEra p of
   EraByron   -> signByronTransaction (modeNetworkId p) body [k]
   EraShelley -> signShelleyTransaction body [WitnessPaymentKey k]
 
+
 mkTransaction :: forall mode era
   .  Mode mode era
   -> SigningKeyOf era
   -> TxAdditionalSize
-  -> TTL
-  -> TxFee
+  -> SlotNo
+  -> Lovelace
   -> [TxIn]
   -> [TxOut era]
   -> Tx era
@@ -182,13 +183,10 @@ mkTransaction p key payloadSize ttl fee txins txouts =
  where
    makeTransaction :: Mode mode era -> TxBody era
    makeTransaction m = case modeEra m of
-     EraShelley ->
-       makeShelleyTransaction
-         (txExtraContentEmpty { txMetadata =
-                                if payloadSize == 0
-                                then Nothing
-                                else Just $ payloadShelley payloadSize })
-         ttl fee txins txouts
+     EraShelley -> case makeShelleyTransaction txins txouts ttl fee [] [] metaData Nothing of
+                      Right tx -> tx
+                      Left err -> error $ show err
+                   where metaData = if payloadSize == 0 then Nothing else Just $ payloadShelley payloadSize
      EraByron ->
        either (error . T.unpack) Prelude.id $
          mkByronTransaction txins txouts
@@ -266,7 +264,7 @@ mkTransactionGen
   -- ^ Each recipient and their payment details
   -> TxAdditionalSize
   -- ^ Optional size of additional binary blob in transaction (as 'txAttributes')
-  -> TxFee
+  -> Lovelace
   -- ^ Tx fee.
   -> ( Maybe (TxIx, Lovelace)   -- The 'change' index and value (if any)
      , Lovelace                 -- The associated fees
@@ -276,7 +274,8 @@ mkTransactionGen
 mkTransactionGen p signingKey inputs mChangeAddr payments payloadSize fee@(Lovelace fees) =
   (mChange, fee, offsetMap, tx)
  where
-  tx = mkTransaction p signingKey payloadSize (SlotNo 10000000) fee
+  tx = mkTransaction p signingKey payloadSize (SlotNo 10000000)
+         fee
          (NonEmpty.toList $ fst <$> inputs)
          (NonEmpty.toList txOutputs)
 

@@ -1,4 +1,4 @@
-index-state: 2020-10-01T00:00:00Z
+index-state: 2020-11-15T00:00:00Z
 
 packages:
     cardano-tx-generator
@@ -99,8 +99,8 @@ package small-steps-test
 source-repository-package
   type: git
   location: https://github.com/input-output-hk/cardano-node
-  tag: 44fc328618b1f48a400c71cd51d789bb0401ac78
-  --sha256: 15m1dfjsrirz34ijibinnvfx651dkaq3nx11diphd4ig6w3zwvdw
+  tag: d85c7c1c5aa45bc54859f3461e4396a7b9974b3f
+  --sha256: 16hmphx3197mbvg77m9ywhzj3qyxds0da0zvxvljzpbyiq2fj8a2
   subdir:
     cardano-api
     cardano-cli
@@ -113,8 +113,8 @@ source-repository-package
 source-repository-package
   type: git
   location: https://github.com/input-output-hk/cardano-base
-  tag: 6226a0feb1d74f50a430242a1b4608fd48e10aad
-  --sha256: 034q2anpbc7bgp5draykz6lkzznxk31wy4nbgr4jv4f7778yls6b
+  tag: 2574600da11065937c1f07e4b234ecb451016a2e
+  --sha256: 0nq8bpzsr3fd2i59a6s6qb6slpymjh47zv57wlifjfvhh0xlgmpx
   subdir:
     binary
     binary/test
@@ -132,8 +132,8 @@ source-repository-package
 source-repository-package
   type: git
   location: https://github.com/input-output-hk/cardano-ledger-specs
-  tag: 7c64ed8ca2e2141780326ac2990f59ab942356af
-  --sha256: 0md1lm50jyg0navmw9yazzsvw4xrbzvsvawlk91rmpsxfscn92yz
+  tag: 345683717da0e5008103a9e25cc2445736ca8e82
+  --sha256: 0iih2pryyps5xqrdxylpihy99g0ny5lgpka9wzd612jvj14lv08d
   subdir:
     byron/chain/executable-spec
     byron/crypto
@@ -151,8 +151,8 @@ source-repository-package
 source-repository-package
   type: git
   location: https://github.com/input-output-hk/cardano-prelude
-  tag: 58e146c14e1349553d0ed75dd5245bbe65f0533e
-  --sha256: 166rm0sxldnf0g2g9jp4k0rgd01wcbm0g54fcw3bxilzr1dvwqfi
+  tag: 742e8525b96bf4b66fb61a00c8298d75d7931d5e
+  --sha256: 1132r58bjgdcf7yz3n77nlrkanqcmpn5b5km4nw151yar2dgifsv
   subdir:
     cardano-prelude
     cardano-prelude-test
@@ -181,8 +181,8 @@ source-repository-package
 source-repository-package
   type: git
   location: https://github.com/input-output-hk/ouroboros-network
-  tag: 57ab00435e6c38d146e029ac2d3f824ff6e738a8
-  --sha256: 0l9nv0lr9wxf9z7gs91dvpci7ghfbk9d4mcly1mm5xd76d21jbbb
+  tag: 7e00984293b51fed8e72683607d8b9e0717382bd
+  --sha256: 1m89ih9m4p48nw1mybzf3ssr5va9ppsskx9pl9130aczhhi5ix85
   subdir:
     io-sim
     io-sim-classes
