@@ -69,11 +69,11 @@ get_funds_via_byron_payment_key_byron() {
              --testnet-magic $MAGIC \
              --tx $txfile
         ## convert intermediate key to Shelley format
-        $cli shelley key convert-byron-key \
+        $cli key convert-byron-key \
              --byron-payment-key-type \
              --byron-signing-key-file $byron_inter_skey \
              --out-file $target_skey
-        $cli shelley key verification-key \
+        $cli key verification-key \
              --signing-key-file $target_skey \
              --verification-key-file $target_vkey
         sed -i 's/PaymentVerificationKeyByron_ed25519_bip32/GenesisUTxOVerificationKey_ed25519/' $target_vkey
@@ -106,7 +106,7 @@ get_byron_key_addr() {
 }
 
 get_shelley_key_addr() {
-        $cli shelley address build \
+        $cli address build \
             --testnet-magic "$MAGIC" \
             --payment-verification-key-file "$1"
 }
@@ -146,7 +146,7 @@ move_utxo_shelley() {
 
         local txbody
         txbody=$(new_temp_file "move.txbody")
-        $cli shelley transaction build-raw \
+        $cli transaction build-raw \
              --tx-in             "$txin" \
              --tx-out            "$toaddr+$coin" \
              --ttl               10000000 \
@@ -154,13 +154,13 @@ move_utxo_shelley() {
              --out-file          "$txbody"
         local tx
         tx=$(new_temp_file "move.tx")
-        $cli shelley transaction sign \
+        $cli transaction sign \
              --tx-body-file      "$txbody" \
              --signing-key-file  "$key" \
              --testnet-magic     "$MAGIC" \
              --out-file          "$tx"
         CARDANO_NODE_SOCKET_PATH=logs/sockets/1 \
-        $cli shelley transaction submit \
+        $cli transaction submit \
              --tx-file           "$tx" \
              --testnet-magic     "$MAGIC"
 }
@@ -170,14 +170,14 @@ get_funds_directly_delegate() {
         local utxo_ext_vkey
         utxo_ext_vkey=$(new_temp_file "utxo.ext.vkey")
 
-        $cli shelley key convert-byron-key \
+        $cli key convert-byron-key \
              --byron-genesis-delegate-key-type \
              --byron-signing-key-file $src_skey \
              --out-file $target_skey
-        $cli shelley key verification-key \
+        $cli key verification-key \
              --signing-key-file $target_skey \
              --verification-key-file $utxo_ext_vkey
-        $cli shelley key non-extended-key \
+        $cli key non-extended-key \
              --extended-verification-key-file $utxo_ext_vkey \
              --verification-key-file $target_vkey
         sed -i 's/GenesisDelegateVerificationKey_ed25519/GenesisUTxOVerificationKey_ed25519/' $target_vkey
@@ -189,11 +189,11 @@ get_funds_directly_poor() {
         local utxo_ext_vkey
         utxo_ext_vkey=$(new_temp_file "utxo.ext.vkey")
 
-        $cli shelley key convert-byron-key \
+        $cli key convert-byron-key \
              --byron-payment-key-type \
              --byron-signing-key-file $src_skey \
              --out-file $target_skey
-        $cli shelley key verification-key \
+        $cli key verification-key \
              --signing-key-file $target_skey \
              --verification-key-file $target_vkey
 }
@@ -204,18 +204,18 @@ get_funds_poor_via_shelley() {
         inter_skey=$(new_temp_file "inter.skey")
         inter_vkey=$(new_temp_file "inter.vkey")
 
-        $cli shelley key convert-byron-key \
+        $cli key convert-byron-key \
              --byron-payment-key-type \
              --byron-signing-key-file $src_skey \
              --out-file $inter_skey
-        $cli shelley key verification-key \
+        $cli key verification-key \
              --signing-key-file $inter_skey \
              --verification-key-file $inter_vkey
 
         local src_addr
         src_addr=$(get_byron_key_addr "$src_skey")
 
-        $cli shelley address key-gen \
+        $cli address key-gen \
             --verification-key-file $target_vkey \
             --signing-key-file      $target_skey
 

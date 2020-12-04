@@ -70,11 +70,13 @@ TracingVerbosity: NormalVerbosity
 # configuration below. The logging backend is called Katip.
 setupBackends:
   - KatipBK
+  - TraceForwarderBK
 
 # specifies the default backends that trace output is sent to if it
 # is not specifically configured to be sent to other backends.
 defaultBackends:
   - KatipBK
+  - TraceForwarderBK
 
 # EKG is a simple metrics monitoring system. Uncomment the following to enable
 # this backend and listen on the given local port and point your web browser to
@@ -90,9 +92,11 @@ defaultBackends:
 # items are then forwarded based on an entry in 'mapBackends' to a separate
 # process running a 'TraceAcceptor'.
 # Example using UNIX pipes:
-# traceForwardTo:
-#    tag: RemotePipe
-#    contents: "logs/sockets/pool2"
+traceForwardTo:
+   tag: RemoteSocket
+   contents:
+     - "127.0.0.1"
+     - "10002"
 #
 # Example using Windows named pipes:
 # traceForwardTo:
@@ -218,47 +222,5 @@ TraceTxOutbound: False
 # Trace TxSubmission protocol messages.
 TraceTxSubmissionProtocol: False
 
-
-##### Fine grained logging control #####
-
-# It is also possible to have more fine grained control over filtering of
-# trace output, and to match and route trace output to particular backends.
-# This is less efficient than the coarse trace filters above but provides
-# much more precise control.
-
 options:
-
-  # This routes metrics matching specific names to particular backends.
-  # This overrides the 'defaultBackends' listed above. And note that it is
-  # an override and not an extension so anything matched here will not
-  # go to the default backend, only to the explicitly listed backends.
-  mapBackends:
-    cardano.node.BlockFetchDecision.peers:
-      - EKGViewBK
-      - kind: UserDefinedBK
-        name: LiveViewBackend
-    cardano.node.ChainDB.metrics:
-      - EKGViewBK
-      - kind: UserDefinedBK
-        name: LiveViewBackend
-    cardano.node.metrics:
-      - EKGViewBK
-      - KatipBK
-      - kind: UserDefinedBK
-        name: LiveViewBackend
-    cardano.node.Forge.metrics:
-      - EKGViewBK
-      - KatipBK
-    cardano.node.release:
-      - KatipBK
-    cardano.node.version:
-      - KatipBK
-    cardano.node.commit:
-      - KatipBK
-
-  # apply a filter on message severity on messages in a specific named context.
-  # this filter is applied additionally to the global 'minSeverity' and thus
-  # needs to be at least as high.
-  mapSeverity:
-    cardano.node.ChainDB: Info
-    cardano.node.DnsSubscription: Info
+  default: true
