@@ -83,6 +83,7 @@ run_quiet()
         case ${SCRIPTS_LIB_SH_MODE} in
                 nix )               bld_extra="--no-build-output --quiet ${bld_extra}";;
                 cabal )             bld_extra="${bld_extra}";;
+        esac
 
         actually_run --build-extra "${bld_extra}" "$@"
 }

@@ -80,7 +80,7 @@ params=(--genesis-dir      "$gendir"
         --gen-genesis-keys 1
         --gen-utxo-keys    1
        )
-$cli shelley genesis create "${params[@]}"
+$cli genesis create "${params[@]}"
 
 ## set parameters in template
 params=(--argjson slotLength            "$GEN_SLOTLENGTH"

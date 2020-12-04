@@ -4,9 +4,9 @@
 ##########################################################
 
 ByronGenesisFile: genesis-byron/genesis.json
-ByronGenesisHash: 
+ByronGenesisHash: bf51bcbb04feda6ec9547028ca04dd313eb48ebe222556c1a7e06e3556a1487b
 ShelleyGenesisFile: genesis-shelley/genesis.json
-ShelleyGenesisHash: 
+ShelleyGenesisHash: aa176323b677cd5a76d3a7f8afeb3238fa0386d2455ed0cc31b35a85c1a4849d
 
 
 
@@ -20,7 +20,7 @@ TestShelleyHardForkAtEpoch: 1
 # The node also supports various test and mock instances.
 # "RealPBFT" is the real (ie not mock) (permissive) OBFT protocol, which
 # is what we use on mainnet in Byron era.
-Protocol: 
+Protocol: TPraos
 
 # The mainnet does not include the network magic into addresses. Testnets do.
 RequiresNetworkMagic: RequiresMagic

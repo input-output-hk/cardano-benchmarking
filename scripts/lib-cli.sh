@@ -46,7 +46,7 @@ genesis() {
 
         local tmpdir="$(mktemp).d"
         ARGS=(
-                --genesis-output-dir           "${tmpdir}"
+                --genesis-dir                  "${tmpdir}"
                 --start-time                   "${start_time}"
                 --protocol-parameters-file     "${protocol_params}"
                 --k                            "${parameter_k}"
