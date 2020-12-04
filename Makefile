@@ -41,10 +41,10 @@ strict-sync strict:
 	@echo "Strictly syncing 'cabal.project' to ../cardano-node"
 	./scripts/sync-to.sh --stage-changes --strict-coherence
 
-shell: sync
+shell: strict-sync
 	nix-shell --max-jobs 8 --cores 0
 
-strict-shell: strict-sync
+lax-shell: sync
 	nix-shell --max-jobs 8 --cores 0
 
 setup:
