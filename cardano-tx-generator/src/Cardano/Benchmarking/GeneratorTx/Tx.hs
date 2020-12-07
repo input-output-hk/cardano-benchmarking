@@ -141,9 +141,6 @@ fromShelleyAddr m (Shelley.Addr _ pcr sref) =
   makeShelleyAddressInEra (modeNetworkId m) (fromShelleyPaymentCredential pcr) (fromShelleyStakeReference sref)
 fromShelleyAddr m _ = error "fromShelleyAddr:  unhandled Shelley.Addr case"
 
-fromShelleyLovelace :: Shelley.Coin -> Lovelace
-fromShelleyLovelace (Shelley.Coin l) = Lovelace l
-
 toByronTxId :: TxId -> Byron.TxId
 toByronTxId (TxId h) =
   Byron.unsafeHashFromBytes (Crypto.hashToBytes h)
