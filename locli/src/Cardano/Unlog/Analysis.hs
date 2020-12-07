@@ -352,7 +352,8 @@ analysisSummary slots =
      ]
 
    checkCounts      = slCountChecks <$> slots
-   maxChecks        = maximum checkCounts
+   maxChecks        = if length checkCounts == 0
+                      then 0 else maximum checkCounts
    misses           = (maxChecks -) <$> checkCounts
    missRatios       = missRatio <$> misses
    spanLensCPU85    = Seq.fromList $ length <$>
