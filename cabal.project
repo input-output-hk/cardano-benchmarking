@@ -99,10 +99,11 @@ package small-steps-test
 source-repository-package
   type: git
   location: https://github.com/input-output-hk/cardano-node
-  tag: 60e10b91af7fde1dad21064fdece5ed95a09e31a
-  --sha256: 0mnfw3ixnafk88wcfd9ynypxmi15qrx9ir2bl02jjlc3c5flzc84
+  tag: 196ba716c425a0b7c75741c168f6a6d7edaee1fc
+  --sha256: 0i6l645hsa1dih1rqc6kz51c906k5f9zj5aq095gkwby3f0hzikp
   subdir:
     cardano-api
+    cardano-api/test
     cardano-cli
     cardano-config
     cardano-node
@@ -132,8 +133,8 @@ source-repository-package
 source-repository-package
   type: git
   location: https://github.com/input-output-hk/cardano-ledger-specs
-  tag: e499195fbdf38bbece09c36c239bc562921ed68c
-  --sha256: 0w78hsiwl0bg0qm6nzyckk1cd6qv6qzqgj55n4rymnl522n00nan
+  tag: 581767d1329f3f702e332af08355e81a0f85333e
+  --sha256: 198p4v2bi36y6x512w35qycvjm7nds7jf8qh7r84pj1qsy43vf7w
   subdir:
     byron/chain/executable-spec
     byron/crypto
