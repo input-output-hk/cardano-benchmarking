@@ -19,11 +19,9 @@ import           Options.Applicative
                     )
 import qualified Options.Applicative as Opt
 import qualified Control.Arrow as Arr
-import           Network.Socket (PortNumber)
 import           Cardano.Api.Typed
 import           Cardano.CLI.Types (SigningKeyFile (..))
 import           Cardano.Node.Types
-import           Ouroboros.Consensus.Block.Abstract (SlotNo (..))
 
 
 lastly :: Parser a -> Parser (Last a)

@@ -1,21 +1,10 @@
-{-# LANGUAGE ConstraintKinds #-}
-{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE EmptyCase #-}
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
-{-# LANGUAGE GeneralisedNewtypeDeriving #-}
-{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE NoMonomorphismRestriction #-}
-{-# LANGUAGE OverloadedLabels #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE ViewPatterns #-}
-{-# OPTIONS_GHC -Wno-all-missed-specialisations #-}
-
 module Cardano.Benchmarking.GeneratorTx.Genesis
   ( GeneratorFunds(..)
   , parseGeneratorFunds
@@ -42,9 +31,6 @@ import qualified Ouroboros.Consensus.Cardano as Consensus
 import qualified Cardano.Chain.Common as Byron
 import qualified Cardano.Chain.UTxO as Byron
 
--- Shelley-specific imports
-import qualified Ouroboros.Consensus.Shelley.Ledger as Shelley
-
 -- Local imports
 import           Cardano.Benchmarking.GeneratorTx.Era
 import           Cardano.Benchmarking.GeneratorTx.Tx
@@ -54,9 +40,9 @@ import           Cardano.Benchmarking.GeneratorTx.CLI.Parsers
 
 data GeneratorFunds
   = FundsGenesis   SigningKeyFile
-  | FundsUtxo      SigningKeyFile TxIn (TxOut Shelley)
+  | FundsUtxo      SigningKeyFile TxIn (TxOut ShelleyEra)
   | FundsSplitUtxo SigningKeyFile FilePath
-  deriving Show
+  deriving stock Show
 
 parseGeneratorFunds :: Opt.Parser GeneratorFunds
 parseGeneratorFunds =
@@ -111,8 +97,7 @@ genesisKeyPseudoTxIn m _ _ =
   error $ "genesisKeyPseudoTxIn:  unsupported mode: " <> show m
 
 -- https://github.com/input-output-hk/cardano-node/issues/1861 would be the proper solution.
-modeGenesisFunds :: Mode mode era
-                   -> [(AddressInEra era, Lovelace)]
+modeGenesisFunds :: forall mode era. Mode mode era -> [(AddressInEra era, Lovelace)]
 modeGenesisFunds = \case
   m@ModeShelley{} ->
     fmap (fromShelleyAddr m *** fromShelleyLovelace)
@@ -120,18 +105,21 @@ modeGenesisFunds = \case
     . Consensus.sgInitialFunds
     $ modeGenesis m
   m@ModeByron{} ->
-    fmap (\(TxOut addr (TxOutAdaOnly AdaOnlyInByronEra coin)) -> (addr, coin))
+    fmap getAddrCoin
     . map (fromByronTxOut . Byron.fromCompactTxOut . snd)
     . Map.toList
     . Byron.unUTxO
     . Byron.genesisUtxo
     $ modeGenesis m
   m -> error $ "modeGenesisFunds:  unsupported mode: " <> show m
+  where
+    getAddrCoin :: TxOut ByronEra -> (AddressInEra ByronEra, Lovelace)
+    getAddrCoin (TxOut addr (TxOutAdaOnly AdaOnlyInByronEra coin)) = (addr, coin)
+    getAddrCoin (TxOut _ (TxOutValue x _) ) = case x of {}
 
 extractGenesisFunds
-  :: forall mode era
-  .  Eq (AddressInEra era)
-  => Mode mode era
+  :: forall mode era .
+     Mode mode era
   -> SigningKeyOf era
   -> (TxIn, TxOut era)
 extractGenesisFunds m k =
@@ -150,9 +138,7 @@ extractGenesisFunds m k =
   isTxOutForKey (TxOut addr _) = keyAddress m modeNetworkId k == addr
 
 genesisExpenditure
-  :: forall mode era
-  .  (IsCardanoEra era)
-  => Mode mode era
+  :: Mode mode era
   -> SigningKeyOf era
   -> AddressInEra era
   -> Lovelace

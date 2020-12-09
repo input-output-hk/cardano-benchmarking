@@ -1,21 +1,17 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE DerivingVia #-}
+{-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE GADTs #-}
-{-# LANGUAGE GeneralisedNewtypeDeriving #-}
-{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE TypeInType #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE ViewPatterns #-}
 
@@ -44,7 +40,6 @@ module Cardano.Benchmarking.GeneratorTx.Era
 
   , SigningKeyOf
   , SigningKeyRoleOf
-  -- , EraAdaOnlyInEra
 
   , InitCooldown(..)
   , NumberOfInputsPerTx(..)
@@ -95,12 +90,10 @@ import           Prelude (Show(..), String, error)
 import           Cardano.Prelude hiding (TypeError, show)
 
 import qualified Codec.CBOR.Term as CBOR
-import           Control.Tracer (Tracer (..), nullTracer, traceWith)
 import           Cardano.BM.Tracing
 import           Data.Aeson (ToJSON (..), (.=))
 import qualified Data.Aeson as A
 import qualified Data.HashMap.Strict as HM
-import           Data.Kind (Type)
 import qualified Data.Text as T
 import           Data.Time.Clock (DiffTime, getCurrentTime)
 import           GHC.TypeLits
@@ -110,11 +103,10 @@ import qualified GHC.TypeLits as Ty
 import           Cardano.BM.Data.Tracer
                    (emptyObject, mkObject, trStructured)
 import           Network.Mux (WithMuxBearer(..))
-import           Ouroboros.Consensus.Block.Abstract (CodecConfig)
 import qualified Ouroboros.Consensus.Cardano as Consensus
 import           Ouroboros.Consensus.Config
                    ( TopLevelConfig(..)
-                   , configBlock, configCodec, configLedger)
+                   , configBlock, configCodec)
 import           Ouroboros.Consensus.Config.SupportsNode
                    (ConfigSupportsNode(..), getNetworkMagic)
 import           Ouroboros.Consensus.Ledger.SupportsMempool hiding (TxId)
@@ -183,8 +175,8 @@ type ConfigSupportsTxGen mode era =
   (ModeSupportsTxGen mode, EraSupportsTxGen era)
 
 -- https://github.com/input-output-hk/cardano-node/issues/1855 would be the proper solution.
-deriving instance (Generic TxIn)
-deriving instance (Ord TxIn)
+deriving stock instance (Generic TxIn)
+deriving stock instance (Ord TxIn)
 instance ToJSON TxIn
 instance ToJSON TxId where
   toJSON (TxId x) = toJSON x
@@ -208,22 +200,22 @@ type family HFCBlockOf mode :: Type where
   HFCBlockOf t = TypeError (Ty.Text "Unsupported mode: "  :<>: ShowType t)
 
 type family SigningKeyRoleOf era :: Type where
-  SigningKeyRoleOf Byron   = ByronKey
-  SigningKeyRoleOf Shelley = PaymentKey
+  SigningKeyRoleOf ByronEra   = ByronKey
+  SigningKeyRoleOf ShelleyEra = PaymentKey
   SigningKeyRoleOf t = TypeError (Ty.Text "Unsupported era: "  :<>: ShowType t)
 
 type SigningKeyOf era = SigningKey (SigningKeyRoleOf era)
 
 type family ApiEra era where
-  ApiEra Byron   = ByronEra
-  ApiEra Shelley = ShelleyEra
+  ApiEra ByronEra   = ByronEra
+  ApiEra ShelleyEra = ShelleyEra
 
 class ReifyEra era where
   reifyEra :: Era era
 
-instance ReifyEra Byron where
+instance ReifyEra ByronEra where
   reifyEra = EraByron
-instance ReifyEra Shelley where
+instance ReifyEra ShelleyEra where
   reifyEra = EraShelley
 
 type GenTxOf   mode = GenTx   (HFCBlockOf mode)
@@ -244,44 +236,44 @@ data SomeMode =
 data Mode mode era where
   ModeByron
     :: TopLevelConfig (HFCBlockOf ByronMode)
-    -> GenesisOf Byron
+    -> GenesisOf ByronEra
     -> CodecConfig (HFCBlockOf ByronMode)
     -> LocalNodeConnectInfo ByronMode (HFCBlockOf ByronMode)
     -> Maybe NetworkMagic
     -> Bool
     -> IOManager
     -> BenchTracers IO (HFCBlockOf ByronMode)
-    -> Mode ByronMode Byron
+    -> Mode ByronMode ByronEra
   ModeShelley
     :: TopLevelConfig (HFCBlockOf ShelleyMode)
-    -> GenesisOf Shelley
+    -> GenesisOf ShelleyEra
     -> CodecConfig (HFCBlockOf ShelleyMode)
     -> LocalNodeConnectInfo ShelleyMode (HFCBlockOf ShelleyMode)
     -> Maybe NetworkMagic
     -> Bool
     -> IOManager
     -> BenchTracers IO (HFCBlockOf ShelleyMode)
-    -> Mode ShelleyMode Shelley
+    -> Mode ShelleyMode ShelleyEra
   ModeCardanoByron
     :: TopLevelConfig (HFCBlockOf CardanoMode)
-    -> GenesisOf Byron
+    -> GenesisOf ByronEra
     -> CodecConfig (HFCBlockOf CardanoMode)
     -> LocalNodeConnectInfo CardanoMode (HFCBlockOf CardanoMode)
     -> Maybe NetworkMagic
     -> Bool
     -> IOManager
     -> BenchTracers IO (HFCBlockOf CardanoMode)
-    -> Mode CardanoMode Byron
+    -> Mode CardanoMode ByronEra
   ModeCardanoShelley
     :: TopLevelConfig (HFCBlockOf CardanoMode)
-    -> GenesisOf Shelley
+    -> GenesisOf ShelleyEra
     -> CodecConfig (HFCBlockOf CardanoMode)
     -> LocalNodeConnectInfo CardanoMode (HFCBlockOf CardanoMode)
     -> Maybe NetworkMagic
     -> Bool
     -> IOManager
     -> BenchTracers IO (HFCBlockOf CardanoMode)
-    -> Mode CardanoMode Shelley
+    -> Mode CardanoMode ShelleyEra
 
 instance Show (Mode mode era) where
   show ModeByron{}          = "ModeByron"
@@ -292,15 +284,15 @@ instance Show (Mode mode era) where
 data SomeEra = forall era. EraSupportsTxGen era => SomeEra (Era era)
 
 data Era era where
-  EraByron   :: Era Byron
-  EraShelley :: Era Shelley
+  EraByron   :: Era ByronEra
+  EraShelley :: Era ShelleyEra
 
 instance Show (Era era) where
   show EraByron   = "EraByron"
   show EraShelley = "EraShelley"
 
 mkMode
-  :: forall blok era mode ptcl
+  :: forall blok era ptcl
   . ()
   => Consensus.Protocol IO blok ptcl
   -> Era era
@@ -385,6 +377,7 @@ instance Show (Consensus.Protocol m blk p) where
   show Consensus.ProtocolByron{}   = "ProtocolByron"
   show Consensus.ProtocolShelley{} = "ProtocolShelley"
   show Consensus.ProtocolCardano{} = "ProtocolCardano"
+  show Consensus.ProtocolMary{} = "ProtocolMary"
   -- show Consensus.ProtocolLeaderSchedule{} = "ProtocolLeaderSchedule"
 
 modeEra :: Mode mode era -> Era era
@@ -464,8 +457,8 @@ modeNetworkMagicN2N :: Mode mode era -> NetworkMagic
 modeNetworkMagicN2N m = fromMaybe (modeNetworkMagic m) (modeNetworkMagicOverride m)
 
 type family GenesisOf era where
-  GenesisOf Byron   = Byron.Config
-  GenesisOf Shelley = Shelley.ShelleyGenesis StandardShelley
+  GenesisOf ByronEra   = Byron.Config
+  GenesisOf ShelleyEra = Shelley.ShelleyGenesis StandardShelley
 
 trBase       :: Mode mode era -> Trace IO Text
 trTxSubmit   :: Mode mode era -> Tracer IO (TraceBenchTxSubmit TxId)
@@ -575,7 +568,7 @@ data TraceBenchTxSubmit txid
   -- ^ SubmissionSummary.
   | TraceBenchTxSubDebug String
   | TraceBenchTxSubError Text
-  deriving (Show)
+  deriving stock (Show)
 
 instance Transformable Text IO (TraceBenchTxSubmit TxId) where
   -- transform to JSON Object
@@ -638,7 +631,7 @@ data TraceLowLevelSubmit
   -- ^ The transaction has been accepted.
   | TraceLowLevelRejected String
   -- ^ The transaction has been rejected, with corresponding error message.
-  deriving (Show)
+  deriving stock (Show)
 
 instance ToObject TraceLowLevelSubmit where
   toObject MinimalVerbosity _ = emptyObject -- do not log

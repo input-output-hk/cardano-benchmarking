@@ -1,21 +1,8 @@
-{-# LANGUAGE ConstraintKinds #-}
-{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DerivingVia #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE GADTs #-}
 {-# LANGUAGE GeneralisedNewtypeDeriving #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE UndecidableInstances #-}
-
 {-# OPTIONS_GHC -Wno-all-missed-specialisations #-}
 {-# OPTIONS_GHC -Wno-unticked-promoted-constructors #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
@@ -50,16 +37,11 @@ module Cardano.Benchmarking.GeneratorTx.Benchmark
 import           Cardano.Prelude hiding (TypeError)
 import           Prelude (String)
 
-import           Data.Aeson (ToJSON (..))
 import qualified Data.List.NonEmpty as NE
 import           Data.Monoid.Generic
 import           Data.Time.Clock (NominalDiffTime)
-import           Data.Word (Word64)
 import           Options.Applicative (Parser)
 import qualified Options.Applicative as Opt
-
--- Era-agnostic imports
-import           Ouroboros.Consensus.Block.Abstract (SlotNo (..))
 
 -- Node API imports
 import           Cardano.Api.Typed
@@ -81,23 +63,24 @@ import           Cardano.Benchmarking.GeneratorTx.CLI.Parsers
 --   after the init Tx batch was submitted.
 newtype InitCooldown =
   InitCooldown Int
-  deriving (Eq, Ord, Num, Show)
+  deriving newtype (Eq, Ord, Num, Show)
 
 newtype NumberOfInputsPerTx =
   NumberOfInputsPerTx Int
-  deriving (Eq, Ord, Num, Show)
+  deriving newtype (Eq, Ord, Num, Show)
 
 newtype NumberOfOutputsPerTx =
   NumberOfOutputsPerTx Int
-  deriving (Eq, Ord, Num, Show)
+  deriving newtype (Eq, Ord, Num, Show)
 
 newtype NumberOfTxs =
   NumberOfTxs { unNumberOfTxs :: Word64 }
-  deriving (Eq, Ord, Num, Show)
+  deriving newtype (Eq, Ord, Num, Show)
 
 newtype TPSRate =
   TPSRate Double
-  deriving (Eq, Generic, Ord, Num, Show)
+  deriving newtype (Eq, Ord, Num, Show)
+deriving stock instance Generic TPSRate
 
 -- | This parameter specifies additional size (in bytes) of transaction.
 --   Since 1 transaction is ([input] + [output] + attributes), its size
@@ -110,7 +93,7 @@ newtype TPSRate =
 --   parameter is skipped, attributes will remain empty).
 newtype TxAdditionalSize =
   TxAdditionalSize { unTxAdditionalSize :: Int }
-  deriving (Eq, Ord, Num, Show)
+  deriving newtype (Eq, Ord, Num, Show)
 
 -- | Transactions not yet even announced.
 newtype UnReqd  tx = UnReqd  [tx]
@@ -125,21 +108,23 @@ newtype UnAcked tx = UnAcked [tx]
 newtype Acked tx = Acked [tx]
 
 -- | Peer acknowledged this many txids of the outstanding window.
-newtype Ack = Ack Int deriving (Enum, Eq, Integral, Num, Ord, Real)
+newtype Ack = Ack Int deriving newtype (Enum, Eq, Integral, Num, Ord, Real)
 
 -- | Peer requested this many txids to add to the outstanding window.
-newtype Req = Req Int deriving (Enum, Eq, Integral, Num, Ord, Real)
+newtype Req = Req Int deriving newtype (Enum, Eq, Integral, Num, Ord, Real)
 
 -- | This many Txs sent to peer.
-newtype Sent = Sent Int deriving (Enum, Eq, Generic, Integral, Num, Ord, Real, Show)
+newtype Sent = Sent Int deriving newtype (Enum, Eq, Integral, Num, Ord, Real, Show)
+deriving stock instance Generic Sent
 
 -- | This many Txs requested by the peer, but not available for sending.
-newtype Unav = Unav Int deriving (Enum, Eq, Generic, Integral, Num, Ord, Real, Show)
+newtype Unav = Unav Int deriving newtype (Enum, Eq, Integral, Num, Ord, Real, Show)
+deriving stock instance Generic Unav
 
 data SubmissionErrorPolicy
   = FailOnError
   | LogErrors
-  deriving (Eq, Show)
+  deriving stock (Eq, Show)
 
 instance ToJSON Sent
 instance ToJSON Unav
@@ -173,7 +158,7 @@ data SubmissionSummary
       , ssThreadwiseTps :: ![TPSRate]
       , ssFailures      :: ![String]
       }
-  deriving (Show, Generic)
+  deriving stock (Show, Generic)
 instance ToJSON SubmissionSummary
 
 -- | Specification for a benchmark run.
@@ -190,7 +175,7 @@ data Benchmark
       , bTxExtraPayload :: !TxAdditionalSize
       , bErrorPolicy    :: !SubmissionErrorPolicy
       }
-  deriving (Generic, Show)
+  deriving stock (Generic, Show)
 -- Warning:  make sure to maintain correspondence between the two data structures.
 data PartialBenchmark
   = PartialBenchmark
@@ -205,7 +190,7 @@ data PartialBenchmark
       , pbTxExtraPayload :: !(Last TxAdditionalSize)
       , pbErrorPolicy    :: !(Last SubmissionErrorPolicy)
       }
-  deriving (Generic, Show)
+  deriving stock (Generic, Show)
   deriving Semigroup via GenericSemigroup PartialBenchmark
   deriving Monoid via GenericMonoid PartialBenchmark
 

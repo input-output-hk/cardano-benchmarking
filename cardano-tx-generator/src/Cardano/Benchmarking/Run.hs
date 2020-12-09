@@ -111,7 +111,7 @@ parseCommand =
        <> Opt.help "Override the network magic for the node-to-node protocol."
      )
 
-defaultEra :: Era Shelley
+defaultEra :: Era ShelleyEra
 defaultEra = EraShelley
 
 runCommand :: GeneratorCmd -> ExceptT CliError IO ()

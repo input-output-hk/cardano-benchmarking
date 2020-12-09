@@ -14,6 +14,7 @@ library
 
   hs-source-dirs:      src
   ghc-options:          -Wall
+                        -Wno-prepositive-qualified-module
                         -Wincomplete-record-updates
                         -Wincomplete-uni-patterns
                         -Wredundant-constraints
@@ -72,7 +73,6 @@ library
                      , stm
                      , text
                      , time
-                     , transformers
                      , transformers-except
                      , unordered-containers
 
@@ -80,7 +80,7 @@ library
   default-extensions:  NoImplicitPrelude
                        OverloadedStrings
 
-  ghc-options:         -Weverything
+  ghc-options:         -Wall
                        -Wno-implicit-prelude
                        -fno-warn-safe
                        -fno-warn-unsafe
@@ -100,6 +100,7 @@ executable cardano-tx-generator
                        -Wextra
                        -rtsopts
                        "-with-rtsopts=-T"
+
   build-depends:       base >=4.12 && <5
                      , cardano-prelude
                      , cardano-tx-generator

@@ -33,21 +33,15 @@ module Cardano.Benchmarking.GeneratorTx
 import           Cardano.Prelude
 import           Prelude (error, id)
 
-import           Control.Concurrent (threadDelay)
-import           Control.Monad (fail, forM, forM_)
-import           Control.Monad.Trans.Except (ExceptT)
+import           Control.Monad (fail)
 import           Control.Monad.Trans.Except.Extra (left, newExceptT, right)
 import           Control.Tracer (traceWith)
 
 import qualified Data.Aeson as A
 import qualified Data.ByteString.Lazy as BS
-import           Data.Foldable (find)
-import           Data.List.NonEmpty (NonEmpty (..))
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map.Strict as Map
-import           Data.Maybe (Maybe (..))
-import           Data.Text (Text, pack)
-import           Data.Word (Word64)
+import           Data.Text (pack)
 import           Network.Socket (AddrInfo (..), AddrInfoFlag (..), Family (..), SocketType (Stream),
                                  addrFamily, addrFlags, addrSocketType, defaultHints, getAddrInfo)
 
@@ -140,10 +134,10 @@ parseAddress = \case
     shelleyAddressInEra <$>
     deserialiseAddress AsShelleyAddress addr
 
-instance FromJSON (AddressInEra Byron) where
+instance FromJSON (AddressInEra ByronEra) where
   parseJSON = A.withText "ByronAddress" $ pure . parseAddress EraByron
 
-instance FromJSON (AddressInEra Shelley) where
+instance FromJSON (AddressInEra ShelleyEra) where
   parseJSON = A.withText "ShelleyAddress" $ pure . parseAddress EraShelley
 
 instance (FromJSON (AddressInEra era), ReifyEra era) => FromJSON (TxOut era) where
@@ -170,6 +164,7 @@ splitFunds
   -> SigningKeyOf era
   -> (TxIn, TxOut era)
   -> ExceptT TxGenError IO [(TxIn, TxOut era)]
+splitFunds _ _m _sourceKey (_, (TxOut _ (TxOutValue _ _))) = error "splitFunds unexpected TxOutValue"
 splitFunds
     Benchmark{ bTxFee=fee@(Lovelace feeRaw), bTxCount=NumberOfTxs numTxs
              , bTxFanIn=NumberOfInputsPerTx txFanin
@@ -446,6 +441,7 @@ txGenerator Benchmark
   predTxD :: Lovelace -> (TxIn, TxOut era) -> Bool
   predTxD valueThreshold (_, TxOut _ (TxOutAdaOnly _ coin)) =
     coin >= valueThreshold
+  predTxD _ (_, TxOut _ (TxOutValue _ _)) = error "predTxD : unexpected: TxOutValue"
 
 ---------------------------------------------------------------------------------------------------
 -- Txs for submission.
