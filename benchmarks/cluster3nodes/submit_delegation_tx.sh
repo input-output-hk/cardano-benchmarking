@@ -14,7 +14,7 @@ GENESISDIR=${CONFIGDIR}/genesis
 for N in ${STAKEPOOLS}; do
   if [ -e ${GENESISDIR}/node${N}/tx-delegate${N}.tx ]; then
     export CARDANO_NODE_SOCKET_PATH=sockets/${N}
-    run 'cardano-cli' shelley transaction submit \
+    run 'cardano-cli' transaction submit \
                 --tx-file ${GENESISDIR}/node${N}/tx-delegate${N}.tx \
                 --testnet-magic ${MAGIC}
   else

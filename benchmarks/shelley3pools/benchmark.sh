@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC1090
 
 # preparation
 BASEDIR=$(realpath $(dirname "$0"))
 . "${BASEDIR}"/../../scripts/common.sh
 
-prebuild 'cardano-tx-generator' || exit 1
 prebuild 'cardano-node' || exit 1
 prebuild 'cardano-cli' || exit 1
+prebuild 'cardano-tx-generator' || exit 1
 
 export CLICMD="run cardano-cli"
 
@@ -27,11 +28,19 @@ set -e
 rm -rf ./db/* ./logs/*
 mkdir -p db logs/sockets
 
+oprint "preparing genesis.."
 # 1 prepare geneses for all eras & update configs
 rm -f 'configuration/start-time'
 . "$BASEDIR"/configuration/parameters
 ./prepare_genesis_byron.sh
-./prepare_genesis_shelley_staked.sh
+if test -z "$reuse_genesis"
+then ./prepare_genesis_shelley_staked.sh
+else sed -i 's/"systemStart": ".*"/"systemStart": "'"$(date \
+       --iso-8601=seconds \
+       --date=@$(cat "$BASEDIR"/configuration/start-time))"'"/
+       ' "$GENESISDIR_shelley"/genesis.json
+     ./hash_genesis.sh
+fi
 
 case $era in
         byron )     protocol='RealPBFT';;

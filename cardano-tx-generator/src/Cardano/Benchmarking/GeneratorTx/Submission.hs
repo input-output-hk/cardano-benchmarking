@@ -39,10 +39,8 @@ import           Prelude (String, fail)
 
 import           Control.Arrow ((&&&))
 import           Control.Concurrent (threadDelay)
-import           Control.Concurrent.STM (STM)
 import qualified Control.Concurrent.STM as STM
 import           Control.Concurrent.STM.TBQueue (TBQueue)
-import           Control.Monad (replicateM)
 
 import qualified Data.List as L
 import qualified Data.List.Extra as L
@@ -234,7 +232,7 @@ consumeTxs Submission{sTxSendQueue} blk req
 -------------------------------------------------------------------------------}
 txSubmissionClient
   :: forall m mode era tx txid gentx gentxid .
-     ( MonadIO m
+     ( MonadIO m, MonadFail m
      , ConfigSupportsTxGen mode era
      , tx      ~ Tx era
      , txid    ~ TxId

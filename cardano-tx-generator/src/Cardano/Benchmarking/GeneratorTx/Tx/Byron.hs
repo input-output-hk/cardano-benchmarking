@@ -15,7 +15,6 @@ import           Cardano.Prelude hiding (option, trace, (%))
 import           Prelude (error)
 
 import qualified Data.Map.Strict as Map
-import           Data.Text (Text)
 import qualified Data.Text as T
 import           Formatting (sformat, (%))
 

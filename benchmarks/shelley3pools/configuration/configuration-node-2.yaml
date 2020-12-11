@@ -4,9 +4,9 @@
 ##########################################################
 
 ByronGenesisFile: genesis-byron/genesis.json
-ByronGenesisHash: 
+ByronGenesisHash: bf51bcbb04feda6ec9547028ca04dd313eb48ebe222556c1a7e06e3556a1487b
 ShelleyGenesisFile: genesis-shelley/genesis.json
-ShelleyGenesisHash: 
+ShelleyGenesisHash: aa176323b677cd5a76d3a7f8afeb3238fa0386d2455ed0cc31b35a85c1a4849d
 
 
 
@@ -20,7 +20,7 @@ TestShelleyHardForkAtEpoch: 1
 # The node also supports various test and mock instances.
 # "RealPBFT" is the real (ie not mock) (permissive) OBFT protocol, which
 # is what we use on mainnet in Byron era.
-Protocol: 
+Protocol: TPraos
 
 # The mainnet does not include the network magic into addresses. Testnets do.
 RequiresNetworkMagic: RequiresMagic
@@ -63,7 +63,7 @@ minSeverity: Debug
 
 # Log items can be rendered with more or less verbose detail.
 # Verbosity ranges from MinimalVerbosity, NormalVerbosity to MaximalVerbosity
-TracingVerbosity: MaximalVerbosity
+TracingVerbosity: NormalVerbosity
 
 # The system supports a number of backends for logging and monitoring.
 # This setting lists the the backends that will be available to use in the
@@ -72,7 +72,7 @@ setupBackends:
   - KatipBK
   - TraceForwarderBK
 
-# This specifies the default backends that trace output is sent to if it
+# specifies the default backends that trace output is sent to if it
 # is not specifically configured to be sent to other backends.
 defaultBackends:
   - KatipBK
@@ -93,9 +93,11 @@ defaultBackends:
 # process running a 'TraceAcceptor'.
 # Example using UNIX pipes:
 traceForwardTo:
-   tag: RemotePipe
-   contents: "logs/sockets/pool2"
-# 
+   tag: RemoteSocket
+   contents:
+     - "127.0.0.1"
+     - "10002"
+#
 # Example using Windows named pipes:
 # traceForwardTo:
 #   tag: RemotePipe
@@ -118,19 +120,14 @@ traceForwardTo:
 # be specified in the defaults below or overidden on a per-scribe basis here.
 setupScribes:
   - scKind: FileSK
-    scName: "logs/node2.json"
+    scName: "logs/analysis/logs-node-2/node-2.json"
     scFormat: ScJson
-  - scKind: FileSK
-    scName: "logs/node2.log"
-    scFormat: ScText
 
 # For the Katip logging backend this specifies the default scribes that trace
 # output is sent to if it is not configured to be sent to other scribes.
 defaultScribes:
   - - FileSK
-    - "logs/node2.json"
-  - - FileSK
-    - "logs/node2.log"
+    - "logs/analysis/logs-node-2/node-2.json"
 
 # The default file rotation settings for katip scribes, unless overridden
 # in the setupScribes above for specific scribes.
@@ -225,59 +222,5 @@ TraceTxOutbound: False
 # Trace TxSubmission protocol messages.
 TraceTxSubmissionProtocol: False
 
-
-##### Fine grained logging control #####
-
-# It is also possible to have more fine grained control over filtering of
-# trace output, and to match and route trace output to particular backends.
-# This is less efficient than the coarse trace filters above but provides
-# much more precise control.
-
 options:
-
-  # This routes metrics matching specific names to particular backends.
-  # This overrides the 'defaultBackends' listed above. And note that it is
-  # an override and not an extension so anything matched here will not
-  # go to the default backend, only to the explicitly listed backends.
-  mapBackends:
-    cardano.node.BlockFetchDecision.peers:
-      - TraceForwarderBK
-      - EKGViewBK
-      - kind: UserDefinedBK
-        name: LiveViewBackend
-    cardano.node.ChainDB.metrics:
-      - TraceForwarderBK
-      - EKGViewBK
-      - kind: UserDefinedBK
-        name: LiveViewBackend
-    cardano.node.metrics:
-      - TraceForwarderBK
-      - EKGViewBK  
-      - kind: UserDefinedBK
-        name: LiveViewBackend
-    cardano.node.Forge.metrics:
-      - TraceForwarderBK
-      - EKGViewBK
-    cardano.node.release:
-      - TraceForwarderBK
-      - KatipBK
-    cardano.node.version:
-      - TraceForwarderBK
-      - KatipBK
-    cardano.node.commit:
-      - TraceForwarderBK
-      - KatipBK
-
-  # redirects traced values to a specific scribe which is identified by its
-  # type and its name, separated by "::":
-  mapScribes:
-    cardano.node-metrics:
-      - "FileSK::logs/node2.json"
-
-  # apply a filter on message severity on messages in a specific named context.
-  # this filter is applied additionally to the global 'minSeverity' and thus
-  # needs to be at least as high.
-  mapSeverity:
-    cardano.node.ChainDB: Info
-    cardano.node.DnsSubscription: Info
-
+  default: true

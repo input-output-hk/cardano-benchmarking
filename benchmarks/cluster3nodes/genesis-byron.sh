@@ -24,7 +24,7 @@ not_so_secret=2718281828
 
 tmpdir="`mktemp`.d"
 args=(
-      --genesis-output-dir           "${tmpdir}"
+      --genesis-dir                 "${tmpdir}"
       --start-time                   "${start_time}"
       --protocol-parameters-file     "${protocol_params}"
       --k                            ${parameter_k}

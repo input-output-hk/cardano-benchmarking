@@ -43,7 +43,7 @@ args=(
       --secret-seed                  ${not_so_secret}
 )
 
-$cli genesis "${args[@]}" "$@"
+$cli byron genesis genesis "${args[@]}" "$@"
 
 rm -rf "$gendir"
 mkdir -p "$gendir"

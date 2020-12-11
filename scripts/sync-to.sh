@@ -1,15 +1,40 @@
 #!/usr/bin/env bash
 
-set -euo pipefail
+set -eo pipefail
 
 this_repo=$(git rev-parse --show-toplevel)
 this_project=$this_repo/cabal.project
-this_sources=$this_repo/nix/sources.json
+
+strict_coherence=
+stage_changes=
+
+while test -n "$1"
+do case "$1" in
+           --strict | --strict-coherence )
+                                  strict_coherence=t;;
+           --stage | --stage-changes )
+                                  stage_changes=t;;
+           --help )               usage; exit 1;;
+           * ) break;; esac; shift; done
+set -u
 
 other_repo=${1:-$(realpath "$this_repo"/../cardano-node)}
 other_project=$other_repo/cabal.project
-other_sources=$other_repo/nix/sources.json
 other_name=$(basename "$other_repo")
+
+repos=(
+        cardano-node
+        ouroboros-network
+        iohk-monitoring-framework
+)
+
+repo_path() {
+        echo -n "../$1"
+}
+
+repo_project() {
+        echo -n "../$1/cabal.project"
+}
 
 dir_nix_hash() {
         local dir=$1
@@ -40,15 +65,24 @@ fail() {
 }
 
 test -r "$other_project" ||
-        fail "Usage:  $(basename "$0") [SYNC-FROM-REPO=../cardano-node]"
+        fail "Usage:  $(basename "$0") [SYNC-FROM-REPO=../${other_name}]"
 
-other_commit_now=$(git -C "$other_repo" rev-parse HEAD)
-test -n "${other_commit_now}" || \
-        fail "Repository ${other_repo} doesn't have a valid git state."
+declare -A repo_commit
+declare -A repo_hash
+for r in ${repos[*]}
+do repo_commit[$r]=$(git -C "$(repo_path "$r")" rev-parse HEAD)
+   test -n "${repo_commit[$r]}" || \
+           fail "Repository ${r} doesn't have a valid git state."
 
-other_hash_now=$(dir_nix_hash "$other_repo" "${other_commit_now}")
-test -n "${other_hash_now}" || \
-        fail "Failed to 'nix-prefetch-git' on $other_repo"
+   repo_hash[$r]=$(dir_nix_hash "$(repo_path "$r")" "${repo_commit[$r]}")
+   test -n "${repo_hash[$r]}" || \
+           fail "Failed to 'nix-prefetch-git' in $r"
+   echo "--( $r:  git ${repo_commit[$r]} / sha256 ${repo_hash[$r]}"
+
+   if test "$r" != "$other_name" -a -n "$strict_coherence" && test "$(cabal_project_current_commit $(repo_project "$other_name") "$r")" != "${repo_commit[$r]}"
+   then fail "$(repo_project "$other_name") pins $r to $(cabal_project_current_commit $(repo_project "$other_name") "$r"), but ${repo_commit[$r]} is checked out"
+   fi
+done
 
 repo_sources_pin_commit() {
         local repo=$1 pin=$2
@@ -82,7 +116,7 @@ sed -ni '1,/--- >8 ---/  p'  "$this_project"
 
 ## Copy over the entire 'source-repository-package' section:
 sed -n  '1,/--- 8< ---/! p' "$other_project" |
-grep -v "Please do not"   >> "$this_project"
+grep -v   "Please do not" >> "$this_project" || true
 
 ## Copy over the index-state
 other_state_line=$(sed -n '/index-state:/  p' "$other_project")
@@ -91,18 +125,13 @@ sed -i '/index-state:/ s/^.*$/'"$other_state_line"/  "$this_project"
 ## Update the repo itself
 other_commit_old=$(cabal_project_current_commit "$this_project" "$other_name")
 other_hash_old=$(cabal_project_current_hash     "$this_project" "$other_name")
-sed -i "s/${other_commit_old}/${other_commit_now}/" "${this_project}"
-sed -i "s/${other_hash_old}/${other_hash_now}/"     "${this_project}"
-
-cat <<EOF
-Updated $this_project from $other_project:
-  ${other_commit_old} -> ${other_commit_now}
-  ${other_hash_old} -> ${other_hash_now}
-EOF
+sed -i "s/${other_commit_old}/${repo_commit[$other_name]}/" "${this_project}"
+sed -i "s/${other_hash_old}/${repo_hash[$other_name]}/"     "${this_project}"
 
 ## Update sources.json
 update_sources_pin "$this_repo" "$other_name" \
-                   "$other_commit_now" "$other_hash_now"
+                   "${repo_commit[$other_name]}" \
+                   "${repo_hash[$other_name]}"
 
 sources_update_list=(
         haskell.nix
@@ -113,3 +142,7 @@ do update_sources_pin "$this_repo" "$pin" \
                       $(repo_sources_pin_commit "$other_repo" "$pin") \
                       $(repo_sources_pin_hash   "$other_repo" "$pin")
 done
+
+if test -n "$stage_changes"
+then git add "$this_project" "$this_repo"/nix/sources.json
+fi

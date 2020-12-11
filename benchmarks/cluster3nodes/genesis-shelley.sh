@@ -20,7 +20,7 @@ args=(--genesis-dir     "${tmpdir}"
       --gen-utxo-keys    $NNODES
 )
 
-run 'cardano-cli' shelley genesis create "${args[@]}"
+run 'cardano-cli' genesis create "${args[@]}"
 
 
 SED=sed
@@ -50,22 +50,22 @@ args=(--genesis-dir     "${tmpdir}"
       --supply           ${SUPPLY}
 )
 ## update genesis from template
-run 'cardano-cli' shelley genesis create "${args[@]}"
+run 'cardano-cli' genesis create "${args[@]}"
 
 ## create KES, VRF, certs per node
 for N in $(seq 0 $((NNODES - 1))); do
     mkdir -p ${tmpdir}/node${N}/cold
 
-    run 'cardano-cli' shelley node key-gen-KES \
+    run 'cardano-cli' node key-gen-KES \
       --verification-key-file ${tmpdir}/node${N}/kes.vkey \
       --signing-key-file ${tmpdir}/node${N}/kes.skey
-    run 'cardano-cli' shelley node key-gen-VRF \
+    run 'cardano-cli' node key-gen-VRF \
       --verification-key-file ${tmpdir}/node${N}/vrf.vkey \
       --signing-key-file ${tmpdir}/node${N}/vrf.skey
 
     # cold keys (do not copy to production system)
     # for Release-1.13
-    run 'cardano-cli' shelley node key-gen \
+    run 'cardano-cli' node key-gen \
      --cold-verification-key-file ${tmpdir}/node${N}/cold/operator.vkey \
      --cold-signing-key-file ${tmpdir}/node${N}/cold/operator.skey \
      --operational-certificate-issue-counter-file ${tmpdir}/node${N}/cold/operator.counter
@@ -75,7 +75,7 @@ for N in $(seq 0 $((NNODES - 1))); do
     # ln -s ../../delegate-keys/delegate-opcert${N}.counter ${tmpdir}/node${N}/cold/operator.counter
 
     # certificate (adapt kes-period for later certs)
-    run 'cardano-cli' shelley node issue-op-cert \
+    run 'cardano-cli' node issue-op-cert \
       --hot-kes-verification-key-file         ${tmpdir}/node${N}/kes.vkey \
       --cold-signing-key-file                 ${tmpdir}/node${N}/cold/operator.skey \
       --operational-certificate-issue-counter ${tmpdir}/node${N}/cold/operator.counter \
@@ -96,30 +96,30 @@ for ADDR in ${ADDRS}; do
 
   echo -n "$ADDR "
   ### Payment address keys
-  run 'cardano-cli' shelley address key-gen \
+  run 'cardano-cli' address key-gen \
       --verification-key-file ${tmpdir}/addresses/${ADDR}.vkey \
       --signing-key-file      ${tmpdir}/addresses/${ADDR}.skey
 
   ### Stake address keys
-  run 'cardano-cli' shelley stake-address key-gen \
+  run 'cardano-cli' stake-address key-gen \
       --verification-key-file ${tmpdir}/addresses/${ADDR}-stake.vkey \
       --signing-key-file      ${tmpdir}/addresses/${ADDR}-stake.skey
 
   ### Payment addresses
-  run 'cardano-cli' shelley address build \
+  run 'cardano-cli' address build \
       --payment-verification-key-file ${tmpdir}/addresses/${ADDR}.vkey \
       --stake-verification-key-file ${tmpdir}/addresses/${ADDR}-stake.vkey \
       --testnet-magic ${MAGIC} \
       --out-file ${tmpdir}/addresses/${ADDR}.addr
 
   ### Stake addresses
-  run 'cardano-cli' shelley stake-address build \
+  run 'cardano-cli' stake-address build \
       --stake-verification-key-file ${tmpdir}/addresses/${ADDR}-stake.vkey \
       --testnet-magic ${MAGIC} \
       --out-file ${tmpdir}/addresses/${ADDR}-stake.addr
 
   ### Stake addresses registration certs
-  run 'cardano-cli' shelley stake-address registration-certificate \
+  run 'cardano-cli' stake-address registration-certificate \
       --stake-verification-key-file ${tmpdir}/addresses/${ADDR}-stake.vkey \
       --out-file ${tmpdir}/addresses/${ADDR}-stake.reg.cert
 
@@ -131,7 +131,7 @@ echo
 for N in ${STAKEPOOLS}; do
   echo -n "user ${N} -> pool ${N}  "
   ### Stake address delegation certs
-  run 'cardano-cli' shelley stake-address delegation-certificate \
+  run 'cardano-cli' stake-address delegation-certificate \
       --stake-verification-key-file ${tmpdir}/addresses/user${N}-stake.vkey \
       --cold-verification-key-file  ${tmpdir}/node${N}/cold/operator.vkey \
       --out-file ${tmpdir}/addresses/user${N}-stake.deleg.cert
@@ -146,7 +146,7 @@ echo
 
 for NODE in ${STAKEPOOLS}; do
   echo -n "pool ${NODE}  "
-  run 'cardano-cli' shelley stake-pool registration-certificate \
+  run 'cardano-cli' stake-pool registration-certificate \
     --testnet-magic ${MAGIC} \
     --pool-pledge 0 --pool-cost 0 --pool-margin 0 \
     --cold-verification-key-file             ${tmpdir}/node${NODE}/cold/operator.vkey \
@@ -164,10 +164,10 @@ for N in ${STAKEPOOLS}; do
 
     echo "move funds to user ${N}, delegate to pool ${N}"
     ### build tx
-    run 'cardano-cli' shelley transaction build-raw \
+    run 'cardano-cli' transaction build-raw \
         --ttl 1000 \
         --fee 0 \
-        --tx-in $(run 'cardano-cli' shelley genesis initial-txin \
+        --tx-in $(run 'cardano-cli' genesis initial-txin \
                     --testnet-magic ${MAGIC} \
                     --verification-key-file ${tmpdir}/utxo-keys/utxo${N}.vkey) \
         --tx-out $(cat ${tmpdir}/addresses/user${N}.addr)+${STAKE} \
@@ -178,7 +178,7 @@ for N in ${STAKEPOOLS}; do
         --out-file ${tmpdir}/node${N}/tx-delegate${N}.txbody
 
     ### sign tx
-    run 'cardano-cli' shelley transaction sign \
+    run 'cardano-cli' transaction sign \
         --signing-key-file ${tmpdir}/utxo-keys/utxo${N}.skey \
         --signing-key-file ${tmpdir}/addresses/user${N}-stake.skey \
         --signing-key-file ${tmpdir}/node${N}/owner.skey \

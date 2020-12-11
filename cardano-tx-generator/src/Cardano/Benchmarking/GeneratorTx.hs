@@ -33,30 +33,21 @@ module Cardano.Benchmarking.GeneratorTx
 import           Cardano.Prelude
 import           Prelude (error, id)
 
-import           Control.Concurrent (threadDelay)
-import           Control.Monad (fail, forM, forM_)
-import           Control.Monad.Trans.Except (ExceptT)
+import           Control.Monad (fail)
 import           Control.Monad.Trans.Except.Extra (left, newExceptT, right)
 import           Control.Tracer (traceWith)
 
 import qualified Data.Aeson as A
 import qualified Data.ByteString.Lazy as BS
-import           Data.Foldable (find)
-import qualified Data.IP as IP
-import           Data.List.NonEmpty (NonEmpty (..))
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map.Strict as Map
-import           Data.Maybe (Maybe (..))
-import           Data.Set (Set)
-import qualified Data.Set as Set
-import           Data.Text (Text, pack)
-import           Data.Word (Word64)
+import           Data.Text (pack)
 import           Network.Socket (AddrInfo (..), AddrInfoFlag (..), Family (..), SocketType (Stream),
                                  addrFamily, addrFlags, addrSocketType, defaultHints, getAddrInfo)
 
 import           Cardano.Chain.Common (decodeAddressBase58)
 import           Cardano.CLI.Types (SigningKeyFile (..))
-import           Cardano.Node.Types (NodeAddress (..), NodeHostAddress (..))
+import           Cardano.Node.Types
 
 import           Cardano.Api.TxSubmit
 import           Cardano.Api.Typed
@@ -88,11 +79,12 @@ secureFunds :: ConfigSupportsTxGen mode era
   => Benchmark
   -> Mode mode era
   -> GeneratorFunds
-  -> ExceptT TxGenError IO (SigningKeyOf era, Set (TxIn, TxOut era))
+  -> ExceptT TxGenError IO (SigningKeyOf era, [(TxIn, TxOut era)])
 
-secureFunds b@Benchmark{bTxFee, bInitialTTL} m (FundsGenesis keyF) = do
+secureFunds b@Benchmark{bTxFee, bInitialTTL, bInitCooldown=InitCooldown cooldown} m
+ (FundsGenesis keyF) = do
   key <- readSigningKey (modeEra m) keyF
-  let (_, TxOut _ genesisCoin) = extractGenesisFunds m key
+  let (_, TxOut _ (txOutValueLovelace -> genesisCoin)) = extractGenesisFunds m key
       toAddr = keyAddress m modeNetworkId key
       (tx, txin, txout) =
          genesisExpenditure m key toAddr genesisCoin bTxFee bInitialTTL
@@ -105,6 +97,7 @@ secureFunds b@Benchmark{bTxFee, bInitialTTL} m (FundsGenesis keyF) = do
       [ "******* Funding secured (", show txin, " -> ", show txout
       , "), submission result: " , show r ]
     e -> fail $ show e
+  liftIO $ threadDelay (cooldown*1000*1000)
   (key, ) <$> splitFunds b m key (txin, txout)
 
 secureFunds b m@ModeShelley{} (FundsUtxo keyF txin txout) = do
@@ -119,8 +112,8 @@ secureFunds Benchmark{bTxCount=NumberOfTxs (fromIntegral -> ntxs)}
             m (FundsSplitUtxo keyF utxoF) = do
   key <- readSigningKey (modeEra m) keyF
   utxo <- withExceptT (UtxoReadFailure . pack) . newExceptT $ A.eitherDecode <$> BS.readFile utxoF
-  when (Set.size utxo < ntxs) $
-    left $ SuppliedUtxoTooSmall ntxs (Set.size utxo)
+  when (length utxo < ntxs) $
+    left $ SuppliedUtxoTooSmall ntxs (length utxo)
   pure (key, utxo)
 
 secureFunds _ m f =
@@ -130,26 +123,29 @@ secureFunds _ m f =
 parseAddress ::
      Era era
   -> Text
-  -> Address era
+  -> AddressInEra era
 parseAddress = \case
   EraByron ->
-    either (panic . ("Bad Base58 address: " <>) . show) ByronAddress
+    either (panic . ("Bad Base58 address: " <>) . show)
+           (byronAddressInEra . ByronAddress)
     . decodeAddressBase58
   EraShelley -> \addr ->
     fromMaybe (panic $ "Bad Shelley address: " <> addr) $
+    shelleyAddressInEra <$>
     deserialiseAddress AsShelleyAddress addr
 
-instance FromJSON (Address Byron) where
+instance FromJSON (AddressInEra ByronEra) where
   parseJSON = A.withText "ByronAddress" $ pure . parseAddress EraByron
 
-instance FromJSON (Address Shelley) where
+instance FromJSON (AddressInEra ShelleyEra) where
   parseJSON = A.withText "ShelleyAddress" $ pure . parseAddress EraShelley
 
-instance FromJSON (Address era) => FromJSON (TxOut era) where
+instance (FromJSON (AddressInEra era), ReifyEra era) => FromJSON (TxOut era) where
   parseJSON = A.withObject "TxOut" $ \v ->
     TxOut
-      <$> (             v A..: "addr")
-      <*> (Lovelace <$> v A..: "coin")
+      <$> (v A..: "addr")
+      <*> (v A..: "coin"
+           <&> mkTxOutValueAdaOnly reifyEra . Lovelace)
 
 instance FromJSON TxIn where
   parseJSON = A.withObject "TxIn" $ \v -> do
@@ -167,12 +163,13 @@ splitFunds
   -> Mode mode era
   -> SigningKeyOf era
   -> (TxIn, TxOut era)
-  -> ExceptT TxGenError IO (Set (TxIn, TxOut era))
+  -> ExceptT TxGenError IO [(TxIn, TxOut era)]
+splitFunds _ _m _sourceKey (_, (TxOut _ (TxOutValue _ _))) = error "splitFunds unexpected TxOutValue"
 splitFunds
     Benchmark{ bTxFee=fee@(Lovelace feeRaw), bTxCount=NumberOfTxs numTxs
              , bTxFanIn=NumberOfInputsPerTx txFanin
              }
-    m sourceKey fundsTxIO@(_, (TxOut addr (Lovelace rawCoin))) = do
+    m sourceKey fundsTxIO@(_, (TxOut addr (TxOutAdaOnly _ (Lovelace rawCoin)))) = do
   let -- The number of splitting txout entries (corresponds to the number of all inputs we will need).
       numRequiredTxOuts = numTxs * fromIntegral txFanin
       splitFanout = 60 :: Word64 -- near the upper bound so as not to exceed the tx size limit
@@ -181,7 +178,7 @@ splitFunds
 
   let -- Split the funds to 'numRequiredTxOuts' equal parts, subtracting the possible fees.
       -- a safe number for fees is numRequiredTxOuts' * feePerTx.
-      splitValue = Lovelace $
+      splitValue = mkTxOutValueAdaOnly (modeEra m) $ Lovelace $
                      ceiling (
                        (fromIntegral rawCoin :: Double)
                        /
@@ -212,7 +209,7 @@ splitFunds
 
   -- Re-create availableFunds with information about all splitting transactions
   -- (it will be used for main transactions).
-  right $ reCreateAvailableFunds splittingTxs
+  right $ concatMap snd splittingTxs
  where
   -- create txs which split the funds to numTxOuts equal parts
   createSplittingTxs
@@ -229,10 +226,9 @@ splitFunds
     | otherwise =
         let numOutsPerInitTx = min maxOutsPerInitTx numTxOuts
             -- same TxOut for all
-            outs = Set.fromList $
-              zip [identityIndex ..
-                   identityIndex + fromIntegral numOutsPerInitTx - 1]
-                  (repeat txOut)
+            outs = zip [identityIndex ..
+                        identityIndex + fromIntegral numOutsPerInitTx - 1]
+                       (repeat txOut)
             (mFunds, _fees, outIndices, splitTx) =
               mkTransactionGen m sKey (txIO :| []) Nothing outs 0 fee
             !splitTxId = getTxId $ getTxBody splitTx
@@ -245,7 +241,7 @@ splitFunds
             Nothing                 -> reverse $ (splitTx, txIOList) : acc
             Just (txInIndex, value) ->
               let !txInChange  = TxIn splitTxId txInIndex
-                  !txOutChange = TxOut srcAddr value
+                  !txOutChange = TxOut srcAddr (mkTxOutValueAdaOnly (modeEra m) value)
               in
                 -- from the change create the next tx with numOutsPerInitTx UTxO entries
                 createSplittingTxs sKey
@@ -255,11 +251,6 @@ splitFunds
                                    (identityIndex + fromIntegral numOutsPerInitTx)
                                    txOut
                                    ((splitTx, txIOList) : acc)
-  reCreateAvailableFunds
-    :: [(Tx era, [(TxIn, TxOut era)])]
-    -> Set (TxIn, TxOut era)
-  reCreateAvailableFunds =
-    Set.fromList . concatMap snd
 
 -----------------------------------------------------------------------------------------
 -- | Run benchmark using top level tracers..
@@ -276,7 +267,7 @@ runBenchmark
   => Benchmark
   -> Mode mode era
   -> SigningKeyOf era
-  -> Set (TxIn, TxOut era)
+  -> [(TxIn, TxOut era)]
   -> ExceptT TxGenError IO ()
 runBenchmark b@Benchmark{ bTargets
                         , bTps
@@ -296,18 +287,15 @@ runBenchmark b@Benchmark{ bTargets
       localAddr = Nothing
 
   remoteAddresses <- forM bTargets $ \targetNodeAddress -> do
-    let (anAddrFamily, targetNodeHost) =
-          case unNodeHostAddress $ naHostAddress targetNodeAddress of
-              Just (IP.IPv4 ipv4) -> (AF_INET,  show ipv4)
-              Just (IP.IPv6 ipv6) -> (AF_INET6, show ipv6)
-              _ -> panic "Target node's IP-address is undefined!"
+    let targetNodeHost =
+          show . unNodeHostIPv4Address $ naHostAddress targetNodeAddress
 
     let targetNodePort = show $ naPort targetNodeAddress
 
     let hints :: AddrInfo
         hints = defaultHints
           { addrFlags      = [AI_PASSIVE]
-          , addrFamily     = anAddrFamily
+          , addrFamily     = AF_INET
           , addrSocketType = Stream
           , addrCanonName  = Nothing
           }
@@ -363,10 +351,10 @@ txGenerator
   .  ConfigSupportsTxGen mode era
   => Benchmark
   -> Mode mode era
-  -> Address era
+  -> AddressInEra era
   -> SigningKeyOf era
   -> Int
-  -> Set (TxIn, TxOut era)
+  -> [(TxIn, TxOut era)]
   -> ExceptT TxGenError IO [Tx era]
 txGenerator Benchmark
             { bTxFee
@@ -390,12 +378,12 @@ txGenerator Benchmark
  where
   -- Num of recipients is equal to 'numOuts', so we think of
   -- recipients as the people we're going to pay to.
-  recipients = Set.fromList $ zip [initRecipientIndex .. initRecipientIndex + numOfOutsPerTx - 1]
-                                  (repeat txOut)
+  recipients = zip [initRecipientIndex .. initRecipientIndex + numOfOutsPerTx - 1]
+                   (repeat txOut)
   initRecipientIndex = 0 :: Int
   -- The same output for all transactions.
   valueForRecipient = Lovelace 1000000 -- 10 ADA
-  !txOut = TxOut recipientAddress valueForRecipient
+  !txOut = TxOut recipientAddress (mkTxOutValueAdaOnly (modeEra m) valueForRecipient)
   totalValue = valueForRecipient + bTxFee
   -- Send possible change to the same 'recipientAddress'.
   addressForChange = recipientAddress
@@ -404,7 +392,7 @@ txGenerator Benchmark
   createMainTxs
     :: Word64
     -> Int
-    -> Set (TxIn, TxOut era)
+    -> [(TxIn, TxOut era)]
     -> ExceptT TxGenError IO [Tx era]
   createMainTxs 0 _ _ = right []
   createMainTxs txsNum insNumPerTx funds = do
@@ -423,9 +411,9 @@ txGenerator Benchmark
   -- Get inputs for one main transaction, using available funds.
   getTxInputs
     :: Int
-    -> Set (TxIn, TxOut era)
+    -> [(TxIn, TxOut era)]
     -> ExceptT TxGenError IO ( [(TxIn, TxOut era)]
-                             , Set (TxIn, TxOut era)
+                             , [(TxIn, TxOut era)]
                              )
   getTxInputs 0 funds = right ([], funds)
   getTxInputs insNumPerTx funds = do
@@ -436,20 +424,24 @@ txGenerator Benchmark
   -- Find a source of available funds, removing it from the availableFunds
   -- for preventing of double spending.
   findAvailableFunds
-    :: Set (TxIn, TxOut era)     -- funds we are trying to find in
+    :: [(TxIn, TxOut era)]     -- funds we are trying to find in
     -> Lovelace                -- with at least this associated value
-    -> ExceptT TxGenError IO ((TxIn, TxOut era), Set (TxIn, TxOut era))
+    -> ExceptT TxGenError IO ((TxIn, TxOut era), [(TxIn, TxOut era)])
   findAvailableFunds funds thresh =
-    case find (predTxD thresh) funds of
-      Nothing    -> left $ InsufficientFundsForRecipientTx
-                             thresh
-                             (maximum [ coin
-                                      | (_, TxOut _ coin) <- Set.toList funds])
-      Just found -> right (found, Set.delete found funds)
+    case break (predTxD thresh) funds of
+      (_, [])    ->
+        left $ InsufficientFundsForRecipientTx
+                 thresh
+                 (maximum [ coin
+                          | (_, TxOut _ (TxOutAdaOnly _ coin))
+                            <- funds])
+      (toofews, found:rest) -> right (found, toofews <> rest)
 
   -- Find the first tx output that contains sufficient amount of money.
   predTxD :: Lovelace -> (TxIn, TxOut era) -> Bool
-  predTxD valueThreshold (_, TxOut _ coin) = coin >= valueThreshold
+  predTxD valueThreshold (_, TxOut _ (TxOutAdaOnly _ coin)) =
+    coin >= valueThreshold
+  predTxD _ (_, TxOut _ (TxOutValue _ _)) = error "predTxD : unexpected: TxOutValue"
 
 ---------------------------------------------------------------------------------------------------
 -- Txs for submission.

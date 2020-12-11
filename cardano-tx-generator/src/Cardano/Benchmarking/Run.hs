@@ -1,9 +1,12 @@
+{-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE Unsafe #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_GHC -Wno-all-missed-specialisations -Wno-orphans #-}
 
@@ -13,52 +16,54 @@ module Cardano.Benchmarking.Run
   , runCommand
   ) where
 
-import           Prelude (String)
-import qualified Prelude
-import           Data.Version
-                    (showVersion )
-import           Data.Text
-                    (Text, pack, unpack)
-import           Cardano.Prelude hiding (option)
-import           Control.Monad (fail)
-import           Control.Monad.Trans.Except.Extra (firstExceptT)
-import qualified Options.Applicative as Opt
-import           Paths_cardano_tx_generator (version)
+import Prelude (String, id)
+import Prelude qualified
+import Data.Version (showVersion)
+import Data.Text (pack, unpack)
+import Cardano.Prelude hiding (option)
+import Control.Arrow ((&&&))
+import Control.Monad (fail)
+import Control.Monad.Trans.Except.Extra (firstExceptT)
+import Options.Applicative qualified as Opt
+import Paths_cardano_tx_generator (version)
 
-import qualified Cardano.Chain.Genesis as Genesis
+import Cardano.Chain.Genesis qualified as Genesis
 
-import           Ouroboros.Network.Block (MaxSlotNo (..))
-import           Ouroboros.Network.NodeToClient (IOManager, withIOManager)
+import Ouroboros.Network.Block (MaxSlotNo(..))
+import Ouroboros.Network.NodeToClient (IOManager, withIOManager)
 
-import           Ouroboros.Consensus.Cardano (Protocol, ProtocolByron, ProtocolShelley, ProtocolCardano)
+import Ouroboros.Consensus.Block.Abstract (BlockProtocol)
+import Ouroboros.Consensus.Cardano (Protocol, ProtocolByron, ProtocolShelley, ProtocolCardano)
 
-import qualified Cardano.Api.Protocol as Api
-import           Cardano.Api.Typed
-import           Cardano.Api.TxSubmit
-import           Cardano.Node.Configuration.Logging
-import           Cardano.Node.Protocol.Cardano
-import           Cardano.Node.Protocol.Byron
-import           Cardano.Node.Protocol.Shelley
-import           Cardano.Node.Types
+import Cardano.Api.Protocol qualified as Api
+import Cardano.Api.Typed
+import Cardano.Api.TxSubmit
+import Cardano.Node.Configuration.Logging
+import Cardano.Node.Configuration.POM
+import Cardano.Node.Protocol.Cardano
+import Cardano.Node.Protocol.Byron
+import Cardano.Node.Protocol.Shelley
+import Cardano.Node.Types
 
-import           Cardano.Benchmarking.GeneratorTx
-import           Cardano.Benchmarking.GeneratorTx.Benchmark
-import           Cardano.Benchmarking.GeneratorTx.Genesis
-import           Cardano.Benchmarking.GeneratorTx.CLI.Parsers
-import           Cardano.Benchmarking.GeneratorTx.Era
+import Cardano.Benchmarking.GeneratorTx
+import Cardano.Benchmarking.GeneratorTx.Benchmark
+import Cardano.Benchmarking.GeneratorTx.Genesis
+import Cardano.Benchmarking.GeneratorTx.CLI.Parsers
+import Cardano.Benchmarking.GeneratorTx.Era
 
 
 data ProtocolError =
     IncorrectProtocolSpecified  !Api.Protocol
   | ProtocolInstantiationError  !Text
   | GenesisBenchmarkRunnerError !TxGenError
-  deriving Show
+  | ConfigNotFoundError         !FilePath
+  deriving stock Show
 
 data CliError =
     GenesisReadError !FilePath !Genesis.GenesisDataError
   | GenerateTxsError !ProtocolError
   | FileNotFoundError !FilePath
-  deriving Show
+  deriving stock Show
 
 data GeneratorCmd =
   GenerateTxs FilePath
@@ -106,7 +111,7 @@ parseCommand =
        <> Opt.help "Override the network magic for the node-to-node protocol."
      )
 
-defaultEra :: Era Shelley
+defaultEra :: Era ShelleyEra
 defaultEra = EraShelley
 
 runCommand :: GeneratorCmd -> ExceptT CliError IO ()
@@ -118,32 +123,52 @@ runCommand (GenerateTxs logConfigFp
                         is_addr_mn
                         funds) =
   withIOManagerE $ \iocp -> do
-    -- Logging layer
-    loggingLayer <- firstExceptT (\(ConfigErrorFileNotFound fp) -> FileNotFoundError fp) $
-                             createLoggingLayer (pack $ showVersion version)
-                             ncli
+    let configFp = ConfigYamlFilePath logConfigFp
+        filesPc = defaultPartialNodeConfiguration
+                  { pncProtocolFiles = Last . Just $
+                    ProtocolFilepaths
+                    { byronCertFile = Just ""
+                    , byronKeyFile = Just ""
+                    , shelleyKESFile = Just ""
+                    , shelleyVRFFile = Just ""
+                    , shelleyCertFile = Just ""
+                    , shelleyBulkCredsFile = Just ""
+                    }
+                  , pncValidateDB = Last $ Just False
+                  , pncShutdownIPC = Last $ Just Nothing
+                  , pncShutdownOnSlotSynced = Last $ Just NoMaxSlotNo
+                  , pncConfigFile = Last $ Just configFp
+                  }
+    configYamlPc <- liftIO . parseNodeConfigurationFP . Just $ configFp
+    nc <- case makeNodeConfiguration $ configYamlPc <> filesPc of
+            Left err -> panic $ "Error in creating the NodeConfiguration: " <> pack err
+            Right nc' -> return nc'
 
-    nc <- liftIO . parseNodeConfigurationFP $ ConfigYamlFilePath logConfigFp
-
-    p <- firstExceptT GenerateTxsError $
+    (p, loggingLayer) <- firstExceptT GenerateTxsError $
       case ncProtocolConfig nc of
         NodeProtocolConfigurationByron config -> do
           ptcl :: Protocol IO ByronBlockHFC ProtocolByron
                <- firstExceptT (ProtocolInstantiationError . pack . show) $
                     mkConsensusProtocolByron config Nothing
-          pure . SomeMode $ mkMode ptcl EraByron nmagic_opt is_addr_mn iocp socketFp loggingLayer
+          mkLoggingLayer nc ptcl <&>
+            (SomeMode . mkMode ptcl EraByron nmagic_opt is_addr_mn iocp socketFp
+             &&& id)
         NodeProtocolConfigurationShelley config -> do
           ptcl :: Protocol IO ShelleyBlockHFC ProtocolShelley
                <- firstExceptT (ProtocolInstantiationError . pack . show) $
                     mkConsensusProtocolShelley config Nothing
-          pure . SomeMode $ mkMode ptcl EraShelley nmagic_opt is_addr_mn iocp socketFp loggingLayer
+          mkLoggingLayer nc ptcl <&>
+            (SomeMode . mkMode ptcl EraShelley nmagic_opt is_addr_mn iocp socketFp
+             &&& id)
         NodeProtocolConfigurationCardano byC shC hfC -> do
           ptcl :: Protocol IO CardanoBlock ProtocolCardano
                <- firstExceptT (ProtocolInstantiationError . pack . show) $
                     mkConsensusProtocolCardano byC shC hfC Nothing
           case someEra of
             SomeEra era ->
-              pure . SomeMode $ mkMode ptcl era nmagic_opt is_addr_mn iocp socketFp loggingLayer
+              mkLoggingLayer nc ptcl <&>
+                (SomeMode . mkMode ptcl era nmagic_opt is_addr_mn iocp socketFp
+                 &&& id)
           -- case someEra of
           --   SomeEra EraByron ->
           --     pure . SomeMode $ mkMode ptcl EraByron iocp socketFp loggingLayer
@@ -161,24 +186,10 @@ runCommand (GenerateTxs logConfigFp
       threadDelay (200*1000) -- Let the logging layer print out everything.
       shutdownLoggingLayer loggingLayer
  where
-   ncli :: NodeCLI
-   ncli = NodeCLI
-          { nodeAddr = Nothing
-          , configFile = ConfigYamlFilePath logConfigFp
-          , topologyFile = TopologyFile "" -- Tx generator doesn't use topology
-          , databaseFile = DbFile ""       -- Tx generator doesn't use database
-          , socketFile = Just socketFp
-          , protocolFiles = ProtocolFilepaths {
-               byronCertFile = Just ""
-             , byronKeyFile = Just ""
-             , shelleyKESFile = Nothing
-             , shelleyVRFFile = Nothing
-             , shelleyCertFile = Nothing
-             }
-          , validateDB = False
-          , shutdownIPC = Nothing
-          , shutdownOnSlotSynced = NoMaxSlotNo
-          }
+   mkLoggingLayer :: NodeConfiguration -> Protocol IO blk (BlockProtocol blk) -> ExceptT ProtocolError IO LoggingLayer
+   mkLoggingLayer nc ptcl =
+     firstExceptT (\(ConfigErrorFileNotFound fp) -> ConfigNotFoundError fp) $
+       createLoggingLayer (pack $ showVersion version) nc ptcl
 
 ----------------------------------------------------------------------------
 
@@ -189,5 +200,4 @@ instance Prelude.Show (TxForMode a) where
   show = \case
     TxForByronMode          tx  -> Prelude.show tx
     TxForShelleyMode        tx  -> Prelude.show tx
-    TxForCardanoMode (Left  tx) -> Prelude.show tx
-    TxForCardanoMode (Right tx) -> Prelude.show tx
+    TxForCardanoMode (InAnyCardanoEra _ tx)  -> Prelude.show tx

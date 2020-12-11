@@ -4,6 +4,7 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
@@ -14,7 +15,7 @@ module Cardano.Benchmarking.GeneratorTx.NodeToNode
   ( benchmarkConnectTxSubmit
   ) where
 
-import           Cardano.Prelude (Void, atomically, forever, liftIO)
+import           Cardano.Prelude (atomically, forever, liftIO)
 import           Prelude
 
 import           Codec.Serialise (DeserialiseFailure)
@@ -23,8 +24,7 @@ import           Control.Monad.Class.MonadSTM.Strict (newTVar)
 import           Data.ByteString.Lazy (ByteString)
 import qualified Data.Map as Map
 import           Data.Proxy (Proxy (..))
-import           Network.Mux (MuxMode (InitiatorMode))
-import           Network.Socket (AddrInfo (..), SockAddr)
+import           Network.Socket (AddrInfo (..))
 import           System.Random (newStdGen)
 
 import           Control.Tracer (nullTracer)
@@ -38,14 +38,13 @@ import           Ouroboros.Network.Channel (Channel (..))
 import           Ouroboros.Network.DeltaQ (defaultGSV)
 import           Ouroboros.Network.Driver (runPeerWithLimits)
 import           Ouroboros.Network.KeepAlive
-import           Ouroboros.Network.Mux (MuxPeer (..), OuroborosApplication (..),
-                                        RunMiniProtocol (..), continueForever)
+import           Ouroboros.Network.Mux (MuxPeer (..), RunMiniProtocol (..), continueForever)
 import           Ouroboros.Network.NodeToClient (chainSyncPeerNull)
 import           Ouroboros.Network.NodeToNode (NetworkConnectTracers (..))
 import qualified Ouroboros.Network.NodeToNode as NtN
 import           Ouroboros.Network.Protocol.BlockFetch.Client (BlockFetchClient (..),
                                                                blockFetchClientPeer)
-import           Ouroboros.Network.Protocol.Handshake.Version (Versions, simpleSingletonVersions)
+import           Ouroboros.Network.Protocol.Handshake.Version (simpleSingletonVersions)
 import           Ouroboros.Network.Protocol.KeepAlive.Codec
 import           Ouroboros.Network.Protocol.KeepAlive.Client
 import           Ouroboros.Network.Protocol.TxSubmission.Client (TxSubmissionClient,
@@ -91,13 +90,15 @@ benchmarkConnectTxSubmit p localAddr remoteAddr myTxSubClient =
   myCodecs :: Codecs blk DeserialiseFailure m
                 ByteString ByteString ByteString ByteString ByteString ByteString
   myCodecs  = defaultCodecs (modeCodecConfig p) blkN2nVer
-  peerMultiplex :: Versions NtN.NodeToNodeVersion NtN.DictVersion
-                     (OuroborosApplication InitiatorMode SockAddr ByteString IO () Void)
+  -- peerMultiplex :: Versions NtN.NodeToNodeVersion NtN.DictVersion
+  --                    (OuroborosApplication InitiatorMode SockAddr ByteString IO () Void)
   peerMultiplex =
     simpleSingletonVersions
       n2nVer
-      (NtN.NodeToNodeVersionData { NtN.networkMagic = modeNetworkMagicN2N p})
-      (NtN.DictVersion NtN.nodeToNodeCodecCBORTerm) $
+      (NtN.NodeToNodeVersionData
+       { NtN.networkMagic = modeNetworkMagicN2N p
+       , NtN.diffusionMode = NtN.InitiatorOnlyDiffusionMode
+       }) $
       NtN.nodeToNodeProtocols NtN.defaultMiniProtocolParameters ( \them _ ->
         NtN.NodeToNodeProtocols
           { NtN.chainSyncProtocol = InitiatorProtocolOnly $
@@ -151,7 +152,7 @@ benchmarkConnectTxSubmit p localAddr remoteAddr myTxSubClient =
 
 -- the null block fetch client
 blockFetchClientNull
-  :: forall block m a.  MonadTimer m
-  => BlockFetchClient block m a
+  :: forall block point m a.  MonadTimer m
+  => BlockFetchClient block point m a
 blockFetchClientNull
   = BlockFetchClient $ forever $ threadDelay (24 * 60 * 60) {- one day in seconds -}

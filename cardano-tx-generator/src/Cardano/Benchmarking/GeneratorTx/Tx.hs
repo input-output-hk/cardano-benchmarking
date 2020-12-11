@@ -1,18 +1,8 @@
-{-# LANGUAGE ConstraintKinds #-}
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE EmptyCase #-}
 {-# LANGUAGE GADTs #-}
-{-# LANGUAGE GeneralisedNewtypeDeriving #-}
-{-# LANGUAGE KindSignatures #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE NoMonomorphismRestriction #-}
-{-# LANGUAGE OverloadedLabels #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE ViewPatterns #-}
 {-# OPTIONS_GHC -Wno-all-missed-specialisations #-}
 
@@ -26,6 +16,8 @@ module Cardano.Benchmarking.GeneratorTx.Tx
   , fromGenTxId
   , mkTransaction
   , mkTransactionGen
+  , mkTxOutValueAdaOnly
+  , txOutValueLovelace
   , signTransaction
   , toGenTx
   )
@@ -40,18 +32,16 @@ import qualified Data.ByteString.Lazy as LB
 import qualified Data.List.NonEmpty as NonEmpty
 import qualified Data.Map.Strict as Map
 import qualified Data.Text as T
--- import           Generics.SOP (K(..), I(..), hcollapse, hmap)
 
 -- Era-agnostic imports
 import           Cardano.Binary (Annotated (..), reAnnotate)
 import qualified Cardano.Crypto.Hash.Class as Crypto
-import           Ouroboros.Consensus.Block.Abstract (SlotNo(..))
-import qualified Ouroboros.Consensus.HardFork.Combinator.Unary as HFC
+import qualified Ouroboros.Consensus.HardFork.Combinator.Embed.Unary as HFC
 import           Ouroboros.Consensus.Ledger.SupportsMempool hiding (TxId)
 import           Ouroboros.Consensus.TypeFamilyWrappers
 
 -- Cardano-specific imports
-import           Ouroboros.Consensus.Cardano.Block hiding (TxId)
+import           Ouroboros.Consensus.Cardano.Block hiding (TxId, ShelleyEra)
 
 -- Byron-specific imports
 import qualified Cardano.Chain.Common as Byron
@@ -61,11 +51,12 @@ import qualified Ouroboros.Consensus.Byron.Ledger as Byron hiding (TxId)
 
 -- Shelley-specific imports
 import qualified Ouroboros.Consensus.Shelley.Ledger.Mempool as Shelley
-import           Ouroboros.Consensus.Shelley.Protocol (StandardShelley)
 import qualified Shelley.Spec.Ledger.Address as Shelley
-import qualified Shelley.Spec.Ledger.Coin as Shelley
-import qualified Shelley.Spec.Ledger.TxData as ShelleyLedger
+import qualified Shelley.Spec.Ledger.API as Shelley
+import qualified Shelley.Spec.Ledger.TxBody as ShelleyLedger
 
+import           Cardano.API
+import           Cardano.Api.Shelley hiding (fromShelleyAddr)
 import           Cardano.Api.TxSubmit
 import           Cardano.Api.Typed
 import           Cardano.Benchmarking.GeneratorTx.Era
@@ -76,19 +67,38 @@ import           Cardano.Benchmarking.GeneratorTx.Tx.Byron
 castTxMode :: Mode mode era -> Tx era -> TxForMode mode
 castTxMode ModeByron{}          tx@ByronTx{}   = TxForByronMode  tx
 castTxMode ModeShelley{}        tx@ShelleyTx{} = TxForShelleyMode tx
-castTxMode ModeCardanoByron{}   tx@ByronTx{}   = TxForCardanoMode $ Left tx
-castTxMode ModeCardanoShelley{} tx@ShelleyTx{} = TxForCardanoMode $ Right tx
+castTxMode ModeCardanoByron{}   tx@ByronTx{}   = TxForCardanoMode $ InAnyCardanoEra ByronEra tx
+castTxMode ModeCardanoShelley{} tx@ShelleyTx{} = TxForCardanoMode $ InAnyCardanoEra ShelleyEra tx
+castTxMode _ _ = error "castTxMode unsupported case"
 
 -- https://github.com/input-output-hk/cardano-node/issues/1853 would be the long-term solution.
 toGenTx :: Mode mode era -> Tx era -> GenTx (HFCBlockOf mode)
-toGenTx ModeShelley{}        (ShelleyTx tx) = inject $ Shelley.mkShelleyTx tx
+toGenTx ModeShelley{}        (ShelleyTx _ tx) = inject $ Shelley.mkShelleyTx tx
 toGenTx ModeByron{}          (ByronTx tx)   = inject $ normalByronTxToGenTx tx
-toGenTx ModeCardanoShelley{} (ShelleyTx tx) = GenTxShelley $ Shelley.mkShelleyTx tx
+toGenTx ModeCardanoShelley{} (ShelleyTx _ tx) = GenTxShelley $ Shelley.mkShelleyTx tx
 toGenTx ModeCardanoByron{}   (ByronTx tx)   = GenTxByron   $ normalByronTxToGenTx tx
+toGenTx _ _ = error "toGenTx unsupported case"
 
 shelleyTxId :: GenTxId (BlockOf ShelleyMode) -> TxId
 shelleyTxId (Shelley.ShelleyTxId (ShelleyLedger.TxId i)) = TxId (Crypto.castHash i)
 
+txOutAddress :: TxOut era -> AddressInEra era
+txOutAddress = \case
+  TxOut a@(AddressInEra ByronAddressInAnyEra{} _) _ -> a
+  TxOut a@(AddressInEra ShelleyAddressInEra{}  _) _ -> a
+
+mkTxOutValueAdaOnly :: Era era -> Lovelace -> TxOutValue era
+mkTxOutValueAdaOnly = \case
+  EraByron{}   -> TxOutAdaOnly AdaOnlyInByronEra
+  EraShelley{} -> TxOutAdaOnly AdaOnlyInShelleyEra
+
+txOutValueLovelace :: TxOutValue era -> Lovelace
+txOutValueLovelace = \case
+  TxOutAdaOnly AdaOnlyInByronEra   x -> x
+  TxOutAdaOnly AdaOnlyInShelleyEra x -> x
+  TxOutAdaOnly AdaOnlyInAllegraEra x -> x
+  _ -> error "txOutValueLovelace unsupported case"
+ 
 -- https://github.com/input-output-hk/cardano-node/issues/1859 is the proper solution.
 fromGenTxId :: Mode mode era -> GenTxId (HFCBlockOf mode) -> TxId
 fromGenTxId ModeShelley{}
@@ -109,16 +119,15 @@ fromByronTxIn :: Byron.TxIn -> TxIn
 fromByronTxIn (Byron.TxInUtxo txid txix) =
   TxIn (fromByronTxId txid) (TxIx $ fromIntegral txix)
 
-fromByronTxOut :: Byron.TxOut -> TxOut Byron
+fromByronTxOut :: Byron.TxOut -> TxOut ByronEra
 fromByronTxOut (Byron.TxOut addr coin) =
-  TxOut (ByronAddress addr) (Lovelace $ Byron.lovelaceToInteger coin)
+  TxOut (AddressInEra ByronAddressInAnyEra $ ByronAddress addr)
+        (TxOutAdaOnly AdaOnlyInByronEra . Lovelace $ Byron.lovelaceToInteger coin)
 
-fromShelleyAddr :: Shelley.Addr StandardShelley -> Address Shelley
-fromShelleyAddr (Shelley.Addr nw pc scr) = ShelleyAddress nw pc scr
-fromShelleyAddr _                        = error "fromShelleyAddr:  unhandled Shelley.Addr case"
-
-fromShelleyLovelace :: Shelley.Coin -> Lovelace
-fromShelleyLovelace (Shelley.Coin l) = Lovelace l
+fromShelleyAddr :: Mode mode ShelleyEra -> Shelley.Addr StandardShelley -> AddressInEra ShelleyEra
+fromShelleyAddr m (Shelley.Addr _ pcr sref) =
+  makeShelleyAddressInEra (modeNetworkId m) (fromShelleyPaymentCredential pcr) (fromShelleyStakeReference sref)
+fromShelleyAddr _ _ = error "fromShelleyAddr:  unhandled Shelley.Addr case"
 
 toByronTxId :: TxId -> Byron.TxId
 toByronTxId (TxId h) =
@@ -128,9 +137,11 @@ toByronTxIn  :: TxIn -> Byron.TxIn
 toByronTxIn (TxIn txid (TxIx txix)) =
   Byron.TxInUtxo (toByronTxId txid) (fromIntegral txix)
 
-toByronTxOut :: TxOut Byron -> Maybe Byron.TxOut
-toByronTxOut (TxOut (ByronAddress addr) value) =
+toByronTxOut :: TxOut ByronEra -> Maybe Byron.TxOut
+toByronTxOut (TxOut (AddressInEra ByronAddressInAnyEra (ByronAddress addr)) (TxOutAdaOnly AdaOnlyInByronEra value)) =
   Byron.TxOut addr <$> toByronLovelace value
+toByronTxOut (TxOut (AddressInEra ByronAddressInAnyEra (ByronAddress _addr)) (TxOutValue e _ )) = case e of {}
+toByronTxOut (TxOut (AddressInEra (ShelleyAddressInEra e) _ ) _) = case e of {}
 
 toByronLovelace :: Lovelace -> Maybe Byron.Lovelace
 toByronLovelace (Lovelace x) =
@@ -143,12 +154,13 @@ signTransaction p k body = case modeEra p of
   EraByron   -> signByronTransaction (modeNetworkId p) body [k]
   EraShelley -> signShelleyTransaction body [WitnessPaymentKey k]
 
+
 mkTransaction :: forall mode era
   .  Mode mode era
   -> SigningKeyOf era
   -> TxAdditionalSize
-  -> TTL
-  -> TxFee
+  -> SlotNo
+  -> Lovelace
   -> [TxIn]
   -> [TxOut era]
   -> Tx era
@@ -158,13 +170,10 @@ mkTransaction p key payloadSize ttl fee txins txouts =
  where
    makeTransaction :: Mode mode era -> TxBody era
    makeTransaction m = case modeEra m of
-     EraShelley ->
-       makeShelleyTransaction
-         (txExtraContentEmpty { txMetadata =
-                                if payloadSize == 0
-                                then Nothing
-                                else Just $ payloadShelley payloadSize })
-         ttl fee txins txouts
+     EraShelley -> case makeShelleyTransaction txins txouts ttl fee [] [] metaData Nothing of
+                      Right tx -> tx
+                      Left err -> error $ show err
+                   where metaData = if payloadSize == 0 then Nothing else Just $ payloadShelley payloadSize
      EraByron ->
        either (error . T.unpack) Prelude.id $
          mkByronTransaction txins txouts
@@ -173,8 +182,8 @@ mkTransaction p key payloadSize ttl fee txins txouts =
    payloadShelley = makeTransactionMetadata . Map.singleton 0 . TxMetaBytes . flip SB.replicate 42 . unTxAdditionalSize
 
    mkByronTransaction :: [TxIn]
-                        -> [TxOut Byron]
-                        -> Either Text (TxBody Byron)
+                        -> [TxOut ByronEra]
+                        -> Either Text (TxBody ByronEra)
    mkByronTransaction ins outs = do
      ins'  <- NonEmpty.nonEmpty ins        ?! error "makeByronTransaction: empty txIns"
      let ins'' = NonEmpty.map toByronTxIn ins'
@@ -229,35 +238,35 @@ mkTransaction p key payloadSize ttl fee txins txouts =
      finalSize userDefinedSize = fromIntegral (userDefinedSize - sizeOfKey)
 
 mkTransactionGen
-  :: r ~ Int
+  :: (r ~ Int)
   => Mode mode era
   -> SigningKeyOf era
   -> NonEmpty (TxIn, TxOut era)
   -- ^ Non-empty list of (TxIn, TxOut) that will be used as
   -- inputs and the key to spend the associated value
-  -> Maybe (Address era)
+  -> Maybe (AddressInEra era)
   -- ^ The address to associate with the 'change',
   -- if different from that of the first argument
-  -> Set (r, TxOut era)
+  -> [(r, TxOut era)]
   -- ^ Each recipient and their payment details
   -> TxAdditionalSize
   -- ^ Optional size of additional binary blob in transaction (as 'txAttributes')
-  -> TxFee
+  -> Lovelace
   -- ^ Tx fee.
   -> ( Maybe (TxIx, Lovelace)   -- The 'change' index and value (if any)
      , Lovelace                 -- The associated fees
      , Map r TxIx               -- The offset map in the transaction below
      , Tx era
      )
-mkTransactionGen p signingKey inputs mChangeAddr paySet payloadSize fee@(Lovelace fees) =
+mkTransactionGen p signingKey inputs mChangeAddr payments payloadSize fee@(Lovelace fees) =
   (mChange, fee, offsetMap, tx)
  where
-  tx = mkTransaction p signingKey payloadSize (SlotNo 10000000) fee
+  tx = mkTransaction p signingKey payloadSize (SlotNo 10000000)
+         fee
          (NonEmpty.toList $ fst <$> inputs)
          (NonEmpty.toList txOutputs)
 
   fundsTxOuts   = snd <$> NonEmpty.toList inputs
-  payments      = toList paySet
   payTxOuts     = map snd payments
 
   Lovelace totalInpValue = txOutSum fundsTxOuts
@@ -270,8 +279,8 @@ mkTransactionGen p signingKey inputs mChangeAddr paySet payloadSize fee@(Lovelac
   (txOutputs, mChange) =
     if chgValRaw > 0
     then
-      let changeAddress = fromMaybe (txOutAddr . snd $ NonEmpty.head inputs) mChangeAddr
-          changeTxOut   = TxOut changeAddress changeValue
+      let changeAddress = fromMaybe (txOutAddress . snd $ NonEmpty.head inputs) mChangeAddr
+          changeTxOut   = TxOut changeAddress $ mkTxOutValueAdaOnly (modeEra p) changeValue
           changeIndex   = TxIx $ fromIntegral $ length payTxOuts -- 0-based index
       in
           (appendr payTxOuts (changeTxOut :| []), Just (changeIndex, changeValue))
@@ -284,15 +293,13 @@ mkTransactionGen p signingKey inputs mChangeAddr paySet payloadSize fee@(Lovelac
   offsetMap = Map.fromList $ zipWith (\payment index -> (fst payment, TxIx index))
                                      payments
                                      [0..]
-  txOutSum :: Foldable t => t (TxOut era) -> Lovelace
-  txOutSum =
-    foldl' (\(Lovelace acc) (TxOut _ (Lovelace val)) -> Lovelace $ acc + val)
-           (Lovelace 0)
+  txOutSum :: [(TxOut era)] -> Lovelace
+  txOutSum l = sum $ map toVal l
+  toVal :: forall era. TxOut era -> Lovelace
+  toVal (TxOut _ (TxOutAdaOnly _ val)) = val
+  toVal (TxOut (AddressInEra _ _) (TxOutValue _ _)) = error "unexpected multiAsset"
 
   -- | Append a non-empty list to a list.
   -- > appendr [1,2,3] (4 :| [5]) == 1 :| [2,3,4,5]
   appendr :: [a] -> NonEmpty a -> NonEmpty a
   appendr l nel = foldr NonEmpty.cons nel l
-
-  txOutAddr :: TxOut era -> Address era
-  txOutAddr (TxOut addr _) = addr

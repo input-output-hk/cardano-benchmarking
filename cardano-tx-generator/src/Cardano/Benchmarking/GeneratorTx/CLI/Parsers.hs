@@ -19,11 +19,9 @@ import           Options.Applicative
                     )
 import qualified Options.Applicative as Opt
 import qualified Control.Arrow as Arr
-import           Network.Socket (PortNumber)
 import           Cardano.Api.Typed
 import           Cardano.CLI.Types (SigningKeyFile (..))
-import           Cardano.Node.Types (NodeAddress (..), NodeHostAddress (..), SocketPath (..))
-import           Ouroboros.Consensus.Block.Abstract (SlotNo (..))
+import           Cardano.Node.Types
 
 
 lastly :: Parser a -> Parser (Last a)
@@ -38,7 +36,7 @@ parseFlag' :: a -> a -> String -> String -> Parser a
 parseFlag' def active optname desc =
   flag def active $ long optname <> help desc
 
-parseTargetNodeAddress :: String -> String -> Parser NodeAddress
+parseTargetNodeAddress :: String -> String -> Parser NodeIPv4Address
 parseTargetNodeAddress optname desc =
   option
     ( uncurry NodeAddress
@@ -50,8 +48,8 @@ parseTargetNodeAddress optname desc =
       <> metavar "(HOST,PORT)"
       <> help desc
 
-parseHostAddress :: String -> NodeHostAddress
-parseHostAddress = NodeHostAddress . Just .
+parseHostAddress :: String -> NodeHostIPv4Address
+parseHostAddress = NodeHostIPv4Address .
   maybe (panic "Bad host of target node") identity . readMaybe
 
 parsePort :: Word16 -> PortNumber
@@ -135,29 +133,38 @@ readerFromAttoParser :: Atto.Parser a -> Opt.ReadM a
 readerFromAttoParser p =
     Opt.eitherReader (Atto.parseOnly (p <* Atto.endOfInput) . BSC.pack)
 
-pTxOut :: Parser (TxOut Shelley)
+pTxOut :: Parser (TxOut ShelleyEra)
 pTxOut =
   Opt.option (readerFromAttoParser parseTxOut)
     (  Opt.long "tx-out"
     <> Opt.metavar "TX-OUT"
-    <> Opt.help "The ouput transaction as Address+Lovelace where Address is \
+    <> Opt.help "The transaction output as Address+Lovelace where Address is \
                 \the Bech32-encoded address followed by the amount in \
                 \Lovelace."
     )
   where
-    parseTxOut :: Atto.Parser (TxOut Shelley)
+    parseTxOut :: Atto.Parser (TxOut ShelleyEra)
     parseTxOut =
-      TxOut <$> parseAddress <* Atto.char '+' <*> parseLovelace
+      TxOut <$> parseAddressInEra
+            <*  Atto.char '+'
+            <*> (TxOutAdaOnly AdaOnlyInShelleyEra <$> parseLovelace)
+
+parseAddressInEra :: IsCardanoEra era => Atto.Parser (AddressInEra era)
+parseAddressInEra = do
+    addr <- parseAddressAny
+    case anyAddressInEra addr of
+      Nothing        -> fail "invalid address in the target era"
+      Just addrinera -> pure addrinera
+
+parseAddressAny :: Atto.Parser AddressAny
+parseAddressAny = do
+    str <- lexPlausibleAddressString
+    case deserialiseAddress AsAddressAny str of
+      Nothing   -> fail "invalid address"
+      Just addr -> pure addr
 
 parseLovelace :: Atto.Parser Lovelace
 parseLovelace = Lovelace <$> Atto.decimal
-
-parseAddress :: Atto.Parser (Address Shelley)
-parseAddress = do
-    str <- lexPlausibleAddressString
-    case deserialiseAddress AsShelleyAddress str of
-      Nothing   -> fail "invalid address"
-      Just addr -> pure addr
 
 lexPlausibleAddressString :: Atto.Parser Text
 lexPlausibleAddressString =

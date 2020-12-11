@@ -1,3 +1,4 @@
+{-# Language DerivingStrategies #-}
 {-# OPTIONS_GHC -Wno-all-missed-specialisations #-}
 
 module Cardano.Benchmarking.GeneratorTx.Error
@@ -17,4 +18,4 @@ data TxGenError =
   | SuppliedUtxoTooSmall !Int !Int
   -- ^ The supplied UTxO size (second value) was less than the requested
   --   number of transactions to send (first value).
-  deriving Show
+  deriving stock Show

@@ -135,28 +135,27 @@ export era=${era:-'shelley'}
 export profile=
 export verbose=
 export debug=
-export allow_path_exes=t
+export allow_path_exes=${allow_path_exes:-'yes'}
 
 default_mode='nix'
 
 SCRIPTS_LIB_SH_MODE=${SCRIPTS_LIB_SH_MODE:-default}
 cmdline_mode=
 mnemonic_suffix=${mnemonic_suffix:-}
-force_genesis=
+reuse_genesis=
 
 while test -n "$1"
 do case "$1" in
            --nix )                SCRIPTS_LIB_SH_MODE='nix'; cmdline_mode=t;;
            --cabal )              SCRIPTS_LIB_SH_MODE='cabal'; cmdline_mode=t;;
-           --no-path-exes )       allow_path_exes=;;
+           --no-path-exes )       allow_path_exes=no;;
 
            --cls )                echo -en "\ec";;
 
            --profile )            profile=$2; shift;;
            --mnemonic-suffix )    mnemonic_suffix=$2; shift;;
 
-           ## Should be moved to lib-node.sh?
-           --force-genesis )      force_genesis=t;;
+           --reuse-genesis )      reuse_genesis=t;;
 
            --shelley )            era='shelley';;
            --byron )              era='byron';;

@@ -16,6 +16,7 @@ CABALPKG_TO_HASKELLNIX_PKGSET=(
         [cardano-db-sync]='cardanoDbSyncHaskellPackages'
         [cardano-tx-generator]='cardanoBenchmarkingHaskellPackages'
         [bm-timeline]='cardanoBenchmarkingHaskellPackages'
+        [locli]='cardanoBenchmarkingHaskellPackages'
 )
 
 declare -A CABALEXE_TO_CABALPKG
@@ -29,6 +30,7 @@ CABALEXE_TO_CABALPKG=(
         [bmtime2block]='bm-timeline'
         [bmresources]='bm-timeline'
         [bmadoption]='bm-timeline'
+        [locli]='locli'
 )
 
 declare -A CABALEXE_TO_LIBOPTS

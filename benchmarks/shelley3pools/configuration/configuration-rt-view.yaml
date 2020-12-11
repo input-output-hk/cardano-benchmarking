@@ -41,14 +41,20 @@ options:
 traceAcceptAt:
   - nodeName: "pool1"
     remoteAddr:
-      tag: RemotePipe
-      contents: "logs/sockets/pool1"
+      tag: RemoteSocket
+      contents:
+        - "127.0.0.1"
+        - "10001"
   - nodeName: "pool2"
     remoteAddr:
-      tag: RemotePipe
-      contents: "logs/sockets/pool2"
+      tag: RemoteSocket
+      contents:
+        - "127.0.0.1"
+        - "10002"
   - nodeName: "pool3"
     remoteAddr:
-      tag: RemotePipe
-      contents: "logs/sockets/pool3"
+      tag: RemoteSocket
+      contents:
+        - "127.0.0.1"
+        - "10003"
 
