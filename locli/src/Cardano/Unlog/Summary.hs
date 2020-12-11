@@ -125,7 +125,7 @@ runLeadershipCheckCmd cp mLeadershipsDumpFile mPrettyDumpFile mExportTimelineFil
        hPutStrLn hnd . Text.pack $
          printf "--- input: %s" (intercalate " " $ unJsonLogfile <$> srcs)
        renderStats   statsHeadP statsFormatP s hnd
-       renderTimeline leadershipHeadP leadershipFormatP False xs hnd
+       renderSlotTimeline slotHeadP slotFormatP False xs hnd
    renderExportStats :: Summary -> TextOutputFile -> IO ()
    renderExportStats s o =
      withFile (unTextOutputFile o) WriteMode $
@@ -133,20 +133,13 @@ runLeadershipCheckCmd cp mLeadershipsDumpFile mPrettyDumpFile mExportTimelineFil
    renderExportTimeline :: Seq SlotStats -> TextOutputFile -> IO ()
    renderExportTimeline xs o =
      withFile (unTextOutputFile o) WriteMode $
-       renderTimeline leadershipHeadE leadershipFormatE True xs
+       renderSlotTimeline slotHeadE slotFormatE True xs
 
    renderStats :: Text -> Text -> Summary -> Handle -> IO ()
    renderStats statHead statFmt summary hnd = do
        hPutStrLn hnd statHead
        forM_ (toDistribLines statFmt summary) $
          hPutStrLn hnd
-
-   renderTimeline :: Text -> Text -> Bool -> Seq SlotStats -> Handle -> IO ()
-   renderTimeline leadHead leadFmt exportMode slotStats hnd = do
-       forM_ (zip (toList slotStats) [(0 :: Int)..]) $ \(l, i) -> do
-         when (i `mod` 33 == 0 && (i == 0 || not exportMode)) $
-           hPutStrLn hnd leadHead
-         hPutStrLn hnd $ toLeadershipLine exportMode leadFmt l
 
 data Summary
   = Summary
@@ -281,8 +274,8 @@ toDistribLines statsF Summary{..} =
     (renderPercSpec 6 ps) count miss chkdt dens cpu gc mut majg ming     liv alc rss cpu85Sp cpu85SpIdx cpu85SpPrev
     where chkdt = show chkdt' :: Text
 
-statsHeadE, statsFormatE, leadershipHeadE, leadershipFormatE :: Text
-statsHeadP, statsFormatP, leadershipHeadP, leadershipFormatP :: Text
+statsHeadE, statsFormatE :: Text
+statsHeadP, statsFormatP :: Text
 statsHeadP =
   "%tile Count MissR  CheckΔt   Dens  CPU  GC MUT Maj Min         Live   Alloc   RSS    CPU85%-SpanLengths/Idx/Prev"
 statsHeadE =
@@ -291,10 +284,3 @@ statsFormatP =
   "%6s %5d %0.2f   %6s  %0.3f  %3d %3d %3d %2d %3d      %8d %8d %7d %4d %4d %4d"
 statsFormatE =
   "%s,%d,%0.2f,%s,%0.3f,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d"
-leadershipHeadP =
-  "abs.  slot    block lead  leader CDB rej check chain       %CPU      GCs   Produc-   Memory use, kB      Alloc rate  Mempool  UTxO" <>"\n"<>
-  "slot#   epoch  no. checks ships snap txs span  density all/ GC/mut maj/min tivity  Live   Alloc   RSS     / mut sec   txs  entries"
-leadershipHeadE =
-  "abs.slot#,slot,epoch,block,leadChecks,leadShips,cdbSnap,rejTx,checkSpan,chainDens,%CPU,%GC,%MUT,Productiv,MemLiveKb,MemAllocKb,MemRSSKb,AllocRate/Mut,MempoolTxs,UTxO"
-leadershipFormatP = "%5d %4d:%2d %4d    %2d   %2d    %2d %2d %8s %0.3f  %3s %3s %3s %2s %3s   %4s %7s %7s %7s % 8s %4d %9d"
-leadershipFormatE = "%d,%d,%d,%d,%d,%d,%d,%d,%s,%0.3f,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%d,%d"
