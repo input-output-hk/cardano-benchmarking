@@ -97,7 +97,7 @@ executable cardano-tx-generator
   main-is:             cardano-tx-generator.hs
   default-language:    Haskell2010
   ghc-options:         -threaded
-                       -Wextra
+                       -Wall
                        -rtsopts
                        "-with-rtsopts=-T"
 
@@ -116,7 +116,6 @@ test-suite cardano-tx-generator-test
 
   build-depends:        base >=4.12 && <5
                       , tasty-hunit
-                      , tasty-quickcheck
                       , tasty
                       , heredoc
                       , optparse-applicative
