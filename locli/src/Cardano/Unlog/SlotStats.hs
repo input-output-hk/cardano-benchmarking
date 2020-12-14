@@ -33,6 +33,7 @@ data SlotStats
     , slChainDBSnap :: !Word64
     , slRejectedTx  :: !Word64
     , slBlockNo     :: !Word64
+    , slBlockless   :: !Word64
     , slOrderViol   :: !Word64
     , slEarliest    :: !UTCTime
     , slSpan        :: !NominalDiffTime
@@ -48,21 +49,22 @@ instance ToJSON SlotStats
 slotHeadE, slotFormatE :: Text
 slotHeadP, slotFormatP :: Text
 slotHeadP =
-  "abs.  slot    block lead  leader CDB rej check chain       %CPU      GCs   Produc-   Memory use, kB      Alloc rate  Mempool  UTxO" <>"\n"<>
-  "slot#   epoch  no. checks ships snap txs span  density all/ GC/mut maj/min tivity  Live   Alloc   RSS     / mut sec   txs  entries"
+  "abs.  slot    block block lead  leader CDB rej check chain       %CPU      GCs   Produc-   Memory use, kB      Alloc rate  Mempool  UTxO" <>"\n"<>
+  "slot#   epoch  no. -less checks ships snap txs span  density all/ GC/mut maj/min tivity  Live   Alloc   RSS     / mut sec   txs  entries"
 slotHeadE =
-  "abs.slot#,slot,epoch,block,leadChecks,leadShips,cdbSnap,rejTx,checkSpan,chainDens,%CPU,%GC,%MUT,Productiv,MemLiveKb,MemAllocKb,MemRSSKb,AllocRate/Mut,MempoolTxs,UTxO"
-slotFormatP = "%5d %4d:%2d %4d    %2d   %2d    %2d %2d %8s %0.3f  %3s %3s %3s %2s %3s   %4s %7s %7s %7s % 8s %4d %9d"
-slotFormatE = "%d,%d,%d,%d,%d,%d,%d,%d,%s,%0.3f,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%d,%d"
+  "abs.slot#,slot,epoch,block,blockless,leadChecks,leadShips,cdbSnap,rejTx,checkSpan,chainDens,%CPU,%GC,%MUT,Productiv,MemLiveKb,MemAllocKb,MemRSSKb,AllocRate/Mut,MempoolTxs,UTxO"
+slotFormatP = "%5d %4d:%2d %4d    %2d    %2d   %2d    %2d %2d %8s %0.3f  %3s %3s %3s %2s %3s   %4s %7s %7s %7s % 8s %4d %9d"
+slotFormatE = "%d,%d,%d,%d,%d,%d,%d,%d,%d,%s,%0.3f,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%d,%d"
 
 slotLine :: Bool -> Text -> SlotStats -> Text
 slotLine exportMode leadershipF SlotStats{..} = Text.pack $
   printf (Text.unpack leadershipF)
-         sl epsl epo blk chks  lds cdbsn rejtx span dens cpu gc mut majg ming   pro liv alc rss atm mpo utx
+         sl epsl epo blk blkl chks  lds cdbsn rejtx span dens cpu gc mut majg ming   pro liv alc rss atm mpo utx
  where sl    = slSlot
        epsl  = slEpochSlot
        epo   = slEpoch
        blk   = slBlockNo
+       blkl  = slBlockless
        chks  = slCountChecks
        lds   = slCountLeads
        cdbsn = slChainDBSnap
@@ -136,5 +138,6 @@ zeroSlotStats =
   , slChainDBSnap = 0
   , slRejectedTx = 0
   , slBlockNo = 0
+  , slBlockless = 0
   }
 

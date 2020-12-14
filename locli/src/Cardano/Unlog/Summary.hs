@@ -152,6 +152,7 @@ data Summary
     , sUtxoDistrib       :: !(Distribution Float Word64)
     , sDensityDistrib    :: !(Distribution Float Float)
     , sCheckspanDistrib  :: !(Distribution Float NominalDiffTime)
+    , sBlocklessDistrib  :: !(Distribution Float Word64)
     , sSpanLensCPU85Distrib
                          :: !(Distribution Float Int)
     , sResourceDistribs  :: !(Resources (Distribution Float Word64))
@@ -173,6 +174,7 @@ instance ToJSON Summary where
     , extendObject "kind" "utxo"      $ toJSON sUtxoDistrib
     , extendObject "kind" "leads"     $ toJSON sLeadsDistrib
     , extendObject "kind" "misses"    $ toJSON sMissDistrib
+    , extendObject "kind" "blockless" $ toJSON sBlocklessDistrib
     , extendObject "kind" "rss"       $ toJSON (rRSS      sResourceDistribs)
     , extendObject "kind" "spanLensCPU85Distrib"  $
                                         toJSON sSpanLensCPU85Distrib
@@ -194,6 +196,8 @@ slotStatsSummary slots =
       computeDistribution pctiles (slDensity <$> slots)
   , sCheckspanDistrib =
       computeDistribution pctiles (slSpan <$> slots)
+  , sBlocklessDistrib =
+      computeDistribution pctiles (slBlockless <$> slots)
   , sSpanLensCPU85Distrib
                       = computeDistribution pctiles spanLensCPU85
   , sResourceDistribs =
@@ -245,6 +249,7 @@ toDistribLines statsF Summary{..} =
                      <$> dPercentiles sMissDistrib)
     <*> ZipList (pctSample <$> dPercentiles sMissDistrib)
     <*> ZipList (pctSample <$> dPercentiles sCheckspanDistrib)
+    <*> ZipList (pctSample <$> dPercentiles sBlocklessDistrib)
     <*> ZipList (pctSample <$> dPercentiles sDensityDistrib)
     <*> ZipList (pctSample <$> dPercentiles (rCentiCpu sResourceDistribs))
     <*> ZipList (pctSample <$> dPercentiles (rCentiGC sResourceDistribs))
@@ -263,24 +268,24 @@ toDistribLines statsF Summary{..} =
  where
    distribLine ::
         PercSpec Float -> Int
-     -> Float -> NominalDiffTime -> Float
+     -> Float -> NominalDiffTime -> Word64 -> Float
      -> Word64 -> Word64 -> Word64
      -> Word64 -> Word64
      -> Word64 -> Word64 -> Word64
      -> Int -> Int -> Int
      -> Text
-   distribLine ps count miss chkdt' dens cpu gc mut majg ming liv alc rss cpu85Sp cpu85SpIdx cpu85SpPrev = Text.pack $
+   distribLine ps count miss chkdt' blkl dens cpu gc mut majg ming liv alc rss cpu85Sp cpu85SpIdx cpu85SpPrev = Text.pack $
      printf (Text.unpack statsF)
-    (renderPercSpec 6 ps) count miss chkdt dens cpu gc mut majg ming     liv alc rss cpu85Sp cpu85SpIdx cpu85SpPrev
+    (renderPercSpec 6 ps) count miss chkdt blkl dens cpu gc mut majg ming     liv alc rss cpu85Sp cpu85SpIdx cpu85SpPrev
     where chkdt = show chkdt' :: Text
 
 statsHeadE, statsFormatE :: Text
 statsHeadP, statsFormatP :: Text
 statsHeadP =
-  "%tile Count MissR  CheckΔt   Dens  CPU  GC MUT Maj Min         Live   Alloc   RSS    CPU85%-SpanLengths/Idx/Prev"
+  "%tile Count MissR  CheckΔt   BlkLess Dens  CPU  GC MUT Maj Min         Live   Alloc   RSS    CPU85%-SpanLengths/Idx/Prev"
 statsHeadE =
-  "%tile,Count,MissR,CheckΔ,ChainDensity,CPU,GC,MUT,GcMaj,GcMin,Live,Alloc,RSS,CPU85%-SpanLens,/Idx,/Prev"
+  "%tile,Count,MissR,CheckΔ,Blockless,ChainDensity,CPU,GC,MUT,GcMaj,GcMin,Live,Alloc,RSS,CPU85%-SpanLens,/Idx,/Prev"
 statsFormatP =
-  "%6s %5d %0.2f   %6s  %0.3f  %3d %3d %3d %2d %3d      %8d %8d %7d %4d %4d %4d"
+  "%6s %5d %0.2f   %6s  %3d     %0.3f  %3d %3d %3d %2d %3d      %8d %8d %7d %4d %4d %4d"
 statsFormatE =
-  "%s,%d,%0.2f,%s,%0.3f,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d"
+  "%s,%d,%0.2f,%s,%d,%0.3f,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d"

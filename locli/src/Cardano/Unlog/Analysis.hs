@@ -26,11 +26,12 @@ import           Cardano.Unlog.SlotStats
 
 data Analysis
   = Analysis
-    { aResAccums    :: !ResAccums
-    , aResTimestamp :: !UTCTime
-    , aMempoolTxs   :: !Word64
-    , aBlockNo      :: !Word64
-    , aSlotStats    :: ![SlotStats]
+    { aResAccums     :: !ResAccums
+    , aResTimestamp  :: !UTCTime
+    , aMempoolTxs    :: !Word64
+    , aBlockNo       :: !Word64
+    , aLastBlockSlot :: !Word64
+    , aSlotStats     :: ![SlotStats]
     }
 
 analyseLogObjects :: ChainParams -> [LogObject] -> Seq SlotStats
@@ -41,17 +42,19 @@ analyseLogObjects cp =
    zeroAnalysis :: Analysis
    zeroAnalysis =
      Analysis
-     { aResAccums    = mkResAccums
-     , aResTimestamp = zeroUTCTime
-     , aMempoolTxs   = 0
-     , aBlockNo      = 0
-     , aSlotStats    = [zeroSlotStats]
+     { aResAccums     = mkResAccums
+     , aResTimestamp  = zeroUTCTime
+     , aMempoolTxs    = 0
+     , aBlockNo       = 0
+     , aLastBlockSlot = 0
+     , aSlotStats     = [zeroSlotStats]
      }
 
 analysisStep :: ChainParams -> Analysis -> LogObject -> Analysis
 analysisStep cp a@Analysis{aSlotStats=cur:rSLs, ..} = \case
   lo@LogObject{loAt, loBody=LOTraceStartLeadershipCheck slot _ _} ->
     if slSlot cur > slot
+    -- Slot log entry for a slot we've supposedly done processing.
     then a { aSlotStats = cur
              { slOrderViol = slOrderViol cur + 1
              } : case (slSlot cur - slot, rSLs) of
@@ -82,22 +85,29 @@ analysisStep cp a@Analysis{aSlotStats=cur:rSLs, ..} = \case
       }
    where accs = updateResAccums loAt rs aResAccums
   LogObject{loBody=LOMempoolTxs txCount} ->
-    a { aMempoolTxs = txCount
+    a { aMempoolTxs     = txCount
       , aSlotStats      = cur { slMempoolTxs = txCount
                           } : rSLs
       }
   LogObject{loBody=LOBlockContext blockNo} ->
-    a { aBlockNo    = blockNo
+    let newBlock = aBlockNo /= blockNo in
+    a { aBlockNo        = blockNo
+      , aLastBlockSlot  = if newBlock
+                          then slSlot cur
+                          else aLastBlockSlot
       , aSlotStats      = cur { slBlockNo = blockNo
-                          } : rSLs
+                              , slBlockless = if newBlock
+                                              then 0
+                                              else slBlockless cur
+                              } : rSLs
       }
   LogObject{loBody=LOLedgerTookSnapshot} ->
     a { aSlotStats      = cur { slChainDBSnap = slChainDBSnap cur + 1
-                          } : rSLs
+                              } : rSLs
       }
   LogObject{loBody=LOMempoolRejectedTx} ->
     a { aSlotStats      = cur { slRejectedTx = slRejectedTx cur + 1
-                          } : rSLs
+                              } : rSLs
       }
   _ -> a
  where
@@ -151,6 +161,7 @@ extendAnalysis cp@ChainParams{..} slot time checks utxo density a@Analysis{..} =
         , slChainDBSnap = 0
         , slRejectedTx  = 0
         , slBlockNo     = aBlockNo
+        , slBlockless   = slot - aLastBlockSlot
         , slResources   = maybeDiscard
                           <$> discardObsoleteValues
                           <*> extractResAccums aResAccums
