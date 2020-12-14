@@ -151,7 +151,8 @@ data Summary
     , sLeadsDistrib      :: !(Distribution Float Word64)
     , sUtxoDistrib       :: !(Distribution Float Word64)
     , sDensityDistrib    :: !(Distribution Float Float)
-    , sCheckspanDistrib  :: !(Distribution Float NominalDiffTime)
+    , sSpanCheckDistrib  :: !(Distribution Float NominalDiffTime)
+    , sSpanLeadDistrib   :: !(Distribution Float NominalDiffTime)
     , sBlocklessDistrib  :: !(Distribution Float Word64)
     , sSpanLensCPU85Distrib
                          :: !(Distribution Float Int)
@@ -167,7 +168,8 @@ instance ToJSON Summary where
     , Aeson.Object $ HashMap.fromList
         [ "kind" .= String "spanLensCPU85Sorted"
         , "xs" .= toJSON (Seq.sort sSpanLensCPU85)]
-    , extendObject "kind" "checkspan" $ toJSON sCheckspanDistrib
+    , extendObject "kind" "spancheck" $ toJSON sSpanCheckDistrib
+    , extendObject "kind" "spanlead"  $ toJSON sSpanLeadDistrib
     , extendObject "kind" "cpu"       $ toJSON (rCentiCpu sResourceDistribs)
     , extendObject "kind" "gc"        $ toJSON (rCentiGC  sResourceDistribs)
     , extendObject "kind" "density"   $ toJSON sDensityDistrib
@@ -194,8 +196,10 @@ slotStatsSummary slots =
       computeDistribution pctiles (slUtxoSize <$> slots)
   , sDensityDistrib   =
       computeDistribution pctiles (slDensity <$> slots)
-  , sCheckspanDistrib =
-      computeDistribution pctiles (slSpan <$> slots)
+  , sSpanCheckDistrib =
+      computeDistribution pctiles (slSpanCheck <$> slots)
+  , sSpanLeadDistrib =
+      computeDistribution pctiles (slSpanLead <$> slots)
   , sBlocklessDistrib =
       computeDistribution pctiles (slBlockless <$> slots)
   , sSpanLensCPU85Distrib
@@ -248,7 +252,8 @@ toDistribLines statsF Summary{..} =
                  . (1.0 -) . pctFrac
                      <$> dPercentiles sMissDistrib)
     <*> ZipList (pctSample <$> dPercentiles sMissDistrib)
-    <*> ZipList (pctSample <$> dPercentiles sCheckspanDistrib)
+    <*> ZipList (pctSample <$> dPercentiles sSpanCheckDistrib)
+    <*> ZipList (pctSample <$> dPercentiles sSpanLeadDistrib)
     <*> ZipList (pctSample <$> dPercentiles sBlocklessDistrib)
     <*> ZipList (pctSample <$> dPercentiles sDensityDistrib)
     <*> ZipList (pctSample <$> dPercentiles (rCentiCpu sResourceDistribs))
@@ -268,24 +273,25 @@ toDistribLines statsF Summary{..} =
  where
    distribLine ::
         PercSpec Float -> Int
-     -> Float -> NominalDiffTime -> Word64 -> Float
+     -> Float -> NominalDiffTime -> NominalDiffTime -> Word64 -> Float
      -> Word64 -> Word64 -> Word64
      -> Word64 -> Word64
      -> Word64 -> Word64 -> Word64
      -> Int -> Int -> Int
      -> Text
-   distribLine ps count miss chkdt' blkl dens cpu gc mut majg ming liv alc rss cpu85Sp cpu85SpIdx cpu85SpPrev = Text.pack $
+   distribLine ps count miss chkdt' leaddt' blkl dens cpu gc mut majg ming liv alc rss cpu85Sp cpu85SpIdx cpu85SpPrev = Text.pack $
      printf (Text.unpack statsF)
-    (renderPercSpec 6 ps) count miss chkdt blkl dens cpu gc mut majg ming     liv alc rss cpu85Sp cpu85SpIdx cpu85SpPrev
-    where chkdt = show chkdt' :: Text
+    (renderPercSpec 6 ps) count miss chkdt leaddt blkl dens cpu gc mut majg ming     liv alc rss cpu85Sp cpu85SpIdx cpu85SpPrev
+    where chkdt  = show chkdt' :: Text
+          leaddt = show leaddt' :: Text
 
 statsHeadE, statsFormatE :: Text
 statsHeadP, statsFormatP :: Text
 statsHeadP =
-  "%tile Count MissR  CheckΔt   BlkLess Dens  CPU  GC MUT Maj Min         Live   Alloc   RSS    CPU85%-SpanLengths/Idx/Prev"
+  "%tile Count MissR  CheckΔt  LeadΔt BlkLess Dens  CPU  GC MUT Maj Min         Live   Alloc   RSS    CPU85%-SpanLengths/Idx/Prev"
 statsHeadE =
-  "%tile,Count,MissR,CheckΔ,Blockless,ChainDensity,CPU,GC,MUT,GcMaj,GcMin,Live,Alloc,RSS,CPU85%-SpanLens,/Idx,/Prev"
+  "%tile,Count,MissR,CheckΔ,LeadΔ,Blockless,ChainDensity,CPU,GC,MUT,GcMaj,GcMin,Live,Alloc,RSS,CPU85%-SpanLens,/Idx,/Prev"
 statsFormatP =
-  "%6s %5d %0.2f   %6s  %3d     %0.3f  %3d %3d %3d %2d %3d      %8d %8d %7d %4d %4d %4d"
+  "%6s %5d %0.2f   %6s   %6s  %3d     %0.3f  %3d %3d %3d %2d %3d      %8d %8d %7d %4d %4d %4d"
 statsFormatE =
-  "%s,%d,%0.2f,%s,%d,%0.3f,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d"
+  "%s,%d,%0.2f,%s,%s,%d,%0.3f,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d"

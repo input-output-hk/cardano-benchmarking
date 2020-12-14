@@ -27,7 +27,6 @@ import qualified Data.HashMap.Strict as HM
 import qualified Data.Text as Text
 import           Data.Time.Clock (UTCTime)
 import qualified Data.Map as Map
-import           Data.Map (Map)
 
 import           Cardano.BM.Stats.Resources
 
@@ -83,6 +82,10 @@ interpreters = Map.fromList
     \v -> LOTraceNodeIsLeader
             <$> v .: "slot"
 
+  , (,) "TraceNodeNotLeader" $
+    \v -> LOTraceNodeNotLeader
+            <$> v .: "slot"
+
   , (,) "TraceMempoolAddedTx" $
     \v -> do mps :: Object <- v .: "mempoolSize"
              LOMempoolTxs <$> mps .: "numTxs"
@@ -107,6 +110,7 @@ logObjectStreamInterpreterKeys = Map.keys interpreters
 data LOBody
   = LOTraceStartLeadershipCheck !Word64 !Word64 !Float
   | LOTraceNodeIsLeader !Word64
+  | LOTraceNodeNotLeader !Word64
   | LOResources !ResourceStats
   | LOMempoolTxs !Word64
   | LOMempoolRejectedTx

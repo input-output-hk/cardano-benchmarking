@@ -36,7 +36,8 @@ data SlotStats
     , slBlockless   :: !Word64
     , slOrderViol   :: !Word64
     , slEarliest    :: !UTCTime
-    , slSpan        :: !NominalDiffTime
+    , slSpanCheck   :: !NominalDiffTime
+    , slSpanLead    :: !NominalDiffTime
     , slMempoolTxs  :: !Word64
     , slUtxoSize    :: !Word64
     , slDensity     :: !Float
@@ -49,17 +50,17 @@ instance ToJSON SlotStats
 slotHeadE, slotFormatE :: Text
 slotHeadP, slotFormatP :: Text
 slotHeadP =
-  "abs.  slot    block block lead  leader CDB rej check chain       %CPU      GCs   Produc-   Memory use, kB      Alloc rate  Mempool  UTxO" <>"\n"<>
-  "slot#   epoch  no. -less checks ships snap txs span  density all/ GC/mut maj/min tivity  Live   Alloc   RSS     / mut sec   txs  entries"
+  "abs.  slot    block block lead  leader CDB rej  check     lead  chain       %CPU      GCs   Produc-   Memory use, kB    Alloc rate  Mempool  UTxO" <>"\n"<>
+  "slot#   epoch  no. -less checks ships snap txs  span      span  density all/ GC/mut maj/min tivity  Live   Alloc   RSS   / mut sec   txs  entries"
 slotHeadE =
   "abs.slot#,slot,epoch,block,blockless,leadChecks,leadShips,cdbSnap,rejTx,checkSpan,chainDens,%CPU,%GC,%MUT,Productiv,MemLiveKb,MemAllocKb,MemRSSKb,AllocRate/Mut,MempoolTxs,UTxO"
-slotFormatP = "%5d %4d:%2d %4d    %2d    %2d   %2d    %2d %2d %8s %0.3f  %3s %3s %3s %2s %3s   %4s %7s %7s %7s % 8s %4d %9d"
-slotFormatE = "%d,%d,%d,%d,%d,%d,%d,%d,%d,%s,%0.3f,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%d,%d"
+slotFormatP = "%5d %4d:%2d %4d    %2d    %2d   %2d    %2d  %2d %8s %8s %0.3f  %3s %3s %3s %2s %3s   %4s %7s %7s %7s % 8s %4d %9d"
+slotFormatE = "%d,%d,%d,%d,%d,%d,%d,%d,%d,%s,%s,%0.3f,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%d,%d"
 
 slotLine :: Bool -> Text -> SlotStats -> Text
 slotLine exportMode leadershipF SlotStats{..} = Text.pack $
   printf (Text.unpack leadershipF)
-         sl epsl epo blk blkl chks  lds cdbsn rejtx span dens cpu gc mut majg ming   pro liv alc rss atm mpo utx
+         sl epsl epo blk blkl chks  lds cdbsn rejtx spanC spanL dens cpu gc mut majg ming   pro liv alc rss atm mpo utx
  where sl    = slSlot
        epsl  = slEpochSlot
        epo   = slEpoch
@@ -69,7 +70,8 @@ slotLine exportMode leadershipF SlotStats{..} = Text.pack $
        lds   = slCountLeads
        cdbsn = slChainDBSnap
        rejtx = slRejectedTx
-       span  = show slSpan :: Text
+       spanC = show slSpanCheck :: Text
+       spanL = show slSpanLead :: Text
        cpu   = d 3 $ rCentiCpu slResources
        dens  = slDensity
        gc    = d 2 $ rCentiGC  slResources
@@ -130,7 +132,8 @@ zeroSlotStats =
   , slCountLeads = 0
   , slOrderViol = 0
   , slEarliest = zeroUTCTime
-  , slSpan = realToFrac (0 :: Int)
+  , slSpanCheck = realToFrac (0 :: Int)
+  , slSpanLead = realToFrac (0 :: Int)
   , slMempoolTxs = 0
   , slUtxoSize = 0
   , slDensity = 0

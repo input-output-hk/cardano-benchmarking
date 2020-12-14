@@ -59,13 +59,13 @@ analysisStep cp a@Analysis{aSlotStats=cur:rSLs, ..} = \case
              { slOrderViol = slOrderViol cur + 1
              } : case (slSlot cur - slot, rSLs) of
                    -- Limited back-patching:
-                   (1, p1:rest)       ->       updateChecks loAt p1:rest
-                   (2, p1:p2:rest)    ->    p1:updateChecks loAt p2:rest
-                   (3, p1:p2:p3:rest) -> p1:p2:updateChecks loAt p3:rest
+                   (1, p1:rest)       ->       onLeadershipCheck loAt p1:rest
+                   (2, p1:p2:rest)    ->    p1:onLeadershipCheck loAt p2:rest
+                   (3, p1:p2:p3:rest) -> p1:p2:onLeadershipCheck loAt p3:rest
                    _ -> rSLs -- Give up.
            }
     else if slSlot cur == slot
-    then a { aSlotStats = updateChecks loAt cur : rSLs
+    then a { aSlotStats = onLeadershipCheck loAt cur : rSLs
            }
     else if slot - slSlot cur > 1
     then let gap = slot - slSlot cur - 1
@@ -74,7 +74,10 @@ analysisStep cp a@Analysis{aSlotStats=cur:rSLs, ..} = \case
          patchSlotCheckGap gap gapStartSlot a
     else updateOnNewSlot lo a
   LogObject{loAt, loBody=LOTraceNodeIsLeader _} ->
-    a { aSlotStats = updateSlotStats loAt cur : rSLs
+    a { aSlotStats = onLeadershipCertainty loAt True cur : rSLs
+      }
+  LogObject{loAt, loBody=LOTraceNodeNotLeader _} ->
+    a { aSlotStats = onLeadershipCertainty loAt False cur : rSLs
       }
   LogObject{loAt, loBody=LOResources rs} ->
     -- Update resource stats accumulators & record values current slot.
@@ -117,16 +120,16 @@ analysisStep cp a@Analysis{aSlotStats=cur:rSLs, ..} = \case
    updateOnNewSlot _ _ =
      error "Internal invariant violated: updateSlot called for a non-LOTraceStartLeadershipCheck LogObject."
 
-   updateChecks :: UTCTime -> SlotStats -> SlotStats
-   updateChecks now sl@SlotStats{..} =
+   onLeadershipCheck :: UTCTime -> SlotStats -> SlotStats
+   onLeadershipCheck now sl@SlotStats{..} =
      sl { slCountChecks = slCountChecks + 1
-        , slSpan  = now `Time.diffUTCTime` slStart
+        , slSpanCheck = max 0 $ now `Time.diffUTCTime` slStart
         }
 
-   updateSlotStats :: UTCTime -> SlotStats -> SlotStats
-   updateSlotStats now sl@SlotStats{..} =
-     sl { slCountLeads = slCountLeads + 1
-        , slSpan  = now `Time.diffUTCTime` slStart
+   onLeadershipCertainty :: UTCTime -> Bool -> SlotStats -> SlotStats
+   onLeadershipCertainty now lead sl@SlotStats{..} =
+     sl { slCountLeads = slCountLeads + if lead then 1 else 0
+        , slSpanLead  = max 0 $ now `Time.diffUTCTime` (slSpanCheck `Time.addUTCTime` slStart)
         }
 
    patchSlotCheckGap :: Word64 -> Word64 -> Analysis -> Analysis
@@ -154,7 +157,8 @@ extendAnalysis cp@ChainParams{..} slot time checks utxo density a@Analysis{..} =
           -- Updated as we see repeats:
         , slCountChecks = checks
         , slCountLeads  = 0
-        , slSpan        = time `Time.diffUTCTime` slotStart cp slot
+        , slSpanCheck   = max 0 $ time `Time.diffUTCTime` slotStart cp slot
+        , slSpanLead    = 0
         , slMempoolTxs  = aMempoolTxs
         , slUtxoSize    = utxo
         , slDensity     = density
