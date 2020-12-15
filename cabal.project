@@ -1,4 +1,4 @@
-index-state: 2020-11-15T00:00:00Z
+index-state: 2020-12-11T00:00:00Z
 
 packages:
     cardano-tx-generator
@@ -95,8 +95,8 @@ package small-steps-test
 source-repository-package
   type: git
   location: https://github.com/input-output-hk/cardano-node
-  tag: 400d18092ce604352cf36fe5f105b0d7c78be074
-  --sha256: 19r4mamm9bxc1hz32qgsrfnrfxwp4pgnb4d28fzai3izznil03vi
+  tag: f97de0bbf51c9bdc7b0eecb830cec8472b786555
+  --sha256: 14iy7483hjqsvvw48ql65y54q8giaphgg531l2fwqg70hypwn75k
   subdir:
     cardano-api
     cardano-api/test
@@ -110,8 +110,8 @@ source-repository-package
 source-repository-package
   type: git
   location: https://github.com/input-output-hk/cardano-base
-  tag: 2574600da11065937c1f07e4b234ecb451016a2e
-  --sha256: 0nq8bpzsr3fd2i59a6s6qb6slpymjh47zv57wlifjfvhh0xlgmpx
+  tag: 6a6ea9695ee898dd7d4fd7a5d2cc639d7d5764f7
+  --sha256: 1hkq5i9fjjr4picx3plq3s09isrmx6jifpqf57c7viqfdrwlhjnj
   subdir:
     binary
     binary/test
@@ -129,8 +129,8 @@ source-repository-package
 source-repository-package
   type: git
   location: https://github.com/input-output-hk/cardano-ledger-specs
-  tag: 581767d1329f3f702e332af08355e81a0f85333e
-  --sha256: 198p4v2bi36y6x512w35qycvjm7nds7jf8qh7r84pj1qsy43vf7w
+  tag: a638b9fa854fced8b8165631885268e3814f2d90
+  --sha256: 0jfdiha2xjjvqqi3dy410whzjiyhs3vxyic423ddlpbi1pdr3xdd
   subdir:
     byron/chain/executable-spec
     byron/crypto
@@ -148,8 +148,8 @@ source-repository-package
 source-repository-package
   type: git
   location: https://github.com/input-output-hk/cardano-prelude
-  tag: 742e8525b96bf4b66fb61a00c8298d75d7931d5e
-  --sha256: 1132r58bjgdcf7yz3n77nlrkanqcmpn5b5km4nw151yar2dgifsv
+  tag: ee4e7b547a991876e6b05ba542f4e62909f4a571
+  --sha256: 0dg6ihgrn5mgqp95c4f11l6kh9k3y75lwfqf47hdp554w7wyvaw6
   subdir:
     cardano-prelude
     cardano-prelude-test
@@ -163,8 +163,8 @@ source-repository-package
 source-repository-package
   type: git
   location: https://github.com/input-output-hk/iohk-monitoring-framework
-  tag: 563e79f28c6da5c547463391d4c58a81442e48db
-  --sha256: 1is18h9kk8j16my89q76nihvapiiff3jl8777vk7c4wl2h4zry2w
+  tag: a89c38ed5825ba17ca79fddb85651007753d699d
+  --sha256: 0i4p3jbr9pxhklgbky2g7rfqhccvkqzph0ak5x8bb6kwp7c7b8wf
   subdir:
     contra-tracer
     iohk-monitoring
@@ -178,8 +178,8 @@ source-repository-package
 source-repository-package
   type: git
   location: https://github.com/input-output-hk/ouroboros-network
-  tag: c2bd6814e231bfd48059f306ef486b830e524aa8
-  --sha256: 0sjp5i4szp5nf1dkwang5w8pydjx5p22by8wisihs1410rxgwd7n
+  tag: 7d0f3f2d07c10169fcac33582a09d89423900a64
+  --sha256: 1951wl2c9ml9pj721j7y1h6c721f87c9jh8sy25nzfndzzxyncmw
   subdir:
     io-sim
     io-sim-classes
