@@ -89,6 +89,15 @@ genesisKeyPseudoTxIn m@ModeShelley{} key _ =
      SigningKey PaymentKey -> SigningKey GenesisUTxOKey
    castSigningKeyRolePaymentKeyGenesisUTxOKey (PaymentSigningKey skey) =
      GenesisUTxOSigningKey skey
+genesisKeyPseudoTxIn m@ModeCardanoShelley{} key _ =
+  genesisUTxOPseudoTxIn
+    (modeNetworkId m)
+    (verificationKeyHash $ getVerificationKey $ castSigningKeyRolePaymentKeyGenesisUTxOKey key)
+ where
+   castSigningKeyRolePaymentKeyGenesisUTxOKey ::
+     SigningKey PaymentKey -> SigningKey GenesisUTxOKey
+   castSigningKeyRolePaymentKeyGenesisUTxOKey (PaymentSigningKey skey) =
+     GenesisUTxOSigningKey skey
 genesisKeyPseudoTxIn m@ModeByron{}
                      (getVerificationKey -> ByronVerificationKey key)
                      (AddressInEra _ (ByronAddress genAddr)) =
@@ -110,6 +119,11 @@ modeGenesisFunds = \case
     . Map.toList
     . Byron.unUTxO
     . Byron.genesisUtxo
+    $ modeGenesis m
+  m@ModeCardanoShelley{} ->
+    fmap (fromShelleyAddr m *** fromShelleyLovelace)
+    . Map.toList
+    . Consensus.sgInitialFunds
     $ modeGenesis m
   m -> error $ "modeGenesisFunds:  unsupported mode: " <> show m
   where
