@@ -32,32 +32,11 @@ args=(
 echo "starting submission to:  $TARGETNODES"
 
 case $era in
-byron )
-        args+=(
-          --genesis-funds-key ${GENESISDIR_byron}/poor-keys.000.skey
-        )
-        run 'cardano-tx-generator' "${args[@]}";;
 shelley )
         args+=(
           --genesis-funds-key ${GENESISDIR_shelley}/utxo-keys/utxo1.skey
         )
         run 'cardano-tx-generator' "${args[@]}";;
-cardano-shelley )
-        txio="$($BASEDIR/prepare_genesis_expenditure.sh)"
-        if test -z "$txio"
-        then echo "ERROR: couldn't obtain funds for generator">&2; exit 1; fi
-        args+=(
-          --shelley
-          --utxo-funds-key    ${GENESISDIR_shelley}/utxo-keys/utxo1.skey
-          --tx-out            "$(jq .txout <<<$txio --raw-output)"
-          --tx-in             "$(jq .txin  <<<$txio --raw-output)"
-          # --fail-on-submission-errors
-        )
-        set +e
-        echo run 'cardano-tx-generator' "${args[@]}"
-        run 'cardano-tx-generator' "${args[@]}" |
-                grep 'launching Tx\|MsgAcceptVersion\|SubServFed\|Error\|Summary' |
-                tee "$BASEDIR"/logs/generator-summary.log;;
 *) echo "ERROR:  unknown era '$era'" >&2;;
 esac
 

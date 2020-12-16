@@ -42,15 +42,10 @@ else sed -i 's/"systemStart": ".*"/"systemStart": "'"$(date \
      ./hash_genesis.sh
 fi
 
-case $era in
-        byron )     protocol='RealPBFT';;
-        shelley )   protocol='TPraos';;
-        cardano-* ) protocol='Cardano';; esac
 
 for cf in ${BASEDIR}/configuration/*.yaml
 do sed -i 's/^ShelleyGenesisHash:.*$/ShelleyGenesisHash: '"$(cat "$GENESISDIR_shelley"/GENHASH)"'/' "$cf"
    sed -i 's/^ByronGenesisHash:.*$/ByronGenesisHash: '"$(cat "$GENESISDIR_byron"/GENHASH)"'/' "$cf"
-   sed -i 's/^Protocol:.*$/Protocol: '"$protocol"'/' "$cf"
 done
 
 # 2 run rt-view
