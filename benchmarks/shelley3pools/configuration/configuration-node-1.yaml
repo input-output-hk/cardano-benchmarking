@@ -12,7 +12,7 @@ ShelleyGenesisHash: aa176323b677cd5a76d3a7f8afeb3238fa0386d2455ed0cc31b35a85c1a4
 
 
 PBftSignatureThreshold: 0.5
-TestShelleyHardForkAtEpoch: 1
+TestShelleyHardForkAtEpoch: 0
 
 ##### Core protocol parameters #####
 
