@@ -135,7 +135,7 @@ import qualified Ouroboros.Consensus.Shelley.Ledger.Block as Shelley
 import qualified Shelley.Spec.Ledger.API as Shelley
 
 -- Node API imports
-import           Cardano.API
+import           Cardano.Api
 import           Cardano.Api.TxSubmit
 import           Cardano.Api.Typed
 import qualified Cardano.Api.Typed as Api

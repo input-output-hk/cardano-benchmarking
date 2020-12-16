@@ -55,7 +55,7 @@ import qualified Shelley.Spec.Ledger.Address as Shelley
 import qualified Shelley.Spec.Ledger.API as Shelley
 import qualified Shelley.Spec.Ledger.TxBody as ShelleyLedger
 
-import           Cardano.API
+import           Cardano.Api
 import           Cardano.Api.Shelley hiding (fromShelleyAddr)
 import           Cardano.Api.TxSubmit
 import           Cardano.Api.Typed
@@ -124,7 +124,7 @@ fromByronTxOut (Byron.TxOut addr coin) =
   TxOut (AddressInEra ByronAddressInAnyEra $ ByronAddress addr)
         (TxOutAdaOnly AdaOnlyInByronEra . Lovelace $ Byron.lovelaceToInteger coin)
 
-fromShelleyAddr :: Mode mode ShelleyEra -> Shelley.Addr StandardShelley -> AddressInEra ShelleyEra
+fromShelleyAddr :: Mode mode ShelleyEra -> Shelley.Addr StandardCrypto -> AddressInEra ShelleyEra
 fromShelleyAddr m (Shelley.Addr _ pcr sref) =
   makeShelleyAddressInEra (modeNetworkId m) (fromShelleyPaymentCredential pcr) (fromShelleyStakeReference sref)
 fromShelleyAddr _ _ = error "fromShelleyAddr:  unhandled Shelley.Addr case"

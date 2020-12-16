@@ -95,8 +95,8 @@ package small-steps-test
 source-repository-package
   type: git
   location: https://github.com/input-output-hk/cardano-node
-  tag: f97de0bbf51c9bdc7b0eecb830cec8472b786555
-  --sha256: 14iy7483hjqsvvw48ql65y54q8giaphgg531l2fwqg70hypwn75k
+  tag: c997529667d68821e430c82a8cc1165b4ee53308
+  --sha256: 17hzw8gv6nhd6vfhszkh24cd4p420g96cmpwzjlzwpaad5mnvfp2
   subdir:
     cardano-api
     cardano-api/test
@@ -178,8 +178,8 @@ source-repository-package
 source-repository-package
   type: git
   location: https://github.com/input-output-hk/ouroboros-network
-  tag: 7d0f3f2d07c10169fcac33582a09d89423900a64
-  --sha256: 1951wl2c9ml9pj721j7y1h6c721f87c9jh8sy25nzfndzzxyncmw
+  tag: 4fdc309f855792ed30271c30dcd9159232404787
+  --sha256: 1j03pzqw0n10m9af17q37b6l90x2qdajp30xjpv2247rwpgip31i
   subdir:
     io-sim
     io-sim-classes
