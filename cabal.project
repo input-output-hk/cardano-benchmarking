@@ -2,7 +2,6 @@ index-state: 2020-11-15T00:00:00Z
 
 packages:
     cardano-tx-generator
-    -- tx-generator-shelley
     bm-timeline
     -- ../ouroboros-network/ouroboros-consensus
     -- ../ouroboros-network/ouroboros-consensus-byron
@@ -57,9 +56,6 @@ test-show-details: direct
 -- Then enable specific tests in this repo
 
 package cardano-tx-generator
-  tests: True
-
-package tx-generator-shelley
   tests: True
 
 package bm-timeline
