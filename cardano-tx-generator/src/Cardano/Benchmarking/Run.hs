@@ -1,13 +1,9 @@
 {-# LANGUAGE DerivingStrategies #-}
-{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE NoMonomorphismRestriction #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE Unsafe #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
 {-# OPTIONS_GHC -Wno-all-missed-specialisations -Wno-orphans #-}
 
 module Cardano.Benchmarking.Run
@@ -16,15 +12,16 @@ module Cardano.Benchmarking.Run
   , runCommand
   ) where
 
-import Prelude (String, id)
+import Prelude (String, error)
 import Prelude qualified
 import Data.Version (showVersion)
 import Data.Text (pack, unpack)
 import Cardano.Prelude hiding (option)
-import Control.Arrow ((&&&))
 import Control.Monad (fail)
 import Control.Monad.Trans.Except.Extra (firstExceptT)
+import Control.Tracer (traceWith)
 import Options.Applicative qualified as Opt
+import Options.Applicative
 import Paths_cardano_tx_generator (version)
 
 import Cardano.Chain.Genesis qualified as Genesis
@@ -33,7 +30,7 @@ import Ouroboros.Network.Block (MaxSlotNo(..))
 import Ouroboros.Network.NodeToClient (IOManager, withIOManager)
 
 import Ouroboros.Consensus.Block.Abstract (BlockProtocol)
-import Ouroboros.Consensus.Cardano (Protocol, ProtocolByron, ProtocolShelley, ProtocolCardano)
+import Ouroboros.Consensus.Cardano (Protocol, ProtocolCardano)
 
 import Cardano.Api.Protocol qualified as Api
 import Cardano.Api.Typed
@@ -41,8 +38,6 @@ import Cardano.Api.TxSubmit
 import Cardano.Node.Configuration.Logging
 import Cardano.Node.Configuration.POM
 import Cardano.Node.Protocol.Cardano
-import Cardano.Node.Protocol.Byron
-import Cardano.Node.Protocol.Shelley
 import Cardano.Node.Types
 
 import Cardano.Benchmarking.GeneratorTx
@@ -68,8 +63,8 @@ data CliError =
 data GeneratorCmd =
   GenerateTxs FilePath
               SocketPath
+              AnyCardanoEra
               PartialBenchmark
-              SomeEra
               (Maybe NetworkMagic)
               Bool
               GeneratorFunds
@@ -80,6 +75,9 @@ parserInfo t =
   (parseCommand Opt.<**> Opt.helper)
   (Opt.fullDesc <> Opt.header t)
 
+defaultEra :: AnyCardanoEra
+defaultEra = AnyCardanoEra ShelleyEra
+
 parseCommand :: Opt.Parser GeneratorCmd
 parseCommand =
   GenerateTxs
@@ -89,17 +87,18 @@ parseCommand =
     <*> parseSocketPath
           "socket-path"
           "Path to a cardano-node socket"
+   <*> ( fromMaybe defaultEra <$>
+         (
+             eraFlag "shelley" ShelleyEra
+         <|> eraFlag "mary"    MaryEra
+         <|> eraFlag "allegra" AllegraEra
+         )
+       )
     <*> parsePartialBenchmark
-    <*> (fromMaybe (SomeEra defaultEra) <$>
-         (   parseFlag' Nothing (Just . SomeEra $ EraByron)
-             "byron"   "Initialise Cardano in Byron submode."
-         <|> parseFlag' Nothing (Just . SomeEra $ EraShelley)
-             "shelley" "Initialise Cardano in Shelley submode."
-         ))
     <*> optional pMagicOverride
-    <*> parseFlag' False True
-          "addr-mainnet"
-          "Override address discriminator to mainnet."
+    <*> ( flag False True
+          (long "addr-mainnet" <> help "Override address discriminator to mainnet.")
+        )
     <*> parseGeneratorFunds
  where
    pMagicOverride :: Opt.Parser NetworkMagic
@@ -110,19 +109,21 @@ parseCommand =
        <> Opt.metavar "NATURAL"
        <> Opt.help "Override the network magic for the node-to-node protocol."
      )
-
-defaultEra :: Era ShelleyEra
-defaultEra = EraShelley
+   eraFlag name tag = flag Nothing (Just $ AnyCardanoEra tag)
+                         (long name <> help ("Initialise Cardano in " ++ name ++" submode."))
 
 runCommand :: GeneratorCmd -> ExceptT CliError IO ()
 runCommand (GenerateTxs logConfigFp
                         socketFp
+                        benchmarkEra
                         cliPartialBenchmark
-                        someEra
                         nmagic_opt
                         is_addr_mn
-                        funds) =
+                        fundOptions) =
   withIOManagerE $ \iocp -> do
+    benchmark <- case mkBenchmark (defaultBenchmark <> cliPartialBenchmark) of
+       Left e -> fail $ "Incomplete benchmark spec (is defaultBenchmark complete?):  " <> unpack e
+       Right b -> return b
     let configFp = ConfigYamlFilePath logConfigFp
         filesPc = defaultPartialNodeConfiguration
                   { pncProtocolFiles = Last . Just $
@@ -144,47 +145,35 @@ runCommand (GenerateTxs logConfigFp
             Left err -> panic $ "Error in creating the NodeConfiguration: " <> pack err
             Right nc' -> return nc'
 
-    (p, loggingLayer) <- firstExceptT GenerateTxsError $
-      case ncProtocolConfig nc of
-        NodeProtocolConfigurationByron config -> do
-          ptcl :: Protocol IO ByronBlockHFC ProtocolByron
-               <- firstExceptT (ProtocolInstantiationError . pack . show) $
-                    mkConsensusProtocolByron config Nothing
-          mkLoggingLayer nc ptcl <&>
-            (SomeMode . mkMode ptcl EraByron nmagic_opt is_addr_mn iocp socketFp
-             &&& id)
-        NodeProtocolConfigurationShelley config -> do
-          ptcl :: Protocol IO ShelleyBlockHFC ProtocolShelley
-               <- firstExceptT (ProtocolInstantiationError . pack . show) $
-                    mkConsensusProtocolShelley config Nothing
-          mkLoggingLayer nc ptcl <&>
-            (SomeMode . mkMode ptcl EraShelley nmagic_opt is_addr_mn iocp socketFp
-             &&& id)
-        NodeProtocolConfigurationCardano byC shC hfC -> do
-          ptcl :: Protocol IO CardanoBlock ProtocolCardano
-               <- firstExceptT (ProtocolInstantiationError . pack . show) $
+    case ncProtocolConfig nc of
+      NodeProtocolConfigurationByron _    -> error "NodeProtocolConfigurationByron not supported"
+      NodeProtocolConfigurationShelley _  -> error "NodeProtocolConfigurationShelley not supported"
+      NodeProtocolConfigurationCardano byC shC hfC -> firstExceptT GenerateTxsError $ do
+          ptcl :: Protocol IO CardanoBlock ProtocolCardano <- firstExceptT (ProtocolInstantiationError . pack . show) $
                     mkConsensusProtocolCardano byC shC hfC Nothing
-          case someEra of
-            SomeEra era ->
-              mkLoggingLayer nc ptcl <&>
-                (SomeMode . mkMode ptcl era nmagic_opt is_addr_mn iocp socketFp
-                 &&& id)
-          -- case someEra of
-          --   SomeEra EraByron ->
-          --     pure . SomeMode $ mkMode ptcl EraByron iocp socketFp loggingLayer
-        -- x -> fail $ "Unsupported protocol: " <> show x
+          loggingLayer <- mkLoggingLayer nc ptcl
+          let tracers = createTracers loggingLayer
+              myTracer msg = traceWith (btTxSubmit_ tracers) $ TraceBenchTxSubDebug msg
+              mode = mkMode ptcl nmagic_opt is_addr_mn iocp socketFp tracers
 
-    firstExceptT GenerateTxsError $
-      firstExceptT GenesisBenchmarkRunnerError $
-        case (p, mkBenchmark
-                   (defaultBenchmark <> cliPartialBenchmark)) of
-          (_, Left e) -> fail $ "Incomplete benchmark spec (is defaultBenchmark complete?):  " <> unpack e
-          (SomeMode mode, Right bench) ->
-            secureFunds bench mode funds
-            >>= uncurry (runBenchmark bench mode)
-    liftIO $ do
-      threadDelay (200*1000) -- Let the logging layer print out everything.
-      shutdownLoggingLayer loggingLayer
+              funding :: forall era. IsShelleyBasedEra era => ExceptT TxGenError IO (SigningKey PaymentKey, [(TxIn, TxOut era)])
+              funding = secureFunds (btTxSubmit_ tracers) (modeLocalConnInfo mode)
+                          benchmark (modeNetworkIdOverridable mode) (modeGenesis mode) fundOptions
+          firstExceptT GenesisBenchmarkRunnerError $ case benchmarkEra of
+            AnyCardanoEra ByronEra   -> error "ByronEra not supported"
+            AnyCardanoEra ShelleyEra -> do
+              liftIO $ myTracer "runBenchmark :: ShelleyEra"
+              (funding @ ShelleyEra) >>= runBenchmark benchmark mode
+            AnyCardanoEra MaryEra    -> do
+              liftIO $ myTracer "runBenchmark :: MaryEra"
+              (funding @ MaryEra)    >>= runBenchmark benchmark mode
+            AnyCardanoEra AllegraEra -> do
+              liftIO $ myTracer "runBenchmark :: AllegraEra"
+              (funding @ AllegraEra) >>= runBenchmark benchmark mode
+            _ -> return ()
+          liftIO $ do
+            threadDelay (200*1000) -- Let the logging layer print out everything.
+            shutdownLoggingLayer loggingLayer
  where
    mkLoggingLayer :: NodeConfiguration -> Protocol IO blk (BlockProtocol blk) -> ExceptT ProtocolError IO LoggingLayer
    mkLoggingLayer nc ptcl =

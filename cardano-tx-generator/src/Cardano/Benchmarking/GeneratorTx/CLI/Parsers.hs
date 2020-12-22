@@ -152,9 +152,9 @@ pTxOut =
 parseAddressInEra :: IsCardanoEra era => Atto.Parser (AddressInEra era)
 parseAddressInEra = do
     addr <- parseAddressAny
-    case anyAddressInEra addr of
-      Nothing        -> fail "invalid address in the target era"
-      Just addrinera -> pure addrinera
+    case anyAddressInEra cardanoEra addr of
+      Nothing -> fail "invalid address in the target era"
+      Just a  -> pure a
 
 parseAddressAny :: Atto.Parser AddressAny
 parseAddressAny = do

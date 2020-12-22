@@ -12,7 +12,9 @@ TARGETNODES=`for N in $targetnodes; do echo -n "--target-node (\"127.0.0.1\",$((
 
 localsock=$BASEDIR/logs/sockets/1
 
-era=${1:-shelley}
+
+#export era="allegra"
+export era="mary"
 echo "--( args: $*"
 echo "--( era:  $era"
 
@@ -35,8 +37,22 @@ case $era in
 shelley )
         args+=(
           --genesis-funds-key ${GENESISDIR_shelley}/utxo-keys/utxo1.skey
+          --shelley
         )
         run 'cardano-tx-generator' "${args[@]}";;
+mary )
+        args+=(
+          --genesis-funds-key ${GENESISDIR_shelley}/utxo-keys/utxo1.skey
+          --mary
+        )
+        run 'cardano-tx-generator' "${args[@]}";;
+allegra )
+        args+=(
+          --genesis-funds-key ${GENESISDIR_shelley}/utxo-keys/utxo1.skey
+          --allegra
+        )
+        run 'cardano-tx-generator' "${args[@]}";;
+
 *) echo "ERROR:  unknown era '$era'" >&2;;
 esac
 
@@ -52,4 +68,4 @@ wait_seconds() {
 wait_seconds 30 'for the mempool transactions to settle in blocks'
 # ../../scripts/analyse.sh
 
-./kill-session.sh
+# ./kill-session.sh

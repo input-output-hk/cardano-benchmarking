@@ -12,7 +12,7 @@ prebuild 'cardano-tx-generator' || exit 1
 export CLICMD="run cardano-cli"
 
 TMUX_ENV_PASSTHROUGH=(
-         "export era=shelley; export DBDIR=${DBDIR}; export SOCKETDIR=${SOCKETDIR};"
+         "export era=${era}; export DBDIR=${DBDIR}; export SOCKETDIR=${SOCKETDIR};"
          "export SCRIPTS_LIB_SH_MODE=${SCRIPTS_LIB_SH_MODE};"
          "export __COMMON_SRCROOT=${__COMMON_SRCROOT};"
          "export DEFAULT_DEBUG=${DEFAULT_DEBUG};"
