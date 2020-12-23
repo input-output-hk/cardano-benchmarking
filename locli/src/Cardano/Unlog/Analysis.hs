@@ -24,6 +24,8 @@ import           Cardano.Unlog.Resources
 import           Cardano.Unlog.SlotStats
 
 
+-- The "fold" state that accumulates as we process 'LogObject's into a stream
+-- of 'SlotStats'.
 data Analysis
   = Analysis
     { aResAccums     :: !ResAccums

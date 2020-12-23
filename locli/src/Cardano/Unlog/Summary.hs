@@ -6,6 +6,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE ImpredicativeTypes #-}
 
 module Cardano.Unlog.Summary
   ( AnalysisCmdError
@@ -16,6 +17,7 @@ module Cardano.Unlog.Summary
 import           Prelude (String)
 import           Cardano.Prelude
 
+import           Control.Arrow ((&&&), (***))
 import           Control.Monad.Trans.Except.Extra (firstExceptT)
 
 import qualified Data.Aeson as Aeson
@@ -24,7 +26,8 @@ import qualified Data.ByteString.Lazy.Char8 as LBS
 import qualified Data.HashMap.Strict as HashMap
 import qualified Data.Sequence as Seq
 import qualified Data.Text as Text
-import qualified Data.Vector as V
+import           Data.Vector (Vector)
+import qualified Data.Vector as Vec
 
 import qualified Graphics.Histogram as Hist
 import qualified Graphics.Gnuplot.Frame.OptionSet as Opts
@@ -124,21 +127,21 @@ runLeadershipCheckCmd cp mLeadershipsDumpFile mPrettyDumpFile mExportTimelineFil
      withFile (unTextOutputFile o) WriteMode $ \hnd -> do
        hPutStrLn hnd . Text.pack $
          printf "--- input: %s" (intercalate " " $ unJsonLogfile <$> srcs)
-       renderStats   statsHeadP statsFormatP s hnd
+       renderStats   statsHeadP statsFormatP statsFormatPF s hnd
        renderSlotTimeline slotHeadP slotFormatP False xs hnd
    renderExportStats :: Summary -> TextOutputFile -> IO ()
    renderExportStats s o =
      withFile (unTextOutputFile o) WriteMode $
-       renderStats statsHeadE statsFormatE s
+       renderStats statsHeadE statsFormatE statsFormatEF s
    renderExportTimeline :: Seq SlotStats -> TextOutputFile -> IO ()
    renderExportTimeline xs o =
      withFile (unTextOutputFile o) WriteMode $
        renderSlotTimeline slotHeadE slotFormatE True xs
 
-   renderStats :: Text -> Text -> Summary -> Handle -> IO ()
-   renderStats statHead statFmt summary hnd = do
+   renderStats :: Text -> Text -> Text -> Summary -> Handle -> IO ()
+   renderStats statHead statFmt propFmt summary hnd = do
        hPutStrLn hnd statHead
-       forM_ (toDistribLines statFmt summary) $
+       forM_ (toDistribLines statFmt propFmt summary) $
          hPutStrLn hnd
 
 data Summary
@@ -146,6 +149,8 @@ data Summary
     { sMaxChecks         :: !Word64
     , sSlotMisses        :: !(Seq Word64)
     , sSpanLensCPU85     :: !(Seq Int)
+    , sSpanLensCPU85EBnd :: !(Seq Int)
+    , sSpanLensCPU85Rwd  :: !(Seq Int)
     -- distributions
     , sMissDistrib       :: !(Distribution Float Float)
     , sLeadsDistrib      :: !(Distribution Float Word64)
@@ -156,13 +161,21 @@ data Summary
     , sBlocklessDistrib  :: !(Distribution Float Word64)
     , sSpanLensCPU85Distrib
                          :: !(Distribution Float Int)
+    , sSpanLensCPU85EBndDistrib :: !(Distribution Float Int)
+    , sSpanLensCPU85RwdDistrib  :: !(Distribution Float Int)
     , sResourceDistribs  :: !(Resources (Distribution Float Word64))
     }
   deriving Show
 
 instance ToJSON Summary where
-  toJSON Summary{..} = Aeson.Array $ V.fromList
+  toJSON Summary{..} = Aeson.Array $ Vec.fromList
     [ Aeson.Object $ HashMap.fromList
+        [ "kind" .= String "spanLensCPU85EBnd"
+        , "xs" .= toJSON sSpanLensCPU85EBnd]
+    , Aeson.Object $ HashMap.fromList
+        [ "kind" .= String "spanLensCPU85Rwd"
+        , "xs" .= toJSON sSpanLensCPU85Rwd]
+    , Aeson.Object $ HashMap.fromList
         [ "kind" .= String "spanLensCPU85"
         , "xs" .= toJSON sSpanLensCPU85]
     , Aeson.Object $ HashMap.fromList
@@ -180,6 +193,10 @@ instance ToJSON Summary where
     , extendObject "kind" "rss"       $ toJSON (rRSS      sResourceDistribs)
     , extendObject "kind" "spanLensCPU85Distrib"  $
                                         toJSON sSpanLensCPU85Distrib
+    , extendObject "kind" "spanLensCPU85EBndDistrib"  $
+                                        toJSON sSpanLensCPU85EBndDistrib
+    , extendObject "kind" "spanLensCPU85RwdDistrib"  $
+                                        toJSON sSpanLensCPU85RwdDistrib
     ]
 
 slotStatsSummary :: Seq SlotStats -> Summary
@@ -188,6 +205,8 @@ slotStatsSummary slots =
   { sMaxChecks        = maxChecks
   , sSlotMisses       = misses
   , sSpanLensCPU85    = spanLensCPU85
+  , sSpanLensCPU85EBnd = sSpanLensCPU85EBnd
+  , sSpanLensCPU85Rwd  = sSpanLensCPU85Rwd
   --
   , sMissDistrib      = computeDistribution pctiles missRatios
   , sLeadsDistrib     =
@@ -206,15 +225,21 @@ slotStatsSummary slots =
                       = computeDistribution pctiles spanLensCPU85
   , sResourceDistribs =
       computeResDistrib pctiles resDistProjs slots
+  , sSpanLensCPU85EBndDistrib = computeDistribution pctiles sSpanLensCPU85EBnd
+  , sSpanLensCPU85RwdDistrib  = computeDistribution pctiles sSpanLensCPU85Rwd
   }
  where
+   sSpanLensCPU85EBnd = Seq.fromList $ Vec.length <$>
+                        filter (spanContainsEpochSlot 3) spansCPU85
+   sSpanLensCPU85Rwd  = Seq.fromList $ Vec.length <$>
+                        filter (spanContainsEpochSlot 803) spansCPU85
    pctiles = sortBy (compare `on` psFrac)
-     [ PercAnon 0.01, PercAnon 0.05
-     , PercAnon 0.1, PercAnon 0.2, PercAnon 0.3, PercAnon 0.4
-     , PercAnon 0.5, PercAnon 0.6, PercAnon 0.7, PercAnon 0.8, PercAnon 0.9
-     , PercAnon 0.95, PercAnon 0.97, PercAnon 0.98, PercAnon 0.99
-     , PercAnon 0.995, PercAnon 0.997, PercAnon 0.998, PercAnon 0.999
-     , PercAnon 0.9995, PercAnon 0.9997, PercAnon 0.9998, PercAnon 0.9999
+     [ Perc 0.01, Perc 0.05
+     , Perc 0.1, Perc 0.2, Perc 0.3, Perc 0.4
+     , Perc 0.5, Perc 0.6, Perc 0.7, Perc 0.8, Perc 0.9
+     , Perc 0.95, Perc 0.97, Perc 0.98, Perc 0.99
+     , Perc 0.995, Perc 0.997, Perc 0.998, Perc 0.999
+     , Perc 0.9995, Perc 0.9997, Perc 0.9998, Perc 0.9999
      ]
 
    checkCounts      = slCountChecks <$> slots
@@ -222,10 +247,18 @@ slotStatsSummary slots =
                       then 0 else maximum checkCounts
    misses           = (maxChecks -) <$> checkCounts
    missRatios       = missRatio <$> misses
-   spanLensCPU85    = Seq.fromList $ length <$>
-                        spans (>=85)
-                          ((rCentiCpu . slResources <$> toList slots)
-                           & catMaybes)
+   spansCPU85 :: [Vector SlotStats]
+   spansCPU85       = spans
+                        ((/= Just False) . fmap (>=85) . rCentiCpu . slResources)
+                        (toList slots)
+   spanLensCPU85    = Seq.fromList $ spanLen <$> spansCPU85
+   spanContainsEpochSlot :: Word64 -> Vector SlotStats -> Bool
+   spanContainsEpochSlot s =
+     uncurry (&&)
+     . ((s >) . slEpochSlot . Vec.head &&&
+        (s <) . slEpochSlot . Vec.last)
+   spanLen :: Vector SlotStats -> Int
+   spanLen = fromIntegral . uncurry (-) . (slSlot *** slSlot) . (Vec.last &&& Vec.head)
    resDistProjs     =
      Resources
      { rCentiCpu    = rCentiCpu   . slResources
@@ -243,33 +276,72 @@ slotStatsSummary slots =
    missRatio :: Word64 -> Float
    missRatio = (/ fromIntegral maxChecks) . fromIntegral
 
-toDistribLines :: Text -> Summary -> [Text]
-toDistribLines statsF Summary{..} =
-  getZipList $
+mapSummary ::
+     Text
+  -> Summary
+  -> Text
+  -> (forall a. Num a => Distribution Float a -> Float)
+  -> Text
+mapSummary statsF Summary{..} desc f =
+  distribPropertyLine desc
+    (f sMissDistrib)
+    (f sSpanCheckDistrib)
+    (f sSpanLeadDistrib)
+    (f sBlocklessDistrib)
+    (f sDensityDistrib)
+    (f (rCentiCpu sResourceDistribs))
+    (f (rCentiGC sResourceDistribs))
+    (f (rCentiMut sResourceDistribs))
+    (f (rGcsMajor sResourceDistribs))
+    (f (rGcsMinor sResourceDistribs))
+    (f (rLive sResourceDistribs))
+    (f (rAlloc sResourceDistribs))
+    (f (rRSS sResourceDistribs))
+    (f sSpanLensCPU85Distrib)
+    (f sSpanLensCPU85EBndDistrib)
+    (f sSpanLensCPU85RwdDistrib)
+ where
+   distribPropertyLine ::
+        Text
+     -> Float -> Float -> Float -> Float
+     -> Float -> Float -> Float
+     -> Float -> Float
+     -> Float -> Float -> Float
+     -> Float -> Float -> Float
+     -> Float
+     -> Text
+   distribPropertyLine descr miss chkdt leaddt blkl dens cpu gc mut majg ming liv alc rss cpu85Sp cpu85SpEBnd cpu85SpRwd = Text.pack $
+     printf (Text.unpack statsF)
+    descr miss chkdt leaddt blkl dens cpu gc mut majg ming     liv alc rss cpu85Sp cpu85SpEBnd cpu85SpRwd
+
+toDistribLines :: Text -> Text -> Summary -> [Text]
+toDistribLines statsF distPropsF s@Summary{..} =
   distribLine
-    <$> ZipList (pctSpec <$> dPercentiles sMissDistrib)
-    <*> ZipList (max 1 . ceiling . (* fromIntegral (dCount sMissDistrib))
-                 . (1.0 -) . pctFrac
-                     <$> dPercentiles sMissDistrib)
-    <*> ZipList (pctSample <$> dPercentiles sMissDistrib)
-    <*> ZipList (pctSample <$> dPercentiles sSpanCheckDistrib)
-    <*> ZipList (pctSample <$> dPercentiles sSpanLeadDistrib)
-    <*> ZipList (pctSample <$> dPercentiles sBlocklessDistrib)
-    <*> ZipList (pctSample <$> dPercentiles sDensityDistrib)
-    <*> ZipList (pctSample <$> dPercentiles (rCentiCpu sResourceDistribs))
-    <*> ZipList (pctSample <$> dPercentiles (rCentiGC sResourceDistribs))
-    <*> ZipList (pctSample <$> dPercentiles (rCentiMut sResourceDistribs))
-    <*> ZipList (pctSample <$> dPercentiles (rGcsMajor sResourceDistribs))
-    <*> ZipList (pctSample <$> dPercentiles (rGcsMinor sResourceDistribs))
+   <$> ZipList (pctSpec <$> dPercentiles sMissDistrib)
+   <*> ZipList (max 1 . ceiling . (* fromIntegral (dCount sMissDistrib))
+                    . (1.0 -) . pctFrac
+                    <$> dPercentiles sMissDistrib)
+   <*> ZipList (pctSample <$> dPercentiles sMissDistrib)
+   <*> ZipList (pctSample <$> dPercentiles sSpanCheckDistrib)
+   <*> ZipList (pctSample <$> dPercentiles sSpanLeadDistrib)
+   <*> ZipList (pctSample <$> dPercentiles sBlocklessDistrib)
+   <*> ZipList (pctSample <$> dPercentiles sDensityDistrib)
+   <*> ZipList (pctSample <$> dPercentiles (rCentiCpu sResourceDistribs))
+   <*> ZipList (pctSample <$> dPercentiles (rCentiGC sResourceDistribs))
+   <*> ZipList (pctSample <$> dPercentiles (rCentiMut sResourceDistribs))
+   <*> ZipList (pctSample <$> dPercentiles (rGcsMajor sResourceDistribs))
+   <*> ZipList (pctSample <$> dPercentiles (rGcsMinor sResourceDistribs))
     -- <*> ZipList (pctSample <$> dPercentiles ( sResourceDistribs))
-    <*> ZipList (pctSample <$> dPercentiles (rLive sResourceDistribs))
-    <*> ZipList (pctSample <$> dPercentiles (rAlloc sResourceDistribs))
-    <*> ZipList (pctSample <$> dPercentiles (rRSS sResourceDistribs))
-    <*> ZipList (pctSample <$> dPercentiles sSpanLensCPU85Distrib)
-    <*> ZipList (pctSampleIndex
-                           <$> dPercentiles sSpanLensCPU85Distrib)
-    <*> ZipList (pctSamplePrev
-                           <$> dPercentiles sSpanLensCPU85Distrib)
+   <*> ZipList (pctSample <$> dPercentiles (rLive sResourceDistribs))
+   <*> ZipList (pctSample <$> dPercentiles (rAlloc sResourceDistribs))
+   <*> ZipList (pctSample <$> dPercentiles (rRSS sResourceDistribs))
+   <*> ZipList (pctSample <$> dPercentiles sSpanLensCPU85Distrib)
+   <*> ZipList (pctSample <$> dPercentiles sSpanLensCPU85EBndDistrib)
+   <*> ZipList (pctSample <$> dPercentiles sSpanLensCPU85RwdDistrib)
+  & getZipList
+  & (<> [ mapSummary distPropsF s "size"    (fromIntegral . dCount)
+        , mapSummary distPropsF s "mean"    dAverage
+        ])
  where
    distribLine ::
         PercSpec Float -> Int
@@ -279,19 +351,23 @@ toDistribLines statsF Summary{..} =
      -> Word64 -> Word64 -> Word64
      -> Int -> Int -> Int
      -> Text
-   distribLine ps count miss chkdt' leaddt' blkl dens cpu gc mut majg ming liv alc rss cpu85Sp cpu85SpIdx cpu85SpPrev = Text.pack $
+   distribLine ps count miss chkdt' leaddt' blkl dens cpu gc mut majg ming liv alc rss cpu85Sp cpu85SpEBnd cpu85SpRwd = Text.pack $
      printf (Text.unpack statsF)
-    (renderPercSpec 6 ps) count miss chkdt leaddt blkl dens cpu gc mut majg ming     liv alc rss cpu85Sp cpu85SpIdx cpu85SpPrev
-    where chkdt  = show chkdt' :: Text
-          leaddt = show leaddt' :: Text
+    (renderPercSpec 6 ps) count miss chkdt leaddt blkl dens cpu gc mut majg ming     liv alc rss cpu85Sp cpu85SpEBnd cpu85SpRwd
+    where chkdt  = Text.init $ show chkdt' :: Text
+          leaddt = Text.init $ show leaddt' :: Text
 
-statsHeadE, statsFormatE :: Text
-statsHeadP, statsFormatP :: Text
+statsHeadE, statsFormatE, statsFormatEF :: Text
+statsHeadP, statsFormatP, statsFormatPF :: Text
 statsHeadP =
-  "%tile Count MissR  CheckΔt  LeadΔt BlkLess Dens  CPU  GC MUT Maj Min         Live   Alloc   RSS    CPU85%-SpanLengths/Idx/Prev"
+  "%tile Count MissR  CheckΔt  LeadΔt BlkLess Dens  CPU  GC MUT Maj Min         Live   Alloc   RSS    CPU85%SpanLens/EBnd/Rwd"
 statsHeadE =
-  "%tile,Count,MissR,CheckΔ,LeadΔ,Blockless,ChainDensity,CPU,GC,MUT,GcMaj,GcMin,Live,Alloc,RSS,CPU85%-SpanLens,/Idx,/Prev"
+  "%tile,Count,MissR,CheckΔ,LeadΔ,Blockless,ChainDensity,CPU,GC,MUT,GcMaj,GcMin,Live,Alloc,RSS,CPU85%SpanLens,/EpochBoundary,/Rewards"
 statsFormatP =
   "%6s %5d %0.2f   %6s   %6s  %3d     %0.3f  %3d %3d %3d %2d %3d      %8d %8d %7d %4d %4d %4d"
 statsFormatE =
   "%s,%d,%0.2f,%s,%s,%d,%0.3f,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d"
+statsFormatPF =
+  "%6s %f %f   %f   %f  %f     %f  %f %f %f %f %f      %f %f %f %f %f"
+statsFormatEF =
+  "%s,0,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f"
