@@ -30,7 +30,7 @@ spreadsheet_mach() {
         ln -sf logs-"$mach".timeline.csv "$logdir"/analysis/"$run_name"."$mach".t.csv
 
         ssconvert "$logdir"/analysis/"$run_name"."$mach".s.csv "$logdir"/analysis/stats-"$mach".ods
-        ssconvert "$logdir"/analysis/"$run_name"."$mach".t.csv "$logdir"/analysis/timeline-"$mach".ods
+        # ssconvert "$logdir"/analysis/"$run_name"."$mach".t.csv "$logdir"/analysis/timeline-"$mach".ods
 }
 
 time for mach in ${machines[*]}
