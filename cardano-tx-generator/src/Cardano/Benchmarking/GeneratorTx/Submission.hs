@@ -64,7 +64,7 @@ import           Ouroboros.Consensus.Shelley.Ledger.Mempool (mkShelleyTx)
 import qualified Ouroboros.Consensus.Shelley.Ledger.Mempool as Mempool (TxId(ShelleyTxId))
 
 import           Ouroboros.Consensus.Cardano.Block (GenTx (GenTxShelley, GenTxMary, GenTxAllegra))
-import qualified Ouroboros.Consensus.Cardano.Block (TxId(GenTxIdShelley))
+import qualified Ouroboros.Consensus.Cardano.Block as Block (TxId(GenTxIdShelley, GenTxIdAllegra, GenTxIdMary))
 
 import           Ouroboros.Network.Protocol.TxSubmission.Client (ClientStIdle (..),
                                                                  ClientStTxIds (..),
@@ -363,7 +363,9 @@ txSubmissionClient tr bmtr sub threadIx =
      (ShelleyBasedEraMary, ShelleyTx _ tx') -> GenTxMary (mkShelleyTx tx')
 
    fromGenTxId :: gentxid -> txid
-   fromGenTxId (Ouroboros.Consensus.Cardano.Block.GenTxIdShelley (Mempool.ShelleyTxId (ShelleyLedger.TxId i))) = TxId $ Crypto.castHash i
+   fromGenTxId (Block.GenTxIdShelley (Mempool.ShelleyTxId (ShelleyLedger.TxId i))) = TxId $ Crypto.castHash i
+   fromGenTxId (Block.GenTxIdAllegra (Mempool.ShelleyTxId (ShelleyLedger.TxId i))) = TxId $ Crypto.castHash i
+   fromGenTxId (Block.GenTxIdMary    (Mempool.ShelleyTxId (ShelleyLedger.TxId i))) = TxId $ Crypto.castHash i
    fromGenTxId _ = error "submission.hs: fromGenTxId"
 
    tokIsBlocking :: TokBlockingStyle a -> Bool
