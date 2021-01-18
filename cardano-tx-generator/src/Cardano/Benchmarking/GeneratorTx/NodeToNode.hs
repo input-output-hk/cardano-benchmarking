@@ -107,7 +107,7 @@ benchmarkConnectTxSubmitC ioManager handshakeTracer submissionTracer codecConfig
     (addrAddress remoteAddr)
  where
   n2nVer :: NodeToNodeVersion
-  n2nVer = NodeToNodeV_3
+  n2nVer = NodeToNodeV_5
   blkN2nVer :: BlockNodeToNodeVersion blk
   blkN2nVer = supportedVers Map.! n2nVer
   supportedVers :: Map.Map NodeToNodeVersion (BlockNodeToNodeVersion blk)
