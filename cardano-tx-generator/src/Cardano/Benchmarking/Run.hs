@@ -45,7 +45,7 @@ import Cardano.Benchmarking.GeneratorTx.Benchmark
 import Cardano.Benchmarking.GeneratorTx.Genesis
 import Cardano.Benchmarking.GeneratorTx.CLI.Parsers
 import Cardano.Benchmarking.GeneratorTx.Era
-
+import Cardano.Benchmarking.GeneratorTx.Callback
 
 data ProtocolError =
     IncorrectProtocolSpecified  !Api.Protocol
@@ -152,25 +152,24 @@ runCommand (GenerateTxs logConfigFp
           ptcl :: Protocol IO CardanoBlock ProtocolCardano <- firstExceptT (ProtocolInstantiationError . pack . show) $
                     mkConsensusProtocolCardano byC shC hfC Nothing
           loggingLayer <- mkLoggingLayer nc ptcl
-          let tracers = createTracers loggingLayer
+          let tracers :: BenchTracers IO CardanoBlock
+              tracers = createTracers loggingLayer
               myTracer msg = traceWith (btTxSubmit_ tracers) $ TraceBenchTxSubDebug msg
-              mode = mkMode ptcl nmagic_opt is_addr_mn iocp socketFp tracers
 
-              funding :: forall era. IsShelleyBasedEra era => ExceptT TxGenError IO (SigningKey PaymentKey, [(TxIn, TxOut era)])
-              funding = secureFunds (btTxSubmit_ tracers) (modeLocalConnInfo mode)
-                          benchmark (modeNetworkIdOverridable mode) (modeGenesis mode) fundOptions
+              runAll :: forall era. IsShelleyBasedEra era => Proxy era -> Benchmark -> GeneratorFunds -> ExceptT TxGenError IO ()
+              runAll = mkCallback ptcl nmagic_opt is_addr_mn iocp socketFp tracers
           firstExceptT GenesisBenchmarkRunnerError $ case benchmarkEra of
             AnyCardanoEra ByronEra   -> error "ByronEra not supported"
             AnyCardanoEra ShelleyEra -> do
               liftIO $ myTracer "runBenchmark :: ShelleyEra"
-              (funding @ ShelleyEra) >>= runBenchmark benchmark mode
-            AnyCardanoEra MaryEra    -> do
-              liftIO $ myTracer "runBenchmark :: MaryEra"
-              (funding @ MaryEra)    >>= runBenchmark benchmark mode
+              runAll (Proxy @ ShelleyEra) benchmark fundOptions
             AnyCardanoEra AllegraEra -> do
               liftIO $ myTracer "runBenchmark :: AllegraEra"
-              (funding @ AllegraEra) >>= runBenchmark benchmark mode
-            _ -> return ()
+              runAll (Proxy @ AllegraEra) benchmark fundOptions
+            AnyCardanoEra MaryEra    -> do
+              liftIO $ myTracer "runBenchmark :: MaryEra"
+              runAll (Proxy @ MaryEra) benchmark fundOptions
+            _ -> return () -- ???? redundant but type error if left out ??
           liftIO $ do
             threadDelay (200*1000) -- Let the logging layer print out everything.
             shutdownLoggingLayer loggingLayer

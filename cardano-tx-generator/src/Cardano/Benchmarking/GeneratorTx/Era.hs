@@ -26,7 +26,6 @@ module Cardano.Benchmarking.GeneratorTx.Era
   , GenTxIdOf
   , inject
   , project
-  , Mode(..)
   , CardanoBlock
 
   , InitCooldown(..)
@@ -47,23 +46,8 @@ module Cardano.Benchmarking.GeneratorTx.Era
 
   , SubmissionSummary(..)
 
-  , mkMode
-  , modeGenesis
-  , modeCodecConfig
-  , modeIOManager
-  , modeLocalConnInfo
-  , modeNetworkId
-  , modeNetworkIdOverridable
-  , modeNetworkMagicOverride
-  , modeTopLevelConfig
-  , modeTracers
-  , trBase
-  , trTxSubmit
+
   , btTxSubmit_
-  , trConnect
-  , trSubmitMux
-  , trLowLevel
-  , trN2N
   , createTracers
 
   , BenchTraceConstraints
@@ -172,53 +156,6 @@ type CardanoBlock    = Consensus.CardanoBlock  StandardCrypto
 type GenTxOf   mode = GenTx   CardanoBlock
 type GenTxIdOf mode = GenTxId CardanoBlock
 
--- | System-level submission context (not parameters)
---   TODO:  rename the type to SubContext or something similar.
-data Mode where
-  ModeCardanoShelley
-    :: TopLevelConfig CardanoBlock
-    -> Shelley.ShelleyGenesis StandardShelley
-    -> CodecConfig CardanoBlock
-    -> LocalNodeConnectInfo CardanoMode CardanoBlock
-    -> Maybe NetworkMagic
-    -> Bool
-    -> IOManager
-    -> BenchTracers IO CardanoBlock
-    -> Mode
-
-instance Show Mode where
-  show ModeCardanoShelley{} = "ModeCardanoShelley"
-
-mkMode
-  :: forall blok ptcl.
-     Consensus.Protocol IO blok ptcl
-  -> Maybe NetworkMagic
-  -> Bool
-  -> IOManager
-  -> SocketPath
-  -> BenchTracers IO CardanoBlock
-  -> Mode
-mkMode ptcl@(Consensus.ProtocolCardano
-             _
-             Consensus.ProtocolParamsShelleyBased{Consensus.shelleyBasedGenesis}
-             _ _ _ _ _ _)
-            nmagic_opt is_addr_mn iom (SocketPath sock) tracers =
-  ModeCardanoShelley
-    pInfoConfig
-    shelleyBasedGenesis
-    (configCodec pInfoConfig)
-    (LocalNodeConnectInfo
-       sock
-       (Api.Testnet . getNetworkMagic . configBlock $ pInfoConfig)
-       -- TODO: get this from genesis
-       (CardanoMode (EpochSlots 21600)))
-    nmagic_opt
-    is_addr_mn
-    iom
-    tracers
- where
-   ProtocolInfo{pInfoConfig} = Consensus.protocolInfo ptcl
-mkMode p _ _ _ _ _ = error $ "mkMode:  unhandled protocol/era: " <> show p
 
 instance Show (Consensus.Protocol m blk p) where
   show Consensus.ProtocolByron{}   = "ProtocolByron"
@@ -226,55 +163,6 @@ instance Show (Consensus.Protocol m blk p) where
   show Consensus.ProtocolCardano{} = "ProtocolCardano"
   show Consensus.ProtocolMary{} = "ProtocolMary"
   -- show Consensus.ProtocolLeaderSchedule{} = "ProtocolLeaderSchedule"
-
-
-modeTopLevelConfig :: Mode -> TopLevelConfig CardanoBlock
-modeTopLevelConfig (ModeCardanoShelley x _ _ _ _ _ _ _) = x
-
-modeGenesis :: Mode -> ShelleyGenesis StandardShelley
-modeGenesis (ModeCardanoShelley          _ g _ _ _ _ _ _) = g
-
-modeCodecConfig :: Mode -> CodecConfig CardanoBlock
-modeCodecConfig    (ModeCardanoShelley _ _ x _ _ _ _ _) = x
-
-modeLocalConnInfo :: Mode -> LocalNodeConnectInfo CardanoMode CardanoBlock
-modeLocalConnInfo  (ModeCardanoShelley _ _ _ x _ _ _ _) = x
-
-modeNetworkMagicOverride :: Mode -> Maybe NetworkMagic
-modeNetworkMagicOverride (ModeCardanoShelley _ _ _ _ x _ _ _) = x
-
-modeAddressMainnetOverride :: Mode -> Bool
-modeAddressMainnetOverride (ModeCardanoShelley _ _ _ _ _ x _ _) = x
-
-modeIOManager :: Mode -> IOManager
-modeIOManager      (ModeCardanoShelley _ _ _ _ _ _ x _) = x
-
-modeTracers :: Mode -> BenchTracers IO CardanoBlock
-modeTracers        (ModeCardanoShelley _ _ _ _ _ _ _ x) = x
-
-modeNetworkId :: Mode -> NetworkId
-modeNetworkId (modeAddressMainnetOverride -> True) = Mainnet
-modeNetworkId m@ModeCardanoShelley{} = Testnet . getNetworkMagic . configBlock $ modeTopLevelConfig m
-
-modeNetworkIdOverridable :: Mode -> NetworkId
-modeNetworkIdOverridable (modeAddressMainnetOverride -> True) = Mainnet
-modeNetworkIdOverridable m = modeNetworkId m
-
---type family GenesisOf era where
---  GenesisOf ShelleyEra = Shelley.ShelleyGenesis StandardShelley
-
-trBase       :: Mode -> Trace IO Text
-trTxSubmit   :: Mode -> Tracer IO (TraceBenchTxSubmit TxId)
-trConnect    :: Mode -> Tracer IO SendRecvConnect
-trSubmitMux  :: Mode -> Tracer IO (SendRecvTxSubmission CardanoBlock)
-trLowLevel   :: Mode -> Tracer IO TraceLowLevelSubmit
-trN2N        :: Mode -> Tracer IO NodeToNodeSubmissionTrace
-trBase       = btBase_       . modeTracers
-trTxSubmit   = btTxSubmit_   . modeTracers
-trConnect    = btConnect_    . modeTracers
-trSubmitMux  = btSubmission_ . modeTracers
-trLowLevel   = btLowLevel_   . modeTracers
-trN2N        = btN2N_        . modeTracers
 
 {-------------------------------------------------------------------------------
   Tracers

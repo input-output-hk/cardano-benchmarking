@@ -12,7 +12,9 @@
 {-# OPTIONS_GHC -fno-warn-orphans -Wno-unticked-promoted-constructors -Wno-all-missed-specialisations #-}
 
 module Cardano.Benchmarking.GeneratorTx.NodeToNode
-  ( benchmarkConnectTxSubmit
+  (
+    ConnectClient
+  , benchmarkConnectTxSubmit
   ) where
 
 import           Cardano.Prelude (atomically, forever, liftIO)
@@ -58,44 +60,22 @@ import           Ouroboros.Network.Snocket (socketSnocket)
 
 import           Cardano.Benchmarking.GeneratorTx.Era
 
+type ConnectClient = AddrInfo -> TxSubmissionClient (GenTxId CardanoBlock) (GenTx CardanoBlock) IO () -> IO ()
 
 benchmarkConnectTxSubmit
-  :: (RunNode CardanoBlock )
-  => Mode
-  -> Maybe AddrInfo
-  -- ^ local address information (typically local interface/port to use)
-  -> AddrInfo
-  -- ^ remote address information
-  -> TxSubmissionClient (GenTxId CardanoBlock) (GenTx CardanoBlock) IO ()
-  -- ^ the particular txSubmission peer
-  -> IO ()
-benchmarkConnectTxSubmit p localAddr remoteAddr myTxSubClient
-  = benchmarkConnectTxSubmitC
-      (modeIOManager p)
-      (trConnect p)
-      (trSubmitMux p)
-      (modeCodecConfig p)
-      (fromMaybe (getNetworkMagic $ configBlock $ modeTopLevelConfig p) (modeNetworkMagicOverride p))
-      localAddr
-      remoteAddr
-      myTxSubClient
-
-benchmarkConnectTxSubmitC
   :: forall blk. (blk ~ CardanoBlock, RunNode blk )
   => IOManager
   -> Tracer IO SendRecvConnect
   -> Tracer IO (SendRecvTxSubmission blk)
   -> CodecConfig CardanoBlock
   -> NetworkMagic 
-  -> Maybe AddrInfo
-  -- ^ local address information (typically local interface/port to use)
   -> AddrInfo
   -- ^ remote address information
   -> TxSubmissionClient (GenTxId blk) (GenTx blk) IO ()
   -- ^ the particular txSubmission peer
   -> IO ()
 
-benchmarkConnectTxSubmitC ioManager handshakeTracer submissionTracer codecConfig networkMagic localAddr remoteAddr myTxSubClient =
+benchmarkConnectTxSubmit ioManager handshakeTracer submissionTracer codecConfig networkMagic remoteAddr myTxSubClient =
   NtN.connectTo
     (socketSnocket ioManager)
     NetworkConnectTracers {
@@ -103,7 +83,7 @@ benchmarkConnectTxSubmitC ioManager handshakeTracer submissionTracer codecConfig
         nctHandshakeTracer = handshakeTracer
       }
     peerMultiplex
-    (addrAddress <$> localAddr)
+    (addrAddress <$> Nothing)
     (addrAddress remoteAddr)
  where
   n2nVer :: NodeToNodeVersion

@@ -32,7 +32,7 @@ module Cardano.Benchmarking.GeneratorTx
   ) where
 
 import           Cardano.Prelude
-import           Prelude (error, id)
+import           Prelude (error, id, String)
 
 import           Control.Monad (fail)
 import           Control.Monad.Trans.Except.Extra (left, newExceptT, right)
@@ -75,12 +75,12 @@ readSigningKey =
 secureFunds :: forall era. IsShelleyBasedEra era
   => Tracer IO (TraceBenchTxSubmit TxId)
   -> LocalNodeConnectInfo CardanoMode CardanoBlock
-  -> Benchmark
   -> NetworkId
   -> ShelleyGenesis StandardShelley
+  -> Benchmark
   -> GeneratorFunds
   -> ExceptT TxGenError IO (SigningKey PaymentKey, [(TxIn, TxOut era)])
-secureFunds submitTracer localConnectInfo benchmark networkId genesis funds = case funds of
+secureFunds submitTracer localConnectInfo networkId genesis benchmark funds = case funds of
   FundsGenesis keyF -> do
     let Benchmark{bTxFee, bInitialTTL, bInitCooldown=InitCooldown cooldown} = benchmark
     key <- readSigningKey keyF
@@ -262,28 +262,31 @@ splitFunds
 --   we have 1 Cardano tx and 10 fiscal txs.
 runBenchmark :: forall era .
     (ConfigSupportsTxGen CardanoMode era, IsShelleyBasedEra era)
-  => Benchmark
-  -> Mode
+  => Tracer IO (TraceBenchTxSubmit TxId)
+  -> Tracer IO NodeToNodeSubmissionTrace
+  -> NetworkId
+  -> ConnectClient
+  -> Benchmark
   -> (SigningKey PaymentKey, [(TxIn, TxOut era)])
   -> ExceptT TxGenError IO ()
-runBenchmark b@Benchmark{ bTargets
+runBenchmark traceSubmit
+             traceN2N
+             networkId
+             connectClient
+             b@Benchmark{ bTargets
                         , bTps
                         , bInitCooldown=InitCooldown initCooldown
                         }
-             m (fundsKey, fundsWithSufficientCoins) = do
+             (fundsKey, fundsWithSufficientCoins) = do
   let
-    networkId = modeNetworkIdOverridable m
     recipientAddress = keyAddress networkId fundsKey
+    traceDebug :: String -> ExceptT TxGenError IO ()
+    traceDebug =   liftIO . traceWith traceSubmit . TraceBenchTxSubDebug
 
-  liftIO . traceWith (trTxSubmit m) . TraceBenchTxSubDebug
-    $ "******* Tx generator: waiting " ++ show initCooldown ++ "s *******"
+  traceDebug $ "******* Tx generator: waiting " ++ show initCooldown ++ "s *******"
   liftIO $ threadDelay (initCooldown*1000*1000)
 
-  liftIO . traceWith (trTxSubmit m) . TraceBenchTxSubDebug
-    $ "******* Tx generator, phase 2: pay to recipients *******"
-
-  let localAddr :: Maybe Network.Socket.AddrInfo
-      localAddr = Nothing
+  traceDebug "******* Tx generator, phase 2: pay to recipients *******"
 
   remoteAddresses <- forM bTargets $ \targetNodeAddress -> do
     let targetNodeHost =
@@ -306,16 +309,16 @@ runBenchmark b@Benchmark{ bTargets
   let numTargets :: Natural = fromIntegral $ NE.length bTargets
   txs :: [Tx era] <-
            txGenerator
-              b m
+              traceSubmit
+              b
               recipientAddress
               fundsKey
               (NE.length bTargets)
               fundsWithSufficientCoins
 
+  traceDebug $ "******* Tx generator, launching Tx peers:  " ++ show (NE.length remoteAddresses) ++ " of them"
   liftIO $ do
-    traceWith (trTxSubmit m) . TraceBenchTxSubDebug
-        $ "******* Tx generator, launching Tx peers:  " ++ show (NE.length remoteAddresses) ++ " of them"
-    submission :: Submission IO era  <- mkSubmission (trTxSubmit m) $
+    submission :: Submission IO era  <- mkSubmission traceSubmit $
                     SubmissionParams
                     { spTps           = bTps
                     , spTargets       = numTargets
@@ -325,15 +328,16 @@ runBenchmark b@Benchmark{ bTargets
     allAsyncs <- forM (zip [0..] $ NE.toList remoteAddresses) $
       \(i, remoteAddr) ->
         launchTxPeer
-              m
-              localAddr
+              traceSubmit
+              traceN2N
+              connectClient
               remoteAddr
               submission
               i
     tpsFeeder <- async $ tpsLimitedTxFeeder submission txs
     -- Wait for all threads to complete.
     mapM_ wait (tpsFeeder : allAsyncs)
-    traceWith (trTxSubmit m) =<<
+    traceWith traceSubmit =<<
        TraceBenchTxSubSummary <$> mkSubmissionSummary submission
 
 -- | At this moment 'sourceAddress' contains a huge amount of money (lets call it A).
@@ -348,30 +352,30 @@ runBenchmark b@Benchmark{ bTargets
 txGenerator
   :: forall era
   .  (ConfigSupportsTxGen CardanoMode era, IsShelleyBasedEra era)
-  => Benchmark
-  -> Mode
+  => Tracer IO (TraceBenchTxSubmit TxId)
+  -> Benchmark
   -> AddressInEra era
   -> SigningKey PaymentKey
   -> Int
   -> [(TxIn, TxOut era)]
   -> ExceptT TxGenError IO [Tx era]
-txGenerator Benchmark
+txGenerator tracer Benchmark
             { bTxFee
             , bTxCount=NumberOfTxs numOfTransactions
             , bTxFanIn=NumberOfInputsPerTx numOfInsPerTx
             , bTxFanOut=NumberOfOutputsPerTx numOfOutsPerTx
             , bTxExtraPayload=txAdditionalSize
             }
-            m recipientAddress sourceKey numOfTargetNodes
+            recipientAddress sourceKey numOfTargetNodes
             fundsWithSufficientCoins = do
-  liftIO . traceWith (trTxSubmit m) . TraceBenchTxSubDebug
+  liftIO . traceWith tracer . TraceBenchTxSubDebug
     $ " Generating " ++ show numOfTransactions
       ++ " transactions, for " ++ show numOfTargetNodes
       ++ " peers, fee " ++ show bTxFee
       ++ ", value " ++ show valueForRecipient
       ++ ", totalValue " ++ show totalValue
   txs <- createMainTxs numOfTransactions numOfInsPerTx fundsWithSufficientCoins
-  liftIO . traceWith (trTxSubmit m) . TraceBenchTxSubDebug
+  liftIO . traceWith tracer . TraceBenchTxSubDebug
     $ " Done, " ++ show numOfTransactions ++ " were generated."
   pure txs
  where
@@ -451,9 +455,9 @@ txGenerator Benchmark
 launchTxPeer
   :: forall era
   .  (ConfigSupportsTxGen CardanoMode era, IsShelleyBasedEra era)
-  => Mode
-  -> Maybe Network.Socket.AddrInfo
-  -- local address binding (if wanted)
+  => Tracer IO (TraceBenchTxSubmit TxId)
+  -> Tracer IO NodeToNodeSubmissionTrace
+  -> ConnectClient
   -> Network.Socket.AddrInfo
   -- Remote address
   -> Submission IO  era
@@ -461,7 +465,7 @@ launchTxPeer
   -> Natural
   -- Thread index
   -> IO (Async ())
-launchTxPeer m localAddr remoteAddr sub tix =
+launchTxPeer traceSubmit traceN2N connectClient remoteAddr sub tix =
   async $
    handle
      (\(SomeException err) -> do
@@ -472,7 +476,7 @@ launchTxPeer m localAddr remoteAddr sub tix =
          submitThreadReport sub tix (Left errDesc)
          case spErrorPolicy $ sParams sub of
            FailOnError -> throwIO err
-           LogErrors   -> traceWith (trTxSubmit m) $
+           LogErrors   -> traceWith traceSubmit $
              TraceBenchTxSubError (pack errDesc))
-     $ benchmarkConnectTxSubmit m localAddr remoteAddr
-        (txSubmissionClient (trN2N m) (trTxSubmit m) sub tix)
+     $ connectClient remoteAddr
+        (txSubmissionClient traceN2N traceSubmit sub tix)
