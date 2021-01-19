@@ -36,6 +36,14 @@
 
         localNodeConf   = attrOpt null       "Config of the local observer node";
         targetNodes     = attrOpt null       "Targets: { name = { ip, port } }";
+
+        era             = enumOpt [ "shelley"
+                                    "allegra"
+                                    "mary"
+                                    "alonzo"
+                                  ]
+                                  "shelley"
+                                  "Cardano era to generate transactions for.";
       };
 
       configExeArgsFn =
@@ -45,6 +53,8 @@
                          (__toJSON (nodeConfigDefault cfg // nodeConfig)))
 
             "--socket-path"            localNodeConf.socketPath
+
+            "--${era}"
 
             "--num-of-txs"             tx_count
             "--add-tx-size"            add_tx_size
