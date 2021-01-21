@@ -43,11 +43,11 @@ cliArgs = testGroup "cli arguments"
                            $ words l
 
 pinnedHelpMessage = [here|ParserFailure(Usage: <program> --config FILEPATH --socket-path FILEPATH 
-                 [(--target-node (HOST,PORT))] [--init-cooldown INT] 
-                 [--initial-ttl INT] [--num-of-txs INT] [--tps DOUBLE] 
-                 [--inputs-per-tx INT] [--outputs-per-tx INT] [--tx-fee INT] 
-                 [--add-tx-size INT] [--fail-on-submission-errors] 
-                 [--byron | --shelley] [--n2n-magic-override NATURAL] 
+                 [--shelley | --mary | --allegra] [(--target-node (HOST,PORT))] 
+                 [--init-cooldown INT] [--initial-ttl INT] [--num-of-txs INT] 
+                 [--tps DOUBLE] [--inputs-per-tx INT] [--outputs-per-tx INT] 
+                 [--tx-fee INT] [--add-tx-size INT] 
+                 [--fail-on-submission-errors] [--n2n-magic-override NATURAL] 
                  [--addr-mainnet] 
                  (--genesis-funds-key FILEPATH | --utxo-funds-key FILEPATH
                    --tx-in TX-IN --tx-out TX-OUT |
@@ -56,6 +56,9 @@ pinnedHelpMessage = [here|ParserFailure(Usage: <program> --config FILEPATH --soc
 Available options:
   --config FILEPATH        Configuration file for the cardano-node
   --socket-path FILEPATH   Path to a cardano-node socket
+  --shelley                Initialise Cardano in shelley submode.
+  --mary                   Initialise Cardano in mary submode.
+  --allegra                Initialise Cardano in allegra submode.
   --target-node (HOST,PORT)
                            IP address and port of the node transactions will be
                            sent to.
@@ -70,8 +73,6 @@ Available options:
   --fail-on-submission-errors
                            Fail on submission thread errors, instead of logging
                            them.
-  --byron                  Initialise Cardano in Byron submode.
-  --shelley                Initialise Cardano in Shelley submode.
   --n2n-magic-override NATURAL
                            Override the network magic for the node-to-node
                            protocol.
