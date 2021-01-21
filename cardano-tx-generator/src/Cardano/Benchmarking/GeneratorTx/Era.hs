@@ -1,19 +1,13 @@
-{-# LANGUAGE ConstraintKinds #-}
-{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE GADTs #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE UndecidableInstances #-}
-{-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE ConstraintKinds #-}
 
 {-# OPTIONS_GHC -Wno-all-missed-specialisations #-}
 {-# OPTIONS_GHC -Wno-unticked-promoted-constructors #-}
@@ -24,8 +18,6 @@ module Cardano.Benchmarking.GeneratorTx.Era
     ConfigSupportsTxGen
   , GenTxOf
   , GenTxIdOf
-  , inject
-  , project
   , CardanoBlock
 
   , InitCooldown(..)
@@ -46,10 +38,6 @@ module Cardano.Benchmarking.GeneratorTx.Era
 
   , SubmissionSummary(..)
 
-
-  , btTxSubmit_
-  , createTracers
-
   , BenchTraceConstraints
   , BenchTracers(..)
   , NodeToNodeSubmissionTrace(..)
@@ -62,7 +50,7 @@ module Cardano.Benchmarking.GeneratorTx.Era
   , CardanoMode
   ) where
 
-import           Prelude (Show(..), String, error)
+import           Prelude (Show(..), String)
 import           Cardano.Prelude hiding (TypeError, show)
 
 import qualified Codec.CBOR.Term as CBOR
@@ -72,45 +60,28 @@ import qualified Data.Aeson as A
 import qualified Data.HashMap.Strict as HM
 import qualified Data.Text as T
 import           Data.Time.Clock (DiffTime, getCurrentTime)
-import           GHC.TypeLits
-import qualified GHC.TypeLits as Ty
 
 -- Mode-agnostic imports
 import           Cardano.BM.Data.Tracer
                    (emptyObject, mkObject, trStructured)
 import           Network.Mux (WithMuxBearer(..))
 import qualified Ouroboros.Consensus.Cardano as Consensus
-import           Ouroboros.Consensus.Config
-                   ( TopLevelConfig(..)
-                   , configBlock, configCodec)
-import           Ouroboros.Consensus.Config.SupportsNode
-                   (ConfigSupportsNode(..), getNetworkMagic)
 import           Ouroboros.Consensus.Ledger.SupportsMempool hiding (TxId)
 import qualified Ouroboros.Consensus.Ledger.SupportsMempool as Mempool
-import           Ouroboros.Consensus.Node.ProtocolInfo
-                   (ProtocolInfo (..))
 import           Ouroboros.Consensus.Node.Run (RunNode)
 import           Ouroboros.Consensus.Shelley.Protocol
                    (StandardCrypto)
 import           Ouroboros.Network.Driver (TraceSendRecv (..))
 import           Ouroboros.Network.Protocol.TxSubmission.Type (TxSubmission)
-import           Ouroboros.Network.NodeToClient (Handshake, IOManager)
+import           Ouroboros.Network.NodeToClient (Handshake)
 import qualified Ouroboros.Network.NodeToNode as NtN
-
-import           Cardano.Chain.Slotting
-import           Ouroboros.Consensus.HardFork.Combinator.Basics
-import           Ouroboros.Consensus.HardFork.Combinator.Embed.Unary
-
-import qualified Shelley.Spec.Ledger.API as Shelley
 
 -- Node API imports
 import           Cardano.Api
 import           Cardano.Api.TxSubmit
 import           Cardano.Api.Typed
-import qualified Cardano.Api.Typed as Api
 
 -- Node imports
-import           Cardano.Node.Types (SocketPath(..))
 import           Cardano.Node.Configuration.Logging (LOContent(..), LoggingLayer (..))
 import           Cardano.Tracing.OrphanInstances.Byron()
 import           Cardano.Tracing.OrphanInstances.Common()
@@ -119,7 +90,6 @@ import           Cardano.Tracing.OrphanInstances.Network()
 import           Cardano.Tracing.OrphanInstances.Shelley()
 
 import Cardano.Benchmarking.GeneratorTx.Benchmark
-import           Shelley.Spec.Ledger.API (ShelleyGenesis)
 {-------------------------------------------------------------------------------
   Era abstraction
 -------------------------------------------------------------------------------}

@@ -1,19 +1,12 @@
 {-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE ConstraintKinds #-}
-{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE GADTs #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE NoMonomorphismRestriction #-}
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections #-}
-{-# LANGUAGE UndecidableInstances #-}
-{-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 {-# OPTIONS_GHC -Wno-all-missed-specialisations #-}
 {-# OPTIONS_GHC -Wno-missed-specialisations #-}
@@ -32,7 +25,7 @@ module Cardano.Benchmarking.GeneratorTx
   ) where
 
 import           Cardano.Prelude
-import           Prelude (error, id, String)
+import           Prelude (id, String)
 
 import           Control.Monad (fail)
 import           Control.Monad.Trans.Except.Extra (left, newExceptT, right)
@@ -238,9 +231,9 @@ splitFunds
         in
           case mFunds of
             Nothing                 -> reverse $ (splitTx, txIOList) : acc
-            Just (txInIndex, value) ->
+            Just (txInIndex, val) ->
               let !txInChange  = TxIn splitTxId txInIndex
-                  !txOutChange = TxOut srcAddr (mkTxOutValueAdaOnly value)
+                  !txOutChange = TxOut srcAddr (mkTxOutValueAdaOnly val)
               in
                 -- from the change create the next tx with numOutsPerInitTx UTxO entries
                 createSplittingTxs sKey
@@ -261,7 +254,7 @@ splitFunds
 --   So if one Cardano tx contains 10 outputs (with addresses of 10 recipients),
 --   we have 1 Cardano tx and 10 fiscal txs.
 runBenchmark :: forall era .
-    (ConfigSupportsTxGen CardanoMode era, IsShelleyBasedEra era)
+    IsShelleyBasedEra era
   => Tracer IO (TraceBenchTxSubmit TxId)
   -> Tracer IO NodeToNodeSubmissionTrace
   -> NetworkId
@@ -351,7 +344,7 @@ runBenchmark traceSubmit
 -----------------------------------------------------------------------------------------
 txGenerator
   :: forall era
-  .  (ConfigSupportsTxGen CardanoMode era, IsShelleyBasedEra era)
+  .  IsShelleyBasedEra era
   => Tracer IO (TraceBenchTxSubmit TxId)
   -> Benchmark
   -> AddressInEra era
@@ -454,7 +447,7 @@ txGenerator tracer Benchmark
 --
 launchTxPeer
   :: forall era
-  .  (ConfigSupportsTxGen CardanoMode era, IsShelleyBasedEra era)
+  .  IsShelleyBasedEra era
   => Tracer IO (TraceBenchTxSubmit TxId)
   -> Tracer IO NodeToNodeSubmissionTrace
   -> ConnectClient

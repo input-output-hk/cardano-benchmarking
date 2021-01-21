@@ -178,4 +178,3 @@ txOutValueToLovelace = \case
   TxOutValue _ v -> case valueToLovelace v of
     Just c -> c
     Nothing -> error "txOutValueLovelace  TxOut contains no ADA"
-  _ -> error "txOutValueLovelace unsupported case"

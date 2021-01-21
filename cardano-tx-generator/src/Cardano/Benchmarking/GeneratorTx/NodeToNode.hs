@@ -1,11 +1,4 @@
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE PatternSynonyms #-}
-{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
 
@@ -25,14 +18,11 @@ import           Control.Monad.Class.MonadTimer (MonadTimer, threadDelay)
 import           Control.Monad.Class.MonadSTM.Strict (newTVar)
 import           Data.ByteString.Lazy (ByteString)
 import qualified Data.Map as Map
-import           Data.Maybe
 import           Data.Proxy (Proxy (..))
 import           Network.Socket (AddrInfo (..))
 import           System.Random (newStdGen)
 
 import           Control.Tracer (Tracer, nullTracer)
-import           Ouroboros.Consensus.Config.SupportsNode (getNetworkMagic)
-import           Ouroboros.Consensus.Config
 import           Ouroboros.Consensus.Byron.Ledger.Mempool (GenTx)
 import           Ouroboros.Consensus.Block.Abstract
 import           Ouroboros.Consensus.Ledger.SupportsMempool (GenTxId)
