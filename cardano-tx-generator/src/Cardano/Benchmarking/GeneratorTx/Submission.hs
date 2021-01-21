@@ -15,8 +15,8 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE UndecidableInstances #-}
-{-# LANGUAGE ViewPatterns #-}
 
 {-# OPTIONS_GHC -Wno-unticked-promoted-constructors #-}
 {-# OPTIONS_GHC -Wno-all-missed-specialisations #-}
@@ -34,6 +34,7 @@ module Cardano.Benchmarking.GeneratorTx.Submission
   , tpsLimitedTxFeeder
   ) where
 
+import           Prelude (error)
 import           Cardano.Prelude hiding (ByteString, atomically, retry, threadDelay)
 import           Prelude (String, fail)
 
@@ -57,8 +58,13 @@ import           Cardano.Tracing.OrphanInstances.Consensus ()
 import           Cardano.Tracing.OrphanInstances.Network ()
 import           Cardano.Tracing.OrphanInstances.Shelley ()
 
-import           Ouroboros.Consensus.Ledger.SupportsMempool (txInBlockSize)
+import           Ouroboros.Consensus.Ledger.SupportsMempool (GenTx, GenTxId, txInBlockSize)
 import qualified Ouroboros.Consensus.Ledger.SupportsMempool as Mempool
+import           Ouroboros.Consensus.Shelley.Ledger.Mempool (mkShelleyTx)
+import qualified Ouroboros.Consensus.Shelley.Ledger.Mempool as Mempool (TxId(ShelleyTxId))
+
+import           Ouroboros.Consensus.Cardano.Block (GenTx (GenTxShelley, GenTxMary, GenTxAllegra))
+import qualified Ouroboros.Consensus.Cardano.Block as Block (TxId(GenTxIdShelley, GenTxIdAllegra, GenTxIdMary))
 
 import           Ouroboros.Network.Protocol.TxSubmission.Client (ClientStIdle (..),
                                                                  ClientStTxIds (..),
@@ -67,12 +73,13 @@ import           Ouroboros.Network.Protocol.TxSubmission.Client (ClientStIdle (.
 import           Ouroboros.Network.Protocol.TxSubmission.Type (BlockingReplyList (..),
                                                                TokBlockingStyle (..), TxSizeInBytes)
 
+import qualified Shelley.Spec.Ledger.TxBody as ShelleyLedger
+
 import           Cardano.Api.Typed
+import qualified Cardano.Crypto.Hash.Class as Crypto
 
 import           Cardano.Benchmarking.GeneratorTx.Era
 import           Cardano.Benchmarking.GeneratorTx.Benchmark
-import           Cardano.Benchmarking.GeneratorTx.Tx
-
 
 {-------------------------------------------------------------------------------
   Parametrisation & state
@@ -227,26 +234,22 @@ consumeTxs Submission{sTxSendQueue} blk req
        Just Nothing -> pure (True, UnReqd [])
        Just (Just tx) -> pure (False, UnReqd [tx])
 
-{-------------------------------------------------------------------------------
-  The submission client
--------------------------------------------------------------------------------}
 txSubmissionClient
-  :: forall m mode era tx txid gentx gentxid .
+  :: forall m era tx txid gentx gentxid .
      ( MonadIO m, MonadFail m
-     , ConfigSupportsTxGen mode era
+     , IsShelleyBasedEra era
      , tx      ~ Tx era
      , txid    ~ TxId
-     , gentx   ~ GenTxOf mode
-     , gentxid ~ GenTxIdOf mode
+     , gentx   ~ GenTx CardanoBlock
+     , gentxid ~ GenTxId CardanoBlock
      )
-  => Mode mode era
-  -> Tracer m NodeToNodeSubmissionTrace
+  => Tracer m NodeToNodeSubmissionTrace
   -> Tracer m (TraceBenchTxSubmit txid)
   -> Submission m era
   -> Natural
   -- This return type is forced by Ouroboros.Network.NodeToNode.connectTo
   -> TxSubmissionClient gentxid gentx m ()
-txSubmissionClient m tr bmtr sub threadIx =
+txSubmissionClient tr bmtr sub threadIx =
   TxSubmissionClient $
     pure $ client False (UnAcked []) (SubmissionThreadStats 0 0 0)
  where
@@ -269,8 +272,10 @@ txSubmissionClient m tr bmtr sub threadIx =
           -- The () return type is forced by Ouroboros.Network.NodeToNode.connectTo
           -> ClientStIdle gentxid gentx m ()
    client done unAcked (!stats) = ClientStIdle
-    { recvMsgRequestTxIds = \blocking (protoToAck -> ack) (protoToReq -> req)
+    { recvMsgRequestTxIds = \blocking ackNum reqNum
        -> do
+        let ack = Ack $ fromIntegral ackNum
+            req = Req $ fromIntegral reqNum
         traceWith tr $ reqIdsTrace ack req blocking
 
         (exhausted, unReqd) <-
@@ -315,19 +320,21 @@ txSubmissionClient m tr bmtr sub threadIx =
                      (NonBlockingReply $ txToIdSize <$> annNow)
                      (client exhausted newUnacked newStats)
 
-    , recvMsgRequestTxs = \(fmap (fromGenTxId m) -> reqTxids) -> do
-        traceWith tr $ ReqTxs (length reqTxids)
+    , recvMsgRequestTxs = \txIds -> do
+        let  reqTxIds :: [txid]
+             reqTxIds = fmap fromGenTxId txIds
+        traceWith tr $ ReqTxs (length reqTxIds)
         let UnAcked ua = unAcked
             uaIds = getTxId . getTxBody <$> ua
-            (toSend, _retained) = L.partition ((`L.elem` reqTxids) . getTxId . getTxBody) ua
-            missIds = reqTxids L.\\ uaIds
+            (toSend, _retained) = L.partition ((`L.elem` reqTxIds) . getTxId . getTxBody) ua
+            missIds = reqTxIds L.\\ uaIds
 
         traceWith tr $ TxList (length toSend)
-        traceWith bmtr $ TraceBenchTxSubServReq reqTxids
+        traceWith bmtr $ TraceBenchTxSubServReq reqTxIds
         traceWith bmtr $ TraceBenchTxSubServOuts (getTxId . getTxBody <$> ua)
         unless (L.null missIds) $
           traceWith bmtr $ TraceBenchTxSubServUnav missIds
-        pure $ SendMsgReplyTxs (toGenTx m <$> toSend)
+        pure $ SendMsgReplyTxs (toGenTx <$> toSend)
           (client done unAcked $
             stats { stsSent =
                     stsSent stats + Sent (length toSend)
@@ -347,13 +354,19 @@ txSubmissionClient m tr bmtr sub threadIx =
      pure report
 
    txToIdSize :: tx -> (gentxid, TxSizeInBytes)
-   txToIdSize = (Mempool.txId &&& txInBlockSize) . toGenTx m
+   txToIdSize = (Mempool.txId &&& txInBlockSize) . toGenTx
 
-   protoToAck :: Word16 -> Ack
-   protoToAck = Ack . fromIntegral
+   toGenTx :: tx -> gentx
+   toGenTx tx = case (shelleyBasedEra @ era , tx) of
+     (ShelleyBasedEraShelley, ShelleyTx _ tx') -> GenTxShelley (mkShelleyTx tx')
+     (ShelleyBasedEraAllegra, ShelleyTx _ tx') -> GenTxAllegra (mkShelleyTx tx')
+     (ShelleyBasedEraMary, ShelleyTx _ tx') -> GenTxMary (mkShelleyTx tx')
 
-   protoToReq :: Word16 -> Req
-   protoToReq = Req . fromIntegral
+   fromGenTxId :: gentxid -> txid
+   fromGenTxId (Block.GenTxIdShelley (Mempool.ShelleyTxId (ShelleyLedger.TxId i))) = TxId $ Crypto.castHash i
+   fromGenTxId (Block.GenTxIdAllegra (Mempool.ShelleyTxId (ShelleyLedger.TxId i))) = TxId $ Crypto.castHash i
+   fromGenTxId (Block.GenTxIdMary    (Mempool.ShelleyTxId (ShelleyLedger.TxId i))) = TxId $ Crypto.castHash i
+   fromGenTxId _ = error "submission.hs: fromGenTxId"
 
    tokIsBlocking :: TokBlockingStyle a -> Bool
    tokIsBlocking = \case
@@ -366,6 +379,6 @@ txSubmissionClient m tr bmtr sub threadIx =
       TokNonBlocking -> ReqIdsPrompt   ack req
 
    idListTrace :: ToAnnce tx -> TokBlockingStyle a -> NodeToNodeSubmissionTrace
-   idListTrace (ToAnnce (length -> toAnn)) = \case
-      TokBlocking    -> IdsListBlocking toAnn
-      TokNonBlocking -> IdsListPrompt   toAnn
+   idListTrace (ToAnnce toAnn) = \case
+      TokBlocking    -> IdsListBlocking $ length toAnn
+      TokNonBlocking -> IdsListPrompt   $ length toAnn

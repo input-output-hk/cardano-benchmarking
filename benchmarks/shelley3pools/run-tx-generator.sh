@@ -12,7 +12,9 @@ TARGETNODES=`for N in $targetnodes; do echo -n "--target-node (\"127.0.0.1\",$((
 
 localsock=$BASEDIR/logs/sockets/1
 
-era=${1:-shelley}
+
+#export era="allegra"
+export era="mary"
 echo "--( args: $*"
 echo "--( era:  $era"
 
@@ -32,32 +34,25 @@ args=(
 echo "starting submission to:  $TARGETNODES"
 
 case $era in
-byron )
-        args+=(
-          --genesis-funds-key ${GENESISDIR_byron}/poor-keys.000.skey
-        )
-        run 'cardano-tx-generator' "${args[@]}";;
 shelley )
         args+=(
           --genesis-funds-key ${GENESISDIR_shelley}/utxo-keys/utxo1.skey
+          --shelley
         )
         run 'cardano-tx-generator' "${args[@]}";;
-cardano-shelley )
-        txio="$($BASEDIR/prepare_genesis_expenditure.sh)"
-        if test -z "$txio"
-        then echo "ERROR: couldn't obtain funds for generator">&2; exit 1; fi
+mary )
         args+=(
-          --shelley
-          --utxo-funds-key    ${GENESISDIR_shelley}/utxo-keys/utxo1.skey
-          --tx-out            "$(jq .txout <<<$txio --raw-output)"
-          --tx-in             "$(jq .txin  <<<$txio --raw-output)"
-          # --fail-on-submission-errors
+          --genesis-funds-key ${GENESISDIR_shelley}/utxo-keys/utxo1.skey
+          --mary
         )
-        set +e
-        echo run 'cardano-tx-generator' "${args[@]}"
-        run 'cardano-tx-generator' "${args[@]}" |
-                grep 'launching Tx\|MsgAcceptVersion\|SubServFed\|Error\|Summary' |
-                tee "$BASEDIR"/logs/generator-summary.log;;
+        run 'cardano-tx-generator' "${args[@]}";;
+allegra )
+        args+=(
+          --genesis-funds-key ${GENESISDIR_shelley}/utxo-keys/utxo1.skey
+          --allegra
+        )
+        run 'cardano-tx-generator' "${args[@]}";;
+
 *) echo "ERROR:  unknown era '$era'" >&2;;
 esac
 
@@ -73,4 +68,4 @@ wait_seconds() {
 wait_seconds 30 'for the mempool transactions to settle in blocks'
 # ../../scripts/analyse.sh
 
-./kill-session.sh
+# ./kill-session.sh

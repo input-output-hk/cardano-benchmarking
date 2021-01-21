@@ -39,7 +39,6 @@ args=(
       --delegate-share               ${delegate_share}
       --avvm-entry-count             ${avvm_entries}
       --avvm-entry-balance           ${avvm_entry_balance}
-      --real-pbft
       --secret-seed                  ${not_so_secret}
 )
 

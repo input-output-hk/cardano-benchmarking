@@ -33,9 +33,11 @@ data SlotStats
     , slChainDBSnap :: !Word64
     , slRejectedTx  :: !Word64
     , slBlockNo     :: !Word64
+    , slBlockless   :: !Word64
     , slOrderViol   :: !Word64
     , slEarliest    :: !UTCTime
-    , slSpan        :: !NominalDiffTime
+    , slSpanCheck   :: !NominalDiffTime
+    , slSpanLead    :: !NominalDiffTime
     , slMempoolTxs  :: !Word64
     , slUtxoSize    :: !Word64
     , slDensity     :: !Float
@@ -45,31 +47,31 @@ data SlotStats
 
 instance ToJSON SlotStats
 
--- | Initial and trailing data are noisy outliers: drop that.
---
---   The initial part is useless until the node actually starts
---   to interact with the blockchain, so we drop all slots until
---   they start getting non-zero chain density reported.
---
---   On the trailing part, we drop everything since the last leadership check.
-cleanupSlotStats :: Seq SlotStats -> Seq SlotStats
-cleanupSlotStats =
-  Seq.dropWhileL ((== 0) . slDensity) .
-  Seq.dropWhileR ((== 0) . slCountChecks)
+slotHeadE, slotFormatE :: Text
+slotHeadP, slotFormatP :: Text
+slotHeadP =
+  "abs.  slot    block block lead  leader CDB rej  check     lead  chain       %CPU      GCs   Produc-   Memory use, kB    Alloc rate  Mempool  UTxO" <>"\n"<>
+  "slot#   epoch  no. -less checks ships snap txs  span      span  density all/ GC/mut maj/min tivity  Live   Alloc   RSS   / mut sec   txs  entries"
+slotHeadE =
+  "abs.slot#,slot,epoch,block,blockless,leadChecks,leadShips,cdbSnap,rejTx,checkSpan,chainDens,%CPU,%GC,%MUT,Productiv,MemLiveKb,MemAllocKb,MemRSSKb,AllocRate/Mut,MempoolTxs,UTxO"
+slotFormatP = "%5d %4d:%2d %4d    %2d    %2d   %2d    %2d  %2d %8s %8s %0.3f  %3s %3s %3s %2s %3s   %4s %7s %7s %7s % 8s %4d %9d"
+slotFormatE = "%d,%d,%d,%d,%d,%d,%d,%d,%d,%s,%s,%0.3f,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%d,%d"
 
-toLeadershipLine :: Bool -> Text -> SlotStats -> Text
-toLeadershipLine exportMode leadershipF SlotStats{..} = Text.pack $
+slotLine :: Bool -> Text -> SlotStats -> Text
+slotLine exportMode leadershipF SlotStats{..} = Text.pack $
   printf (Text.unpack leadershipF)
-         sl epsl epo blk chks  lds cdbsn rejtx span dens cpu gc mut majg ming   pro liv alc rss atm mpo utx
+         sl epsl epo blk blkl chks  lds cdbsn rejtx spanC spanL dens cpu gc mut majg ming   pro liv alc rss atm mpo utx
  where sl    = slSlot
        epsl  = slEpochSlot
        epo   = slEpoch
        blk   = slBlockNo
+       blkl  = slBlockless
        chks  = slCountChecks
        lds   = slCountLeads
        cdbsn = slChainDBSnap
        rejtx = slRejectedTx
-       span  = show slSpan :: Text
+       spanC = show slSpanCheck :: Text
+       spanL = show slSpanLead :: Text
        cpu   = d 3 $ rCentiCpu slResources
        dens  = slDensity
        gc    = d 2 $ rCentiGC  slResources
@@ -100,6 +102,25 @@ toLeadershipLine exportMode leadershipF SlotStats{..} = Text.pack $
          Just x  -> Text.pack $ printf ("%0."<>show width<>"f") x
          Nothing -> mconcat (replicate width "-")
 
+renderSlotTimeline :: Text -> Text -> Bool -> Seq SlotStats -> Handle -> IO ()
+renderSlotTimeline leadHead fmt exportMode slotStats hnd = do
+  forM_ (zip (toList slotStats) [(0 :: Int)..]) $ \(l, i) -> do
+    when (i `mod` 33 == 0 && (i == 0 || not exportMode)) $
+      hPutStrLn hnd leadHead
+    hPutStrLn hnd $ slotLine exportMode fmt l
+
+-- | Initial and trailing data are noisy outliers: drop that.
+--
+--   The initial part is useless until the node actually starts
+--   to interact with the blockchain, so we drop all slots until
+--   they start getting non-zero chain density reported.
+--
+--   On the trailing part, we drop everything since the last leadership check.
+cleanupSlotStats :: Seq SlotStats -> Seq SlotStats
+cleanupSlotStats =
+  Seq.dropWhileL ((== 0) . slDensity) .
+  Seq.dropWhileR ((== 0) . slCountChecks)
+
 zeroSlotStats :: SlotStats
 zeroSlotStats =
   SlotStats
@@ -111,7 +132,8 @@ zeroSlotStats =
   , slCountLeads = 0
   , slOrderViol = 0
   , slEarliest = zeroUTCTime
-  , slSpan = realToFrac (0 :: Int)
+  , slSpanCheck = realToFrac (0 :: Int)
+  , slSpanLead = realToFrac (0 :: Int)
   , slMempoolTxs = 0
   , slUtxoSize = 0
   , slDensity = 0
@@ -119,4 +141,6 @@ zeroSlotStats =
   , slChainDBSnap = 0
   , slRejectedTx = 0
   , slBlockNo = 0
+  , slBlockless = 0
   }
+

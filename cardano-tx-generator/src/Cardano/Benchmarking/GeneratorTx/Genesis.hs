@@ -1,42 +1,30 @@
 {-# LANGUAGE DerivingStrategies #-}
-{-# LANGUAGE EmptyCase #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE GADTs #-}
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE ViewPatterns #-}
 module Cardano.Benchmarking.GeneratorTx.Genesis
   ( GeneratorFunds(..)
   , parseGeneratorFunds
-  , extractGenesisFunds
+  , genesisFundForKey
   , genesisExpenditure
   , keyAddress
   )
 where
 
-import           Cardano.Prelude hiding (TypeError)
-import           Prelude (error)
-
-import           Control.Arrow ((***))
+import           Cardano.Prelude hiding (TypeError, filter)
+import           Prelude (error, filter)
 import qualified Data.Map.Strict as Map
+
 import qualified Options.Applicative as Opt
 
--- Era-agnostic imports
+import           Control.Arrow ((***))
 import           Cardano.Api.Typed
+import           Cardano.Api.Shelley (fromShelleyLovelace, fromShelleyStakeReference, fromShelleyPaymentCredential)
 import           Cardano.CLI.Types
-                   (SigningKeyFile(..))
-import qualified Ouroboros.Consensus.Cardano as Consensus
 
--- Byron-specific imports
-import qualified Cardano.Chain.Common as Byron
-import qualified Cardano.Chain.UTxO as Byron
-
--- Local imports
-import           Cardano.Benchmarking.GeneratorTx.Era
 import           Cardano.Benchmarking.GeneratorTx.Tx
-import           Cardano.Benchmarking.GeneratorTx.Tx.Byron
 import           Cardano.Benchmarking.GeneratorTx.CLI.Parsers
 
+import           Shelley.Spec.Ledger.API (ShelleyGenesis, sgInitialFunds)
 
 data GeneratorFunds
   = FundsGenesis   SigningKeyFile
@@ -66,91 +54,59 @@ parseGeneratorFunds =
         "split-utxo"
         "UTxO funds file.")
 
-keyAddress :: Mode mode era -> (Mode mode era -> NetworkId) -> SigningKeyOf era -> AddressInEra era
-keyAddress m toNetId = case modeEra m of
-  EraByron{}   -> \(getVerificationKey -> ByronVerificationKey k) ->
-    AddressInEra ByronAddressInAnyEra $
-      ByronAddress
-        (Byron.makeVerKeyAddress (toByronNetworkMagic $ toNetId m) k)
-  EraShelley{} -> \k ->
-    makeShelleyAddressInEra
-      (toNetId m)
+keyAddress :: forall era. IsShelleyBasedEra era => NetworkId -> SigningKey PaymentKey -> AddressInEra era
+keyAddress networkId k
+  = makeShelleyAddressInEra
+      networkId
       (PaymentCredentialByKey $ verificationKeyHash $ getVerificationKey k)
       NoStakeAddress
 
--- https://github.com/input-output-hk/cardano-node/issues/1856 would be the proper solution.
-genesisKeyPseudoTxIn :: Mode mode era -> SigningKeyOf era -> AddressInEra era -> TxIn
-genesisKeyPseudoTxIn m@ModeShelley{} key _ =
-  genesisUTxOPseudoTxIn
-    (modeNetworkId m)
-    (verificationKeyHash $ getVerificationKey $ castSigningKeyRolePaymentKeyGenesisUTxOKey key)
- where
-   castSigningKeyRolePaymentKeyGenesisUTxOKey ::
-     SigningKey PaymentKey -> SigningKey GenesisUTxOKey
-   castSigningKeyRolePaymentKeyGenesisUTxOKey (PaymentSigningKey skey) =
-     GenesisUTxOSigningKey skey
-genesisKeyPseudoTxIn m@ModeByron{}
-                     (getVerificationKey -> ByronVerificationKey key)
-                     (AddressInEra _ (ByronAddress genAddr)) =
-  fromByronTxIn $ byronGenesisUTxOTxIn (modeGenesis m) key genAddr
-genesisKeyPseudoTxIn m _ _ =
-  error $ "genesisKeyPseudoTxIn:  unsupported mode: " <> show m
 
--- https://github.com/input-output-hk/cardano-node/issues/1861 would be the proper solution.
-modeGenesisFunds :: forall mode era. Mode mode era -> [(AddressInEra era, Lovelace)]
-modeGenesisFunds = \case
-  m@ModeShelley{} ->
-    fmap (fromShelleyAddr m *** fromShelleyLovelace)
-    . Map.toList
-    . Consensus.sgInitialFunds
-    $ modeGenesis m
-  m@ModeByron{} ->
-    fmap getAddrCoin
-    . map (fromByronTxOut . Byron.fromCompactTxOut . snd)
-    . Map.toList
-    . Byron.unUTxO
-    . Byron.genesisUtxo
-    $ modeGenesis m
-  m -> error $ "modeGenesisFunds:  unsupported mode: " <> show m
+genesisFunds :: forall era. IsShelleyBasedEra era
+  => NetworkId -> ShelleyGenesis StandardShelley -> [(AddressInEra era, Lovelace)]
+genesisFunds networkId g =
+    map (castAddr *** fromShelleyLovelace)
+     $ Map.toList
+     $ sgInitialFunds g
   where
-    getAddrCoin :: TxOut ByronEra -> (AddressInEra ByronEra, Lovelace)
-    getAddrCoin (TxOut addr (TxOutAdaOnly AdaOnlyInByronEra coin)) = (addr, coin)
-    getAddrCoin (TxOut _ (TxOutValue x _) ) = case x of {}
+    castAddr (Addr _ pcr stref)
+      = shelleyAddressInEra $ makeShelleyAddress networkId (fromShelleyPaymentCredential pcr) (fromShelleyStakeReference stref)
+    castAddr _ = error "castAddr:  unhandled Shelley.Addr case"
 
-extractGenesisFunds
-  :: forall mode era .
-     Mode mode era
-  -> SigningKeyOf era
-  -> (TxIn, TxOut era)
-extractGenesisFunds m k =
+
+genesisFundForKey :: forall era. IsShelleyBasedEra era
+  => NetworkId
+  -> ShelleyGenesis StandardShelley
+  -> SigningKey PaymentKey
+  -> (AddressInEra era, Lovelace)
+genesisFundForKey networkId genesis key =
     fromMaybe (error "No genesis funds for signing key.")
   . head
-  . filter (isTxOutForKey . snd)
-  . fmap genesisFundsEntryTxIO
-  . modeGenesisFunds
-  $ m
- where
-  genesisFundsEntryTxIO :: (AddressInEra era, Lovelace) -> (TxIn, TxOut era)
-  genesisFundsEntryTxIO (addr, coin) =
-    (genesisKeyPseudoTxIn m k addr, TxOut addr (mkTxOutValueAdaOnly (modeEra m) coin))
+  . filter (isTxOutForKey . fst)
+  $ genesisFunds networkId genesis
+  where
+    isTxOutForKey addr = keyAddress networkId key == addr
 
-  isTxOutForKey :: TxOut era -> Bool
-  isTxOutForKey (TxOut addr _) = keyAddress m modeNetworkId k == addr
 
-genesisExpenditure
-  :: Mode mode era
-  -> SigningKeyOf era
+genesisExpenditure ::
+     IsShelleyBasedEra era
+  => NetworkId
+  -> SigningKey PaymentKey
   -> AddressInEra era
   -> Lovelace
   -> Lovelace
   -> SlotNo
   -> (Tx era, TxIn, TxOut era)
-genesisExpenditure m key addr (Lovelace coin) (Lovelace fee) ttl =
-  (,,) tx txin txout
+genesisExpenditure networkId key addr coin fee ttl =  (tx, fundOut, txout )
  where
-   tx = mkTransaction m key 0 ttl (Lovelace fee)
-          [genesisKeyPseudoTxIn m key (keyAddress m modeNetworkId key)]
-          [txout]
-   txin = TxIn (getTxId $ getTxBody tx) (TxIx 0)
-   txout = TxOut addr (mkTxOutValueAdaOnly (modeEra m) (Lovelace (coin - fee)))
+   tx = mkGenTransaction (castKey key) 0 ttl fee [ pseudoTxIn ] [ txout ]
 
+   txout = TxOut addr $ mkTxOutValueAdaOnly $ coin - fee
+
+   pseudoTxIn = genesisUTxOPseudoTxIn networkId
+                  (verificationKeyHash $ getVerificationKey $ castKey key)
+
+   castKey :: SigningKey PaymentKey -> SigningKey GenesisUTxOKey
+   castKey(PaymentSigningKey skey) = GenesisUTxOSigningKey skey
+
+   fundOut = TxIn (getTxId $ getTxBody tx) (TxIx 0)

@@ -26,11 +26,12 @@ import           Cardano.Unlog.SlotStats
 
 data Analysis
   = Analysis
-    { aResAccums    :: !ResAccums
-    , aResTimestamp :: !UTCTime
-    , aMempoolTxs   :: !Word64
-    , aBlockNo      :: !Word64
-    , aSlotStats    :: ![SlotStats]
+    { aResAccums     :: !ResAccums
+    , aResTimestamp  :: !UTCTime
+    , aMempoolTxs    :: !Word64
+    , aBlockNo       :: !Word64
+    , aLastBlockSlot :: !Word64
+    , aSlotStats     :: ![SlotStats]
     }
 
 analyseLogObjects :: ChainParams -> [LogObject] -> Seq SlotStats
@@ -41,28 +42,30 @@ analyseLogObjects cp =
    zeroAnalysis :: Analysis
    zeroAnalysis =
      Analysis
-     { aResAccums    = mkResAccums
-     , aResTimestamp = zeroUTCTime
-     , aMempoolTxs   = 0
-     , aBlockNo      = 0
-     , aSlotStats    = [zeroSlotStats]
+     { aResAccums     = mkResAccums
+     , aResTimestamp  = zeroUTCTime
+     , aMempoolTxs    = 0
+     , aBlockNo       = 0
+     , aLastBlockSlot = 0
+     , aSlotStats     = [zeroSlotStats]
      }
 
 analysisStep :: ChainParams -> Analysis -> LogObject -> Analysis
 analysisStep cp a@Analysis{aSlotStats=cur:rSLs, ..} = \case
   lo@LogObject{loAt, loBody=LOTraceStartLeadershipCheck slot _ _} ->
     if slSlot cur > slot
+    -- Slot log entry for a slot we've supposedly done processing.
     then a { aSlotStats = cur
              { slOrderViol = slOrderViol cur + 1
              } : case (slSlot cur - slot, rSLs) of
                    -- Limited back-patching:
-                   (1, p1:rest)       ->       updateChecks loAt p1:rest
-                   (2, p1:p2:rest)    ->    p1:updateChecks loAt p2:rest
-                   (3, p1:p2:p3:rest) -> p1:p2:updateChecks loAt p3:rest
+                   (1, p1:rest)       ->       onLeadershipCheck loAt p1:rest
+                   (2, p1:p2:rest)    ->    p1:onLeadershipCheck loAt p2:rest
+                   (3, p1:p2:p3:rest) -> p1:p2:onLeadershipCheck loAt p3:rest
                    _ -> rSLs -- Give up.
            }
     else if slSlot cur == slot
-    then a { aSlotStats = updateChecks loAt cur : rSLs
+    then a { aSlotStats = onLeadershipCheck loAt cur : rSLs
            }
     else if slot - slSlot cur > 1
     then let gap = slot - slSlot cur - 1
@@ -71,7 +74,10 @@ analysisStep cp a@Analysis{aSlotStats=cur:rSLs, ..} = \case
          patchSlotCheckGap gap gapStartSlot a
     else updateOnNewSlot lo a
   LogObject{loAt, loBody=LOTraceNodeIsLeader _} ->
-    a { aSlotStats = updateSlotStats loAt cur : rSLs
+    a { aSlotStats = onLeadershipCertainty loAt True cur : rSLs
+      }
+  LogObject{loAt, loBody=LOTraceNodeNotLeader _} ->
+    a { aSlotStats = onLeadershipCertainty loAt False cur : rSLs
       }
   LogObject{loAt, loBody=LOResources rs} ->
     -- Update resource stats accumulators & record values current slot.
@@ -82,22 +88,29 @@ analysisStep cp a@Analysis{aSlotStats=cur:rSLs, ..} = \case
       }
    where accs = updateResAccums loAt rs aResAccums
   LogObject{loBody=LOMempoolTxs txCount} ->
-    a { aMempoolTxs = txCount
+    a { aMempoolTxs     = txCount
       , aSlotStats      = cur { slMempoolTxs = txCount
                           } : rSLs
       }
   LogObject{loBody=LOBlockContext blockNo} ->
-    a { aBlockNo    = blockNo
+    let newBlock = aBlockNo /= blockNo in
+    a { aBlockNo        = blockNo
+      , aLastBlockSlot  = if newBlock
+                          then slSlot cur
+                          else aLastBlockSlot
       , aSlotStats      = cur { slBlockNo = blockNo
-                          } : rSLs
+                              , slBlockless = if newBlock
+                                              then 0
+                                              else slBlockless cur
+                              } : rSLs
       }
   LogObject{loBody=LOLedgerTookSnapshot} ->
     a { aSlotStats      = cur { slChainDBSnap = slChainDBSnap cur + 1
-                          } : rSLs
+                              } : rSLs
       }
   LogObject{loBody=LOMempoolRejectedTx} ->
     a { aSlotStats      = cur { slRejectedTx = slRejectedTx cur + 1
-                          } : rSLs
+                              } : rSLs
       }
   _ -> a
  where
@@ -107,16 +120,16 @@ analysisStep cp a@Analysis{aSlotStats=cur:rSLs, ..} = \case
    updateOnNewSlot _ _ =
      error "Internal invariant violated: updateSlot called for a non-LOTraceStartLeadershipCheck LogObject."
 
-   updateChecks :: UTCTime -> SlotStats -> SlotStats
-   updateChecks now sl@SlotStats{..} =
+   onLeadershipCheck :: UTCTime -> SlotStats -> SlotStats
+   onLeadershipCheck now sl@SlotStats{..} =
      sl { slCountChecks = slCountChecks + 1
-        , slSpan  = now `Time.diffUTCTime` slStart
+        , slSpanCheck = max 0 $ now `Time.diffUTCTime` slStart
         }
 
-   updateSlotStats :: UTCTime -> SlotStats -> SlotStats
-   updateSlotStats now sl@SlotStats{..} =
-     sl { slCountLeads = slCountLeads + 1
-        , slSpan  = now `Time.diffUTCTime` slStart
+   onLeadershipCertainty :: UTCTime -> Bool -> SlotStats -> SlotStats
+   onLeadershipCertainty now lead sl@SlotStats{..} =
+     sl { slCountLeads = slCountLeads + if lead then 1 else 0
+        , slSpanLead  = max 0 $ now `Time.diffUTCTime` (slSpanCheck `Time.addUTCTime` slStart)
         }
 
    patchSlotCheckGap :: Word64 -> Word64 -> Analysis -> Analysis
@@ -144,13 +157,15 @@ extendAnalysis cp@ChainParams{..} slot time checks utxo density a@Analysis{..} =
           -- Updated as we see repeats:
         , slCountChecks = checks
         , slCountLeads  = 0
-        , slSpan        = time `Time.diffUTCTime` slotStart cp slot
+        , slSpanCheck   = max 0 $ time `Time.diffUTCTime` slotStart cp slot
+        , slSpanLead    = 0
         , slMempoolTxs  = aMempoolTxs
         , slUtxoSize    = utxo
         , slDensity     = density
         , slChainDBSnap = 0
         , slRejectedTx  = 0
         , slBlockNo     = aBlockNo
+        , slBlockless   = slot - aLastBlockSlot
         , slResources   = maybeDiscard
                           <$> discardObsoleteValues
                           <*> extractResAccums aResAccums

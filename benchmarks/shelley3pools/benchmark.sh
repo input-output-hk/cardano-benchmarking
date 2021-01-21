@@ -12,7 +12,7 @@ prebuild 'cardano-tx-generator' || exit 1
 export CLICMD="run cardano-cli"
 
 TMUX_ENV_PASSTHROUGH=(
-         "export era=shelley; export DBDIR=${DBDIR}; export SOCKETDIR=${SOCKETDIR};"
+         "export era=${era}; export DBDIR=${DBDIR}; export SOCKETDIR=${SOCKETDIR};"
          "export SCRIPTS_LIB_SH_MODE=${SCRIPTS_LIB_SH_MODE};"
          "export __COMMON_SRCROOT=${__COMMON_SRCROOT};"
          "export DEFAULT_DEBUG=${DEFAULT_DEBUG};"
@@ -42,15 +42,10 @@ else sed -i 's/"systemStart": ".*"/"systemStart": "'"$(date \
      ./hash_genesis.sh
 fi
 
-case $era in
-        byron )     protocol='RealPBFT';;
-        shelley )   protocol='TPraos';;
-        cardano-* ) protocol='Cardano';; esac
 
 for cf in ${BASEDIR}/configuration/*.yaml
 do sed -i 's/^ShelleyGenesisHash:.*$/ShelleyGenesisHash: '"$(cat "$GENESISDIR_shelley"/GENHASH)"'/' "$cf"
    sed -i 's/^ByronGenesisHash:.*$/ByronGenesisHash: '"$(cat "$GENESISDIR_byron"/GENHASH)"'/' "$cf"
-   sed -i 's/^Protocol:.*$/Protocol: '"$protocol"'/' "$cf"
 done
 
 # 2 run rt-view

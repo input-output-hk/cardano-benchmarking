@@ -26,6 +26,7 @@ library
                        Cardano.Benchmarking.GeneratorTx.Benchmark
                        Cardano.Benchmarking.GeneratorTx.Error
                        Cardano.Benchmarking.GeneratorTx.Era
+                       Cardano.Benchmarking.GeneratorTx.LocalProtocolDefinition
                        Cardano.Benchmarking.GeneratorTx.Genesis
                        Cardano.Benchmarking.GeneratorTx.NodeToNode
                        Cardano.Benchmarking.GeneratorTx.Tx
