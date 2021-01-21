@@ -2,9 +2,9 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
-module Cardano.Benchmarking.GeneratorTx.Callback
+module Cardano.Benchmarking.GeneratorTx.LocalProtocolDefinition
   (
-    mkCallback
+    mangleLocalProtocolDefinition
   ) where
 
 import           Prelude (error)
@@ -42,9 +42,9 @@ type Funding era = Benchmark -> GeneratorFunds -> ExceptT TxGenError IO (Signing
 type BenchmarkAction era
       = Benchmark -> (SigningKey PaymentKey, [(TxIn, TxOut era)]) -> ExceptT TxGenError IO ()
 
-type Action era = Benchmark -> GeneratorFunds -> ExceptT TxGenError IO ()
+type Action era = Proxy era -> Benchmark -> GeneratorFunds -> ExceptT TxGenError IO ()
 
-mkCallback
+mangleLocalProtocolDefinition
   :: forall blok ptcl era.
      (
        IsShelleyBasedEra era
@@ -56,17 +56,15 @@ mkCallback
   -> IOManager
   -> SocketPath
   -> BenchTracers IO CardanoBlock
-  -> Proxy era
   -> Action era
-
-mkCallback ptcl@(Consensus.ProtocolCardano
+mangleLocalProtocolDefinition ptcl@(Consensus.ProtocolCardano
              _
              Consensus.ProtocolParamsShelleyBased{Consensus.shelleyBasedGenesis}
               _ _ _ _ _ _)
-            nmagic_opt is_addr_mn iom (SocketPath sock) tracers _proxy
+            nmagic_opt is_addr_mn iom (SocketPath sock) tracers
     = action
   where
-    action benchmark fundOptions
+    action _proxy benchmark fundOptions
       =  funding benchmark fundOptions >>= benchmarkAction benchmark
 
     ProtocolInfo{pInfoConfig} = Consensus.protocolInfo ptcl
@@ -97,4 +95,4 @@ mkCallback ptcl@(Consensus.ProtocolCardano
       then Mainnet
       else Testnet $ getNetworkMagic $ configBlock pInfoConfig
 
-mkCallback _ _ _ _ _ _ _ = error "mkCallbacks"
+mangleLocalProtocolDefinition _ _ _ _ _ _ = error "mkCallbacks"

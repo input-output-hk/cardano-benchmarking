@@ -45,7 +45,7 @@ import Cardano.Benchmarking.GeneratorTx.Benchmark
 import Cardano.Benchmarking.GeneratorTx.Genesis
 import Cardano.Benchmarking.GeneratorTx.CLI.Parsers
 import Cardano.Benchmarking.GeneratorTx.Era
-import Cardano.Benchmarking.GeneratorTx.Callback
+import Cardano.Benchmarking.GeneratorTx.LocalProtocolDefinition
 
 data ProtocolError =
     IncorrectProtocolSpecified  !Api.Protocol
@@ -157,7 +157,7 @@ runCommand (GenerateTxs logConfigFp
               myTracer msg = traceWith (btTxSubmit_ tracers) $ TraceBenchTxSubDebug msg
 
               runAll :: forall era. IsShelleyBasedEra era => Proxy era -> Benchmark -> GeneratorFunds -> ExceptT TxGenError IO ()
-              runAll = mkCallback ptcl nmagic_opt is_addr_mn iocp socketFp tracers
+              runAll = mangleLocalProtocolDefinition ptcl nmagic_opt is_addr_mn iocp socketFp tracers
           firstExceptT GenesisBenchmarkRunnerError $ case benchmarkEra of
             AnyCardanoEra ByronEra   -> error "ByronEra not supported"
             AnyCardanoEra ShelleyEra -> do
