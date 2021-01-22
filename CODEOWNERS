@@ -1,4 +1,7 @@
 # General reviewers per PR
-*                       @deepfire @denisshevchenko
+#                       Marc          Serge     Denis
+*                       @MarcFontaine @deepfire @denisshevchenko
 
 # Specific reviewers for code pieces
+
+cardano-tx-generator    @MarcFontaine

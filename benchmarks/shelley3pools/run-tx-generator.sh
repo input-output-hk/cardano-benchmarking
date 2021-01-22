@@ -68,4 +68,4 @@ wait_seconds() {
 wait_seconds 30 'for the mempool transactions to settle in blocks'
 # ../../scripts/analyse.sh
 
-# ./kill-session.sh
+./kill-session.sh

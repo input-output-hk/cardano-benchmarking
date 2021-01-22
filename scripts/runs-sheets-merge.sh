@@ -19,8 +19,18 @@ spreadsheets_mach() {
         local runs=($*)
 
         for r in ${runs[*]}
-        do echo runs/$r/analysis/stats-"$mach".ods
+        do if test ! -f runs/"$r"/analysis/stats-"$mach".ods
+           then continue; fi
+           echo runs/"$r"/analysis/stats-"$mach".ods
         done
 }
 
-ssconvert --merge-to runs/stats-$mach.ods $(spreadsheets_mach $mach ${runs[*]})
+pre_sheets_list=(
+        runs/Pre-summary.ods
+)
+
+target=runs/stats-"$mach".ods
+rm -f "$target"
+ssconvert --merge-to "$target" \
+          ${pre_sheets_list[*]} \
+          $(spreadsheets_mach "$mach" ${runs[*]})

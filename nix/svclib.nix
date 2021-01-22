@@ -72,6 +72,9 @@ let
     strOpt  = opt types.str;
     attrOpt = opt types.attrs;
     listOpt = opt (types.listOf types.attrs);
+    enumOpt = set: default: description:
+      mkOption { inherit default description;
+                 type = types.enum set; };
   };
 
   ## Define a typical service module,

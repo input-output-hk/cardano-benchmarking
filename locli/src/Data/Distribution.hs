@@ -11,12 +11,12 @@ module Data.Distribution
   , Distribution(..)
   , computeDistribution
   , zeroDistribution
-  , spans
   , PercSpec(..)
   , renderPercSpec
   , Percentile(..)
   , pctFrac
-  , psNamedAbove
+  -- Aux
+  , spans
   ) where
 
 import           Prelude (String)
@@ -26,7 +26,9 @@ import           Data.Aeson (ToJSON(..))
 import qualified Data.Foldable as F
 import           Data.List (span)
 import qualified Data.Sequence as Seq
-import           Data.Sequence (Seq, index)
+import           Data.Sequence (index)
+import           Data.Vector (Vector)
+import qualified Data.Vector as Vec
 import           Text.Printf (PrintfArg, printf)
 
 data Distribution a b =
@@ -39,21 +41,11 @@ data Distribution a b =
 
 instance (ToJSON a, ToJSON b) => ToJSON (Distribution a b)
 
-data PercSpec a
-  = PercAnon  { psFrac :: !a }
-  | PercNamed { psName :: !String, psFrac :: !a }
-  deriving (Generic, Show)
-
-psNamedAbove :: Ord a => String -> a -> [a] -> PercSpec Float
-psNamedAbove name thresh xs = PercNamed name . (1.0 -) $
-  fromIntegral (length (takeWhile (>= thresh) sorted)) / fromIntegral size
- where sorted = sortBy (\x y -> compare y x) xs
-       size = length sorted
+newtype PercSpec a = Perc { psFrac :: a } deriving (Generic, Show)
 
 renderPercSpec :: PrintfArg a => Int -> PercSpec a -> String
 renderPercSpec width = \case
-  PercAnon x    -> printf ("%0."<>show (width-2)<>"f") x
-  PercNamed n _ -> n
+  Perc x    -> printf ("%0."<>show (width-2)<>"f") x
 
 data Percentile a b =
   Percentile
@@ -78,17 +70,6 @@ zeroDistribution =
   , dPercentiles = mempty
   }
 
-spans :: forall a. (a -> Bool) -> [a] -> [[a]]
-spans f = go []
- where
-   go :: [[a]] -> [a] -> [[a]]
-   go acc [] = reverse acc
-   go acc xs =
-     case span f $ dropWhile (not . f) xs of
-       ([], rest) -> go acc rest
-       (ac, rest) -> go (ac:acc) rest
-
-
 countSeq :: Eq a => a -> Seq a -> Int
 countSeq x = foldl' (\n e -> if e == x then n + 1 else n) 0
 
@@ -99,8 +80,8 @@ computeDistribution percentiles (Seq.sort -> sorted) =
   { dAverage     = toRealFrac (F.sum sorted) / fromIntegral size
   , dCount       = size
   , dPercentiles =
-    (Percentile     (PercAnon 0)   size (countSeq mini sorted) mini:) .
-    (<> [Percentile (PercAnon 1.0) 1    (countSeq maxi sorted) maxi]) $
+    (Percentile     (Perc 0)   size (countSeq mini sorted) mini:) .
+    (<> [Percentile (Perc 1.0) 1    (countSeq maxi sorted) maxi]) $
     percentiles <&>
       \spec ->
         let sample = Seq.index sorted sampleIndex
@@ -122,3 +103,14 @@ instance RealFrac b => ToRealFrac Int b where
 
 instance {-# OVERLAPPABLE #-} (RealFrac b, Real a) => ToRealFrac a b where
   toRealFrac = realToFrac
+
+spans :: forall a. (a -> Bool) -> [a] -> [Vector a]
+spans f = go []
+ where
+   go :: [Vector a] -> [a] -> [Vector a]
+   go acc [] = reverse acc
+   go acc xs =
+     case span f $ dropWhile (not . f) xs of
+       ([], rest) -> go acc rest
+       (ac, rest) ->
+         go (Vec.fromList ac:acc) rest

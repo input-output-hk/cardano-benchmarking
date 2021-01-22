@@ -47,6 +47,9 @@ shell: strict-sync
 lax-shell: sync
 	nix-shell --max-jobs 8 --cores 0
 
+test: strict-sync
+	nix-shell --max-jobs 8 --cores 0 --run 'make cabal'
+
 setup:
 	@echo "Modifying 'cabal.project' for interactive development"
 	./scripts/cabal-inside-nix-shell.sh

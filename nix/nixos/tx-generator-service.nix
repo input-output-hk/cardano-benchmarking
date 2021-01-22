@@ -3,10 +3,11 @@
     let
       nodeConfigDefault = cfg:
         (__fromJSON (__readFile ../../configuration/defaults/generator/configuration.json))
-        // {
-          "Protocol"    = cfg.localNodeConf.nodeConfig.Protocol;
-          "GenesisFile" = cfg.localNodeConf.nodeConfig.ShelleyGenesisFile;
-        };
+        // { inherit (cfg.localNodeConf.nodeConfig)
+               Protocol
+               ShelleyGenesisFile ShelleyGenesisHash
+                 ByronGenesisFile   ByronGenesisHash;
+           };
     in
     { svcName = "tx-generator";
       svcDesc = "configurable transaction generator";
@@ -36,6 +37,14 @@
 
         localNodeConf   = attrOpt null       "Config of the local observer node";
         targetNodes     = attrOpt null       "Targets: { name = { ip, port } }";
+
+        era             = enumOpt [ "shelley"
+                                    "allegra"
+                                    "mary"
+                                    "alonzo"
+                                  ]
+                                  "shelley"
+                                  "Cardano era to generate transactions for.";
       };
 
       configExeArgsFn =
@@ -45,6 +54,8 @@
                          (__toJSON (nodeConfigDefault cfg // nodeConfig)))
 
             "--socket-path"            localNodeConf.socketPath
+
+            "--${era}"
 
             "--num-of-txs"             tx_count
             "--add-tx-size"            add_tx_size

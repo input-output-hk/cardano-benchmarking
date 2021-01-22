@@ -20,6 +20,7 @@ fi
 
 oprint "mapping $subinterp over runs:  ${runs[*]}"
 for x in ${runs[*]}
-do oprint "run:  $x"
+do if test ! -d "runs/$x"; then continue; fi
+   oprint "run:  $x"
    "$subinterp" "$x"
 done

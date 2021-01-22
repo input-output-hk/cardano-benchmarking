@@ -26,13 +26,20 @@ spreadsheet_mach() {
         local logdir=$1 mach=$2
 
         oprint "generating sheets for $mach"
-        ln -sf logs-"$mach".stats.csv    "$logdir"/analysis/"$run_name"."$mach".s.csv
-        ln -sf logs-"$mach".timeline.csv "$logdir"/analysis/"$run_name"."$mach".t.csv
+        local infix
 
-        ssconvert "$logdir"/analysis/"$run_name"."$mach".s.csv "$logdir"/analysis/stats-"$mach".ods
-        ssconvert "$logdir"/analysis/"$run_name"."$mach".t.csv "$logdir"/analysis/timeline-"$mach".ods
+        ln -sf logs-"$mach".stats.csv    "$logdir"/analysis/"$run_name".csv
+
+        rm -f "$logdir"/analysis/stats-"$mach".ods
+        ssconvert "$logdir"/analysis/"$run_name".csv "$logdir"/analysis/stats-"$mach".ods
+
+        ## We ignore the timeline for now.
+        # ln -sf logs-"$mach".timeline.csv "$logdir"/analysis/"$run_name"."$mach".t.csv
+        # ssconvert "$logdir"/analysis/"$run_name"."$mach".t.csv "$logdir"/analysis/timeline-"$mach".ods
 }
 
-time for mach in ${machines[*]}
-do spreadsheet_mach "$logdir" "$mach"
-done
+# time for mach in ${machines[*]}
+# do spreadsheet_mach "$logdir" "$mach"
+# done
+
+spreadsheet_mach "$logdir" 'node-1'
