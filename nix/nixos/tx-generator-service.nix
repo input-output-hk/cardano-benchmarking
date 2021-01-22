@@ -3,10 +3,11 @@
     let
       nodeConfigDefault = cfg:
         (__fromJSON (__readFile ../../configuration/defaults/generator/configuration.json))
-        // {
-          "Protocol"    = cfg.localNodeConf.nodeConfig.Protocol;
-          "GenesisFile" = cfg.localNodeConf.nodeConfig.ShelleyGenesisFile;
-        };
+        // { inherit (cfg.localNodeConf.nodeConfig)
+               Protocol
+               ShelleyGenesisFile ShelleyGenesisHash
+                 ByronGenesisFile   ByronGenesisHash;
+           };
     in
     { svcName = "tx-generator";
       svcDesc = "configurable transaction generator";
