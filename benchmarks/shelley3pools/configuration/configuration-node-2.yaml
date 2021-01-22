@@ -83,7 +83,7 @@ defaultBackends:
 # EKG is a simple metrics monitoring system. Uncomment the following to enable
 # this backend and listen on the given local port and point your web browser to
 # http://localhost:12788/
-# hasEKG: 12788
+hasEKG: 12789
 
 # The Prometheus monitoring system exports EKG metrics. Uncomment the following
 # to listen on the given port. Output is provided on
@@ -225,4 +225,6 @@ TraceTxOutbound: False
 TraceTxSubmissionProtocol: False
 
 options:
-  default: true
+  mapBackends:
+    "cardano.node.metrics":
+      - EKGViewBK

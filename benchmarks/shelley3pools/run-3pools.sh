@@ -87,7 +87,7 @@ do N1=$((N - 1))
       . ${__COMMON_SRCROOT}/scripts/lib-nix.sh;
       . ${__COMMON_SRCROOT}/scripts/lib-node.sh;
 
-      echo -e '\n\n\nFollow the link for RTView:  http://localhost:12799/\n\n\n';
+      echo -e '\n\n\nFollow the link for RTView:  http://localhost:12799/\n             ...for EKG:     http://localhost:$((12787+N))/\n\n';
 
       ${NODECMD} run ${common_args[*]} ${mode_args[*]} " $REDIRSTDERR \
      C-m
