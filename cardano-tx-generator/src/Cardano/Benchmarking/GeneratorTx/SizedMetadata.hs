@@ -7,6 +7,7 @@ where
 import           Prelude
 
 import qualified Data.Map.Strict as Map
+import           Data.Word (Word64)
 import qualified Data.ByteString as BS
 import           Cardano.Benchmarking.GeneratorTx.Tx
 import           Cardano.Api
@@ -50,7 +51,7 @@ assumeMapCosts _proxy = stepFunction [
       ShelleyBasedEraMary    -> 39
 
 -- Bytestring costs are not LINEAR !!
--- Costs are piecewise linear for payload sizes [0..24] and [25..64].
+-- Costs are piecewise linear for payload sizes [0..23] and [24..64].
 prop_bsCostsSelley  :: Bool
 prop_bsCostsAllegra :: Bool
 prop_bsCostsMary    :: Bool
@@ -82,27 +83,65 @@ measureBSCosts era = map (metadataSize era . Just . bsMetadata) [0..maxBSSize]
 metadataSize :: forall era . IsShelleyBasedEra era => AsType era -> Maybe TxMetadata -> Int
 metadataSize p m = dummyTxSize p m - dummyTxSize p Nothing
 
-dummyTxSize :: forall era . IsShelleyBasedEra era => AsType era -> Maybe TxMetadata -> Int
-dummyTxSize _p metadata = case makeTransactionBody dummyTx of
+dummyTxSizeInEra :: forall era . IsShelleyBasedEra era => TxMetadataInEra era -> Int
+dummyTxSizeInEra metadata = case makeTransactionBody dummyTx of
     Right b -> BS.length $ serialiseToCBOR b
     Left err -> error $ "metaDataSize " ++ show err
   where
-    dataInEra :: Maybe TxMetadata -> TxMetadataInEra era
-    dataInEra Nothing = TxMetadataNone
-    dataInEra (Just m) = case shelleyBasedEra @ era of
-      ShelleyBasedEraShelley -> TxMetadataInEra TxMetadataInShelleyEra m
-      ShelleyBasedEraAllegra -> TxMetadataInEra TxMetadataInAllegraEra m
-      ShelleyBasedEraMary    -> TxMetadataInEra TxMetadataInMaryEra m
-
+    dummyTx :: TxBodyContent era
     dummyTx = TxBodyContent {
         txIns = [ TxIn "dbaff4e270cfb55612d9e2ac4658a27c79da4a5271c6f90853042d1403733810" (TxIx 0) ]
       , txOuts = []
       , txFee = mkFee $ fromInteger 0
       , txValidityRange = (TxValidityNoLowerBound, mkValidityUpperBound $ fromInteger 0)
-      , txMetadata = dataInEra metadata
+      , txMetadata = metadata
       , txAuxScripts = TxAuxScriptsNone
       , txWithdrawals = TxWithdrawalsNone
       , txCertificates = TxCertificatesNone
       , txUpdateProposal = TxUpdateProposalNone
       , txMintValue = TxMintNone
       }
+
+dummyTxSize :: forall era . IsShelleyBasedEra era => AsType era -> Maybe TxMetadata -> Int
+dummyTxSize _p m = (dummyTxSizeInEra @ era) $ metadataInEra m
+
+metadataInEra :: forall era . IsShelleyBasedEra era => Maybe TxMetadata -> TxMetadataInEra era
+metadataInEra Nothing = TxMetadataNone
+metadataInEra (Just m) = case shelleyBasedEra @ era of
+  ShelleyBasedEraShelley -> TxMetadataInEra TxMetadataInShelleyEra m
+  ShelleyBasedEraAllegra -> TxMetadataInEra TxMetadataInAllegraEra m
+  ShelleyBasedEraMary    -> TxMetadataInEra TxMetadataInMaryEra m
+
+mkMetadata :: forall era . IsShelleyBasedEra era => Int -> Either String (TxMetadataInEra era)
+mkMetadata 0 = Right $ metadataInEra Nothing
+mkMetadata size
+  = if size < minSize
+      then Left $ "Error : metadata must be at least " ++ show minSize ++ " bytes in this era."
+      else Right $ metadataInEra $ Just metadata
+  where
+    minSize = case shelleyBasedEra @ era of
+      ShelleyBasedEraShelley -> 37
+      ShelleyBasedEraAllegra -> 39
+      ShelleyBasedEraMary    -> 39
+    nettoSize = size - minSize
+
+    -- At 24 the CBOR representation changes.
+    maxLinearByteStringSize = 23
+
+    partialChunk =
+      ( 0  -- the partial chunk uses index 0
+      , TxMetaBytes $ BS.replicate (nettoSize `mod` maxLinearByteStringSize) 0
+      )
+
+    -- A full chunk consists of 4 bytes for the index and 19 bytes for the bytestring.
+    -- Each full chunk adds `maxLinearByteStringSize` (== 23) bytes.
+    fullChunkBS = TxMetaBytes $ BS.replicate (maxLinearByteStringSize - 4 ) 0
+
+    fullChunkCount :: Word64
+    fullChunkCount = fromIntegral $ nettoSize `div` maxLinearByteStringSize
+
+    -- fullChunks uses indices starting at 4, to force 4-byte encoding of the index
+    fullChunks = zip [1000 .. 1000 + fullChunkCount -1]
+                     (repeat fullChunkBS)
+
+    metadata = makeTransactionMetadata $ Map.fromList (partialChunk : fullChunks)
