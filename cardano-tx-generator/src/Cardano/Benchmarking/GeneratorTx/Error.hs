@@ -16,6 +16,7 @@ data TxGenError =
   | SplittingSubmissionError !Text
   | UtxoReadFailure !Text
   | SuppliedUtxoTooSmall !Int !Int
+  | BadPayloadSize !Text
   -- ^ The supplied UTxO size (second value) was less than the requested
   --   number of transactions to send (first value).
   deriving stock Show

@@ -70,13 +70,13 @@ mkGenTransaction key _payloadSize ttl fee txins txouts
 mkTransaction :: forall era .
      IsShelleyBasedEra era
   => SigningKey PaymentKey
-  -> TxAdditionalSize
+  -> TxMetadataInEra era
   -> SlotNo
   -> Lovelace
   -> [TxIn]
   -> [TxOut era]
   -> Tx era
-mkTransaction key _payloadSize ttl fee txins txouts
+mkTransaction key metadata ttl fee txins txouts
   = case makeTransactionBody txBodyContent of
     Right b -> signShelleyTransaction b [WitnessPaymentKey key]
     Left err -> error $ show err
@@ -86,7 +86,7 @@ mkTransaction key _payloadSize ttl fee txins txouts
       , txOuts = txouts
       , txFee = mkFee fee
       , txValidityRange = (TxValidityNoLowerBound, mkValidityUpperBound ttl)
-      , txMetadata = TxMetadataNone
+      , txMetadata = metadata
       , txAuxScripts = TxAuxScriptsNone
       , txWithdrawals = TxWithdrawalsNone
       , txCertificates = TxCertificatesNone
@@ -123,7 +123,7 @@ mkTransactionGen :: forall era .
   -- if different from that of the first argument
   -> [(Int, TxOut era)]
   -- ^ Each recipient and their payment details
-  -> TxAdditionalSize
+  -> TxMetadataInEra era
   -- ^ Optional size of additional binary blob in transaction (as 'txAttributes')
   -> Lovelace
   -- ^ Tx fee.
@@ -132,10 +132,10 @@ mkTransactionGen :: forall era .
      , Map Int TxIx               -- The offset map in the transaction below
      , Tx era
      )
-mkTransactionGen signingKey inputs mChangeAddr payments payloadSize fee =
+mkTransactionGen signingKey inputs mChangeAddr payments metadata fee =
   (mChange, fee, offsetMap, tx)
  where
-  tx = mkTransaction signingKey payloadSize (SlotNo 10000000)
+  tx = mkTransaction signingKey metadata (SlotNo 10000000)
          fee
          (NonEmpty.toList $ fst <$> inputs)
          (NonEmpty.toList txOutputs)

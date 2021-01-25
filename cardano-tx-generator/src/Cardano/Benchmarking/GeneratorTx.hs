@@ -52,6 +52,7 @@ import           Cardano.Benchmarking.GeneratorTx.Genesis
 import           Cardano.Benchmarking.GeneratorTx.NodeToNode
 import           Cardano.Benchmarking.GeneratorTx.Submission
 import           Cardano.Benchmarking.GeneratorTx.Tx
+import           Cardano.Benchmarking.GeneratorTx.SizedMetadata (mkMetadata)
 
 import           Shelley.Spec.Ledger.API (ShelleyGenesis)
 
@@ -222,7 +223,7 @@ splitFunds
                         identityIndex + fromIntegral numOutsPerInitTx - 1]
                        (repeat txOut)
             (mFunds, _fees, outIndices, splitTx) =
-              mkTransactionGen sKey (txIO :| []) Nothing outs 0 fee
+              mkTransactionGen sKey (txIO :| []) Nothing outs TxMetadataNone fee
             !splitTxId = getTxId $ getTxBody splitTx
             txIOList = flip map (Map.toList outIndices) $
                 \(_, txInIndex) ->
@@ -357,7 +358,7 @@ txGenerator tracer Benchmark
             , bTxCount=NumberOfTxs numOfTransactions
             , bTxFanIn=NumberOfInputsPerTx numOfInsPerTx
             , bTxFanOut=NumberOfOutputsPerTx numOfOutsPerTx
-            , bTxExtraPayload=txAdditionalSize
+            , bTxExtraPayload=TxAdditionalSize txAdditionalSize
             }
             recipientAddress sourceKey numOfTargetNodes
             fundsWithSufficientCoins = do
@@ -367,7 +368,10 @@ txGenerator tracer Benchmark
       ++ " peers, fee " ++ show bTxFee
       ++ ", value " ++ show valueForRecipient
       ++ ", totalValue " ++ show totalValue
-  txs <- createMainTxs numOfTransactions numOfInsPerTx fundsWithSufficientCoins
+  metadata <- case mkMetadata txAdditionalSize of
+    Right m -> return m
+    Left err -> throwE $ BadPayloadSize $ pack err
+  txs <- createMainTxs numOfTransactions numOfInsPerTx metadata fundsWithSufficientCoins
   liftIO . traceWith tracer . TraceBenchTxSubDebug
     $ " Done, " ++ show numOfTransactions ++ " were generated."
   pure txs
@@ -388,10 +392,11 @@ txGenerator tracer Benchmark
   createMainTxs
     :: Word64
     -> Int
+    -> TxMetadataInEra era
     -> [(TxIn, TxOut era)]
     -> ExceptT TxGenError IO [Tx era]
-  createMainTxs 0 _ _ = right []
-  createMainTxs txsNum insNumPerTx funds = do
+  createMainTxs 0 _ _ _= right []
+  createMainTxs txsNum insNumPerTx metadata funds = do
     (txInputs, updatedFunds) <- getTxInputs insNumPerTx funds
     let (_, _, _, txAux :: Tx era) =
           mkTransactionGen
@@ -399,9 +404,9 @@ txGenerator tracer Benchmark
             (NE.fromList txInputs)
             (Just addressForChange)
             recipients
-            txAdditionalSize
+            metadata
             bTxFee
-    (txAux :) <$> createMainTxs (txsNum - 1) insNumPerTx updatedFunds
+    (txAux :) <$> createMainTxs (txsNum - 1) insNumPerTx metadata updatedFunds
 
   -- Get inputs for one main transaction, using available funds.
   getTxInputs

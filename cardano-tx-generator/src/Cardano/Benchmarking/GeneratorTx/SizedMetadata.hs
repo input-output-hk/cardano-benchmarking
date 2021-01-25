@@ -23,7 +23,7 @@ assume_cbor_properties
   =    prop_mapCostsShelley
     && prop_mapCostsAllegra
     && prop_mapCostsMary
-    && prop_bsCostsSelley
+    && prop_bsCostsShelley
     && prop_bsCostsAllegra
     && prop_bsCostsMary
 
@@ -52,10 +52,10 @@ assumeMapCosts _proxy = stepFunction [
 
 -- Bytestring costs are not LINEAR !!
 -- Costs are piecewise linear for payload sizes [0..23] and [24..64].
-prop_bsCostsSelley  :: Bool
+prop_bsCostsShelley  :: Bool
 prop_bsCostsAllegra :: Bool
 prop_bsCostsMary    :: Bool
-prop_bsCostsSelley  = measureBSCosts AsShelleyEra == [37..60] ++ [62..102]
+prop_bsCostsShelley  = measureBSCosts AsShelleyEra == [37..60] ++ [62..102]
 prop_bsCostsAllegra = measureBSCosts AsAllegraEra == [39..62] ++ [64..104]
 prop_bsCostsMary    = measureBSCosts AsMaryEra    == [39..62] ++ [64..104]
 
@@ -116,7 +116,7 @@ mkMetadata :: forall era . IsShelleyBasedEra era => Int -> Either String (TxMeta
 mkMetadata 0 = Right $ metadataInEra Nothing
 mkMetadata size
   = if size < minSize
-      then Left $ "Error : metadata must be at least " ++ show minSize ++ " bytes in this era."
+      then Left $ "Error : metadata must be 0 or at least " ++ show minSize ++ " bytes in this era."
       else Right $ metadataInEra $ Just metadata
   where
     minSize = case shelleyBasedEra @ era of
@@ -127,21 +127,24 @@ mkMetadata size
 
     -- At 24 the CBOR representation changes.
     maxLinearByteStringSize = 23
+    fullChunkSize = maxLinearByteStringSize + 1
 
-    partialChunk =
-      ( 0  -- the partial chunk uses index 0
-      , TxMetaBytes $ BS.replicate (nettoSize `mod` maxLinearByteStringSize) 0
-      )
-
-    -- A full chunk consists of 4 bytes for the index and 19 bytes for the bytestring.
-    -- Each full chunk adds `maxLinearByteStringSize` (== 23) bytes.
-    fullChunkBS = TxMetaBytes $ BS.replicate (maxLinearByteStringSize - 4 ) 0
+    -- A full chunk consists of 4 bytes for the index and 20 bytes for the bytestring.
+    -- Each full chunk adds exactly `fullChunkSize` (== 24) bytes.
+    -- The remainder is added in the first chunk.
+    mkFullChunk ix = (ix, TxMetaBytes $ BS.replicate (fullChunkSize - 4) 0)
 
     fullChunkCount :: Word64
-    fullChunkCount = fromIntegral $ nettoSize `div` maxLinearByteStringSize
+    fullChunkCount = fromIntegral $ nettoSize `div` fullChunkSize
 
-    -- fullChunks uses indices starting at 4, to force 4-byte encoding of the index
-    fullChunks = zip [1000 .. 1000 + fullChunkCount -1]
-                     (repeat fullChunkBS)
+    -- Full chunks use indices starting at 1000, to enforce 4-byte encoding of the index.
+    -- At some index the encoding will change to 5 bytes and this will break.
+    fullChunks = map mkFullChunk [1000 .. 1000 + fullChunkCount -1]
 
-    metadata = makeTransactionMetadata $ Map.fromList (partialChunk : fullChunks)
+    -- The first chunk has a variable size.
+    firstChunk =
+      ( 0  -- the first chunk uses index 0
+      , TxMetaBytes $ BS.replicate (nettoSize `mod` fullChunkSize) 0
+      )
+
+    metadata = makeTransactionMetadata $ Map.fromList (firstChunk : fullChunks)
