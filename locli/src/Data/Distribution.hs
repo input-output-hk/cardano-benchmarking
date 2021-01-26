@@ -22,6 +22,7 @@ module Data.Distribution
 import           Prelude (String)
 import           Cardano.Prelude
 
+import           Control.Arrow
 import           Data.Aeson (ToJSON(..))
 import qualified Data.Foldable as F
 import           Data.List (span)
@@ -74,18 +75,20 @@ countSeq :: Eq a => a -> Seq a -> Int
 countSeq x = foldl' (\n e -> if e == x then n + 1 else n) 0
 
 computeDistribution :: (RealFrac a, Real v, ToRealFrac v a) => [PercSpec a] -> Seq v -> Distribution a v
-computeDistribution _ Seq.Empty = Distribution 0 0 []
 computeDistribution percentiles (Seq.sort -> sorted) =
   Distribution
-  { dAverage     = toRealFrac (F.sum sorted) / fromIntegral size
+  { dAverage     = toRealFrac (F.sum sorted) / fromIntegral (size `max` 1)
   , dCount       = size
   , dPercentiles =
     (Percentile     (Perc 0)   size (countSeq mini sorted) mini:) .
     (<> [Percentile (Perc 1.0) 1    (countSeq maxi sorted) maxi]) $
     percentiles <&>
       \spec ->
-        let sample = Seq.index sorted sampleIndex
-            sampleIndex :: Int = floor $ fromIntegral (size - 1) * psFrac spec
+        let (sampleIndex :: Int, sample) =
+              if size == 0
+              then (0, fromInteger 0)
+              else floor (fromIntegral (size - 1) * psFrac spec) &
+                   ((\x->x) &&& Seq.index sorted)
         in Percentile
              spec
              (size - sampleIndex)
@@ -93,7 +96,10 @@ computeDistribution percentiles (Seq.sort -> sorted) =
              sample
   }
   where size   = Seq.length sorted
-        (,) mini maxi = (index sorted 0, index sorted $ size - 1)
+        (,) mini maxi =
+          if size == 0
+          then (0, fromInteger 0)
+          else (index sorted 0, index sorted $ size - 1)
 
 class RealFrac b => ToRealFrac a b where
   toRealFrac :: a -> b
