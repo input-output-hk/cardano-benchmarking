@@ -2,17 +2,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_GHC -Wno-partial-fields -Wno-orphans #-}
 
-module Cardano.Unlog.LogObject
-  ( JsonLogfile (..)
-  , EpsOutputFile (..)
-  , JsonOutputFile (..)
-  , TextOutputFile (..)
-  , LogObject (..)
-  , LOBody (..)
-  , readLogObjectStream
-  , logObjectStreamInterpreterKeys
-  , extendObject
-  ) where
+module Cardano.Unlog.LogObject (module Cardano.Unlog.LogObject) where
 
 import           Prelude (error)
 import           Cardano.Prelude hiding (Text)
@@ -27,6 +17,7 @@ import qualified Data.Text.Short as Text
 import           Data.Text.Short (ShortText, fromText, toText)
 import           Data.Time.Clock (NominalDiffTime, UTCTime)
 import qualified Data.Map as Map
+import           Data.Vector (Vector)
 
 import           Cardano.BM.Stats.Resources
 
@@ -37,6 +28,14 @@ readLogObjectStream :: JsonLogfile -> IO [LogObject]
 readLogObjectStream (JsonLogfile f) =
   LBS.readFile f
     <&> catMaybes . fmap AE.decode . LBS.split (fromIntegral $ fromEnum '\n')
+
+newtype JsonRunMetafile
+  = JsonRunMetafile { unJsonRunMetafile :: FilePath }
+  deriving (Show, Eq)
+
+newtype JsonGenesisFile
+  = JsonGenesisFile { unJsonGenesisFile :: FilePath }
+  deriving (Show, Eq)
 
 newtype JsonLogfile
   = JsonLogfile { unJsonLogfile :: FilePath }
@@ -66,6 +65,9 @@ instance ToJSON LogObject
 
 instance ToJSON ShortText where
   toJSON = String . toText
+
+instance FromJSON ShortText where
+  parseJSON = AE.withText "String" $ pure . fromText
 
 instance Print ShortText where
   hPutStr   h = hPutStr   h . toText
@@ -112,11 +114,14 @@ interpreters = Map.fromList
   , (,) "TraceBenchTxSubSummary" $
     \v -> do x :: Object <- v .: "summary"
              LOGeneratorSummary
-               <$> ((x .: "ssFailures" :: Parser [Float])
+               <$> ((x .: "ssFailures" :: Parser [Text])
                     <&> null)
                <*> x .: "ssTxSent"
                <*> x .: "ssElapsed"
                <*> x .: "ssThreadwiseTps"
+
+  , (,) "TraceBenchTxSubServAck" $
+    \v -> LOTxsAcked <$> v .: "txIds"
 
   , (,) "Resources" $
     \v -> LOResources <$> parseJSON (Object v)
@@ -132,10 +137,10 @@ data LOBody
   | LOResources !ResourceStats
   | LOMempoolTxs !Word64
   | LOMempoolRejectedTx
-  -- | LOTxsSubmitted !
-  | LOGeneratorSummary !Bool !Word64 !NominalDiffTime [Float]
   | LOLedgerTookSnapshot
   | LOBlockContext !Word64
+  | LOGeneratorSummary !Bool !Word64 !NominalDiffTime (Vector Float)
+  | LOTxsAcked !(Vector Text)
   | LOAny !Object
   deriving (Generic, Show)
 

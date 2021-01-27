@@ -2,19 +2,7 @@
 {-# LANGUAGE UndecidableInstances #-}
 
 -- | CLI command types
-module Cardano.Unlog.Commands
-  ( -- * CLI command types
-    AnalysisCommand (..)
-  , parseAnalysisCommands
-  , renderAnalysisCommand
-
-    -- * CLI flag types
-  , ChainParams (..)
-  , JsonLogfile (..)
-  , JsonOutputFile (..)
-  , TextOutputFile (..)
-  , EpsOutputFile (..)
-  ) where
+module Cardano.Unlog.Commands (module Cardano.Unlog.Commands) where
 
 import           Prelude
 
@@ -23,8 +11,7 @@ import           Data.Text (Text)
 import           Options.Applicative
 import qualified Options.Applicative as Opt
 
-import           Cardano.Unlog.ChainParams
-import           Cardano.Unlog.LogObject
+import           Cardano.Unlog.LogObject hiding (Text)
 
 --
 -- Analysis CLI command data types
@@ -33,7 +20,7 @@ import           Cardano.Unlog.LogObject
 -- | All the CLI subcommands under \"analysis\".
 --
 data AnalysisCommand
-  = LeadershipChecks ChainParams (Maybe JsonOutputFile) (Maybe TextOutputFile) (Maybe TextOutputFile) (Maybe TextOutputFile) (Maybe EpsOutputFile) (Maybe JsonOutputFile) [JsonLogfile]
+  = LeadershipChecks JsonGenesisFile JsonRunMetafile (Maybe JsonOutputFile) (Maybe JsonOutputFile) (Maybe TextOutputFile) (Maybe TextOutputFile) (Maybe TextOutputFile) (Maybe EpsOutputFile) (Maybe JsonOutputFile) [JsonLogfile]
   | SubstringKeys
   deriving (Show)
 
@@ -49,7 +36,13 @@ parseAnalysisCommands =
     mconcat
       [ Opt.command "leadership"
           (Opt.info (LeadershipChecks
-                       <$> pChainParams
+                       <$> argJsonGenesisFile "genesis"
+                              "Genesis file of the run"
+                       <*> argJsonRunMetafile "run-metafile"
+                              "The meta.json file from the benchmark run"
+                       <*> optional
+                           (argJsonOutputFile "dump-logobjects"
+                              "Dump the entire input LogObject stream")
                        <*> optional
                            (argJsonOutputFile "dump-leaderships"
                               "Dump extracted slot leadership summaries, as a side-effect of log analysis")
@@ -78,6 +71,22 @@ parseAnalysisCommands =
 --
 -- Analysis CLI flag/option data types
 --
+
+argJsonGenesisFile :: String -> String -> Parser JsonGenesisFile
+argJsonGenesisFile optname desc =
+  fmap JsonGenesisFile $
+    Opt.option Opt.str
+      $ long optname
+      <> metavar "JSON-GENESIS-FILE"
+      <> help desc
+
+argJsonRunMetafile :: String -> String -> Parser JsonRunMetafile
+argJsonRunMetafile optname desc =
+  fmap JsonRunMetafile $
+    Opt.option Opt.str
+      $ long optname
+      <> metavar "JSON-RUN-METAFILE"
+      <> help desc
 
 argJsonLogfile :: Parser JsonLogfile
 argJsonLogfile =

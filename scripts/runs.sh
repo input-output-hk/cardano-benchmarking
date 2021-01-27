@@ -14,7 +14,8 @@ test -x "$subinterp" ||
         fail "no interpreter for $subcmd:  missing $subinterp"
 
 if test -z "$*"
-then runs=($(ls runs))
+then runs=($(ls runs |
+             while read s; test -n "$s"; do if test -d "runs/$s"; then echo $s; fi; done))
 else runs=("$@")
 fi
 

@@ -1,13 +1,9 @@
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE ImpredicativeTypes #-}
-
+{-# OPTIONS_GHC -Wno-incomplete-patterns -Wno-name-shadowing #-}
 module Cardano.Unlog.Summary
   ( AnalysisCmdError
   , renderAnalysisCmdError
@@ -18,7 +14,7 @@ import           Prelude (String)
 import           Cardano.Prelude
 
 import           Control.Arrow ((&&&), (***))
-import           Control.Monad.Trans.Except.Extra (firstExceptT)
+import           Control.Monad.Trans.Except.Extra (firstExceptT, newExceptT)
 
 import qualified Data.Aeson as Aeson
 import           Data.Aeson
@@ -36,29 +32,39 @@ import           Data.Time.Clock (NominalDiffTime)
 import           Text.Printf
 
 import           Data.Distribution
+import           Cardano.Profile
 import           Cardano.Unlog.Analysis
 import           Cardano.Unlog.Commands
-import           Cardano.Unlog.LogObject
+import           Cardano.Unlog.LogObject hiding (Text)
 import           Cardano.Unlog.Resources
 import           Cardano.Unlog.SlotStats
 
 
 data AnalysisCmdError
-  = AnalysisCmdError !Text
+  = AnalysisCmdError  !Text
+  | RunMetaParseError !JsonRunMetafile !Text
+  | GenesisParseError !JsonGenesisFile !Text
   deriving Show
 
 renderAnalysisCmdError :: AnalysisCommand -> AnalysisCmdError -> Text
 renderAnalysisCmdError cmd err =
   case err of
-    AnalysisCmdError err' ->
-       renderError cmd identity err'
+    AnalysisCmdError  err' -> renderError cmd err'
+      "Analysis command failed"
+      pure
+    RunMetaParseError (JsonRunMetafile fp) err' -> renderError cmd err'
+      ("Benchmark run metafile parse failed: " <> Text.pack fp)
+      pure
+    GenesisParseError (JsonGenesisFile fp) err' -> renderError cmd err'
+      ("Genesis parse failed: " <> Text.pack fp)
+      pure
  where
-   renderError :: AnalysisCommand -> (a -> Text) -> a -> Text
-   renderError cmd' renderer cmdErr =
-      mconcat [ "Analysis command failed: "
+   renderError :: AnalysisCommand -> a -> Text -> (a -> [Text]) -> Text
+   renderError cmd' cmdErr desc renderer =
+      mconcat [ desc, ": "
               , renderAnalysisCommand cmd'
               , "  Error: "
-              , renderer cmdErr
+              , mconcat (renderer cmdErr)
               ]
 
 --
@@ -66,14 +72,26 @@ renderAnalysisCmdError cmd err =
 --
 
 runAnalysisCommand :: AnalysisCommand -> ExceptT AnalysisCmdError IO ()
-runAnalysisCommand (LeadershipChecks startTime mJDumpFile mPDumpFile mETimelineFile mEStatsFile mHistoOutFile mJOutFile logfiles) =
+runAnalysisCommand (LeadershipChecks genesisFile metaFile
+                    mLODumpFile mJDumpFile mPDumpFile
+                    mETimelineFile mEStatsFile mHistoOutFile mJOutFile logfiles) = do
+  profile :: Profile <-
+    firstExceptT (RunMetaParseError metaFile . Text.pack) $ newExceptT $
+    Aeson.eitherDecode @Profile     <$> LBS.readFile (unJsonRunMetafile metaFile)
+  cParams :: Genesis <-
+    firstExceptT (GenesisParseError genesisFile . Text.pack) $ newExceptT $
+    Aeson.eitherDecode @Genesis <$> LBS.readFile (unJsonGenesisFile genesisFile)
   firstExceptT AnalysisCmdError $
-    runLeadershipCheckCmd startTime mJDumpFile mPDumpFile mETimelineFile mEStatsFile mHistoOutFile mJOutFile logfiles
+    runLeadershipCheckCmd
+      (ChainInfo profile cParams)
+      mLODumpFile mJDumpFile
+      mPDumpFile mETimelineFile mEStatsFile mHistoOutFile mJOutFile logfiles
 runAnalysisCommand SubstringKeys =
   liftIO $ mapM_ putStrLn logObjectStreamInterpreterKeys
 
 runLeadershipCheckCmd ::
-     ChainParams
+     ChainInfo
+  -> Maybe JsonOutputFile
   -> Maybe JsonOutputFile
   -> Maybe TextOutputFile
   -> Maybe TextOutputFile
@@ -82,12 +100,12 @@ runLeadershipCheckCmd ::
   -> Maybe JsonOutputFile
   -> [JsonLogfile]
   -> ExceptT Text IO ()
-runLeadershipCheckCmd cp mLeadershipsDumpFile mPrettyDumpFile mExportTimelineFile mExportStatsFile mHistoOutFile mJOutFile logfiles = do
+runLeadershipCheckCmd chainInfo mLOStreamDumpFile mLeadershipsDumpFile mPrettyDumpFile mExportTimelineFile mExportStatsFile mHistoOutFile mJOutFile logfiles = do
   objs :: [LogObject] <- liftIO $
     concat <$> mapM readLogObjectStream logfiles
-  -- liftIO $ withFile "lodump.json" WriteMode $ \hnd ->
-  --   forM_ objs $ LBS.hPutStrLn hnd . Aeson.encode
-  let noisySlotStats = analyseLogObjects cp objs
+  maybe (pure ())
+    (liftIO . dumpLOStream objs) mLOStreamDumpFile
+  let (,) runStats noisySlotStats = analyseLogObjects chainInfo objs
   liftIO $ do
     case mLeadershipsDumpFile of
       Nothing -> pure ()
@@ -96,11 +114,11 @@ runLeadershipCheckCmd cp mLeadershipsDumpFile mPrettyDumpFile mExportTimelineFil
           forM_ noisySlotStats $ LBS.hPutStrLn hnd . Aeson.encode
     let slotStats = cleanupSlotStats noisySlotStats
         summary :: Summary
-        summary = slotStatsSummary slotStats
+        summary = slotStatsSummary chainInfo slotStats
         analysisOutput :: LBS.ByteString
         analysisOutput = Aeson.encode summary
     maybe (pure ()) (renderPrettySummary slotStats summary logfiles) mPrettyDumpFile
-    maybe (pure ()) (renderExportStats summary) mExportStatsFile
+    maybe (pure ()) (renderExportStats runStats summary) mExportStatsFile
     maybe (pure ()) (renderExportTimeline slotStats) mExportTimelineFile
     maybe (pure ())
       (renderHistogram "CPU usage spans over 85%" "Span length"
@@ -127,22 +145,32 @@ runLeadershipCheckCmd cp mLeadershipsDumpFile mPrettyDumpFile mExportTimelineFil
      withFile (unTextOutputFile o) WriteMode $ \hnd -> do
        hPutStrLn hnd . Text.pack $
          printf "--- input: %s" (intercalate " " $ unJsonLogfile <$> srcs)
-       renderStats   statsHeadP statsFormatP statsFormatPF s hnd
+       renderSummmaryCDF  statsHeadP statsFormatP statsFormatPF s hnd
        renderSlotTimeline slotHeadP slotFormatP False xs hnd
-   renderExportStats :: Summary -> TextOutputFile -> IO ()
-   renderExportStats s o =
+   renderExportStats :: RunScalars -> Summary -> TextOutputFile -> IO ()
+   renderExportStats rs s o =
      withFile (unTextOutputFile o) WriteMode $
-       renderStats statsHeadE statsFormatE statsFormatEF s
+       \h -> do
+         renderSummmaryCDF statsHeadE statsFormatE statsFormatEF s h
+         mapM_ (hPutStrLn h) $
+           renderChainInfoExport chainInfo
+           <>
+           renderRunScalars rs
    renderExportTimeline :: Seq SlotStats -> TextOutputFile -> IO ()
    renderExportTimeline xs o =
      withFile (unTextOutputFile o) WriteMode $
        renderSlotTimeline slotHeadE slotFormatE True xs
 
-   renderStats :: Text -> Text -> Text -> Summary -> Handle -> IO ()
-   renderStats statHead statFmt propFmt summary hnd = do
+   renderSummmaryCDF :: Text -> Text -> Text -> Summary -> Handle -> IO ()
+   renderSummmaryCDF statHead statFmt propFmt summary hnd = do
        hPutStrLn hnd statHead
        forM_ (toDistribLines statFmt propFmt summary) $
          hPutStrLn hnd
+
+   dumpLOStream :: [LogObject] -> JsonOutputFile -> IO ()
+   dumpLOStream objs o =
+     withFile (unJsonOutputFile o) WriteMode $ \hnd -> do
+       forM_ objs $ LBS.hPutStrLn hnd . Aeson.encode
 
 data Summary
   = Summary
@@ -166,6 +194,14 @@ data Summary
     , sResourceDistribs  :: !(Resources (Distribution Float Word64))
     }
   deriving Show
+
+renderRunScalars :: RunScalars -> [Text]
+renderRunScalars RunScalars{..} =
+  Text.intercalate "," <$>
+  [[ "Run time",       maybe "---" show rsElapsed ]
+  ,[ "Txs submitted",  maybe "---" show rsSubmitted ]
+  ,[ "Submission TPS", maybe "---" (show . sum) rsThreadwiseTps]
+  ]
 
 instance ToJSON Summary where
   toJSON Summary{..} = Aeson.Array $ Vec.fromList
@@ -199,8 +235,8 @@ instance ToJSON Summary where
                                         toJSON sSpanLensCPU85RwdDistrib
     ]
 
-slotStatsSummary :: Seq SlotStats -> Summary
-slotStatsSummary slots =
+slotStatsSummary :: ChainInfo -> Seq SlotStats -> Summary
+slotStatsSummary CInfo{} slots =
   Summary
   { sMaxChecks        = maxChecks
   , sSlotMisses       = misses
