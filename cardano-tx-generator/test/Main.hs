@@ -9,6 +9,7 @@ import           Text.Heredoc
 import           Options.Applicative
   
 import           Cardano.Benchmarking.Run (parseCommand)
+import           Cardano.Benchmarking.GeneratorTx.SizedMetadata
 
 
 --import           Cardano.Benchmarking.MockServer as MockServer
@@ -19,13 +20,25 @@ main = defaultMain tests
 tests :: TestTree
 tests =  testGroup "cardano-tx-generator"
   [
-    cliArgs    
+    cliArgs
+  , sizedMetadata
   , mockServer
   ]
   
 mockServer = testGroup "direct/pure client-server connect"
   [ testCase "tx-send == tx-received" $ assertBool "tx-send == tx-received" True -- TODO !
   ]
+
+sizedMetadata = testGroup "properties of the CBOR encoding relevant for generating sized metadat"
+  [ testCase "Shelley metadata map costs" $ assertBool "metadata map costs" prop_mapCostsShelley
+  , testCase "Shelley metadata ByteString costs" $ assertBool "metadata ByteString costs" prop_bsCostsShelley
+  , testCase "Allegra metadata map costs" $ assertBool "metadata map costs" prop_mapCostsAllegra
+  , testCase "Allegra metadata ByteString costs" $ assertBool "metadata ByteString costs" prop_bsCostsAllegra
+  , testCase "Mary metadata map costs"    $ assertBool "metadata map costs" prop_mapCostsMary
+  , testCase "Marymetadata ByteString costs"    $ assertBool "metadata ByteString costs" prop_bsCostsMary
+  , testCase "Test mkMetadata" $ assertBool "" True --WIP
+  ]
+
 
 cliArgs = testGroup "cli arguments"
   [

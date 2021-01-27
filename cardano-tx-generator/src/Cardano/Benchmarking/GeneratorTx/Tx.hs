@@ -1,6 +1,7 @@
 {-# LANGUAGE EmptyCase #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE ViewPatterns #-}
@@ -12,6 +13,8 @@ module Cardano.Benchmarking.GeneratorTx.Tx
   , mkTransactionGen
   , mkTxOutValueAdaOnly
   , txOutValueToLovelace
+  , mkFee
+  , mkValidityUpperBound
   )
 where
 
@@ -27,6 +30,7 @@ import           Cardano.Benchmarking.GeneratorTx.Era
 
 import           Cardano.Api
 
+{-# DEPRECATED mkGenTransaction "to be removed" #-}
 mkGenTransaction :: forall era .
      IsShelleyBasedEra era
   => SigningKey GenesisUTxOKey
@@ -66,13 +70,13 @@ mkGenTransaction key _payloadSize ttl fee txins txouts
 mkTransaction :: forall era .
      IsShelleyBasedEra era
   => SigningKey PaymentKey
-  -> TxAdditionalSize
+  -> TxMetadataInEra era
   -> SlotNo
   -> Lovelace
   -> [TxIn]
   -> [TxOut era]
   -> Tx era
-mkTransaction key _payloadSize ttl fee txins txouts
+mkTransaction key metadata ttl fee txins txouts
   = case makeTransactionBody txBodyContent of
     Right b -> signShelleyTransaction b [WitnessPaymentKey key]
     Left err -> error $ show err
@@ -80,24 +84,33 @@ mkTransaction key _payloadSize ttl fee txins txouts
     txBodyContent = TxBodyContent {
         txIns = txins
       , txOuts = txouts
-      , txFee = fees
-      , txValidityRange = (TxValidityNoLowerBound, validityUpperBound)
-      , txMetadata = TxMetadataNone
+      , txFee = mkFee fee
+      , txValidityRange = (TxValidityNoLowerBound, mkValidityUpperBound ttl)
+      , txMetadata = metadata
       , txAuxScripts = TxAuxScriptsNone
       , txWithdrawals = TxWithdrawalsNone
       , txCertificates = TxCertificatesNone
       , txUpdateProposal = TxUpdateProposalNone
       , txMintValue = TxMintNone
       }
-    fees = case shelleyBasedEra @ era of
-      ShelleyBasedEraShelley -> TxFeeExplicit TxFeesExplicitInShelleyEra fee
-      ShelleyBasedEraAllegra -> TxFeeExplicit TxFeesExplicitInAllegraEra fee
-      ShelleyBasedEraMary    -> TxFeeExplicit TxFeesExplicitInMaryEra fee
 
-    validityUpperBound = case shelleyBasedEra @ era of
-      ShelleyBasedEraShelley -> TxValidityUpperBound ValidityUpperBoundInShelleyEra ttl
-      ShelleyBasedEraAllegra -> TxValidityUpperBound ValidityUpperBoundInAllegraEra ttl
-      ShelleyBasedEraMary    -> TxValidityUpperBound ValidityUpperBoundInMaryEra ttl
+mkFee :: forall era .
+     IsShelleyBasedEra era
+  => Lovelace
+  -> TxFee era
+mkFee f = case shelleyBasedEra @ era of
+  ShelleyBasedEraShelley -> TxFeeExplicit TxFeesExplicitInShelleyEra f
+  ShelleyBasedEraAllegra -> TxFeeExplicit TxFeesExplicitInAllegraEra f
+  ShelleyBasedEraMary    -> TxFeeExplicit TxFeesExplicitInMaryEra f
+
+mkValidityUpperBound :: forall era .
+     IsShelleyBasedEra era
+  => SlotNo
+  -> TxValidityUpperBound era
+mkValidityUpperBound ttl = case shelleyBasedEra @ era of
+  ShelleyBasedEraShelley -> TxValidityUpperBound ValidityUpperBoundInShelleyEra ttl
+  ShelleyBasedEraAllegra -> TxValidityUpperBound ValidityUpperBoundInAllegraEra ttl
+  ShelleyBasedEraMary    -> TxValidityUpperBound ValidityUpperBoundInMaryEra ttl
 
 mkTransactionGen :: forall era .
      IsShelleyBasedEra era
@@ -110,7 +123,7 @@ mkTransactionGen :: forall era .
   -- if different from that of the first argument
   -> [(Int, TxOut era)]
   -- ^ Each recipient and their payment details
-  -> TxAdditionalSize
+  -> TxMetadataInEra era
   -- ^ Optional size of additional binary blob in transaction (as 'txAttributes')
   -> Lovelace
   -- ^ Tx fee.
@@ -119,10 +132,10 @@ mkTransactionGen :: forall era .
      , Map Int TxIx               -- The offset map in the transaction below
      , Tx era
      )
-mkTransactionGen signingKey inputs mChangeAddr payments payloadSize fee =
+mkTransactionGen signingKey inputs mChangeAddr payments metadata fee =
   (mChange, fee, offsetMap, tx)
  where
-  tx = mkTransaction signingKey payloadSize (SlotNo 10000000)
+  tx = mkTransaction signingKey metadata (SlotNo 10000000)
          fee
          (NonEmpty.toList $ fst <$> inputs)
          (NonEmpty.toList txOutputs)
