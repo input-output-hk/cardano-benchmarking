@@ -1,11 +1,8 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE ViewPatterns #-}
 
 module Cardano.Unlog.SlotStats (module Cardano.Unlog.SlotStats) where
 
@@ -14,6 +11,8 @@ import           Cardano.Prelude
 import           Data.Aeson
 import qualified Data.Sequence as Seq
 import qualified Data.Text as Text
+import qualified Data.Text.Short as SText
+import           Data.Text.Short (ShortText, fromText, toText)
 
 import           Data.Time.Clock (UTCTime, NominalDiffTime)
 import           Text.Printf
@@ -21,6 +20,8 @@ import           Text.Printf
 import           Data.Accum
 import           Cardano.Unlog.Resources
 
+
+-- type Text = ShortText
 
 data SlotStats
   = SlotStats

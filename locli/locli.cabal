@@ -54,6 +54,7 @@ library
                      , split
                      , template-haskell
                      , text
+                     , text-short
                      , time
                      , transformers
                      , transformers-except
@@ -87,6 +88,7 @@ executable locli
                      , locli
                      , optparse-applicative
                      , text
+                     , text-short
                      , transformers
                      , transformers-except
   default-extensions:  NoImplicitPrelude

@@ -1,7 +1,6 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE RecordWildCards #-}
-{-# OPTIONS_GHC -Wno-partial-fields #-}
+{-# OPTIONS_GHC -Wno-partial-fields -Wno-orphans #-}
 
 module Cardano.Unlog.LogObject
   ( JsonLogfile (..)
@@ -16,7 +15,7 @@ module Cardano.Unlog.LogObject
   ) where
 
 import           Prelude (error)
-import           Cardano.Prelude
+import           Cardano.Prelude hiding (Text)
 
 import           Control.Monad (fail)
 import           Data.Aeson (FromJSON(..), ToJSON(..), Value(..), Object, (.:))
@@ -24,12 +23,15 @@ import           Data.Aeson.Types (Parser)
 import qualified Data.Aeson as AE
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.HashMap.Strict as HM
-import qualified Data.Text as Text
-import           Data.Time.Clock (UTCTime)
+import qualified Data.Text.Short as Text
+import           Data.Text.Short (ShortText, fromText, toText)
+import           Data.Time.Clock (NominalDiffTime, UTCTime)
 import qualified Data.Map as Map
 
 import           Cardano.BM.Stats.Resources
 
+
+type Text = ShortText
 
 readLogObjectStream :: JsonLogfile -> IO [LogObject]
 readLogObjectStream (JsonLogfile f) =
@@ -62,6 +64,13 @@ data LogObject
 
 instance ToJSON LogObject
 
+instance ToJSON ShortText where
+  toJSON = String . toText
+
+instance Print ShortText where
+  hPutStr   h = hPutStr   h . toText
+  hPutStrLn h = hPutStrLn h . toText
+
 --
 -- LogObject stream interpretation
 --
@@ -87,18 +96,27 @@ interpreters = Map.fromList
             <$> v .: "slot"
 
   , (,) "TraceMempoolAddedTx" $
-    \v -> do mps :: Object <- v .: "mempoolSize"
-             LOMempoolTxs <$> mps .: "numTxs"
+    \v -> do x :: Object <- v .: "mempoolSize"
+             LOMempoolTxs <$> x .: "numTxs"
 
   , (,) "TraceMempoolRemoveTxs" $
-    \v -> do mps :: Object <- v .: "mempoolSize"
-             LOMempoolTxs <$> mps .: "numTxs"
+    \v -> do x :: Object <- v .: "mempoolSize"
+             LOMempoolTxs <$> x .: "numTxs"
 
   , (,) "TraceMempoolRejectedTx" $
     \_ -> pure LOMempoolRejectedTx
 
   , (,) "TraceLedgerEvent.TookSnapshot" $
     \_ -> pure LOLedgerTookSnapshot
+
+  , (,) "TraceBenchTxSubSummary" $
+    \v -> do x :: Object <- v .: "summary"
+             LOGeneratorSummary
+               <$> ((x .: "ssFailures" :: Parser [Float])
+                    <&> null)
+               <*> x .: "ssTxSent"
+               <*> x .: "ssElapsed"
+               <*> x .: "ssThreadwiseTps"
 
   , (,) "Resources" $
     \v -> LOResources <$> parseJSON (Object v)
@@ -114,6 +132,8 @@ data LOBody
   | LOResources !ResourceStats
   | LOMempoolTxs !Word64
   | LOMempoolRejectedTx
+  -- | LOTxsSubmitted !
+  | LOGeneratorSummary !Bool !Word64 !NominalDiffTime [Float]
   | LOLedgerTookSnapshot
   | LOBlockContext !Word64
   | LOAny !Object
@@ -123,7 +143,7 @@ instance ToJSON LOBody
 
 instance FromJSON LOBody where
   parseJSON = AE.withObject "LOBody" $ \v -> do
-    kind :: Text <- v .: "kind"
+    kind :: Text <- fromText <$> v .: "kind"
     case Map.lookup kind interpreters of
       Just interp -> interp v
       Nothing -> pure $ LOAny v
@@ -136,18 +156,19 @@ instance FromJSON LogObject where
     LogObject
       <$> v .: "at"
       <*> pure kind
-      <*> parseJSON (extendObject "kind" (String kind) (Object unwrapped))
+      <*> parseJSON (extendObject "kind" (String $ toText kind) (Object unwrapped))
    where
      unwrap :: Text -> Text -> Object -> Parser (Object, Text)
      unwrap wrappedKeyPred unwrapKey v = do
-       kind <- v AE..:? "kind"
-       wrapped   :: Maybe Text <- v AE..:? wrappedKeyPred
-       unwrapped :: Maybe Object <- v AE..:? unwrapKey
+       kind <- (fromText <$>) <$> v AE..:? "kind"
+       wrapped   :: Maybe Text <-
+         (fromText <$>) <$> v AE..:? toText wrappedKeyPred
+       unwrapped :: Maybe Object <- v AE..:? toText unwrapKey
        case (kind, wrapped, unwrapped) of
-         (Nothing, Just _, Just x) -> (,) <$> pure x <*> (x .: "kind")
+         (Nothing, Just _, Just x) -> (,) <$> pure x <*> (fromText <$> x .: "kind")
          (Just kind0, _, _) -> pure (v, kind0)
          _ -> fail $ "Unexpected LogObject .data: " <> show v
 
 extendObject :: Text -> Value -> Value -> Value
-extendObject k v (Object hm) = Object $ hm <> HM.singleton k v
+extendObject k v (Object hm) = Object $ hm <> HM.singleton (toText k) v
 extendObject k _ _ = error . Text.unpack $ "Summary key '" <> k <> "' does not serialise to an Object."
