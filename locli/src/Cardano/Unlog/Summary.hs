@@ -72,9 +72,7 @@ renderAnalysisCmdError cmd err =
 --
 
 runAnalysisCommand :: AnalysisCommand -> ExceptT AnalysisCmdError IO ()
-runAnalysisCommand (LeadershipChecks genesisFile metaFile
-                    mLODumpFile mJDumpFile mPDumpFile
-                    mETimelineFile mEStatsFile mHistoOutFile mJOutFile logfiles) = do
+runAnalysisCommand (LeadershipChecks genesisFile metaFile logfiles outputFiles) = do
   profile :: Profile <-
     firstExceptT (RunMetaParseError metaFile . Text.pack) $ newExceptT $
     Aeson.eitherDecode @Profile     <$> LBS.readFile (unJsonRunMetafile metaFile)
@@ -83,56 +81,59 @@ runAnalysisCommand (LeadershipChecks genesisFile metaFile
     Aeson.eitherDecode @Genesis <$> LBS.readFile (unJsonGenesisFile genesisFile)
   firstExceptT AnalysisCmdError $
     runLeadershipCheckCmd
-      (ChainInfo profile cParams)
-      mLODumpFile mJDumpFile
-      mPDumpFile mETimelineFile mEStatsFile mHistoOutFile mJOutFile logfiles
+      (ChainInfo profile cParams) logfiles outputFiles
 runAnalysisCommand SubstringKeys =
   liftIO $ mapM_ putStrLn logObjectStreamInterpreterKeys
 
 runLeadershipCheckCmd ::
-     ChainInfo
-  -> Maybe JsonOutputFile
-  -> Maybe JsonOutputFile
-  -> Maybe TextOutputFile
-  -> Maybe TextOutputFile
-  -> Maybe TextOutputFile
-  -> Maybe EpsOutputFile
-  -> Maybe JsonOutputFile
-  -> [JsonLogfile]
-  -> ExceptT Text IO ()
-runLeadershipCheckCmd chainInfo mLOStreamDumpFile mLeadershipsDumpFile mPrettyDumpFile mExportTimelineFile mExportStatsFile mHistoOutFile mJOutFile logfiles = do
-  objs :: [LogObject] <- liftIO $
-    concat <$> mapM readLogObjectStream logfiles
-  maybe (pure ())
-    (liftIO . dumpLOStream objs) mLOStreamDumpFile
-  let (,) runStats noisySlotStats = analyseLogObjects chainInfo objs
+  ChainInfo -> [JsonLogfile] -> AnalysisOutputFiles -> ExceptT Text IO ()
+runLeadershipCheckCmd chainInfo logfiles AnalysisOutputFiles{..} = do
   liftIO $ do
-    case mLeadershipsDumpFile of
-      Nothing -> pure ()
-      Just (JsonOutputFile f) ->
+    -- 0. Recover LogObjects
+    objs :: [LogObject] <- concat <$> mapM readLogObjectStream logfiles
+    forM_ ofLogObjects
+      (dumpLOStream objs)
+
+    -- 1. Derive the basic scalars and vectors
+    let (,) runStats noisySlotStats = analyseLogObjects chainInfo objs
+    forM_ ofLeaderships $
+      \(JsonOutputFile f) ->
         withFile f WriteMode $ \hnd ->
           forM_ noisySlotStats $ LBS.hPutStrLn hnd . Aeson.encode
+
+    -- 2. Reprocess the slot stats
     let slotStats = cleanupSlotStats noisySlotStats
+
+    -- 3. Derive the summary
+    let drvVectors0, drvVectors1 :: Seq DerivedSlot
+        (,) drvVectors0 drvVectors1 = computeDerivedVectors slotStats
         summary :: Summary
         summary = slotStatsSummary chainInfo slotStats
         analysisOutput :: LBS.ByteString
         analysisOutput = Aeson.encode summary
-    maybe (pure ()) (renderPrettySummary slotStats summary logfiles) mPrettyDumpFile
-    maybe (pure ()) (renderExportStats runStats summary) mExportStatsFile
-    maybe (pure ()) (renderExportTimeline slotStats) mExportTimelineFile
-    maybe (pure ())
+
+    -- 4. Render various outputs
+    forM_ ofTimelinePretty
+      (renderPrettySummary slotStats summary logfiles)
+    forM_ ofStatsCsv
+      (renderExportStats runStats summary)
+    forM_ ofTimelineCsv
+       (renderExportTimeline slotStats)
+    forM_ ofDerivedVectors0Csv
+       (renderDerivedSlots drvVectors0)
+    forM_ ofHistogram
       (renderHistogram "CPU usage spans over 85%" "Span length"
         (toList $ Seq.sort $ sSpanLensCPU85 summary))
-      mHistoOutFile
-    case mJOutFile of
+
+    case ofAnalysis of
       Nothing -> LBS.putStrLn analysisOutput
       Just (JsonOutputFile f) ->
         withFile f WriteMode $ \hnd ->
           LBS.hPutStrLn hnd analysisOutput
  where
    renderHistogram :: Integral a
-     => String -> String -> [a] -> EpsOutputFile -> IO ()
-   renderHistogram desc ylab xs (EpsOutputFile f) =
+     => String -> String -> [a] -> OutputFile -> IO ()
+   renderHistogram desc ylab xs (OutputFile f) =
      Hist.plotAdv f opts hist >> pure ()
     where
       hist = Hist.histogram Hist.binFreedmanDiaconis $ fromIntegral <$> xs
@@ -147,18 +148,18 @@ runLeadershipCheckCmd chainInfo mLOStreamDumpFile mLeadershipsDumpFile mPrettyDu
          printf "--- input: %s" (intercalate " " $ unJsonLogfile <$> srcs)
        renderSummmaryCDF  statsHeadP statsFormatP statsFormatPF s hnd
        renderSlotTimeline slotHeadP slotFormatP False xs hnd
-   renderExportStats :: RunScalars -> Summary -> TextOutputFile -> IO ()
-   renderExportStats rs s o =
-     withFile (unTextOutputFile o) WriteMode $
+   renderExportStats :: RunScalars -> Summary -> CsvOutputFile -> IO ()
+   renderExportStats rs s (CsvOutputFile o) =
+     withFile o WriteMode $
        \h -> do
          renderSummmaryCDF statsHeadE statsFormatE statsFormatEF s h
          mapM_ (hPutStrLn h) $
            renderChainInfoExport chainInfo
            <>
            renderRunScalars rs
-   renderExportTimeline :: Seq SlotStats -> TextOutputFile -> IO ()
-   renderExportTimeline xs o =
-     withFile (unTextOutputFile o) WriteMode $
+   renderExportTimeline :: Seq SlotStats -> CsvOutputFile -> IO ()
+   renderExportTimeline xs (CsvOutputFile o) =
+     withFile o WriteMode $
        renderSlotTimeline slotHeadE slotFormatE True xs
 
    renderSummmaryCDF :: Text -> Text -> Text -> Summary -> Handle -> IO ()
@@ -171,6 +172,13 @@ runLeadershipCheckCmd chainInfo mLOStreamDumpFile mLeadershipsDumpFile mPrettyDu
    dumpLOStream objs o =
      withFile (unJsonOutputFile o) WriteMode $ \hnd -> do
        forM_ objs $ LBS.hPutStrLn hnd . Aeson.encode
+
+   renderDerivedSlots :: Seq DerivedSlot -> CsvOutputFile -> IO ()
+   renderDerivedSlots slots (CsvOutputFile o) = do
+     withFile o WriteMode $ \hnd -> do
+       hPutStrLn hnd derivedSlotsHeader
+       forM_ slots $
+         hPutStrLn hnd . renderDerivedSlot
 
 data Summary
   = Summary
@@ -376,7 +384,6 @@ toDistribLines statsF distPropsF s@Summary{..} =
    <*> ZipList (pctSample <$> dPercentiles sSpanLensCPU85RwdDistrib)
   & getZipList
   & (<> [ mapSummary distPropsF s "size"    (fromIntegral . dCount)
-        , mapSummary distPropsF s "mean"    dAverage
         ])
  where
    distribLine ::

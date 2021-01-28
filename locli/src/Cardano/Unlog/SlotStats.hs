@@ -11,8 +11,6 @@ import           Cardano.Prelude
 import           Data.Aeson
 import qualified Data.Sequence as Seq
 import qualified Data.Text as Text
-import qualified Data.Text.Short as SText
-import           Data.Text.Short (ShortText, fromText, toText)
 
 import           Data.Time.Clock (UTCTime, NominalDiffTime)
 import           Text.Printf

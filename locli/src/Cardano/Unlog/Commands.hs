@@ -20,8 +20,26 @@ import           Cardano.Unlog.LogObject hiding (Text)
 -- | All the CLI subcommands under \"analysis\".
 --
 data AnalysisCommand
-  = LeadershipChecks JsonGenesisFile JsonRunMetafile (Maybe JsonOutputFile) (Maybe JsonOutputFile) (Maybe TextOutputFile) (Maybe TextOutputFile) (Maybe TextOutputFile) (Maybe EpsOutputFile) (Maybe JsonOutputFile) [JsonLogfile]
+  = LeadershipChecks
+      JsonGenesisFile
+      JsonRunMetafile
+      [JsonLogfile]
+      AnalysisOutputFiles
   | SubstringKeys
+  deriving (Show)
+
+data AnalysisOutputFiles
+  = AnalysisOutputFiles
+  { ofLogObjects         :: Maybe JsonOutputFile
+  , ofLeaderships        :: Maybe JsonOutputFile
+  , ofTimelinePretty     :: Maybe TextOutputFile
+  , ofTimelineCsv        :: Maybe  CsvOutputFile
+  , ofStatsCsv           :: Maybe  CsvOutputFile
+  , ofHistogram          :: Maybe     OutputFile
+  , ofAnalysis           :: Maybe JsonOutputFile
+  , ofDerivedVectors0Csv :: Maybe  CsvOutputFile
+  , ofDerivedVectors1Csv :: Maybe  CsvOutputFile
+  }
   deriving (Show)
 
 renderAnalysisCommand :: AnalysisCommand -> Text
@@ -29,6 +47,37 @@ renderAnalysisCommand sc =
   case sc of
     LeadershipChecks {} -> "analyse leadership"
     SubstringKeys {}    -> "analyse substring-keys"
+
+parseAnalysisOutputFiles :: Parser AnalysisOutputFiles
+parseAnalysisOutputFiles =
+  AnalysisOutputFiles
+    <$> optional
+        (argJsonOutputFile "logobjects-json"
+           "Dump the entire input LogObject stream")
+    <*> optional
+        (argJsonOutputFile "leaderships-json"
+           "Dump extracted slot leadership summaries, as a side-effect of log analysis")
+    <*> optional
+        (argTextOutputFile "timeline-pretty"
+           "Dump pretty timeline of extracted slot leadership summaries, as a side-effect of log analysis")
+    <*> optional
+        (argCsvOutputFile "timeline-csv"
+           "Dump CSV of the timeline")
+    <*> optional
+        (argCsvOutputFile "stats-csv"
+           "Dump CSV of the timeline statistics")
+    <*> optional
+        (argOutputFile "cpu-spans-histogram-png"
+           "Write a PNG file with the CPU spans histogram")
+    <*> optional
+        (argJsonOutputFile "analysis-json"
+           "Write analysis JSON to this file, if specified -- otherwise print to stdout.")
+    <*> optional
+        (argCsvOutputFile "derived-vectors-0-csv"
+           "Dump CSV of vectors derived from the timeline")
+    <*> optional
+        (argCsvOutputFile "derived-vectors-1-csv"
+           "Dump CSV of vectors derived from the timeline")
 
 parseAnalysisCommands :: Parser AnalysisCommand
 parseAnalysisCommands =
@@ -40,28 +89,8 @@ parseAnalysisCommands =
                               "Genesis file of the run"
                        <*> argJsonRunMetafile "run-metafile"
                               "The meta.json file from the benchmark run"
-                       <*> optional
-                           (argJsonOutputFile "dump-logobjects"
-                              "Dump the entire input LogObject stream")
-                       <*> optional
-                           (argJsonOutputFile "dump-leaderships"
-                              "Dump extracted slot leadership summaries, as a side-effect of log analysis")
-                       <*> optional
-                           (argTextOutputFile "pretty-timeline"
-                              "Dump pretty timeline of extracted slot leadership summaries, as a side-effect of log analysis")
-                       <*> optional
-                           (argTextOutputFile "export-timeline"
-                              "Dump CSV of the timeline")
-                       <*> optional
-                           (argTextOutputFile "export-stats"
-                              "Dump CSV of the timeline statistics")
-                       <*> optional
-                           (argEpsOutputFile "cpu-spans-histogram"
-                              "Write an EPS file with the CPU spans histogram")
-                       <*> optional
-                           (argJsonOutputFile "analysis-output"
-                              "Write analysis JSON to this file, if specified -- otherwise print to stdout.")
-                       <*> some argJsonLogfile) $
+                       <*> some argJsonLogfile
+                       <*> parseAnalysisOutputFiles) $
             Opt.progDesc "Analyse leadership checks")
       , Opt.command "substring-keys"
           (Opt.info (pure SubstringKeys) $
@@ -109,10 +138,18 @@ argTextOutputFile optname desc =
       <> metavar "TEXT-OUTFILE"
       <> help desc
 
-argEpsOutputFile :: String -> String -> Parser EpsOutputFile
-argEpsOutputFile optname desc =
-  fmap EpsOutputFile $
+argCsvOutputFile :: String -> String -> Parser CsvOutputFile
+argCsvOutputFile optname desc =
+  fmap CsvOutputFile $
     Opt.option Opt.str
       $ long optname
-      <> metavar "EPS-OUTFILE"
+      <> metavar "CSV-OUTFILE"
+      <> help desc
+
+argOutputFile :: String -> String -> Parser OutputFile
+argOutputFile optname desc =
+  fmap OutputFile $
+    Opt.option Opt.str
+      $ long optname
+      <> metavar "OUTFILE"
       <> help desc

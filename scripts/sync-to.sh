@@ -80,7 +80,7 @@ do repo_commit[$r]=$(git -C "$(repo_path "$r")" rev-parse HEAD)
    echo "--( $r:  git ${repo_commit[$r]} / sha256 ${repo_hash[$r]}"
 
    if test "$r" != "$other_name" -a -n "$strict_coherence" && test "$(cabal_project_current_commit $(repo_project "$other_name") "$r")" != "${repo_commit[$r]}"
-   then fail "$(repo_project "$other_name") pins $r to $(cabal_project_current_commit $(repo_project "$other_name") "$r"), but ${repo_commit[$r]} is checked out"
+   then fail "$(repo_project "$other_name") pins $r to $(cabal_project_current_commit $(repo_project "$other_name") "$r") -- but ${repo_commit[$r]} is checked out"
    fi
 done
 

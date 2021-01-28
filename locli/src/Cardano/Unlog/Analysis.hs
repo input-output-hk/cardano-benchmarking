@@ -7,7 +7,7 @@
 {-# OPTIONS_GHC -Wno-incomplete-patterns -Wno-name-shadowing #-}
 module Cardano.Unlog.Analysis (module Cardano.Unlog.Analysis) where
 
-import           Prelude (error)
+import           Prelude (String, error)
 import           Cardano.Prelude
 
 import           Control.Arrow ((&&&))
@@ -200,3 +200,53 @@ slotStart CInfo{..} =
   flip Time.addUTCTime system_start
   . (* slot_duration gsis)
   . fromIntegral
+
+data DerivedSlot
+  = DerivedSlot
+  { dsSlot      :: Word64
+  , dsBlockless :: Word64
+  }
+
+derivedSlotsHeader :: String
+derivedSlotsHeader =
+  "Slot,Blockless span"
+
+renderDerivedSlot :: DerivedSlot -> String
+renderDerivedSlot DerivedSlot{..} =
+  mconcat
+  [ show dsSlot, ",", show dsBlockless
+  ]
+
+computeDerivedVectors :: Seq SlotStats -> (Seq DerivedSlot, Seq DerivedSlot)
+computeDerivedVectors ss =
+  (\(_,_,d0,d1) -> ( Seq.fromList d0
+                   , Seq.fromList d1
+                   )) $
+  Seq.foldrWithIndex step (0, 0, [], []) ss
+ where
+   step ::
+        Int
+     -> SlotStats
+     -> (Word64, Word64, [DerivedSlot], [DerivedSlot])
+     -> (Word64, Word64, [DerivedSlot], [DerivedSlot])
+   step _ SlotStats{..} (lastBlockless, spanBLSC, accD0, accD1) =
+     if lastBlockless < slBlockless
+     then ( slBlockless
+          , slBlockless
+          , DerivedSlot
+            { dsSlot = slSlot
+            , dsBlockless = slBlockless
+            }:accD0
+          , DerivedSlot
+            { dsSlot = slSlot
+            , dsBlockless = slBlockless
+            }:accD1
+          )
+     else ( slBlockless
+          , spanBLSC
+          , DerivedSlot
+            { dsSlot = slSlot
+            , dsBlockless = spanBLSC
+            }:accD0
+          , accD1
+          )

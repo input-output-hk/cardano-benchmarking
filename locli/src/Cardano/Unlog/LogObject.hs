@@ -49,8 +49,12 @@ newtype TextOutputFile
   = TextOutputFile { unTextOutputFile :: FilePath }
   deriving (Show, Eq)
 
-newtype EpsOutputFile
-  = EpsOutputFile { unEpsOutputFile :: FilePath }
+newtype CsvOutputFile
+  = CsvOutputFile { unCsvOutputFile :: FilePath }
+  deriving (Show, Eq)
+
+newtype OutputFile
+  = OutputFile { unOutputFile :: FilePath }
   deriving (Show, Eq)
 
 data LogObject

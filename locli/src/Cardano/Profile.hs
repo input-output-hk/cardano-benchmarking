@@ -60,14 +60,13 @@ data Profile
 renderChainInfoExport :: ChainInfo -> [Text]
 renderChainInfoExport CInfo{..} =
   Data.Text.intercalate "," <$>
-  [[ "name",       profile_name prof]
-  ,[ "era",        era prof ]
-  ,[ "date",       show $ date prof]
-  ,[ "tag",        tag prof]
-  ,[ "n_pools",    show $ n_pools gsis]
-  ,[ "density",    show $ dense_pool_density gsis]
-  ,[ "delegators", show $ delegators gsis]
-  ,[ "utxo",       show $ utxo gsis]
+  [[ "Profile",    profile_name prof]
+  ,[ "Era",        era prof ]
+  ,[ "Date",       show $ date prof]
+  ,[ "Pools",      show $ n_pools gsis]
+  ,[ "Density",    show $ dense_pool_density gsis]
+  ,[ "Delegators", show $ delegators gsis]
+  ,[ "UTxO",       show $ utxo gsis]
   ]
 
 data Genesis

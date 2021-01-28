@@ -48,24 +48,28 @@ machine_logfiles() {
 locli_analyse_cmd_mach_args() {
         local logdir=$1 mach=$2
 
-        echo --run-metafile
-        echo "$logdir"/meta.json
         echo --genesis
         echo "$logdir"/genesis.json
-        echo --dump-logobjects
-        echo "$logdir"/analysis/logs-"$mach".logobjects.json
-        echo --dump-leaderships
-        echo "$logdir"/analysis/logs-"$mach".leaderships.json
-        echo --analysis-output
-        echo "$logdir"/analysis/logs-"$mach".analysis.json
-        echo --pretty-timeline
-        echo "$logdir"/analysis/logs-"$mach".analysis.txt
-        echo --export-stats
+        echo --run-metafile
+        echo "$logdir"/meta.json
+        # echo --logobjects-json
+        # echo "$logdir"/analysis/logs-"$mach".logobjects.json
+        # echo --leaderships-json
+        # echo "$logdir"/analysis/logs-"$mach".leaderships.json
+        echo --timeline-pretty
+        echo "$logdir"/analysis/logs-"$mach".timeline.txt
+        # echo --timeline-csv
+        # echo "$logdir"/analysis/logs-"$mach".timeline.csv
+        echo --stats-csv
         echo "$logdir"/analysis/logs-"$mach".stats.csv
-        echo --export-timeline
-        echo "$logdir"/analysis/logs-"$mach".timeline.csv
-        echo --cpu-spans-histogram
-        echo "$logdir"/analysis/logs-"$mach".cpu85-span-lens.png
+        # echo --cpu-spans-histogram-png
+        # echo "$logdir"/analysis/logs-"$mach".cpu85-span-lens.png
+        echo --analysis-json
+        echo "$logdir"/analysis/logs-"$mach".analysis.json
+        echo --derived-vectors-0-csv
+        echo "$logdir"/analysis/logs-"$mach".derived.1.csv
+        echo --derived-vectors-1-csv
+        echo "$logdir"/analysis/logs-"$mach".derived.1.csv
 }
 
 analyse_mach() {
