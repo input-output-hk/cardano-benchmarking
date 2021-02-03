@@ -13,9 +13,7 @@ CABALPKG_TO_HASKELLNIX_PKGSET=(
         [cardano-cli]='cardanoNodeHaskellPackages'
         [cardano-config]='cardanoNodeHaskellPackages'
         [cardano-node]='cardanoNodeHaskellPackages'
-        [cardano-db-sync]='cardanoDbSyncHaskellPackages'
         [cardano-tx-generator]='cardanoBenchmarkingHaskellPackages'
-        [bm-timeline]='cardanoBenchmarkingHaskellPackages'
         [locli]='cardanoBenchmarkingHaskellPackages'
 )
 
@@ -23,13 +21,8 @@ declare -A CABALEXE_TO_CABALPKG
 CABALEXE_TO_CABALPKG=(
         [cardano-cli]='cardano-cli'
         [cardano-config]='cardano-node'
-        [cardano-db-sync]='cardano-db-sync'
         [cardano-node]='cardano-node'
         [cardano-tx-generator]='cardano-tx-generator'
-        [bmtimeline]='bm-timeline'
-        [bmtime2block]='bm-timeline'
-        [bmresources]='bm-timeline'
-        [bmadoption]='bm-timeline'
         [locli]='locli'
 )
 

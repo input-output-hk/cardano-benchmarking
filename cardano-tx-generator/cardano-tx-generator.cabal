@@ -110,23 +110,3 @@ executable cardano-tx-generator
                      , transformers-except
 
   default-extensions:  NoImplicitPrelude
-
-test-suite cardano-tx-generator-test
-  hs-source-dirs:       test
-  main-is:              Main.hs
-  type:                 exitcode-stdio-1.0
-
-  build-depends:        base >=4.12 && <5
-                      , tasty-hunit
-                      , tasty
-                      , heredoc
-                      , optparse-applicative
-                      , cardano-tx-generator
-
-  default-language:     Haskell2010
-
-  ghc-options:          -Weverything
-                        -fno-warn-missing-import-lists
-                        -fno-warn-safe
-                        -fno-warn-unsafe
-                        -threaded -rtsopts -with-rtsopts=-N -with-rtsopts=-T

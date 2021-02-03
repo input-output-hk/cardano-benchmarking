@@ -2,7 +2,6 @@ index-state: 2020-12-11T00:00:00Z
 
 packages:
     cardano-tx-generator
-    bm-timeline
     -- ../ouroboros-network/ouroboros-consensus
     -- ../ouroboros-network/ouroboros-consensus-byron
     -- ../ouroboros-network/ouroboros-consensus-cardano
@@ -52,14 +51,6 @@ package cryptonite
 tests: False
 
 test-show-details: direct
-
--- Then enable specific tests in this repo
-
-package cardano-tx-generator
-  tests: True
-
-package bm-timeline
-  tests: True
 
 -- required for nix:
 
