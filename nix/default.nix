@@ -2,7 +2,7 @@
 , crossSystem ? null
 , config ? {}
 , sourcesOverride ? {}
-, gitrev ? null, customConfig ? {}
+, gitrev ? null
 }:
 let
   sources = import ./sources.nix { inherit pkgs; }
@@ -14,8 +14,7 @@ let
   nixpkgs = if (sources ? nixpkgs)
     then (builtins.trace "Not using IOHK default nixpkgs (use 'niv drop nixpkgs' to use default for better sharing)"
       sources.nixpkgs)
-    else (builtins.trace "Using IOHK default nixpkgs"
-      iohkNixMain.nixpkgs);
+    else iohkNixMain.nixpkgs;
 
   # for inclusion in pkgs:
   overlays =
@@ -28,7 +27,7 @@ let
     ++ iohkNixMain.overlays.iohkNix
     # our own overlays:
     ++ [
-      (pkgs: _: with pkgs; rec {
+      (pkgs: _: with pkgs; {
         inherit gitrev;
 
         # commonLib: mix pkgs.lib with iohk-nix utils and our own:
@@ -36,20 +35,6 @@ let
           // import ./util.nix { inherit haskell-nix; }
           # also expose our sources, nixpkgs and overlays
           // { inherit overlays sources nixpkgs; };
-
-        svcLib = import ./svclib.nix { inherit pkgs; };
-
-        inherit (import (sources.cardano-node + "/nix") {
-          inherit system crossSystem config sourcesOverride;
-          gitrev = sources.cardano-node.rev;
-        }) cardanoNodeHaskellPackages cardanoNodeEventlogHaskellPackages cardano-node cardano-cli;
-
-        cardanoNode.scripts = callPackage (sources.cardano-node + "/nix/scripts.nix") { inherit customConfig; };
-
-        cardanoDbSync = import sources.cardano-db-sync {
-          inherit system crossSystem config sourcesOverride;
-        };
-        cardanoDbSyncHaskellPackages = cardanoDbSync.haskellPackages;
       })
       # And, of course, our haskell-nix-ified cabal project:
       (import ./pkgs.nix)
