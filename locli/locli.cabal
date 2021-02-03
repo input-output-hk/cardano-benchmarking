@@ -20,10 +20,11 @@ library
                        Cardano.Config.Git.Rev
                        Cardano.Config.Git.RevFromGit
 
+                       Cardano.Profile
+
                        Cardano.TopHandler
 
                        Cardano.Unlog.Analysis
-                       Cardano.Unlog.ChainParams
                        Cardano.Unlog.Commands
                        Cardano.Unlog.LogObject
                        Cardano.Unlog.Parsers
@@ -54,6 +55,7 @@ library
                      , split
                      , template-haskell
                      , text
+                     , text-short
                      , time
                      , transformers
                      , transformers-except
@@ -87,6 +89,7 @@ executable locli
                      , locli
                      , optparse-applicative
                      , text
+                     , text-short
                      , transformers
                      , transformers-except
   default-extensions:  NoImplicitPrelude

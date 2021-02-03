@@ -28,10 +28,15 @@ spreadsheet_mach() {
         oprint "generating sheets for $mach"
         local infix
 
-        ln -sf logs-"$mach".stats.csv    "$logdir"/analysis/"$run_name".csv
-
+        ln -sf logs-"$mach".stats.csv           "$logdir"/analysis/"$run_name".csv
         rm -f "$logdir"/analysis/stats-"$mach".ods
         ssconvert "$logdir"/analysis/"$run_name".csv "$logdir"/analysis/stats-"$mach".ods
+
+        rm -f "$logdir"/analysis/drv-"$mach".*.ods
+        for d in 0 1
+        do ln -sf logs-"$mach".derived.$d.csv "$logdir"/analysis/"$run_name".d$d.csv
+           ssconvert "$logdir"/analysis/"$run_name".d$d.csv "$logdir"/analysis/drv-"$mach".$d.ods
+        done
 
         ## We ignore the timeline for now.
         # ln -sf logs-"$mach".timeline.csv "$logdir"/analysis/"$run_name"."$mach".t.csv

@@ -9,7 +9,7 @@ unpack_run() {
         mkdir -p "$rundir"/analysis
         (
                 cd "$rundir"/analysis
-                tar xaf ../logs-nodes.tar.xz    logs-node-{1,10}
+                tar xaf ../logs-nodes.tar.xz    logs-node-1
                 tar xaf ../logs-explorer.tar.xz
         )
 }
