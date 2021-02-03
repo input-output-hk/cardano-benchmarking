@@ -9,7 +9,12 @@
 
 module Cardano.Benchmarking.GeneratorTx.Tx
   (
-    mkGenTransaction -- ? needed ??
+    Fund
+  , mkFund
+  , fundTxIn
+  , fundAdaValue
+  , keyAddress
+  , mkGenesisTransaction -- ? needed ??
   , mkTransactionGen
   , mkTxOutValueAdaOnly
   , txOutValueToLovelace
@@ -24,14 +29,32 @@ import qualified Data.List.NonEmpty as NonEmpty
 import           Data.List.NonEmpty (NonEmpty(..))
 import qualified Data.Map.Strict as Map
 import           Data.Map.Strict (Map)
-import           Data.Maybe
 
-import           Cardano.Benchmarking.GeneratorTx.Era
+import           Cardano.Benchmarking.GeneratorTx.Benchmark (TxAdditionalSize(..))
 
 import           Cardano.Api
 
-{-# DEPRECATED mkGenTransaction "to be removed" #-}
-mkGenTransaction :: forall era .
+
+type Fund = (TxIn, InAnyCardanoEra TxOutValue)
+
+mkFund :: forall era. IsCardanoEra era => TxIn -> TxOutValue era -> Fund
+mkFund txIn val = (txIn, InAnyCardanoEra cardanoEra val)
+
+fundTxIn :: Fund -> TxIn
+fundTxIn (x,_) = x
+
+fundAdaValue :: Fund -> Lovelace
+fundAdaValue (_, InAnyCardanoEra _ txOut) = txOutValueToLovelace txOut
+
+keyAddress :: forall era. IsShelleyBasedEra era => NetworkId -> SigningKey PaymentKey -> AddressInEra era
+keyAddress networkId k
+  = makeShelleyAddressInEra
+      networkId
+      (PaymentCredentialByKey $ verificationKeyHash $ getVerificationKey k)
+      NoStakeAddress
+
+{-# DEPRECATED mkGenesisTransaction "to be removed" #-}
+mkGenesisTransaction :: forall era .
      IsShelleyBasedEra era
   => SigningKey GenesisUTxOKey
   -> TxAdditionalSize
@@ -40,7 +63,7 @@ mkGenTransaction :: forall era .
   -> [TxIn]
   -> [TxOut era]
   -> Tx era
-mkGenTransaction key _payloadSize ttl fee txins txouts
+mkGenesisTransaction key _payloadSize ttl fee txins txouts
   = case makeTransactionBody txBodyContent of
     Right b -> signShelleyTransaction b [WitnessGenesisUTxOKey key]
     Left err -> error $ show err
@@ -112,15 +135,15 @@ mkValidityUpperBound ttl = case shelleyBasedEra @ era of
   ShelleyBasedEraAllegra -> TxValidityUpperBound ValidityUpperBoundInAllegraEra ttl
   ShelleyBasedEraMary    -> TxValidityUpperBound ValidityUpperBoundInMaryEra ttl
 
+-- this is basically a transaction with automatic change handling ?
+
 mkTransactionGen :: forall era .
      IsShelleyBasedEra era
   => SigningKey PaymentKey
-  -> NonEmpty (TxIn, TxOut era)
+  -> NonEmpty Fund
   -- ^ Non-empty list of (TxIn, TxOut) that will be used as
   -- inputs and the key to spend the associated value
-  -> Maybe (AddressInEra era)
-  -- ^ The address to associate with the 'change',
-  -- if different from that of the first argument
+  -> AddressInEra era
   -> [(Int, TxOut era)]
   -- ^ Each recipient and their payment details
   -> TxMetadataInEra era
@@ -129,30 +152,28 @@ mkTransactionGen :: forall era .
   -- ^ Tx fee.
   -> ( Maybe (TxIx, Lovelace)   -- The 'change' index and value (if any)
      , Lovelace                 -- The associated fees
-     , Map Int TxIx               -- The offset map in the transaction below
+     , Map Int TxIx             -- The offset map in the transaction below
      , Tx era
      )
-mkTransactionGen signingKey inputs mChangeAddr payments metadata fee =
+mkTransactionGen signingKey inputs address payments metadata fee =
   (mChange, fee, offsetMap, tx)
  where
   tx = mkTransaction signingKey metadata (SlotNo 10000000)
          fee
-         (NonEmpty.toList $ fst <$> inputs)
+         (NonEmpty.toList $ fundTxIn <$> inputs)
          (NonEmpty.toList txOutputs)
 
-  fundsTxOuts   = snd <$> NonEmpty.toList inputs
   payTxOuts     = map snd payments
 
-  totalInpValue = txOutSum fundsTxOuts
+  totalInpValue = sum $ fundAdaValue <$> inputs
   totalOutValue = txOutSum payTxOuts
   changeValue = totalInpValue - totalOutValue - fee
-      -- change the order of comparisons first check emptiness of txouts AND remove appendr after
+      -- change the order of comparisons first check emptyness of txouts AND remove appendr after
 
   (txOutputs, mChange) =
     if changeValue > 0
     then
-      let changeAddress = fromMaybe (txOutAddress . snd $ NonEmpty.head inputs) mChangeAddr
-          changeTxOut   = TxOut changeAddress $ mkTxOutValueAdaOnly changeValue
+      let changeTxOut   = TxOut address $ mkTxOutValueAdaOnly changeValue
           changeIndex   = TxIx $ fromIntegral $ length payTxOuts -- 0-based index
       in
           (appendr payTxOuts (changeTxOut :| []), Just (changeIndex, changeValue))
@@ -169,8 +190,6 @@ mkTransactionGen signingKey inputs mChangeAddr payments metadata fee =
   txOutSum l = sum $ map toVal l
 
   toVal (TxOut _ val) = txOutValueToLovelace val
-
-  txOutAddress (TxOut addr _) = addr
 
   -- | Append a non-empty list to a list.
   -- > appendr [1,2,3] (4 :| [5]) == 1 :| [2,3,4,5]

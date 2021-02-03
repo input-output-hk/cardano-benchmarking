@@ -14,6 +14,7 @@ module Cardano.Benchmarking.GeneratorTx.Benchmark
   , mkBenchmark
   , parsePartialBenchmark
 
+  , NodeIPv4Address
   , InitCooldown(..)
   , NumberOfInputsPerTx(..)
   , NumberOfOutputsPerTx(..)
@@ -32,6 +33,15 @@ module Cardano.Benchmarking.GeneratorTx.Benchmark
   , SubmissionErrorPolicy(..)
 
   , SubmissionSummary(..)
+
+  , GeneratorCmd(..)
+  , parseCommand
+  , parserInfo
+
+  , GeneratorFunds(..)
+  , parseGeneratorFunds
+
+  , runParser
   ) where
 
 import           Cardano.Prelude hiding (TypeError)
@@ -40,11 +50,11 @@ import           Prelude (String)
 import qualified Data.List.NonEmpty as NE
 import           Data.Monoid.Generic
 import           Data.Time.Clock (NominalDiffTime)
-import           Options.Applicative (Parser)
-import qualified Options.Applicative as Opt
+import           Options.Applicative as Opt
 
 -- Node API imports
 import           Cardano.Api.Typed
+import           Cardano.CLI.Types (SigningKeyFile(..))
 
 -- Node imports
 import           Cardano.Node.Types
@@ -266,3 +276,89 @@ mkBenchmark PartialBenchmark{..} = do
    -- | Return an error if the @Last@ option is incomplete.
    mkComplete :: Text -> Last a -> Either Text a
    mkComplete err (Last x) = maybe (Left err) Right x
+
+
+data GeneratorCmd =
+  GenerateTxs FilePath
+              SocketPath
+              AnyCardanoEra
+              PartialBenchmark
+              (Maybe NetworkMagic)
+              Bool
+              GeneratorFunds
+
+parserInfo :: String -> Opt.ParserInfo GeneratorCmd
+parserInfo t =
+  Opt.info
+  (parseCommand Opt.<**> Opt.helper)
+  (Opt.fullDesc <> Opt.header t)
+
+defaultEra :: AnyCardanoEra
+defaultEra = AnyCardanoEra ShelleyEra
+
+parseCommand :: Opt.Parser GeneratorCmd
+parseCommand =
+  GenerateTxs
+    <$> parseConfigFile
+          "config"
+          "Configuration file for the cardano-node"
+    <*> parseSocketPath
+          "socket-path"
+          "Path to a cardano-node socket"
+   <*> ( fromMaybe defaultEra <$>
+         (
+             eraFlag "shelley" ShelleyEra
+         <|> eraFlag "mary"    MaryEra
+         <|> eraFlag "allegra" AllegraEra
+         )
+       )
+    <*> parsePartialBenchmark
+    <*> optional pMagicOverride
+    <*> ( flag False True
+          (long "addr-mainnet" <> help "Override address discriminator to mainnet.")
+        )
+    <*> parseGeneratorFunds
+ where
+   pMagicOverride :: Opt.Parser NetworkMagic
+   pMagicOverride =
+     NetworkMagic <$>
+     Opt.option Opt.auto
+     (  Opt.long "n2n-magic-override"
+       <> Opt.metavar "NATURAL"
+       <> Opt.help "Override the network magic for the node-to-node protocol."
+     )
+   eraFlag name tag = flag Nothing (Just $ AnyCardanoEra tag)
+                         (long name <> help ("Initialise Cardano in " ++ name ++" submode."))
+
+data GeneratorFunds
+  = FundsGenesis   SigningKeyFile
+  | FundsUtxo      SigningKeyFile TxIn (TxOut ShelleyEra)
+  | FundsSplitUtxo SigningKeyFile FilePath
+  deriving stock Show
+
+parseGeneratorFunds :: Opt.Parser GeneratorFunds
+parseGeneratorFunds =
+  (FundsGenesis
+    <$> parseSigningKeysFile
+        "genesis-funds-key"
+        "Genesis UTxO funds signing key.")
+  <|>
+  (FundsUtxo
+    <$> parseSigningKeysFile
+        "utxo-funds-key"
+        "UTxO funds signing key."
+    <*> pTxIn
+    <*> pTxOut)
+  <|>
+  (FundsSplitUtxo
+    <$> parseSigningKeysFile
+        "split-utxo-funds-key"
+        "UTxO funds signing key."
+    <*> parseFilePath
+        "split-utxo"
+        "UTxO funds file.")
+
+runParser :: String -> IO GeneratorCmd
+runParser title = Opt.customExecParser
+  (Opt.prefs Opt.showHelpOnEmpty)
+         (parserInfo title)
