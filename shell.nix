@@ -6,11 +6,7 @@
 , withHoogle ? true
 , pkgs ? import ./nix {
     inherit config sourcesOverride;
-}
-# Benchmarking specifics:
-, withConsensusDeps ? true
-, withMonitoringDeps ? true
-, withNodeDeps ? withConsensusDeps || withMonitoringDeps
+  }
 }:
 with pkgs;
 let
@@ -22,53 +18,23 @@ let
   shell = cardanoBenchmarkingHaskellPackages.shellFor {
     name = "cabal-dev-shell";
 
-    # packages = ps: lib.attrValues (haskell-nix.haskellLib.selectProjectPackages ps);
-    packages = ps:
-      with haskellPackages;
-      lib.attrValues (haskell-nix.haskellLib.selectProjectPackages ps)
-      ++ lib.optionals withConsensusDeps
-        (with cardanoNodeHaskellPackages; [
-          ouroboros-consensus
-          ouroboros-consensus-byron
-          ouroboros-consensus-cardano
-          ouroboros-consensus-shelley
-        ])
-      ++ lib.optionals withMonitoringDeps
-        (with cardanoNodeHaskellPackages; [
-          iohk-monitoring
-          lobemo-backend-aggregation
-          lobemo-backend-ekg
-          lobemo-backend-monitoring
-          lobemo-backend-trace-forwarder
-        ])
-      ++ lib.optionals withNodeDeps
-        (with cardanoNodeHaskellPackages; [
-          cardano-api
-          cardano-config
-          cardano-cli
-          cardano-node
-        ]);
+    packages = ps: lib.attrValues (haskell-nix.haskellLib.selectProjectPackages ps);
 
     # These programs will be available inside the nix-shell.
     buildInputs = with haskellPackages; [
       cabal-install
-      ghc-prof-flamegraph
       ghcid
-      pkgs.git
-      pkgs.gnuplot
       hlint
-      niv
-      nix
-      pkgconfig
-      profiterole
-      profiteur
-      sqlite-interactive
-      stylish-haskell
-      tmux
       weeder
-      # from devops-shell:
-      python3Packages.supervisor
-      python3Packages.ipython
+      nix
+      niv
+      pkgconfig
+      profiteur
+      profiterole
+      ghc-prof-flamegraph
+      sqlite-interactive
+      tmux
+      pkgs.git
     ];
 
     # Prevents cabal from choosing alternate plans, so that

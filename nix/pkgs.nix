@@ -11,8 +11,10 @@ pkgs: _: with pkgs;
       haskell-nix
       buildPackages
       gitrev
-      cardanoNodeHaskellPackages
-      cardanoNodeEventlogHaskellPackages
       ;
   };
+
+  #Grab the executable component of our package.
+  inherit (cardanoBenchmarkingHaskellPackages.cardano-tx-generator.components.exes) cardano-tx-generator;
+  inherit (cardanoBenchmarkingHaskellPackages.locli.components.exes) locli;
 }
