@@ -24,25 +24,13 @@ let
 
   scripts = callPackage ./nix/scripts.nix { inherit customConfig; };
 
-  rewrite-static = _: p: if (pkgs.stdenv.hostPlatform.isDarwin) then
-    pkgs.runCommandCC p.name {
-      nativeBuildInputs = [ pkgs.haskellBuildUtils.package pkgs.buildPackages.binutils pkgs.buildPackages.nix ];
-    } ''
-      cp -R ${p} $out
-      chmod -R +w $out
-      rewrite-libs $out/bin $out/bin/*
-    '' else if (pkgs.stdenv.hostPlatform.isMusl) then
-    pkgs.runCommandCC p.name { } ''
-      cp -R ${p} $out
-      chmod -R +w $out
-      $STRIP $out/bin/*
-    '' else p;
+  rewrite-static = _: p: p;
 
   packages = {
     inherit haskellPackages cardano-tx-generator locli;
 
     # so that eval time gc roots are cached (nix-tools stuff)
-    inherit (cardanoNodeHaskellPackages) roots;
+    inherit (cardanoBenchmarkingHaskellPackages) roots;
 
     inherit (haskellPackages.cardano-tx-generator.identifier) version;
 
@@ -59,9 +47,9 @@ let
       # `checks.tests` collect results of executing the tests:
       tests = collectChecks haskellPackages;
 
-      hlint = callPackage iohkNix.tests.hlint {
-        src = ./. ;
-      };
+      # hlint = callPackage iohkNix.tests.hlint {
+      #   src = ./. ;
+      # };
     };
 
     shell = import ./shell.nix {
