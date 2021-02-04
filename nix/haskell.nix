@@ -103,10 +103,10 @@ let
         # cardano-cli-test depends on cardano-cli
         packages.cardano-cli.preCheck = "export CARDANO_CLI=${config.hsPkgs.cardano-cli.components.exes.cardano-cli}/bin/cardano-cli${pkgs.stdenv.hostPlatform.extensions.executable}";
       })
-      {
-        packages = lib.genAttrs projectPackages
-          (name: { configureFlags = [ "--ghc-option=-Werror" ]; });
-      }
+      # {
+      #   packages = lib.genAttrs projectPackages
+      #     (name: { configureFlags = [ "--ghc-option=-Werror" ]; });
+      # }
       {
         packages = lib.genAttrs assertedPackages
           (name: { flags.asserts = true; });
