@@ -42,7 +42,7 @@ let
     inherit haskellPackages cardano-tx-generator locli;
 
     # so that eval time gc roots are cached (nix-tools stuff)
-    inherit (cardanoNodeHaskellPackages) roots;
+    inherit (cardanoBenchmarkingHaskellPackages) roots;
 
     inherit (haskellPackages.cardano-tx-generator.identifier) version;
 
