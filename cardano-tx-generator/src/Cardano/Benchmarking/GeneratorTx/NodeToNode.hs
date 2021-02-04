@@ -83,7 +83,7 @@ benchmarkConnectTxSubmit ioManager handshakeTracer submissionTracer codecConfig 
   supportedVers :: Map.Map NodeToNodeVersion (BlockNodeToNodeVersion blk)
   supportedVers = supportedNodeToNodeVersions (Proxy @blk)
   myCodecs :: Codecs blk DeserialiseFailure IO
-                ByteString ByteString ByteString ByteString ByteString ByteString
+                ByteString ByteString ByteString ByteString ByteString ByteString ByteString
   myCodecs  = defaultCodecs codecConfig blkN2nVer
   -- peerMultiplex :: Versions NtN.NodeToNodeVersion NtN.DictVersion
   --                    (OuroborosApplication InitiatorMode SockAddr ByteString IO () Void)
