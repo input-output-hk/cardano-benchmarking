@@ -50,6 +50,7 @@ library
                      , Histogram
                      , iohk-monitoring
                      , optparse-applicative
+                     , optparse-generic
                      , process
                      , scientific
                      , split
