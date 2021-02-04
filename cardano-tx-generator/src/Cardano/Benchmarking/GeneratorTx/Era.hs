@@ -131,8 +131,6 @@ instance Show (Consensus.Protocol m blk p) where
   show Consensus.ProtocolByron{}   = "ProtocolByron"
   show Consensus.ProtocolShelley{} = "ProtocolShelley"
   show Consensus.ProtocolCardano{} = "ProtocolCardano"
-  show Consensus.ProtocolMary{} = "ProtocolMary"
-  -- show Consensus.ProtocolLeaderSchedule{} = "ProtocolLeaderSchedule"
 
 {-------------------------------------------------------------------------------
   Tracers
