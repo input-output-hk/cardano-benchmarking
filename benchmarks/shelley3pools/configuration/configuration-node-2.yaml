@@ -216,7 +216,7 @@ TraceMempool: True
 TraceMux: False
 
 # Trace TxSubmission server (inbound transactions).
-TraceTxInbound: False
+TraceTxInbound: True
 
 # Trace TxSubmission client (outbound transactions).
 TraceTxOutbound: False
@@ -228,3 +228,4 @@ options:
   mapBackends:
     "cardano.node.metrics":
       - EKGViewBK
+      - KatipBK

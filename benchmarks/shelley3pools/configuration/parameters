@@ -27,19 +27,19 @@ STAKEPOOLS="1 2"
 num_pools=$(echo $STAKEPOOLS | wc -w)
 
 # number of pools to run in a bulk pool
-num_bulk_pool_pools=4
+num_bulk_pool_pools=10
 
 # number of non-bulk pools
 num_non_bulk_pools=1
 
 # number of non-bulk pools
-num_delegators_per_pool=1
+num_delegators_per_pool=100
 
 # number of fake UTxO entries
-num_stuffed_utxo=0
+num_stuffed_utxo=10000
 
 # the number of transactions to enter into the chain
-numtx=500
+numtx=5000
 
 # inter-phase cooldown, seconds
 init_cooldown=5
