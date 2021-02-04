@@ -1,26 +1,14 @@
 {
-    "cardano-db-sync": {
-        "branch": "master",
-        "description": "A component that follows the Cardano chain and stores blocks and transactions in PostgreSQL",
-        "homepage": "",
-        "owner": "input-output-hk",
-        "repo": "cardano-db-sync",
-        "rev": "e7a94d28c25d11800062b5354436b03c3aefae6e",
-        "sha256": "0zghl2gp4ghazry1znsvvyp56f3z42fj675agld91ngpgmk4dj39",
-        "type": "tarball",
-        "url": "https://github.com/input-output-hk/cardano-db-sync/archive/e7a94d28c25d11800062b5354436b03c3aefae6e.tar.gz",
-        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
-    },
     "cardano-node": {
         "branch": "master",
         "description": null,
         "homepage": null,
         "owner": "input-output-hk",
         "repo": "cardano-node",
-        "rev": "550eb5e1dce7dbdd0b98bd0c04e07cf43fd21dce",
-        "sha256": "0fvsk4f0bz2ld9gcsz6h42ng2ja6sn8rys3mhdkfrl0pfyaafhdx",
+        "rev": "938943fc5b8f03266b29475898922282c2a9edd4",
+        "sha256": "0viqdx02l4pzp3b3d2z9grv73hv604vhx0j6yhh5q422830d8q98",
         "type": "tarball",
-        "url": "https://github.com/input-output-hk/cardano-node/archive/550eb5e1dce7dbdd0b98bd0c04e07cf43fd21dce.tar.gz",
+        "url": "https://github.com/input-output-hk/cardano-node/archive/938943fc5b8f03266b29475898922282c2a9edd4.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "haskell.nix": {
@@ -29,10 +17,10 @@
         "homepage": "https://input-output-hk.github.io/haskell.nix",
         "owner": "input-output-hk",
         "repo": "haskell.nix",
-        "rev": "22de1b849a7c4137401acc81376fc722d97aafa8",
-        "sha256": "1qm7lki0xq5n5w4dcxxawzwkkww5lr9sv45kp2f1zh9rdc1jmf68",
+        "rev": "40a26afa33b421d7ede240b5d6c2a9a22313cb2b",
+        "sha256": "1cd6i1rrxxqnrg659zcq0xhkind67q0kx1gddr9sni8cdhwdlvqb",
         "type": "tarball",
-        "url": "https://github.com/input-output-hk/haskell.nix/archive/22de1b849a7c4137401acc81376fc722d97aafa8.tar.gz",
+        "url": "https://github.com/input-output-hk/haskell.nix/archive/40a26afa33b421d7ede240b5d6c2a9a22313cb2b.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "iohk-nix": {
@@ -41,10 +29,10 @@
         "homepage": null,
         "owner": "input-output-hk",
         "repo": "iohk-nix",
-        "rev": "62757227a2b3202ae30b807f2b2aa9a927d34e0e",
-        "sha256": "15pzi61whix3hzkbac924993dxzf2bx7jlrbg4mma3c1saaa7n1g",
+        "rev": "5d149b34427e2b0f73fc23e29f6b00831081bfc4",
+        "sha256": "0bx0k6s2ximak8y2z3rwazxym0r8hz8j11ii7y69riarl4dcrikv",
         "type": "tarball",
-        "url": "https://github.com/input-output-hk/iohk-nix/archive/62757227a2b3202ae30b807f2b2aa9a927d34e0e.tar.gz",
+        "url": "https://github.com/input-output-hk/iohk-nix/archive/5d149b34427e2b0f73fc23e29f6b00831081bfc4.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     }
 }

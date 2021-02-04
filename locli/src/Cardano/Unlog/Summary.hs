@@ -105,8 +105,8 @@ runLeadershipCheckCmd chainInfo logfiles AnalysisOutputFiles{..} = do
     let slotStats = cleanupSlotStats noisySlotStats
 
     -- 3. Derive the summary
-    let drvVectors0, drvVectors1 :: Seq DerivedSlot
-        (,) drvVectors0 drvVectors1 = computeDerivedVectors slotStats
+    let drvVectors0, _drvVectors1 :: Seq DerivedSlot
+        (,) drvVectors0 _drvVectors1 = computeDerivedVectors slotStats
         summary :: Summary
         summary = slotStatsSummary chainInfo slotStats
         analysisOutput :: LBS.ByteString

@@ -17,9 +17,6 @@
 # Version info, to be passed when not building from a git work tree
 , gitrev ? null
 , libsodium ? pkgs.libsodium
-# Benchmarking specifics:
-, cardanoNodeHaskellPackages
-, cardanoNodeEventlogHaskellPackages
 }:
 let
 
@@ -28,20 +25,23 @@ let
       src = ../.;
   };
 
+  # It is important this matches in both calls to cabalProject or `cabal configure`
+  # will run twice.
+  cabalProjectLocal = ''
+    allow-newer: terminfo:base
+  '';
+
   projectPackages = lib.attrNames (haskell-nix.haskellLib.selectProjectPackages
     (haskell-nix.cabalProject {
-      inherit src;
+      inherit src cabalProjectLocal;
       compiler-nix-name = compiler;
     }));
 
   # This creates the Haskell package set.
   # https://input-output-hk.github.io/haskell.nix/user-guide/projects/
   pkgSet = haskell-nix.cabalProject ({
-    inherit src;
+    inherit src cabalProjectLocal;
     compiler-nix-name = compiler;
-    cabalProjectLocal = ''
-      allow-newer: terminfo:base
-    '';
     modules = [
       # Allow reinstallation of Win32
       ({ pkgs, ... }: lib.mkIf pkgs.stdenv.hostPlatform.isWindows {
@@ -80,7 +80,11 @@ let
       }
       {
         # Stamp executables with the git revision
-        packages = lib.genAttrs ["cardano-node" "cardano-cli"] (name: {
+        packages = lib.genAttrs
+          [ "cardano-tx-generator"
+            "locli"
+          ]
+          (name: {
           components.exes.${name}.postInstall = ''
             ${lib.optionalString stdenv.hostPlatform.isWindows setLibSodium}
             ${setGitRev}
@@ -98,47 +102,11 @@ let
 
         # cardano-cli-test depends on cardano-cli
         packages.cardano-cli.preCheck = "export CARDANO_CLI=${config.hsPkgs.cardano-cli.components.exes.cardano-cli}/bin/cardano-cli${pkgs.stdenv.hostPlatform.extensions.executable}";
-
-        # build-tool-depends are used in cardano-node-chairman but only
-        # tasty-discover should be from the buildPackages.
-        packages.cardano-node-chairman.components.tests.chairman-tests.build-tools =
-          lib.mkForce [
-            config.hsPkgs.buildPackages.tasty-discover.components.exes.tasty-discover
-            config.hsPkgs.cardano-node.components.exes.cardano-node
-            config.hsPkgs.cardano-cli.components.exes.cardano-cli
-            config.hsPkgs.cardano-node-chairman.components.exes.cardano-node-chairman];
-        # cardano-node-chairman depends on cardano-node and cardano-cli
-        packages.cardano-node-chairman.preCheck = "
-          export CARDANO_CLI=${config.hsPkgs.cardano-cli.components.exes.cardano-cli}/bin/cardano-cli${pkgs.stdenv.hostPlatform.extensions.executable}
-          export CARDANO_NODE=${config.hsPkgs.cardano-node.components.exes.cardano-node}/bin/cardano-node${pkgs.stdenv.hostPlatform.extensions.executable}
-          export CARDANO_NODE_CHAIRMAN=${config.hsPkgs.cardano-node-chairman.components.exes.cardano-node-chairman}/bin/cardano-node-chairman${pkgs.stdenv.hostPlatform.extensions.executable}
-          export CARDANO_NODE_SRC=${src}
-        ";
       })
-      {
-        packages = lib.genAttrs projectPackages
-          (name: { configureFlags = [
-                     # "--ghc-option=-Werror"
-                   ]; });
-      }
-      # TODO: Compile all local packages with -Werror:
-      { packages.cardano-tx-generator.configureFlags = [
-          "--ghc-option=-Wall"
-          #"--ghc-option=-Werror"
-        ] ++ lib.optionals profiling [
-          "--ghc-option=-fprof-auto-top"
-          "--ghc-option=-fprof-auto-calls"
-          "--ghc-option=-fprof-cafs"
-        ];
-      }
-      (lib.optionalAttrs eventlog {
-        packages = lib.genAttrs ["cardano-node"]
-          (name: { configureFlags = [ "--ghc-option=-eventlog" ]; });
-      })
-      (lib.optionalAttrs profiling {
-        enableLibraryProfiling = true;
-        packages.cardano-node.components.exes.cardano-node.enableExecutableProfiling = true;
-      })
+      # {
+      #   packages = lib.genAttrs projectPackages
+      #     (name: { configureFlags = [ "--ghc-option=-Werror" ]; });
+      # }
       {
         packages = lib.genAttrs assertedPackages
           (name: { flags.asserts = true; });
@@ -148,21 +116,6 @@ let
         packages.cardano-config.flags.systemd = !pkgs.stdenv.hostPlatform.isMusl;
         packages.cardano-node.flags.systemd = !pkgs.stdenv.hostPlatform.isMusl;
       })
-      # Musl libc fully static build
-      (lib.optionalAttrs stdenv.hostPlatform.isMusl (let
-        # Module options which adds GHC flags and libraries for a fully static build
-        fullyStaticOptions = {
-          enableShared = false;
-          enableStatic = true;
-        };
-      in
-        {
-          packages = lib.genAttrs projectPackages (name: fullyStaticOptions);
-
-          # Haddock not working and not needed for cross builds
-          doHaddock = false;
-        }
-      ))
 
       ({ pkgs, ... }: lib.mkIf (pkgs.stdenv.hostPlatform != pkgs.stdenv.buildPlatform) {
         # Remove hsc2hs build-tool dependencies (suitable version will be available as part of the ghc derivation)
