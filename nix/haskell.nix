@@ -61,6 +61,14 @@ let
         ];
       })
       {
+        # Needed for the CLI tests.
+        # Coreutils because we need 'paste'.
+        packages.cardano-cli.components.tests.cardano-cli-test.build-tools =
+          lib.mkForce [buildPackages.jq buildPackages.coreutils buildPackages.shellcheck];
+        packages.cardano-cli.components.tests.cardano-cli-golden.build-tools =
+          lib.mkForce [buildPackages.jq buildPackages.coreutils buildPackages.shellcheck];
+      }
+      {
         # make sure that libsodium DLLs are available for windows binaries:
         packages = lib.genAttrs projectPackages (name: {
           postInstall = lib.optionalString stdenv.hostPlatform.isWindows ''
@@ -91,6 +99,9 @@ let
 
         # split data output for ekg to reduce closure size
         packages.ekg.components.library.enableSeparateDataOutput = true;
+
+        # cardano-cli-test depends on cardano-cli
+        packages.cardano-cli.preCheck = "export CARDANO_CLI=${config.hsPkgs.cardano-cli.components.exes.cardano-cli}/bin/cardano-cli${pkgs.stdenv.hostPlatform.extensions.executable}";
       })
       {
         packages = lib.genAttrs projectPackages
@@ -100,6 +111,26 @@ let
         packages = lib.genAttrs assertedPackages
           (name: { flags.asserts = true; });
       }
+      ({ pkgs, ... }: lib.mkIf pkgs.stdenv.hostPlatform.isLinux {
+        # systemd can't be statically linked
+        packages.cardano-config.flags.systemd = !pkgs.stdenv.hostPlatform.isMusl;
+        packages.cardano-node.flags.systemd = !pkgs.stdenv.hostPlatform.isMusl;
+      })
+      # Musl libc fully static build
+      (lib.optionalAttrs stdenv.hostPlatform.isMusl (let
+        # Module options which adds GHC flags and libraries for a fully static build
+        fullyStaticOptions = {
+          enableShared = false;
+          enableStatic = true;
+        };
+      in
+        {
+          packages = lib.genAttrs projectPackages (name: fullyStaticOptions);
+
+          # Haddock not working and not needed for cross builds
+          doHaddock = false;
+        }
+      ))
 
       ({ pkgs, ... }: lib.mkIf (pkgs.stdenv.hostPlatform != pkgs.stdenv.buildPlatform) {
         # Remove hsc2hs build-tool dependencies (suitable version will be available as part of the ghc derivation)
