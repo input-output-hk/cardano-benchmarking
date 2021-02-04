@@ -187,7 +187,6 @@ source-repository-package
 max-backjumps: 10000
 reorder-goals: True
 
--- Copied from cardano-node to increase chance of cache hits
 constraints:
     hedgehog >= 1.0
   , bimap >= 0.4.0
