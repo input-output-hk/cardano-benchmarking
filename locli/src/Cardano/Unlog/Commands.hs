@@ -20,7 +20,7 @@ import           Cardano.Unlog.LogObject hiding (Text)
 -- | All the CLI subcommands under \"analysis\".
 --
 data AnalysisCommand
-  = LeadershipChecks
+  = PerfTimeline
       JsonGenesisFile
       JsonRunMetafile
       [JsonLogfile]
@@ -45,8 +45,8 @@ data AnalysisOutputFiles
 renderAnalysisCommand :: AnalysisCommand -> Text
 renderAnalysisCommand sc =
   case sc of
-    LeadershipChecks {} -> "analyse leadership"
-    SubstringKeys {}    -> "analyse substring-keys"
+    PerfTimeline {}  -> "analyse perf-timeline"
+    SubstringKeys {} -> "analyse substring-keys"
 
 parseAnalysisOutputFiles :: Parser AnalysisOutputFiles
 parseAnalysisOutputFiles =
@@ -83,8 +83,8 @@ parseAnalysisCommands :: Parser AnalysisCommand
 parseAnalysisCommands =
   Opt.subparser $
     mconcat
-      [ Opt.command "leadership"
-          (Opt.info (LeadershipChecks
+      [ Opt.command "perf-timeline"
+          (Opt.info (PerfTimeline
                        <$> argJsonGenesisFile "genesis"
                               "Genesis file of the run"
                        <*> argJsonRunMetafile "run-metafile"

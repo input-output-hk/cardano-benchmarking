@@ -72,22 +72,21 @@ renderAnalysisCmdError cmd err =
 --
 
 runAnalysisCommand :: AnalysisCommand -> ExceptT AnalysisCmdError IO ()
-runAnalysisCommand (LeadershipChecks genesisFile metaFile logfiles outputFiles) = do
-  profile :: Profile <-
-    firstExceptT (RunMetaParseError metaFile . Text.pack) $ newExceptT $
-    Aeson.eitherDecode @Profile     <$> LBS.readFile (unJsonRunMetafile metaFile)
-  cParams :: Genesis <-
-    firstExceptT (GenesisParseError genesisFile . Text.pack) $ newExceptT $
-    Aeson.eitherDecode @Genesis <$> LBS.readFile (unJsonGenesisFile genesisFile)
+runAnalysisCommand (PerfTimeline genesisFile metaFile logfiles outputFiles) = do
+  chainInfo <-
+    ChainInfo
+      <$> (firstExceptT (RunMetaParseError metaFile . Text.pack) $ newExceptT $
+             Aeson.eitherDecode @Profile <$> LBS.readFile (unJsonRunMetafile metaFile))
+      <*> (firstExceptT (GenesisParseError genesisFile . Text.pack) $ newExceptT $
+             Aeson.eitherDecode @Genesis <$> LBS.readFile (unJsonGenesisFile genesisFile))
   firstExceptT AnalysisCmdError $
-    runLeadershipCheckCmd
-      (ChainInfo profile cParams) logfiles outputFiles
+    runPerfTimeline chainInfo logfiles outputFiles
 runAnalysisCommand SubstringKeys =
   liftIO $ mapM_ putStrLn logObjectStreamInterpreterKeys
 
-runLeadershipCheckCmd ::
+runPerfTimeline ::
   ChainInfo -> [JsonLogfile] -> AnalysisOutputFiles -> ExceptT Text IO ()
-runLeadershipCheckCmd chainInfo logfiles AnalysisOutputFiles{..} = do
+runPerfTimeline chainInfo logfiles AnalysisOutputFiles{..} = do
   liftIO $ do
     -- 0. Recover LogObjects
     objs :: [LogObject] <- concat <$> mapM readLogObjectStream logfiles

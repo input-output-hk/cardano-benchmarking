@@ -87,7 +87,7 @@ analyse_mach() {
 
         ## 3. analyse
         oprint "analysing logs of:  $mach  (lines: $(wc -l "$mach_consolidated"))"
-        run locli 'analyse' 'leadership'            \
+        run locli 'analyse' 'perf-timeline'                      \
                 $(locli_analyse_cmd_mach_args "$logdir" "$mach") \
                 "$mach_consolidated"
 }
