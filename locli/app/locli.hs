@@ -6,7 +6,7 @@ import           Control.Monad.Trans.Except.Exit (orDie)
 import qualified Options.Applicative as Opt
 
 import           Cardano.Unlog.Parsers (opts, pref)
-import           Cardano.Unlog.Run (renderClientCommandError, runClientCommand)
+import           Cardano.Unlog.Run (renderCommandError, runCommand)
 import           Cardano.TopHandler
 
 
@@ -15,4 +15,4 @@ main = toplevelExceptionHandler $ do
 
   co <- Opt.customExecParser pref opts
 
-  orDie renderClientCommandError $ runClientCommand co
+  orDie renderCommandError $ runCommand co
