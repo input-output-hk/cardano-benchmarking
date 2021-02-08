@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -124,11 +125,11 @@ runPerfTimeline chainInfo logfiles AnalysisOutputFiles{..} = do
       (renderHistogram "CPU usage spans over 85%" "Span length"
         (toList $ Seq.sort $ sSpanLensCPU85 summary))
 
-    case ofAnalysis of
-      Nothing -> LBS.putStrLn analysisOutput
-      Just (JsonOutputFile f) ->
-        withFile f WriteMode $ \hnd ->
-          LBS.hPutStrLn hnd analysisOutput
+    flip (maybe $ LBS.putStrLn analysisOutput) ofAnalysis $
+      \case
+        JsonOutputFile f ->
+          withFile f WriteMode $ \hnd ->
+            LBS.hPutStrLn hnd analysisOutput
  where
    renderHistogram :: Integral a
      => String -> String -> [a] -> OutputFile -> IO ()

@@ -6,6 +6,7 @@
 
 module Cardano.Unlog.SlotStats (module Cardano.Unlog.SlotStats) where
 
+import qualified Prelude as P
 import           Cardano.Prelude
 
 import           Data.Aeson
@@ -38,6 +39,9 @@ data SlotStats
     , slSpanCheck   :: !NominalDiffTime
     , slSpanLead    :: !NominalDiffTime
     , slMempoolTxs  :: !Word64
+    , slTxsMemSpan  :: !(Maybe NominalDiffTime)
+    , slTxsAccepted :: !Word64
+    , slTxsRejected :: !Word64
     , slUtxoSize    :: !Word64
     , slDensity     :: !Float
     , slResources   :: !(Resources (Maybe Word64))
@@ -49,17 +53,17 @@ instance ToJSON SlotStats
 slotHeadE, slotFormatE :: Text
 slotHeadP, slotFormatP :: Text
 slotHeadP =
-  "abs.  slot    block block lead  leader CDB rej  check     lead  chain       %CPU      GCs   Produc-   Memory use, kB    Alloc rate  Mempool  UTxO" <>"\n"<>
-  "slot#   epoch  no. -less checks ships snap txs  span      span  density all/ GC/mut maj/min tivity  Live   Alloc   RSS   / mut sec   txs  entries"
+  "abs.  slot    block block lead  leader CDB rej  check     lead   mempool tx       pool chain       %CPU      GCs   Produc-   Memory use, kB    Alloc rate  Mempool  UTxO" <>"\n"<>
+  "slot#   epoch  no. -less checks ships snap txs  span      span    span acc rej density all/ GC/mut maj/min tivity  Live   Alloc   RSS   / mut sec   txs  entries"
 slotHeadE =
-  "abs.slot#,slot,epoch,block,blockless,leadChecks,leadShips,cdbSnap,rejTx,checkSpan,chainDens,%CPU,%GC,%MUT,Productiv,MemLiveKb,MemAllocKb,MemRSSKb,AllocRate/Mut,MempoolTxs,UTxO"
-slotFormatP = "%5d %4d:%2d %4d    %2d    %2d   %2d    %2d  %2d %8s %8s %0.3f  %3s %3s %3s %2s %3s   %4s %7s %7s %7s % 8s %4d %9d"
-slotFormatE = "%d,%d,%d,%d,%d,%d,%d,%d,%d,%s,%s,%0.3f,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%d,%d"
+  "abs.slot#,slot,epoch,block,blockless,leadChecks,leadShips,cdbSnap,rejTx,checkSpan,mempoolTxSpan,chainDens,%CPU,%GC,%MUT,Productiv,MemLiveKb,MemAllocKb,MemRSSKb,AllocRate/Mut,MempoolTxs,UTxO"
+slotFormatP = "%5d %4d:%2d %4d    %2d    %2d   %2d    %2d  %2d %8s %8s %5s  %2d  %2d %0.3f  %3s %3s %3s %2s %3s   %4s %7s %7s %7s % 8s %4d %9d"
+slotFormatE = "%d,%d,%d,%d,%d,%d,%d,%d,%d,%s,%s,%s,%d,%d%0.3f,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%d,%d"
 
 slotLine :: Bool -> Text -> SlotStats -> Text
 slotLine exportMode leadershipF SlotStats{..} = Text.pack $
   printf (Text.unpack leadershipF)
-         sl epsl epo blk blkl chks  lds cdbsn rejtx spanC spanL dens cpu gc mut majg ming   pro liv alc rss atm mpo utx
+         sl epsl epo blk blkl chks  lds cdbsn rejtx spanC spanL subdt sacc srej dens cpu gc mut majg ming   pro liv alc rss atm mpo utx
  where sl    = slSlot
        epsl  = slEpochSlot
        epo   = slEpoch
@@ -69,6 +73,9 @@ slotLine exportMode leadershipF SlotStats{..} = Text.pack $
        lds   = slCountLeads
        cdbsn = slChainDBSnap
        rejtx = slRejectedTx
+       subdt = maybe ("" :: P.String) show slTxsMemSpan
+       sacc  = slTxsAccepted
+       srej  = slTxsRejected
        spanC = show slSpanCheck :: Text
        spanL = show slSpanLead :: Text
        cpu   = d 3 $ rCentiCpu slResources
@@ -134,6 +141,9 @@ zeroSlotStats =
   , slSpanCheck = realToFrac (0 :: Int)
   , slSpanLead = realToFrac (0 :: Int)
   , slMempoolTxs = 0
+  , slTxsMemSpan = Nothing
+  , slTxsAccepted = 0
+  , slTxsRejected = 0
   , slUtxoSize = 0
   , slDensity = 0
   , slResources = pure Nothing

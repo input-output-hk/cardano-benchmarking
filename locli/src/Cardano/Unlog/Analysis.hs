@@ -35,6 +35,9 @@ data Analysis
   , aLastBlockSlot :: Word64
   , aSlotStats     :: [SlotStats]
   , aRunScalars    :: RunScalars
+  , aTxsSubStamp   :: UTCTime
+  , aTxsBaseAcc    :: Word64
+  , aTxsBaseRej    :: Word64
   }
 
 data RunScalars
@@ -58,7 +61,10 @@ analyseLogObjects ci =
      , aBlockNo       = 0
      , aLastBlockSlot = 0
      , aSlotStats     = [zeroSlotStats]
-     , aRunScalars      = zeroRunScalars
+     , aRunScalars    = zeroRunScalars
+     , aTxsSubStamp   = zeroUTCTime
+     , aTxsBaseAcc    = 0
+     , aTxsBaseRej    = 0
      }
    zeroRunScalars :: RunScalars
    zeroRunScalars = RunScalars Nothing Nothing Nothing
@@ -133,6 +139,21 @@ analysisStep ci a@Analysis{aSlotStats=cur:rSLs, ..} = \case
         , rsSubmitted     = Just sent
         }
       }
+  LogObject{loBody=LOTxsSubmitted _, loAt} ->
+    a { aTxsSubStamp      = loAt }
+  LogObject{loBody=LOTxsAccepted acc, loAt} ->
+    a { aTxsBaseAcc     = acc
+      , aSlotStats      = cur { slTxsMemSpan =
+                                  Just $
+                                    (loAt `Time.diffUTCTime` aTxsSubStamp)
+                                    +
+                                    fromMaybe 0 (slTxsMemSpan cur)
+                              , slTxsAccepted = acc - aTxsBaseAcc
+                              } : rSLs }
+  LogObject{loBody=LOTxsRejected rej} ->
+    a { aTxsBaseRej     = rej
+      , aSlotStats      = cur { slTxsRejected = rej - aTxsBaseRej
+                              } : rSLs }
   _ -> a
  where
    updateOnNewSlot :: LogObject -> Analysis -> Analysis
@@ -167,7 +188,7 @@ extendAnalysis ::
   -> Word64 -> UTCTime -> Word64 -> Word64 -> Float
   -> Analysis -> Analysis
 extendAnalysis ci@CInfo{..} slot time checks utxo density a@Analysis{..} =
-  let (epoch, epochSlot) = slot `divMod` epoch_length gsis in
+  let (epochSlot, epoch) = slot `divMod` epoch_length gsis in
     a { aSlotStats = SlotStats
         { slSlot        = slot
         , slEpoch       = epoch
@@ -180,6 +201,9 @@ extendAnalysis ci@CInfo{..} slot time checks utxo density a@Analysis{..} =
         , slCountLeads  = 0
         , slSpanCheck   = max 0 $ time `Time.diffUTCTime` slotStart ci slot
         , slSpanLead    = 0
+        , slTxsMemSpan  = Nothing
+        , slTxsAccepted = 0
+        , slTxsRejected = 0
         , slMempoolTxs  = aMempoolTxs
         , slUtxoSize    = utxo
         , slDensity     = density
