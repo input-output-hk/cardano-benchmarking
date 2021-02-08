@@ -32,6 +32,36 @@ args=(
   )
 
 echo "starting submission to:  $TARGETNODES"
+jq '{ meta:
+      { profile_content:
+        { generator:
+          { era: "era"
+          , add_tx_size: 100
+          , inputs_per_tx: 2
+          , outputs_per_tx: 2
+          , tps: 100
+          , tx_count: 100
+          }
+        , genesis:
+          { active_slots_coeff   : 1
+          , delegators           : 1
+          , dense_pool_density   : 1
+          , epoch_length         : 1
+          , parameter_k          : 1
+          , max_block_size       : 1
+          , max_tx_size          : 1
+          , n_pools              : 1
+          , slot_duration        : 1
+          , utxo                 : 1
+          }
+        }
+      , tag:     "shelley3pools"
+      , profile: "shelley3pools"
+      , genesis_cache_id: ""
+      , timestamp: 1000000000
+      }
+    }' -n > logs/meta.json
+ln -sf ../configuration/genesis-shelley/genesis.json logs/genesis.json
 
 case $era in
 shelley )
