@@ -29,7 +29,8 @@ TMUX_ENV_PASSTHROUGH=(
 tmux split-window -v
 tmux split-window -h
 
-mkdir -p logs
+mkdir -p logs/analysis
+ln -s 'logs-node-1' 'logs/analysis/logs-explorer'
 for N in 1 2 3
 do N1=$((N - 1))
    N13=$(printf "%03d" $N1)

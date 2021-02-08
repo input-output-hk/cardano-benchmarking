@@ -52,8 +52,8 @@ locli_analyse_cmd_mach_args() {
         echo "$logdir"/genesis.json
         echo --run-metafile
         echo "$logdir"/meta.json
-        # echo --logobjects-json
-        # echo "$logdir"/analysis/logs-"$mach".logobjects.json
+        echo --logobjects-json
+        echo "$logdir"/analysis/logs-"$mach".logobjects.json
         # echo --leaderships-json
         # echo "$logdir"/analysis/logs-"$mach".leaderships.json
         echo --timeline-pretty
