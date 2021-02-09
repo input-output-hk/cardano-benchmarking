@@ -53,8 +53,8 @@ instance ToJSON SlotStats
 slotHeadE, slotFormatE :: Text
 slotHeadP, slotFormatP :: Text
 slotHeadP =
-  "abs.  slot    block block lead  leader CDB rej  check     lead   mempool tx       pool chain       %CPU      GCs   Produc-   Memory use, kB    Alloc rate  Mempool  UTxO" <>"\n"<>
-  "slot#   epoch  no. -less checks ships snap txs  span      span    span acc rej density all/ GC/mut maj/min tivity  Live   Alloc   RSS   / mut sec   txs  entries"
+  "abs.  slot    block block lead  leader CDB rej  check     lead  mempool tx       pool chain       %CPU      GCs   Produc-   Memory use, kB    Alloc rate  Mempool  UTxO" <>"\n"<>
+  "slot#   epoch  no. -less checks ships snap txs  span      span   span acc rej density all/ GC/mut maj/min tivity  Live   Alloc   RSS   / mut sec   txs  entries"
 slotHeadE =
   "abs.slot#,slot,epoch,block,blockless,leadChecks,leadShips,cdbSnap,rejTx,checkSpan,mempoolTxSpan,chainDens,%CPU,%GC,%MUT,Productiv,MemLiveKb,MemAllocKb,MemRSSKb,AllocRate/Mut,MempoolTxs,UTxO"
 slotFormatP = "%5d %4d:%2d %4d    %2d    %2d   %2d    %2d  %2d %8s %8s %5s  %2d  %2d %0.3f  %3s %3s %3s %2s %3s   %4s %7s %7s %7s % 8s %4d %9d"

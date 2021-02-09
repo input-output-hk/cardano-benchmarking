@@ -35,9 +35,7 @@ data Analysis
   , aLastBlockSlot :: Word64
   , aSlotStats     :: [SlotStats]
   , aRunScalars    :: RunScalars
-  , aTxsSubStamp   :: UTCTime
-  , aTxsBaseAcc    :: Word64
-  , aTxsBaseRej    :: Word64
+  , aTxsCollectedAt:: UTCTime
   }
 
 data RunScalars
@@ -62,9 +60,7 @@ analyseLogObjects ci =
      , aLastBlockSlot = 0
      , aSlotStats     = [zeroSlotStats]
      , aRunScalars    = zeroRunScalars
-     , aTxsSubStamp   = zeroUTCTime
-     , aTxsBaseAcc    = 0
-     , aTxsBaseRej    = 0
+     , aTxsCollectedAt= zeroUTCTime
      }
    zeroRunScalars :: RunScalars
    zeroRunScalars = RunScalars Nothing Nothing Nothing
@@ -139,20 +135,16 @@ analysisStep ci a@Analysis{aSlotStats=cur:rSLs, ..} = \case
         , rsSubmitted     = Just sent
         }
       }
-  LogObject{loBody=LOTxsSubmitted _, loAt} ->
-    a { aTxsSubStamp      = loAt }
-  LogObject{loBody=LOTxsAccepted acc, loAt} ->
-    a { aTxsBaseAcc     = acc
-      , aSlotStats      = cur { slTxsMemSpan =
+  LogObject{loBody=LOTxsCollected _, loAt} ->
+    a { aTxsCollectedAt      = loAt }
+  LogObject{loBody=LOTxsProcessed acc rej, loAt} ->
+    a { aSlotStats      = cur { slTxsMemSpan =
                                   Just $
-                                    (loAt `Time.diffUTCTime` aTxsSubStamp)
+                                    (loAt `Time.diffUTCTime` aTxsCollectedAt)
                                     +
                                     fromMaybe 0 (slTxsMemSpan cur)
-                              , slTxsAccepted = acc - aTxsBaseAcc
-                              } : rSLs }
-  LogObject{loBody=LOTxsRejected rej} ->
-    a { aTxsBaseRej     = rej
-      , aSlotStats      = cur { slTxsRejected = rej - aTxsBaseRej
+                              , slTxsAccepted = acc
+                              , slTxsRejected = rej
                               } : rSLs }
   _ -> a
  where

@@ -130,15 +130,14 @@ interpreters = Map.fromList
   , (,) "Resources" $
     \v -> LOResources <$> parseJSON (Object v)
 
-  , (,) "LogValue" $
-    \v -> do
-      name :: ShortText <- v .: "name"
-      value :: Object <- v .: "value"
-      case name of
-        "submissions.submitted.count" -> LOTxsSubmitted <$> value .: "contents"
-        "submissions.accepted.count"  -> LOTxsAccepted  <$> value .: "contents"
-        "submissions.rejected.count"  -> LOTxsRejected  <$> value .: "contents"
-        _ -> fail $ "unused metric: " <> Text.unpack name
+  , (,) "TraceTxSubmissionCollected" $
+    \v -> LOTxsCollected
+            <$> v .: "count"
+
+  , (,) "TraceTxSubmissionProcessed" $
+    \v -> LOTxsProcessed
+            <$> v .: "accepted"
+            <*> v .: "rejected"
   ]
 
 logObjectStreamInterpreterKeys :: [Text]
@@ -155,9 +154,8 @@ data LOBody
   | LOBlockContext !Word64
   | LOGeneratorSummary !Bool !Word64 !NominalDiffTime (Vector Float)
   | LOTxsAcked !(Vector Text)
-  | LOTxsSubmitted !Word64
-  | LOTxsAccepted !Word64
-  | LOTxsRejected !Word64
+  | LOTxsCollected !Word64
+  | LOTxsProcessed !Word64 !Word64
   | LOAny !Object
   deriving (Generic, Show)
 
