@@ -84,8 +84,8 @@ package small-steps-test
 source-repository-package
   type: git
   location: https://github.com/input-output-hk/cardano-node
-  tag: 938943fc5b8f03266b29475898922282c2a9edd4
-  --sha256: 0viqdx02l4pzp3b3d2z9grv73hv604vhx0j6yhh5q422830d8q98
+  tag: 953dfb2fbb62879c1b4b29476bbdf02b541c01c1
+  --sha256: 01gvys0459z20cpv35nxx5iy69ahczch4i2rqh82pzzrm8myi80v
   subdir:
     cardano-api
     cardano-api/test
