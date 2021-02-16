@@ -386,6 +386,7 @@ toDistribLines statsF distPropsF s@Summary{..} =
    <*> ZipList (pctSample <$> dPercentiles sSpanLensCPU85RwdDistrib)
   & getZipList
   & (<> [ mapSummary distPropsF s "size"    (fromIntegral . dCount)
+        , mapSummary distPropsF s "avg"     dAverage
         ])
  where
    distribLine ::
@@ -414,6 +415,6 @@ statsFormatP =
 statsFormatE =
   "%s,%d,%0.2f,%s,%s,%d,%0.3f,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d"
 statsFormatPF =
-  "%6s %f %f   %f   %f  %f     %f  %f %f %f %f %f      %f %f %f %f %f"
+  "%6s %.2f %.2f   %.2f   %.2f  %.2f     %.2f  %.2f %.2f %.2f %.2f %.2f      %.2f %.2f %.2f %.2f %.2f"
 statsFormatEF =
   "%s,0,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f"

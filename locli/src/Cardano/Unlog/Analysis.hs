@@ -136,7 +136,7 @@ analysisStep ci a@Analysis{aSlotStats=cur:rSLs, ..} = \case
         , rsSubmitted     = Just sent
         }
       }
-  LogObject{loBody=LOTxsCollected tid _, loAt} ->
+  LogObject{loBody=LOTxsCollected tid coll, loAt} ->
     a { aTxsCollectedAt =
         aTxsCollectedAt &
         (\case
@@ -144,6 +144,10 @@ analysisStep ci a@Analysis{aSlotStats=cur:rSLs, ..} = \case
               ["Duplicate LOTxsCollected for tid ", show tid, " at ", show loAt]
             Nothing -> Just loAt)
         `Map.alter` tid
+      , aSlotStats      =
+        cur
+        { slTxsCollected = slTxsCollected cur + max 0 (fromIntegral coll)
+        } : rSLs
       }
   LogObject{loBody=LOTxsProcessed tid acc rej, loAt} ->
     a { aTxsCollectedAt = tid `Map.delete` aTxsCollectedAt
@@ -210,6 +214,7 @@ extendAnalysis ci@CInfo{..} slot time checks utxo density a@Analysis{..} =
         , slSpanCheck   = max 0 $ time `Time.diffUTCTime` slotStart ci slot
         , slSpanLead    = 0
         , slTxsMemSpan  = Nothing
+        , slTxsCollected= 0
         , slTxsAccepted = 0
         , slTxsRejected = 0
         , slMempoolTxs  = aMempoolTxs

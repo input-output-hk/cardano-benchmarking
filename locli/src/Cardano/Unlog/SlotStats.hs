@@ -25,27 +25,28 @@ import           Cardano.Unlog.Resources
 
 data SlotStats
   = SlotStats
-    { slSlot        :: !Word64
-    , slEpoch       :: !Word64
-    , slEpochSlot   :: !Word64
-    , slStart       :: !UTCTime
-    , slCountChecks :: !Word64
-    , slCountLeads  :: !Word64
-    , slChainDBSnap :: !Word64
-    , slRejectedTx  :: !Word64
-    , slBlockNo     :: !Word64
-    , slBlockless   :: !Word64
-    , slOrderViol   :: !Word64
-    , slEarliest    :: !UTCTime
-    , slSpanCheck   :: !NominalDiffTime
-    , slSpanLead    :: !NominalDiffTime
-    , slMempoolTxs  :: !Word64
-    , slTxsMemSpan  :: !(Maybe NominalDiffTime)
-    , slTxsAccepted :: !Word64
-    , slTxsRejected :: !Word64
-    , slUtxoSize    :: !Word64
-    , slDensity     :: !Float
-    , slResources   :: !(Resources (Maybe Word64))
+    { slSlot         :: !Word64
+    , slEpoch        :: !Word64
+    , slEpochSlot    :: !Word64
+    , slStart        :: !UTCTime
+    , slCountChecks  :: !Word64
+    , slCountLeads   :: !Word64
+    , slChainDBSnap  :: !Word64
+    , slRejectedTx   :: !Word64
+    , slBlockNo      :: !Word64
+    , slBlockless    :: !Word64
+    , slOrderViol    :: !Word64
+    , slEarliest     :: !UTCTime
+    , slSpanCheck    :: !NominalDiffTime
+    , slSpanLead     :: !NominalDiffTime
+    , slMempoolTxs   :: !Word64
+    , slTxsMemSpan   :: !(Maybe NominalDiffTime)
+    , slTxsCollected :: !Word64
+    , slTxsAccepted  :: !Word64
+    , slTxsRejected  :: !Word64
+    , slUtxoSize     :: !Word64
+    , slDensity      :: !Float
+    , slResources    :: !(Resources (Maybe Word64))
     }
   deriving (Generic, Show)
 
@@ -54,17 +55,17 @@ instance ToJSON SlotStats
 slotHeadE, slotFormatE :: Text
 slotHeadP, slotFormatP :: Text
 slotHeadP =
-  "abs.  slot    block block lead  leader CDB rej  check  lead  mempool tx     chain       %CPU      GCs   Produc-   Memory use, kB    Alloc rate  Mempool  UTxO  Absolute" <>"\n"<>
-  "slot#   epoch  no. -less checks ships snap txs  span   span  span acc rej  density all/ GC/mut maj/min tivity  Live    Alloc   RSS   / mut sec   txs  entries   slot time"
+  "abs.  slot    block block lead  leader CDB rej  check  lead    mempool tx       chain       %CPU      GCs   Produc-   Memory use, kB    Alloc rate  Mempool  UTxO  Absolute" <>"\n"<>
+  "slot#   epoch  no. -less checks ships snap txs  span   span  span col acc rej  density all/ GC/mut maj/min tivity  Live    Alloc   RSS   / mut sec   txs  entries   slot time"
 slotHeadE =
-  "abs.slot#,slot,epoch,block,blockless,leadChecks,leadShips,cdbSnap,rejTx,checkSpan,mempoolTxSpan,chainDens,%CPU,%GC,%MUT,Productiv,MemLiveKb,MemAllocKb,MemRSSKb,AllocRate/Mut,MempoolTxs,UTxO"
-slotFormatP = "%5d %4d:%2d %4d    %2d    %2d   %2d    %2d  %2d %7s %5s %5s  %2d  %2d   %0.3f  %3s %3s %3s  %2s %3s  %4s %7s %7s %7s % 8s   %4d %9d %s"
-slotFormatE = "%d,%d,%d,%d,%d,%d,%d,%d,%d,%s,%s,%s,%d,%d%0.3f,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%d,%d,%s"
+  "abs.slot#,slot,epoch,block,blockless,checkSpan,leadSpan,leadShips,cdbSnap,rejTx,checkSpan,mempoolTxSpan,chainDens,%CPU,%GC,%MUT,Productiv,MemLiveKb,MemAllocKb,MemRSSKb,AllocRate/Mut,MempoolTxs,UTxO"
+slotFormatP = "%5d %4d:%2d %4d    %2d    %2d   %2d    %2d  %2d %7s %5s %5s  %2d  %2d  %2d   %0.3f  %3s %3s %3s  %2s %3s  %4s %7s %7s %7s % 8s   %4d %9d %s"
+slotFormatE = "%d,%d,%d,%d,%d,%d,%d,%d,%d,%s,%s,%s,%d,%d%0.3f,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%d,%d,%s"
 
 slotLine :: Bool -> Text -> SlotStats -> Text
 slotLine exportMode leadershipF SlotStats{..} = Text.pack $
   printf (Text.unpack leadershipF)
-         sl epsl epo blk blkl chks  lds cdbsn rejtx spanC spanL subdt sacc srej dens cpu gc mut majg ming   pro liv alc rss atm mpo utx start
+         sl epsl epo blk blkl chks  lds cdbsn rejtx spanC spanL subdt scol sacc srej dens cpu gc mut majg ming   pro liv alc rss atm mpo utx start
  where sl    = slSlot
        epsl  = slEpochSlot
        epo   = slEpoch
@@ -75,6 +76,7 @@ slotLine exportMode leadershipF SlotStats{..} = Text.pack $
        cdbsn = slChainDBSnap
        rejtx = slRejectedTx
        subdt = maybe "" (Text.init . show) slTxsMemSpan
+       scol  = slTxsCollected
        sacc  = slTxsAccepted
        srej  = slTxsRejected
        spanC = Text.init $ show slSpanCheck
@@ -86,7 +88,8 @@ slotLine exportMode leadershipF SlotStats{..} = Text.pack $
                   <$> rCentiMut slResources
        majg  = d 2 $ rGcsMajor slResources
        ming  = d 2 $ rGcsMinor slResources
-       pro   = f 2 $ calcProd <$> (fromIntegral <$> rCentiMut slResources :: Maybe Float)
+       pro   = f 2 $ calcProd <$> (min 9 . -- workaround for ghc-8.10.2
+                                   fromIntegral <$> rCentiMut slResources :: Maybe Float)
                               <*> (fromIntegral <$> rCentiCpu slResources)
        liv   = d 7 (rLive     slResources)
        alc   = d 7 (rAlloc    slResources)
@@ -146,6 +149,7 @@ zeroSlotStats =
   , slSpanLead = realToFrac (0 :: Int)
   , slMempoolTxs = 0
   , slTxsMemSpan = Nothing
+  , slTxsCollected = 0
   , slTxsAccepted = 0
   , slTxsRejected = 0
   , slUtxoSize = 0
