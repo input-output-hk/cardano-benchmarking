@@ -34,6 +34,8 @@ library
                        Cardano.Benchmarking.GeneratorTx.Tx.Byron
                        Cardano.Benchmarking.GeneratorTx.Submission
                        Cardano.Benchmarking.GeneratorTx.CLI.Parsers
+                       Cardano.Benchmarking.DSL
+                       Cardano.Benchmarking.Script
                        Cardano.Benchmarking.Run
 
   other-modules:       Paths_cardano_tx_generator
@@ -104,12 +106,7 @@ executable cardano-tx-generator
                        "-with-rtsopts=-T"
 
   build-depends:       base >=4.12 && <5
-                     , cardano-prelude
                      , cardano-tx-generator
-                     , optparse-applicative
-                     , transformers-except
-
-  default-extensions:  NoImplicitPrelude
 
 test-suite cardano-tx-generator-test
   hs-source-dirs:       test

@@ -8,7 +8,7 @@ import           Test.Tasty.HUnit
 import           Text.Heredoc
 import           Options.Applicative
   
-import           Cardano.Benchmarking.Run (parseCommand)
+import           Cardano.Benchmarking.GeneratorTx.Benchmark (parseCommand)
 import           Cardano.Benchmarking.GeneratorTx.SizedMetadata
 
 

@@ -2,7 +2,8 @@
 {-# OPTIONS_GHC -Wno-all-missed-specialisations #-}
 
 module Cardano.Benchmarking.GeneratorTx.Error
-  ( TxGenError (..)
+  (
+    TxGenError (..)
   ) where
 
 import           Cardano.Api.Typed
@@ -14,7 +15,6 @@ data TxGenError =
   --   UTxO entry.  The first value is the largest single UTxO available.
   | TxFileError !(FileError TextEnvelopeError)
   | SplittingSubmissionError !Text
-  | UtxoReadFailure !Text
   | SuppliedUtxoTooSmall !Int !Int
   | BadPayloadSize !Text
   -- ^ The supplied UTxO size (second value) was less than the requested

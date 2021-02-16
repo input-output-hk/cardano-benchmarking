@@ -24,7 +24,6 @@ module Cardano.Benchmarking.GeneratorTx.Era
   , NumberOfInputsPerTx(..)
   , NumberOfOutputsPerTx(..)
   , NumberOfTxs(..)
-  , TxAdditionalSize(..)
   , TPSRate(..)
 
   , Ack(..)
