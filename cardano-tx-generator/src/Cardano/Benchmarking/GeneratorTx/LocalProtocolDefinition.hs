@@ -58,18 +58,20 @@ import qualified Cardano.Benchmarking.GeneratorTx.Tx as GeneratorTx
 
 mangleLocalProtocolDefinition ::
      Consensus.Protocol IO blok ptcl
-  -> Maybe NetworkMagic
-  -> Bool
   -> IOManager
   -> SocketPath
   -> BenchTracers IO CardanoBlock
   -> MonoDSLs
-mangleLocalProtocolDefinition ptcl@(Consensus.ProtocolCardano
+mangleLocalProtocolDefinition
+  ptcl@(Consensus.ProtocolCardano
              _
              Consensus.ProtocolParamsShelleyBased{Consensus.shelleyBasedGenesis}
-              _ _ _ _ _ _)
-            nmagic_opt is_addr_mn iom (SocketPath sock) tracers
-    = (DSL {..}, DSL {..}, DSL {..})
+              _ _ _ _ _ _
+       )
+  iom
+  (SocketPath sock)
+  tracers
+  = (DSL {..}, DSL {..}, DSL {..})
   where
 
     ProtocolInfo{pInfoConfig} = Consensus.protocolInfo ptcl
@@ -107,21 +109,17 @@ mangleLocalProtocolDefinition ptcl@(Consensus.ProtocolCardano
     runBenchmark :: IsShelleyBasedEra era => RunBenchmark era
     runBenchmark = GeneratorTx.runBenchmark (btTxSubmit_ tracers) (btN2N_ tracers) connectClient
 
-    networkId = if is_addr_mn
-      then Mainnet
-      else Testnet $ getNetworkMagic $ configBlock pInfoConfig
+    networkId = Testnet $ getNetworkMagic $ configBlock pInfoConfig
 
-mangleLocalProtocolDefinition _ _ _ _ _ _ = error "mkCallbacks"
+mangleLocalProtocolDefinition _ _ _ _ = error "mkCallbacks"
 
 runBenchmarkScriptWith ::
      IOManager
   -> FilePath
   -> SocketPath
-  -> Maybe NetworkMagic
-  -> Bool
   -> BenchmarkScript a
   -> ExceptT CliError IO a
-runBenchmarkScriptWith iocp logConfigFile socketFile nmagic_opt is_addr_mn script = do
+runBenchmarkScriptWith iocp logConfigFile socketFile script = do
   nc <- liftIO $ mkNodeConfig logConfigFile
   case ncProtocolConfig nc of
     NodeProtocolConfigurationByron _    -> error "NodeProtocolConfigurationByron not supported"
@@ -133,7 +131,7 @@ runBenchmarkScriptWith iocp logConfigFile socketFile nmagic_opt is_addr_mn scrip
         let tracers :: BenchTracers IO CardanoBlock
             tracers = createTracers loggingLayer
             dslSet :: MonoDSLs
-            dslSet = mangleLocalProtocolDefinition ptcl nmagic_opt is_addr_mn iocp socketFile tracers
+            dslSet = mangleLocalProtocolDefinition ptcl iocp socketFile tracers
         res <- firstExceptT BenchmarkRunnerError $ script (tracers, dslSet)
         liftIO $ do
           threadDelay (200*1000) -- Let the logging layer print out everything.

@@ -60,8 +60,7 @@ pinnedHelpMessage = [here|ParserFailure(Usage: <program> --config FILEPATH --soc
                  [--init-cooldown INT] [--initial-ttl INT] [--num-of-txs INT] 
                  [--tps DOUBLE] [--inputs-per-tx INT] [--outputs-per-tx INT] 
                  [--tx-fee INT] [--add-tx-size INT] 
-                 [--fail-on-submission-errors] [--n2n-magic-override NATURAL] 
-                 [--addr-mainnet] 
+                 [--fail-on-submission-errors] 
                  (--genesis-funds-key FILEPATH | --utxo-funds-key FILEPATH
                    --tx-in TX-IN --tx-out TX-OUT |
                    --split-utxo-funds-key FILEPATH --split-utxo FILEPATH)
@@ -86,10 +85,6 @@ Available options:
   --fail-on-submission-errors
                            Fail on submission thread errors, instead of logging
                            them.
-  --n2n-magic-override NATURAL
-                           Override the network magic for the node-to-node
-                           protocol.
-  --addr-mainnet           Override address discriminator to mainnet.
   --genesis-funds-key FILEPATH
                            Genesis UTxO funds signing key.
   --utxo-funds-key FILEPATH
