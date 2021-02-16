@@ -4,6 +4,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE ImpredicativeTypes #-}
+{-# LANGUAGE ViewPatterns #-}
 {-# OPTIONS_GHC -Wno-incomplete-patterns -Wno-name-shadowing #-}
 module Cardano.Unlog.Summary
   ( AnalysisCmdError
@@ -372,7 +373,8 @@ toDistribLines statsF distPropsF s@Summary{..} =
    <*> ZipList (pctSample <$> dPercentiles sDensityDistrib)
    <*> ZipList (pctSample <$> dPercentiles (rCentiCpu sResourceDistribs))
    <*> ZipList (pctSample <$> dPercentiles (rCentiGC sResourceDistribs))
-   <*> ZipList (pctSample <$> dPercentiles (rCentiMut sResourceDistribs))
+   <*> ZipList (min 999 . -- workaround for ghc-8.10.2
+                pctSample <$> dPercentiles (rCentiMut sResourceDistribs))
    <*> ZipList (pctSample <$> dPercentiles (rGcsMajor sResourceDistribs))
    <*> ZipList (pctSample <$> dPercentiles (rGcsMinor sResourceDistribs))
     -- <*> ZipList (pctSample <$> dPercentiles ( sResourceDistribs))
@@ -394,7 +396,8 @@ toDistribLines statsF distPropsF s@Summary{..} =
      -> Word64 -> Word64 -> Word64
      -> Int -> Int -> Int
      -> Text
-   distribLine ps count miss chkdt' leaddt' blkl dens cpu gc mut majg ming liv alc rss cpu85Sp cpu85SpEBnd cpu85SpRwd = Text.pack $
+   distribLine ps count miss chkdt' leaddt' blkl dens cpu gc mut
+     majg ming liv alc rss cpu85Sp cpu85SpEBnd cpu85SpRwd = Text.pack $
      printf (Text.unpack statsF)
     (renderPercSpec 6 ps) count miss chkdt leaddt blkl dens cpu gc mut majg ming     liv alc rss cpu85Sp cpu85SpEBnd cpu85SpRwd
     where chkdt  = Text.init $ show chkdt' :: Text
@@ -403,7 +406,7 @@ toDistribLines statsF distPropsF s@Summary{..} =
 statsHeadE, statsFormatE, statsFormatEF :: Text
 statsHeadP, statsFormatP, statsFormatPF :: Text
 statsHeadP =
-  "%tile Count MissR  CheckΔt  LeadΔt BlkLess Dens  CPU  GC MUT Maj Min         Live   Alloc   RSS    CPU85%SpanLens/EBnd/Rwd"
+  "%tile Count MissR  CheckΔt  LeadΔt BlkLess Density  CPU  GC MUT Maj Min         Live   Alloc   RSS    CPU85%SpanLens/EBnd/Rwd"
 statsHeadE =
   "%tile,Count,MissR,CheckΔ,LeadΔ,Blockless,ChainDensity,CPU,GC,MUT,GcMaj,GcMin,Live,Alloc,RSS,CPU85%SpanLens,/EpochBoundary,/Rewards"
 statsFormatP =
