@@ -4,10 +4,10 @@ GENESISDIR_byron=configuration/genesis-byron
 GENESISDIR_shelley=configuration/genesis-shelley
 
 # genesis parameters
-GEN_SLOTLENGTH="0.2"
+GEN_SLOTLENGTH="1"
 GEN_ACTIVESLOTSCOEFF="0.1"
 GEN_SECURITYPARAM="10"
-GEN_EPOCHLENGTH="1500"
+GEN_EPOCHLENGTH="300"
 GEN_DECENTRALISATIONPARAM="0.5"
 
 # the network id for our testnet
@@ -36,10 +36,10 @@ num_non_bulk_pools=1
 num_delegators_per_pool=100
 
 # number of fake UTxO entries
-num_stuffed_utxo=10000
+num_stuffed_utxo=100000
 
 # the number of transactions to enter into the chain
-numtx=5000
+numtx=200
 
 # inter-phase cooldown, seconds
 init_cooldown=5
@@ -57,7 +57,7 @@ inputstx=1
 outputstx=1
 
 # the transactions per seconds that the generator tries to achieve
-tps=50
+tps=2
 
 # cli benchmarking commands
 utxo_keys=3
