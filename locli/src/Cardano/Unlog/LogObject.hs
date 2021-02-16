@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE GeneralisedNewtypeDeriving #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_GHC -Wno-partial-fields -Wno-orphans #-}
 
@@ -77,66 +78,74 @@ instance Print ShortText where
   hPutStr   h = hPutStr   h . toText
   hPutStrLn h = hPutStrLn h . toText
 
+newtype TId = TId { unTId :: ShortText }
+  deriving (Eq, Ord, Show, FromJSON, ToJSON)
+
 --
 -- LogObject stream interpretation
 --
 
-interpreters :: Map Text (Object -> Parser LOBody)
+interpreters :: Map Text (Object -> TId -> Parser LOBody)
 interpreters = Map.fromList
   [ (,) "TraceStartLeadershipCheck" $
-    \v -> LOTraceStartLeadershipCheck
+    \v _ -> LOTraceStartLeadershipCheck
             <$> v .: "slot"
             <*> v .: "utxoSize"
             <*> v .: "chainDensity"
 
   , (,) "TraceBlockContext" $
-    \v -> LOBlockContext
+    \v _ -> LOBlockContext
             <$> v .: "tipBlockNo"
 
   , (,) "TraceNodeIsLeader" $
-    \v -> LOTraceNodeIsLeader
+    \v _ -> LOTraceNodeIsLeader
             <$> v .: "slot"
 
   , (,) "TraceNodeNotLeader" $
-    \v -> LOTraceNodeNotLeader
+    \v _ -> LOTraceNodeNotLeader
             <$> v .: "slot"
 
   , (,) "TraceMempoolAddedTx" $
-    \v -> do x :: Object <- v .: "mempoolSize"
-             LOMempoolTxs <$> x .: "numTxs"
+    \v _ -> do
+      x :: Object <- v .: "mempoolSize"
+      LOMempoolTxs <$> x .: "numTxs"
 
   , (,) "TraceMempoolRemoveTxs" $
-    \v -> do x :: Object <- v .: "mempoolSize"
-             LOMempoolTxs <$> x .: "numTxs"
+    \v _ -> do
+      x :: Object <- v .: "mempoolSize"
+      LOMempoolTxs <$> x .: "numTxs"
 
   , (,) "TraceMempoolRejectedTx" $
-    \_ -> pure LOMempoolRejectedTx
+    \_ _ -> pure LOMempoolRejectedTx
 
   , (,) "TraceLedgerEvent.TookSnapshot" $
-    \_ -> pure LOLedgerTookSnapshot
+    \_ _ -> pure LOLedgerTookSnapshot
 
   , (,) "TraceBenchTxSubSummary" $
-    \v -> do x :: Object <- v .: "summary"
-             LOGeneratorSummary
-               <$> ((x .: "ssFailures" :: Parser [Text])
-                    <&> null)
-               <*> x .: "ssTxSent"
-               <*> x .: "ssElapsed"
-               <*> x .: "ssThreadwiseTps"
+    \v _ -> do
+       x :: Object <- v .: "summary"
+       LOGeneratorSummary
+         <$> ((x .: "ssFailures" :: Parser [Text])
+              <&> null)
+         <*> x .: "ssTxSent"
+         <*> x .: "ssElapsed"
+         <*> x .: "ssThreadwiseTps"
 
   , (,) "TraceBenchTxSubServAck" $
-    \v -> LOTxsAcked <$> v .: "txIds"
+    \v _ -> LOTxsAcked <$> v .: "txIds"
 
   , (,) "Resources" $
-    \v -> LOResources <$> parseJSON (Object v)
+    \v _ -> LOResources <$> parseJSON (Object v)
 
   , (,) "TraceTxSubmissionCollected" $
-    \v -> LOTxsCollected
-            <$> v .: "count"
+    \v tid -> LOTxsCollected
+            <$> pure tid
+            <*> v .: "count"
 
   , (,) "TraceTxSubmissionProcessed" $
-    \v -> LOTxsProcessed
-            <$> v .: "accepted"
+    \v tid -> LOTxsProcessed
+            <$> pure tid
+            <*> v .: "accepted"
             <*> v .: "rejected"
   ]
 
@@ -154,29 +163,25 @@ data LOBody
   | LOBlockContext !Word64
   | LOGeneratorSummary !Bool !Word64 !NominalDiffTime (Vector Float)
   | LOTxsAcked !(Vector Text)
-  | LOTxsCollected !Word64
-  | LOTxsProcessed !Word64 !Word64
+  | LOTxsCollected !TId !Word64
+  | LOTxsProcessed !TId !Word64 !Int
   | LOAny !Object
   deriving (Generic, Show)
 
 instance ToJSON LOBody
 
-instance FromJSON LOBody where
-  parseJSON = AE.withObject "LOBody" $ \v -> do
-    kind :: Text <- fromText <$> v .: "kind"
-    case Map.lookup kind interpreters of
-      Just interp -> interp v
-      Nothing -> pure $ LOAny v
-
 instance FromJSON LogObject where
   parseJSON = AE.withObject "LogObject" $ \v -> do
     body :: Object <- v .: "data"
+    tid  :: TId <- v .: "thread"
     -- XXX:  fix node causing the need for this workaround
     (,) unwrapped kind <- unwrap "credentials" "val" body
     LogObject
       <$> v .: "at"
       <*> pure kind
-      <*> parseJSON (extendObject "kind" (String $ toText kind) (Object unwrapped))
+      <*> case Map.lookup kind interpreters of
+            Just interp -> interp unwrapped tid
+            Nothing -> pure $ LOAny unwrapped
    where
      unwrap :: Text -> Text -> Object -> Parser (Object, Text)
      unwrap wrappedKeyPred unwrapKey v = do

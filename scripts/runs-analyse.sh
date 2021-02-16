@@ -54,8 +54,8 @@ locli_analyse_cmd_mach_args() {
         echo "$logdir"/meta.json
         echo --logobjects-json
         echo "$logdir"/analysis/logs-"$mach".logobjects.json
-        # echo --leaderships-json
-        # echo "$logdir"/analysis/logs-"$mach".leaderships.json
+        echo --slotstats-json
+        echo "$logdir"/analysis/logs-"$mach".slotstats.json
         echo --timeline-pretty
         echo "$logdir"/analysis/logs-"$mach".timeline.txt
         # echo --timeline-csv

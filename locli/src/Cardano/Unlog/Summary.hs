@@ -96,7 +96,7 @@ runPerfTimeline chainInfo logfiles AnalysisOutputFiles{..} = do
 
     -- 1. Derive the basic scalars and vectors
     let (,) runStats noisySlotStats = analyseLogObjects chainInfo objs
-    forM_ ofLeaderships $
+    forM_ ofSlotStats $
       \(JsonOutputFile f) ->
         withFile f WriteMode $ \hnd ->
           forM_ noisySlotStats $ LBS.hPutStrLn hnd . Aeson.encode

@@ -12,6 +12,7 @@ import           Cardano.Prelude
 import           Data.Aeson
 import qualified Data.Sequence as Seq
 import qualified Data.Text as Text
+import           Data.List.Split (splitOn)
 
 import           Data.Time.Clock (UTCTime, NominalDiffTime)
 import           Text.Printf
@@ -53,17 +54,17 @@ instance ToJSON SlotStats
 slotHeadE, slotFormatE :: Text
 slotHeadP, slotFormatP :: Text
 slotHeadP =
-  "abs.  slot    block block lead  leader CDB rej  check     lead  mempool tx       pool chain       %CPU      GCs   Produc-   Memory use, kB    Alloc rate  Mempool  UTxO" <>"\n"<>
-  "slot#   epoch  no. -less checks ships snap txs  span      span   span acc rej density all/ GC/mut maj/min tivity  Live   Alloc   RSS   / mut sec   txs  entries"
+  "abs.  slot    block block lead  leader CDB rej  check  lead  mempool tx     chain       %CPU      GCs   Produc-   Memory use, kB    Alloc rate  Mempool  UTxO  Absolute" <>"\n"<>
+  "slot#   epoch  no. -less checks ships snap txs  span   span  span acc rej  density all/ GC/mut maj/min tivity  Live    Alloc   RSS   / mut sec   txs  entries   slot time"
 slotHeadE =
   "abs.slot#,slot,epoch,block,blockless,leadChecks,leadShips,cdbSnap,rejTx,checkSpan,mempoolTxSpan,chainDens,%CPU,%GC,%MUT,Productiv,MemLiveKb,MemAllocKb,MemRSSKb,AllocRate/Mut,MempoolTxs,UTxO"
-slotFormatP = "%5d %4d:%2d %4d    %2d    %2d   %2d    %2d  %2d %8s %8s %5s  %2d  %2d %0.3f  %3s %3s %3s %2s %3s   %4s %7s %7s %7s % 8s %4d %9d"
-slotFormatE = "%d,%d,%d,%d,%d,%d,%d,%d,%d,%s,%s,%s,%d,%d%0.3f,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%d,%d"
+slotFormatP = "%5d %4d:%2d %4d    %2d    %2d   %2d    %2d  %2d %7s %5s %5s  %2d  %2d   %0.3f  %3s %3s %3s  %2s %3s  %4s %7s %7s %7s % 8s   %4d %9d %s"
+slotFormatE = "%d,%d,%d,%d,%d,%d,%d,%d,%d,%s,%s,%s,%d,%d%0.3f,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%d,%d,%s"
 
 slotLine :: Bool -> Text -> SlotStats -> Text
 slotLine exportMode leadershipF SlotStats{..} = Text.pack $
   printf (Text.unpack leadershipF)
-         sl epsl epo blk blkl chks  lds cdbsn rejtx spanC spanL subdt sacc srej dens cpu gc mut majg ming   pro liv alc rss atm mpo utx
+         sl epsl epo blk blkl chks  lds cdbsn rejtx spanC spanL subdt sacc srej dens cpu gc mut majg ming   pro liv alc rss atm mpo utx start
  where sl    = slSlot
        epsl  = slEpochSlot
        epo   = slEpoch
@@ -73,11 +74,11 @@ slotLine exportMode leadershipF SlotStats{..} = Text.pack $
        lds   = slCountLeads
        cdbsn = slChainDBSnap
        rejtx = slRejectedTx
-       subdt = maybe ("" :: P.String) show slTxsMemSpan
+       subdt = maybe "" (Text.init . show) slTxsMemSpan
        sacc  = slTxsAccepted
        srej  = slTxsRejected
-       spanC = show slSpanCheck :: Text
-       spanL = show slSpanLead :: Text
+       spanC = Text.init $ show slSpanCheck
+       spanL = Text.init $ show slSpanLead
        cpu   = d 3 $ rCentiCpu slResources
        dens  = slDensity
        gc    = d 2 $ rCentiGC  slResources
@@ -95,6 +96,7 @@ slotLine exportMode leadershipF SlotStats{..} = Text.pack $
                         <*> (fromIntegral . max 1 . (1024 *) <$> rCentiMut slResources))
        mpo   = slMempoolTxs
        utx   = slUtxoSize
+       start = " " `splitOn` show slStart P.!! 1
 
        calcProd :: Float -> Float -> Float
        calcProd mut' cpu' = if cpu' == 0 then 1 else mut' / cpu'

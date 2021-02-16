@@ -13,6 +13,7 @@ import           Cardano.Prelude
 import           Control.Arrow ((&&&))
 import qualified Data.Sequence as Seq
 import           Data.Vector (Vector)
+import qualified Data.Map.Strict as Map
 
 import           Data.Time.Clock (NominalDiffTime, UTCTime)
 import qualified Data.Time.Clock as Time
@@ -35,7 +36,7 @@ data Analysis
   , aLastBlockSlot :: Word64
   , aSlotStats     :: [SlotStats]
   , aRunScalars    :: RunScalars
-  , aTxsCollectedAt:: UTCTime
+  , aTxsCollectedAt:: Map.Map TId UTCTime
   }
 
 data RunScalars
@@ -60,7 +61,7 @@ analyseLogObjects ci =
      , aLastBlockSlot = 0
      , aSlotStats     = [zeroSlotStats]
      , aRunScalars    = zeroRunScalars
-     , aTxsCollectedAt= zeroUTCTime
+     , aTxsCollectedAt= mempty
      }
    zeroRunScalars :: RunScalars
    zeroRunScalars = RunScalars Nothing Nothing Nothing
@@ -135,17 +136,32 @@ analysisStep ci a@Analysis{aSlotStats=cur:rSLs, ..} = \case
         , rsSubmitted     = Just sent
         }
       }
-  LogObject{loBody=LOTxsCollected _, loAt} ->
-    a { aTxsCollectedAt      = loAt }
-  LogObject{loBody=LOTxsProcessed acc rej, loAt} ->
-    a { aSlotStats      = cur { slTxsMemSpan =
-                                  Just $
-                                    (loAt `Time.diffUTCTime` aTxsCollectedAt)
-                                    +
-                                    fromMaybe 0 (slTxsMemSpan cur)
-                              , slTxsAccepted = acc
-                              , slTxsRejected = rej
-                              } : rSLs }
+  LogObject{loBody=LOTxsCollected tid _, loAt} ->
+    a { aTxsCollectedAt =
+        aTxsCollectedAt &
+        (\case
+            Just{} -> error $ mconcat
+              ["Duplicate LOTxsCollected for tid ", show tid, " at ", show loAt]
+            Nothing -> Just loAt)
+        `Map.alter` tid
+      }
+  LogObject{loBody=LOTxsProcessed tid acc rej, loAt} ->
+    a { aTxsCollectedAt = tid `Map.delete` aTxsCollectedAt
+      , aSlotStats      =
+        cur
+        { slTxsMemSpan =
+          case tid `Map.lookup` aTxsCollectedAt of
+            Nothing -> error $ mconcat
+              ["LOTxsProcessed missing LOTxsCollected for tid", show tid, " at ", show loAt]
+            Just base ->
+              Just $
+              (loAt `Time.diffUTCTime` base)
+              +
+              fromMaybe 0 (slTxsMemSpan cur)
+        , slTxsAccepted = slTxsAccepted cur + acc
+        , slTxsRejected = slTxsRejected cur + max 0 (fromIntegral rej)
+        } : rSLs
+      }
   _ -> a
  where
    updateOnNewSlot :: LogObject -> Analysis -> Analysis
@@ -180,7 +196,7 @@ extendAnalysis ::
   -> Word64 -> UTCTime -> Word64 -> Word64 -> Float
   -> Analysis -> Analysis
 extendAnalysis ci@CInfo{..} slot time checks utxo density a@Analysis{..} =
-  let (epochSlot, epoch) = slot `divMod` epoch_length gsis in
+  let (epoch, epochSlot) = slot `divMod` epoch_length gsis in
     a { aSlotStats = SlotStats
         { slSlot        = slot
         , slEpoch       = epoch
