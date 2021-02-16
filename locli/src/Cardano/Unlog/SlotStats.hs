@@ -82,7 +82,8 @@ slotLine exportMode leadershipF SlotStats{..} = Text.pack $
        cpu   = d 3 $ rCentiCpu slResources
        dens  = slDensity
        gc    = d 2 $ rCentiGC  slResources
-       mut   = d 2 $ rCentiMut slResources
+       mut   = d 2 $ min 999 -- workaround for ghc-8.10.2
+                  <$> rCentiMut slResources
        majg  = d 2 $ rGcsMajor slResources
        ming  = d 2 $ rGcsMinor slResources
        pro   = f 2 $ calcProd <$> (fromIntegral <$> rCentiMut slResources :: Maybe Float)
@@ -126,8 +127,9 @@ renderSlotTimeline leadHead fmt exportMode slotStats hnd = do
 --   On the trailing part, we drop everything since the last leadership check.
 cleanupSlotStats :: Seq SlotStats -> Seq SlotStats
 cleanupSlotStats =
-  Seq.dropWhileL ((== 0) . slDensity) .
-  Seq.dropWhileR ((== 0) . slCountChecks)
+  -- Seq.dropWhileL ((== 0) . slDensity) .
+  Seq.dropWhileL ((/= 500) . slSlot) .
+  Seq.dropWhileR ((== 0)   . slCountChecks)
 
 zeroSlotStats :: SlotStats
 zeroSlotStats =
