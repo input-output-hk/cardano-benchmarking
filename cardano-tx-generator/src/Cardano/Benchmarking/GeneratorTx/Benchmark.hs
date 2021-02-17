@@ -283,8 +283,6 @@ data GeneratorCmd =
               SocketPath
               AnyCardanoEra
               PartialBenchmark
-              (Maybe NetworkMagic)
-              Bool
               GeneratorFunds
 
 parserInfo :: String -> Opt.ParserInfo GeneratorCmd
@@ -313,20 +311,8 @@ parseCommand =
          )
        )
     <*> parsePartialBenchmark
-    <*> optional pMagicOverride
-    <*> ( flag False True
-          (long "addr-mainnet" <> help "Override address discriminator to mainnet.")
-        )
     <*> parseGeneratorFunds
  where
-   pMagicOverride :: Opt.Parser NetworkMagic
-   pMagicOverride =
-     NetworkMagic <$>
-     Opt.option Opt.auto
-     (  Opt.long "n2n-magic-override"
-       <> Opt.metavar "NATURAL"
-       <> Opt.help "Override the network magic for the node-to-node protocol."
-     )
    eraFlag name tag = flag Nothing (Just $ AnyCardanoEra tag)
                          (long name <> help ("Initialise Cardano in " ++ name ++" submode."))
 

@@ -35,11 +35,9 @@ runPlainOldCliScript
      socketFile
      benchmarkEra
      cliPartialBenchmark
-     nmagic_opt
-     is_addr_mn
      fundOptions
   )
-  = runExceptT $ runBenchmarkScriptWith iocp logConfigFile socketFile nmagic_opt is_addr_mn
+  = runExceptT $ runBenchmarkScriptWith iocp logConfigFile socketFile
       $ Script.plainOldCliScript cliPartialBenchmark benchmarkEra fundOptions
 
 eraTransitionTest :: IO ()
@@ -57,9 +55,7 @@ runEraTransitionTest
      socketFile
      _benchmarkEra
      cliPartialBenchmark
-     nmagic_opt
-     is_addr_mn
      fundOptions
   )
-  = runExceptT $ runBenchmarkScriptWith iocp logConfigFile socketFile nmagic_opt is_addr_mn
+  = runExceptT $ runBenchmarkScriptWith iocp logConfigFile socketFile
       $ Script.eraTransitionTest cliPartialBenchmark fundOptions
