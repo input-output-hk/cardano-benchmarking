@@ -8,7 +8,8 @@ import           Test.Tasty.HUnit
 import           Text.Heredoc
 import           Options.Applicative
   
-import           Cardano.Benchmarking.GeneratorTx.Benchmark (parseCommand)
+import           Cardano.Benchmarking.Command (commandParser)
+import           Cardano.Benchmarking.CliArgsScript (parseGeneratorCmd)
 import           Cardano.Benchmarking.GeneratorTx.SizedMetadata
 
 
@@ -47,12 +48,14 @@ cliArgs = testGroup "cli arguments"
       $ assertBool "help message == pinned help message" $ helpMessage == pinnedHelpMessage
 
      -- examples for calling the tx-generator found in the shell scripts.
-  , testCmdLine [here|--config /work/cli-tests/benchmarks/shelley3pools/configuration/configuration-generator.yaml --socket-path /work/cli-tests/benchmarks/shelley3pools/logs/sockets/1 --num-of-txs 1000 --add-tx-size 0 --inputs-per-tx 1 --outputs-per-tx 1 --tx-fee 1000000 --tps 10 --init-cooldown 5 --target-node ("127.0.0.1",3000) --target-node ("127.0.0.1",3001) --target-node ("127.0.0.1",3002) --genesis-funds-key configuration/genesis-shelley/utxo-keys/utxo1.skey|]
+  , testCmdLine [here|cliArguments --config /work/cli-tests/benchmarks/shelley3pools/configuration/configuration-generator.yaml --socket-path /work/cli-tests/benchmarks/shelley3pools/logs/sockets/1 --num-of-txs 1000 --add-tx-size 0 --inputs-per-tx 1 --outputs-per-tx 1 --tx-fee 1000000 --tps 10 --init-cooldown 5 --target-node ("127.0.0.1",3000) --target-node ("127.0.0.1",3001) --target-node ("127.0.0.1",3002) --genesis-funds-key configuration/genesis-shelley/utxo-keys/utxo1.skey|]
+  , testCmdLine [here|eraTransition --config /work/cli-tests/benchmarks/shelley3pools/configuration/configuration-generator.yaml --socket-path /work/cli-tests/benchmarks/shelley3pools/logs/sockets/1 --num-of-txs 1000 --add-tx-size 0 --inputs-per-tx 1 --outputs-per-tx 1 --tx-fee 1000000 --tps 10 --init-cooldown 5 --target-node ("127.0.0.1",3000) --target-node ("127.0.0.1",3001) --target-node ("127.0.0.1",3002) --genesis-funds-key configuration/genesis-shelley/utxo-keys/utxo1.skey|]
+
   ]
   where
     testCmdLine :: String -> TestTree
     testCmdLine l = testCase "check that example cmd line parses" $ assertBool l $ isJust
-                        $ getParseResult $ execParserPure defaultPrefs (info parseCommand fullDesc)
+                        $ getParseResult $ execParserPure defaultPrefs (info commandParser fullDesc)
                            $ words l
 
 pinnedHelpMessage = [here|ParserFailure(Usage: <program> --config FILEPATH --socket-path FILEPATH 
@@ -98,4 +101,4 @@ Available options:
                            UTxO funds signing key.
   --split-utxo FILEPATH    UTxO funds file.,ExitSuccess,80)|]
 
-helpMessage = show $ parserFailure defaultPrefs (info parseCommand fullDesc ) (ShowHelpText Nothing) []
+helpMessage = show $ parserFailure defaultPrefs (info parseGeneratorCmd fullDesc ) (ShowHelpText Nothing) []

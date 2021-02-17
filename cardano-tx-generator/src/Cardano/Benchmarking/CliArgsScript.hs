@@ -2,10 +2,12 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-module Cardano.Benchmarking.Script
+module Cardano.Benchmarking.CliArgsScript
   (
-    plainOldCliScript
-  , eraTransitionTest
+    GeneratorCmd
+  , parseGeneratorCmd
+  , runPlainOldCliScript
+  , runEraTransitionTest
   ) where
 
 import Prelude (error)
@@ -17,11 +19,42 @@ import Control.Tracer (traceWith)
 
 import Cardano.Api.Typed
 
+import Ouroboros.Network.NodeToClient (IOManager)
+
 import Cardano.Benchmarking.GeneratorTx.Benchmark
 import Cardano.Benchmarking.GeneratorTx (readSigningKey)
 import Cardano.Benchmarking.DSL
 import Cardano.Benchmarking.GeneratorTx.Era
 import Cardano.Benchmarking.GeneratorTx.Error (TxGenError(..))
+
+import Cardano.Benchmarking.GeneratorTx.Benchmark (GeneratorCmd (..), parseGeneratorCmd)
+import Cardano.Benchmarking.GeneratorTx.LocalProtocolDefinition (CliError(..), runBenchmarkScriptWith)
+
+runPlainOldCliScript :: IOManager -> GeneratorCmd -> IO (Either CliError ())
+runPlainOldCliScript
+  iocp
+  (GenerateCmd
+     logConfigFile
+     socketFile
+     benchmarkEra
+     cliPartialBenchmark
+     fundOptions
+  )
+  = runExceptT $ runBenchmarkScriptWith iocp logConfigFile socketFile
+      $ plainOldCliScript cliPartialBenchmark benchmarkEra fundOptions
+
+runEraTransitionTest :: IOManager -> GeneratorCmd -> IO (Either CliError ())
+runEraTransitionTest
+  iocp
+  (GenerateCmd
+     logConfigFile
+     socketFile
+     _benchmarkEra
+     cliPartialBenchmark
+     fundOptions
+  )
+  = runExceptT $ runBenchmarkScriptWith iocp logConfigFile socketFile
+      $ eraTransitionTest cliPartialBenchmark fundOptions
 
 plainOldCliScript :: PartialBenchmark -> AnyCardanoEra -> GeneratorFunds -> BenchmarkScript ()
 plainOldCliScript cliPartialBenchmark benchmarkEra (FundsGenesis keyFile) (tracers, dslSet) = do
