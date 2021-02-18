@@ -17,7 +17,7 @@ import qualified Data.List.NonEmpty as NE
 
 import Control.Tracer (traceWith)
 
-import Cardano.Api.Typed
+import Cardano.Api
 
 import Ouroboros.Network.NodeToClient (IOManager)
 

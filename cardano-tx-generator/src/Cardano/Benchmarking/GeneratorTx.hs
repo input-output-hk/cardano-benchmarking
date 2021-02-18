@@ -44,9 +44,11 @@ import           Network.Socket (AddrInfo (..), AddrInfoFlag (..), Family (..), 
 import           Cardano.CLI.Types (SigningKeyFile (..))
 import           Cardano.Node.Types
 
-import           Cardano.Api.TxSubmit
+--import           Cardano.Api.TxSubmit
+import           Ouroboros.Consensus.Shelley.Eras (StandardShelley)
 
-import           Cardano.Api.Typed
+import           Cardano.Api
+import           Cardano.Api.Shelley (CardanoMode)
 
 import           Cardano.Benchmarking.GeneratorTx.Benchmark
 import           Cardano.Benchmarking.GeneratorTx.Era
@@ -58,6 +60,7 @@ import           Cardano.Benchmarking.GeneratorTx.Tx
 import           Cardano.Benchmarking.GeneratorTx.SizedMetadata (mkMetadata)
 
 import           Shelley.Spec.Ledger.API (ShelleyGenesis)
+import           Ouroboros.Network.Protocol.LocalTxSubmission.Type (SubmitResult (..))
 
 readSigningKey :: SigningKeyFile -> ExceptT TxGenError IO (SigningKey PaymentKey)
 readSigningKey =
@@ -71,7 +74,7 @@ readSigningKey =
 
 secureGenesisFund :: forall era. IsShelleyBasedEra era
   => Tracer IO (TraceBenchTxSubmit TxId)
-  -> LocalNodeConnectInfo CardanoMode CardanoBlock
+  -> LocalNodeConnectInfo CardanoMode
   -> NetworkId
   -> ShelleyGenesis StandardShelley
   -> Lovelace
@@ -83,15 +86,15 @@ secureGenesisFund submitTracer localConnectInfo networkId genesis txFee ttl key 
     let (_inAddr, lovelace) = genesisFundForKey @ era networkId genesis key
         (tx, fund) =
            genesisExpenditure networkId key outAddr lovelace txFee ttl
-    r <- liftIO $ submitTx localConnectInfo (TxForCardanoMode $ InAnyCardanoEra cardanoEra tx)
+    r <- liftIO $ submitTxToNodeLocal localConnectInfo (txInModeCardano tx)
     case r of
-      TxSubmitSuccess ->
+      SubmitSuccess ->
         liftIO . traceWith submitTracer . TraceBenchTxSubDebug
         $ mconcat
         [ "******* Funding secured ("
         , show $ fundTxIn fund, " -> ", show $ fundAdaValue fund
-        , "), submission result: " , show r ]
-      e -> fail $ show e
+        , ")"]
+      SubmitFail e -> fail $ show e
     return fund
 
 parseAddress ::
@@ -103,31 +106,30 @@ parseAddress addr=
     shelleyAddressInEra <$>
     deserialiseAddress AsShelleyAddress addr
 
+{-
 instance IsShelleyBasedEra era => FromJSON (AddressInEra era) where
   parseJSON = A.withText "ShelleyAddress" $ pure . parseAddress
-
---data Era era where
---  EraShelley :: Era ShelleyEra
 
 instance (IsShelleyBasedEra era, FromJSON (AddressInEra era)) => FromJSON (TxOut era) where
   parseJSON = A.withObject "TxOut" $ \v ->
     TxOut
       <$> (v A..: "addr")
       <*> (v A..: "coin"
-           <&> mkTxOutValueAdaOnly . Lovelace)
+           <&> mkTxOutValueAdaOnly . quantityToLovelace . Quantity )
 
 instance FromJSON TxIn where
   parseJSON = A.withObject "TxIn" $ \v -> do
     TxIn
       <$> (TxId <$> v A..: "txid")
       <*> (TxIx <$> v A..: "txix")
+-}
 
 -----------------------------------------------------------------------------------------
 -- Obtain initial funds.
 -----------------------------------------------------------------------------------------
 splitFunds  :: forall era. IsShelleyBasedEra era
   => Tracer IO (TraceBenchTxSubmit TxId)
-  -> LocalNodeConnectInfo CardanoMode CardanoBlock
+  -> LocalNodeConnectInfo CardanoMode
   -> Lovelace
   -> NumberOfTxs
   -> NumberOfInputsPerTx
@@ -138,14 +140,15 @@ splitFunds  :: forall era. IsShelleyBasedEra era
 splitFunds
     submitTracer
     localConnInfo
-    fee@(Lovelace feeRaw)
+    fee
     (NumberOfTxs numTxs)
     (NumberOfInputsPerTx txFanin)
     sourceKey
     globalOutAddr
     fundsTxIO = do
   let -- The number of splitting txout entries (corresponds to the number of all inputs we will need).
-      (Lovelace rawCoin) = fundAdaValue fundsTxIO
+      (Quantity rawCoin) = lovelaceToQuantity $ fundAdaValue fundsTxIO
+      (Quantity feeRaw) = lovelaceToQuantity fee
       numRequiredTxOuts = numTxs * fromIntegral txFanin
       splitFanout = 60 :: Word64 -- near the upper bound so as not to exceed the tx size limit
       (nFullTxs, remainder) = numRequiredTxOuts `divMod` splitFanout
@@ -158,7 +161,7 @@ splitFunds
         /
         (fromIntegral numRequiredTxOuts :: Double)
       outputSlice = outputSliceWithFees - feeRaw
-      splitValue = mkTxOutValueAdaOnly $ Lovelace outputSlice
+      splitValue = mkTxOutValueAdaOnly $ quantityToLovelace $ Quantity outputSlice
       -- The same output for all splitting transaction: send the same 'splitValue'
       -- to the same 'sourceAddress'.
       -- Create and sign splitting txs.
@@ -181,10 +184,10 @@ splitFunds
      , "splitting tx count: ", show (length splittingTxs)
      ]
   forM_ (zip splittingTxs [0::Int ..]) $ \((tx, _), i) ->
-    liftIO (submitTx localConnInfo (TxForCardanoMode $ InAnyCardanoEra cardanoEra tx))
+    liftIO (submitTxToNodeLocal localConnInfo (txInModeCardano tx))
     >>= \case
-      TxSubmitSuccess -> pure ()
-      x -> left . SplittingSubmissionError $ mconcat
+      SubmitSuccess -> pure ()
+      SubmitFail x -> left . SplittingSubmissionError $ mconcat
            ["Coin splitting submission failed (", show i :: Text
            , "/", show numSplitTxs :: Text
            , "): ", show x :: Text
@@ -364,7 +367,7 @@ txGenerator
                    (repeat txOut)
   initRecipientIndex = 0 :: Int
   -- The same output for all transactions.
-  valueForRecipient = Lovelace 1000000 -- 10 ADA
+  valueForRecipient = quantityToLovelace $ Quantity 1000000 -- 10 ADA
   !txOut = TxOut recipientAddress (mkTxOutValueAdaOnly valueForRecipient)
   totalValue = valueForRecipient + bTxFee
   -- Send possible change to the same 'recipientAddress'.

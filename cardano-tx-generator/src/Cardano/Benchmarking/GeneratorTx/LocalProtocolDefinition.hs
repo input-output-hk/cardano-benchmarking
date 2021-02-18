@@ -40,8 +40,8 @@ import           Ouroboros.Network.NodeToClient (IOManager)
 import           Ouroboros.Network.Block (MaxSlotNo(..))
 
 import           Cardano.Api
-import           Cardano.Api.Typed
-import qualified Cardano.Api.Typed as Api
+import           Cardano.Api.Shelley (CardanoMode)
+
 import           Cardano.Chain.Slotting
 import qualified Cardano.Chain.Genesis as Genesis
 
@@ -75,10 +75,11 @@ mangleLocalProtocolDefinition
   where
 
     ProtocolInfo{pInfoConfig} = Consensus.protocolInfo ptcl
+    localConnectInfo :: LocalNodeConnectInfo CardanoMode
     localConnectInfo = LocalNodeConnectInfo
+       (CardanoModeParams (EpochSlots 21600))        -- TODO: get this from genesis
+       (Testnet . getNetworkMagic . configBlock $ pInfoConfig)
        sock
-       (Api.Testnet . getNetworkMagic . configBlock $ pInfoConfig)
-       (CardanoMode (EpochSlots 21600))        -- TODO: get this from genesis
 
     connectClient :: ConnectClient
     connectClient  = benchmarkConnectTxSubmit

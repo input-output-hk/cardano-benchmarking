@@ -75,7 +75,8 @@ import           Ouroboros.Network.Protocol.TxSubmission.Type (BlockingReplyList
 
 import qualified Shelley.Spec.Ledger.TxBody as ShelleyLedger
 
-import           Cardano.Api.Typed
+import           Cardano.Api
+import           Cardano.Api.Shelley (Tx(ShelleyTx), fromShelleyTxId)
 import qualified Cardano.Crypto.Hash.Class as Crypto
 
 import           Cardano.Benchmarking.GeneratorTx.Era
@@ -363,9 +364,9 @@ txSubmissionClient tr bmtr sub threadIx =
      (ShelleyBasedEraMary, ShelleyTx _ tx') -> GenTxMary (mkShelleyTx tx')
 
    fromGenTxId :: gentxid -> txid
-   fromGenTxId (Block.GenTxIdShelley (Mempool.ShelleyTxId (ShelleyLedger.TxId i))) = TxId $ Crypto.castHash i
-   fromGenTxId (Block.GenTxIdAllegra (Mempool.ShelleyTxId (ShelleyLedger.TxId i))) = TxId $ Crypto.castHash i
-   fromGenTxId (Block.GenTxIdMary    (Mempool.ShelleyTxId (ShelleyLedger.TxId i))) = TxId $ Crypto.castHash i
+   fromGenTxId (Block.GenTxIdShelley (Mempool.ShelleyTxId i)) = fromShelleyTxId i
+   fromGenTxId (Block.GenTxIdAllegra (Mempool.ShelleyTxId i)) = fromShelleyTxId i
+   fromGenTxId (Block.GenTxIdMary    (Mempool.ShelleyTxId i)) = fromShelleyTxId i
    fromGenTxId _ = error "submission.hs: fromGenTxId"
 
    tokIsBlocking :: TokBlockingStyle a -> Bool

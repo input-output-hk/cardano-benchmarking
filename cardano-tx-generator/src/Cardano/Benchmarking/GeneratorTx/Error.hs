@@ -6,7 +6,7 @@ module Cardano.Benchmarking.GeneratorTx.Error
     TxGenError (..)
   ) where
 
-import           Cardano.Api.Typed
+import           Cardano.Api
 import           Cardano.Prelude
 
 data TxGenError =

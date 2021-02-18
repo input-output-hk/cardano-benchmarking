@@ -46,7 +46,7 @@ module Cardano.Benchmarking.GeneratorTx.Era
 
   , SendRecvConnect
   , SendRecvTxSubmission
-  , CardanoMode
+--  , CardanoMode
   ) where
 
 import           Prelude (Show(..), String)
@@ -77,8 +77,7 @@ import qualified Ouroboros.Network.NodeToNode as NtN
 
 -- Node API imports
 import           Cardano.Api
-import           Cardano.Api.TxSubmit
-import           Cardano.Api.Typed
+--import           Cardano.Api.TxSubmit
 
 -- Node imports
 import           Cardano.Node.Configuration.Logging (LOContent(..), LoggingLayer (..))
@@ -98,7 +97,7 @@ type ModeSupportsTxGen mode =
   ( BenchTraceConstraints CardanoBlock
   , Mempool.HasTxId (GenTx CardanoBlock)
   , Mempool.LedgerSupportsMempool CardanoBlock
-  , Show (TxSubmitResultForMode mode)
+--  , Show (TxSubmitResultForMode mode)
   , RunNode CardanoBlock)
 
 type EraSupportsTxGen era =
@@ -113,12 +112,14 @@ type ConfigSupportsTxGen mode era =
   (ModeSupportsTxGen mode, EraSupportsTxGen era)
 
 -- https://github.com/input-output-hk/cardano-node/issues/1855 would be the proper solution.
+{-
 deriving stock instance (Generic TxIn)
 instance ToJSON TxIn
 instance ToJSON TxId where
   toJSON (TxId x) = toJSON x
 instance ToJSON TxIx where
   toJSON (TxIx x) = toJSON x
+-}
 
 type CardanoBlock    = Consensus.CardanoBlock  StandardCrypto
 

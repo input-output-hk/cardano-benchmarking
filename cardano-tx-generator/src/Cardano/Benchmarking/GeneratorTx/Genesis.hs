@@ -12,12 +12,13 @@ import           Prelude (error, filter)
 import qualified Data.Map.Strict as Map
 
 import           Control.Arrow ((***))
-import           Cardano.Api.Typed
+import           Cardano.Api
 import           Cardano.Api.Shelley (fromShelleyLovelace, fromShelleyStakeReference, fromShelleyPaymentCredential)
 
 import           Cardano.Benchmarking.GeneratorTx.Tx
 
-import           Shelley.Spec.Ledger.API (ShelleyGenesis, sgInitialFunds)
+import           Shelley.Spec.Ledger.API (Addr(..), ShelleyGenesis, sgInitialFunds)
+import           Ouroboros.Consensus.Shelley.Eras (StandardShelley)
 
 genesisFunds :: forall era. IsShelleyBasedEra era
   => NetworkId -> ShelleyGenesis StandardShelley -> [(AddressInEra era, Lovelace)]

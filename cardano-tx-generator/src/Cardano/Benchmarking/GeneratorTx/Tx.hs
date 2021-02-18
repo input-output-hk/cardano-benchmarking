@@ -18,6 +18,7 @@ module Cardano.Benchmarking.GeneratorTx.Tx
   , mkTransactionGen
   , mkTxOutValueAdaOnly
   , txOutValueToLovelace
+  , txInModeCardano
   , mkFee
   , mkValidityUpperBound
   )
@@ -33,7 +34,7 @@ import           Data.Map.Strict (Map)
 import           Cardano.Benchmarking.GeneratorTx.Benchmark (TxAdditionalSize(..))
 
 import           Cardano.Api
-
+import           Cardano.Api.Shelley (CardanoMode)
 
 type Fund = (TxIn, InAnyCardanoEra TxOutValue)
 
@@ -210,3 +211,10 @@ txOutValueToLovelace = \case
   TxOutValue _ v -> case valueToLovelace v of
     Just c -> c
     Nothing -> error "txOutValueLovelace  TxOut contains no ADA"
+
+
+txInModeCardano :: forall era . IsShelleyBasedEra era => Tx era -> TxInMode CardanoMode
+txInModeCardano tx = case shelleyBasedEra @ era of
+  ShelleyBasedEraShelley -> TxInMode tx ShelleyEraInCardanoMode
+  ShelleyBasedEraAllegra -> TxInMode tx AllegraEraInCardanoMode
+  ShelleyBasedEraMary    -> TxInMode tx MaryEraInCardanoMode
