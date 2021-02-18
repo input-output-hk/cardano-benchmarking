@@ -24,13 +24,13 @@ import           Prelude (error)
 import           Cardano.Prelude
 
 import           Cardano.Api
-import Cardano.Benchmarking.GeneratorTx.Benchmark -- (Benchmark, GeneratorFunds)
-import Cardano.Benchmarking.GeneratorTx.Era
+import Cardano.Benchmarking.Tracer
+import Cardano.Benchmarking.Types (SubmissionErrorPolicy, NodeIPv4Address)
 import Cardano.Benchmarking.GeneratorTx
 import Cardano.Benchmarking.GeneratorTx.Tx
 
 type ScriptM a = ExceptT TxGenError IO a
-type BenchmarkScript a = (BenchTracers IO CardanoBlock, MonoDSLs) ->  ScriptM a
+type BenchmarkScript a = (BenchTracers, MonoDSLs) ->  ScriptM a
 
 -- Look at hardfork combinator for more elegant abstraction.
 type MonoDSLs = (DSL ShelleyEra, DSL AllegraEra, DSL MaryEra)
@@ -62,7 +62,11 @@ type SplitFunds era =
 
 -- txGenerator is basically pure except for logging
 type TxGenerator era =
-     Benchmark
+     Lovelace
+  -> NumberOfTxs
+  -> NumberOfInputsPerTx
+  -> NumberOfOutputsPerTx
+  -> TxAdditionalSize
   -> AddressInEra era
   -> SigningKey PaymentKey
   -> Int

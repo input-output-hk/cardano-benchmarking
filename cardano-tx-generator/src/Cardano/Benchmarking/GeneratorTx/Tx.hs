@@ -31,7 +31,7 @@ import           Data.List.NonEmpty (NonEmpty(..))
 import qualified Data.Map.Strict as Map
 import           Data.Map.Strict (Map)
 
-import           Cardano.Benchmarking.GeneratorTx.Benchmark (TxAdditionalSize(..))
+import           Cardano.Benchmarking.Types (TxAdditionalSize(..))
 
 import           Cardano.Api
 import           Cardano.Api.Shelley (CardanoMode)

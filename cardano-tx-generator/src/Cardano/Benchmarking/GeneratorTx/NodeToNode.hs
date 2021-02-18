@@ -25,10 +25,12 @@ import           System.Random (newStdGen)
 import           Control.Tracer (Tracer, nullTracer)
 import           Ouroboros.Consensus.Byron.Ledger.Mempool (GenTx)
 import           Ouroboros.Consensus.Block.Abstract
+import qualified Ouroboros.Consensus.Cardano as Consensus (CardanoBlock)
 import           Ouroboros.Consensus.Ledger.SupportsMempool (GenTxId)
 import           Ouroboros.Consensus.Network.NodeToNode -- (Codecs (..), defaultCodecs)
 import           Ouroboros.Consensus.Node.NetworkProtocolVersion
 import           Ouroboros.Consensus.Node.Run (RunNode)
+import           Ouroboros.Consensus.Shelley.Protocol (StandardCrypto)
 
 import           Ouroboros.Network.Channel (Channel (..))
 import           Ouroboros.Network.DeltaQ (defaultGSV)
@@ -48,15 +50,16 @@ import           Ouroboros.Network.Protocol.TxSubmission.Client (TxSubmissionCli
                                                                  txSubmissionClientPeer)
 import           Ouroboros.Network.Snocket (socketSnocket)
 
-import           Cardano.Benchmarking.GeneratorTx.Era
+import           Cardano.Benchmarking.Tracer (SendRecvConnect, SendRecvTxSubmission)
 
+type CardanoBlock    = Consensus.CardanoBlock  StandardCrypto
 type ConnectClient = AddrInfo -> TxSubmissionClient (GenTxId CardanoBlock) (GenTx CardanoBlock) IO () -> IO ()
 
 benchmarkConnectTxSubmit
   :: forall blk. (blk ~ CardanoBlock, RunNode blk )
   => IOManager
   -> Tracer IO SendRecvConnect
-  -> Tracer IO (SendRecvTxSubmission blk)
+  -> Tracer IO SendRecvTxSubmission
   -> CodecConfig CardanoBlock
   -> NetworkMagic 
   -> AddrInfo

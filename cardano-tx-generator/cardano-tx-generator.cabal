@@ -26,10 +26,12 @@ library
                        Cardano.Benchmarking.CliArgsScript
                        Cardano.Benchmarking.Command
                        Cardano.Benchmarking.DSL
+                       Cardano.Benchmarking.OuroborosImports
+                       Cardano.Benchmarking.Tracer
+                       Cardano.Benchmarking.Types
                        Cardano.Benchmarking.GeneratorTx
                        Cardano.Benchmarking.GeneratorTx.Benchmark
                        Cardano.Benchmarking.GeneratorTx.Error
-                       Cardano.Benchmarking.GeneratorTx.Era
                        Cardano.Benchmarking.GeneratorTx.LocalProtocolDefinition
                        Cardano.Benchmarking.GeneratorTx.Genesis
                        Cardano.Benchmarking.GeneratorTx.NodeToNode

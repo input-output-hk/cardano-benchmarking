@@ -58,10 +58,12 @@ import           Cardano.Tracing.OrphanInstances.Consensus ()
 import           Cardano.Tracing.OrphanInstances.Network ()
 import           Cardano.Tracing.OrphanInstances.Shelley ()
 
+import qualified Ouroboros.Consensus.Cardano as Consensus (CardanoBlock)
 import           Ouroboros.Consensus.Ledger.SupportsMempool (GenTx, GenTxId, txInBlockSize)
 import qualified Ouroboros.Consensus.Ledger.SupportsMempool as Mempool
 import           Ouroboros.Consensus.Shelley.Ledger.Mempool (mkShelleyTx)
 import qualified Ouroboros.Consensus.Shelley.Ledger.Mempool as Mempool (TxId(ShelleyTxId))
+import           Ouroboros.Consensus.Shelley.Protocol (StandardCrypto)
 
 import           Ouroboros.Consensus.Cardano.Block (GenTx (GenTxShelley, GenTxMary, GenTxAllegra))
 import qualified Ouroboros.Consensus.Cardano.Block as Block (TxId(GenTxIdShelley, GenTxIdAllegra, GenTxIdMary))
@@ -73,18 +75,16 @@ import           Ouroboros.Network.Protocol.TxSubmission.Client (ClientStIdle (.
 import           Ouroboros.Network.Protocol.TxSubmission.Type (BlockingReplyList (..),
                                                                TokBlockingStyle (..), TxSizeInBytes)
 
-import qualified Shelley.Spec.Ledger.TxBody as ShelleyLedger
-
 import           Cardano.Api
 import           Cardano.Api.Shelley (Tx(ShelleyTx), fromShelleyTxId)
-import qualified Cardano.Crypto.Hash.Class as Crypto
 
-import           Cardano.Benchmarking.GeneratorTx.Era
-import           Cardano.Benchmarking.GeneratorTx.Benchmark
+import           Cardano.Benchmarking.Tracer
+import           Cardano.Benchmarking.Types
 
 {-------------------------------------------------------------------------------
   Parametrisation & state
 -------------------------------------------------------------------------------}
+type CardanoBlock    = Consensus.CardanoBlock  StandardCrypto
 
 data SubmissionParams
   = SubmissionParams

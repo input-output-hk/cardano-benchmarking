@@ -34,7 +34,6 @@ import           Control.Monad (fail)
 import           Control.Monad.Trans.Except.Extra (left, newExceptT, right)
 import           Control.Tracer (Tracer, traceWith)
 
-import qualified Data.Aeson as A
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map.Strict as Map
 import           Data.Text (pack)
@@ -44,20 +43,19 @@ import           Network.Socket (AddrInfo (..), AddrInfoFlag (..), Family (..), 
 import           Cardano.CLI.Types (SigningKeyFile (..))
 import           Cardano.Node.Types
 
---import           Cardano.Api.TxSubmit
 import           Ouroboros.Consensus.Shelley.Eras (StandardShelley)
 
 import           Cardano.Api
 import           Cardano.Api.Shelley (CardanoMode)
 
-import           Cardano.Benchmarking.GeneratorTx.Benchmark
-import           Cardano.Benchmarking.GeneratorTx.Era
+import           Cardano.Benchmarking.Types
 import           Cardano.Benchmarking.GeneratorTx.Error
 import           Cardano.Benchmarking.GeneratorTx.Genesis
 import           Cardano.Benchmarking.GeneratorTx.NodeToNode
 import           Cardano.Benchmarking.GeneratorTx.Submission
 import           Cardano.Benchmarking.GeneratorTx.Tx
 import           Cardano.Benchmarking.GeneratorTx.SizedMetadata (mkMetadata)
+import           Cardano.Benchmarking.Tracer
 
 import           Shelley.Spec.Ledger.API (ShelleyGenesis)
 import           Ouroboros.Network.Protocol.LocalTxSubmission.Type (SubmitResult (..))
@@ -74,7 +72,7 @@ readSigningKey =
 
 secureGenesisFund :: forall era. IsShelleyBasedEra era
   => Tracer IO (TraceBenchTxSubmit TxId)
-  -> LocalNodeConnectInfo CardanoMode
+  -> (TxInMode CardanoMode -> IO (SubmitResult (TxValidationErrorInMode CardanoMode)))
   -> NetworkId
   -> ShelleyGenesis StandardShelley
   -> Lovelace
@@ -82,11 +80,11 @@ secureGenesisFund :: forall era. IsShelleyBasedEra era
   -> SigningKey PaymentKey
   -> AddressInEra era
   -> ExceptT TxGenError IO Fund
-secureGenesisFund submitTracer localConnectInfo networkId genesis txFee ttl key outAddr = do
+secureGenesisFund submitTracer localSubmitTx networkId genesis txFee ttl key outAddr = do
     let (_inAddr, lovelace) = genesisFundForKey @ era networkId genesis key
         (tx, fund) =
            genesisExpenditure networkId key outAddr lovelace txFee ttl
-    r <- liftIO $ submitTxToNodeLocal localConnectInfo (txInModeCardano tx)
+    r <- liftIO $ localSubmitTx $ txInModeCardano tx
     case r of
       SubmitSuccess ->
         liftIO . traceWith submitTracer . TraceBenchTxSubDebug
@@ -97,39 +95,12 @@ secureGenesisFund submitTracer localConnectInfo networkId genesis txFee ttl key 
       SubmitFail e -> fail $ show e
     return fund
 
-parseAddress ::
-   (IsShelleyBasedEra era)
-  => Text
-  -> AddressInEra era
-parseAddress addr=
-    fromMaybe (panic $ "Bad address: " <> addr) $
-    shelleyAddressInEra <$>
-    deserialiseAddress AsShelleyAddress addr
-
-{-
-instance IsShelleyBasedEra era => FromJSON (AddressInEra era) where
-  parseJSON = A.withText "ShelleyAddress" $ pure . parseAddress
-
-instance (IsShelleyBasedEra era, FromJSON (AddressInEra era)) => FromJSON (TxOut era) where
-  parseJSON = A.withObject "TxOut" $ \v ->
-    TxOut
-      <$> (v A..: "addr")
-      <*> (v A..: "coin"
-           <&> mkTxOutValueAdaOnly . quantityToLovelace . Quantity )
-
-instance FromJSON TxIn where
-  parseJSON = A.withObject "TxIn" $ \v -> do
-    TxIn
-      <$> (TxId <$> v A..: "txid")
-      <*> (TxIx <$> v A..: "txix")
--}
-
 -----------------------------------------------------------------------------------------
 -- Obtain initial funds.
 -----------------------------------------------------------------------------------------
 splitFunds  :: forall era. IsShelleyBasedEra era
   => Tracer IO (TraceBenchTxSubmit TxId)
-  -> LocalNodeConnectInfo CardanoMode
+  -> (TxInMode CardanoMode -> IO (SubmitResult (TxValidationErrorInMode CardanoMode)))
   -> Lovelace
   -> NumberOfTxs
   -> NumberOfInputsPerTx
@@ -139,7 +110,7 @@ splitFunds  :: forall era. IsShelleyBasedEra era
   -> ExceptT TxGenError IO [Fund]
 splitFunds
     submitTracer
-    localConnInfo
+    localSubmitTx
     fee
     (NumberOfTxs numTxs)
     (NumberOfInputsPerTx txFanin)
@@ -184,7 +155,7 @@ splitFunds
      , "splitting tx count: ", show (length splittingTxs)
      ]
   forM_ (zip splittingTxs [0::Int ..]) $ \((tx, _), i) ->
-    liftIO (submitTxToNodeLocal localConnInfo (txInModeCardano tx))
+    liftIO (localSubmitTx $ txInModeCardano tx)
     >>= \case
       SubmitSuccess -> pure ()
       SubmitFail x -> left . SplittingSubmissionError $ mconcat
@@ -328,20 +299,23 @@ txGenerator
   :: forall era
   .  IsShelleyBasedEra era
   => Tracer IO (TraceBenchTxSubmit TxId)
-  -> Benchmark
+  -> Lovelace
+  -> NumberOfTxs
+  -> NumberOfInputsPerTx
+  -> NumberOfOutputsPerTx
+  -> TxAdditionalSize
   -> AddressInEra era
   -> SigningKey PaymentKey
   -> Int
   -> [Fund]
   -> ExceptT TxGenError IO [Tx era]
 txGenerator
-  tracer Benchmark
-    { bTxFee
-    , bTxCount=NumberOfTxs numOfTransactions
-    , bTxFanIn=NumberOfInputsPerTx numOfInsPerTx
-    , bTxFanOut=NumberOfOutputsPerTx numOfOutsPerTx
-    , bTxExtraPayload=TxAdditionalSize txAdditionalSize
-    }
+  tracer
+  txFee
+  (NumberOfTxs numOfTransactions)
+  (NumberOfInputsPerTx numOfInsPerTx)
+  (NumberOfOutputsPerTx numOfOutsPerTx)
+  (TxAdditionalSize txAdditionalSize)
   recipientAddress
   sourceKey
   numOfTargetNodes
@@ -350,7 +324,7 @@ txGenerator
   liftIO . traceWith tracer . TraceBenchTxSubDebug
     $ " Generating " ++ show numOfTransactions
       ++ " transactions, for " ++ show numOfTargetNodes
-      ++ " peers, fee " ++ show bTxFee
+      ++ " peers, fee " ++ show txFee
       ++ ", value " ++ show valueForRecipient
       ++ ", totalValue " ++ show totalValue
   metadata <- case mkMetadata txAdditionalSize of
@@ -369,7 +343,7 @@ txGenerator
   -- The same output for all transactions.
   valueForRecipient = quantityToLovelace $ Quantity 1000000 -- 10 ADA
   !txOut = TxOut recipientAddress (mkTxOutValueAdaOnly valueForRecipient)
-  totalValue = valueForRecipient + bTxFee
+  totalValue = valueForRecipient + txFee
   -- Send possible change to the same 'recipientAddress'.
   addressForChange = recipientAddress
 
@@ -390,7 +364,7 @@ txGenerator
             addressForChange
             recipients
             metadata
-            bTxFee
+            txFee
     (txAux :) <$> createMainTxs (txsNum - 1) insNumPerTx metadata updatedFunds
 
   -- Get inputs for one main transaction, using available funds.
