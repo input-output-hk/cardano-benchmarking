@@ -19,7 +19,7 @@ import           Options.Applicative
                     )
 import qualified Options.Applicative as Opt
 import qualified Control.Arrow as Arr
-import           Cardano.Api.Typed
+import           Cardano.Api
 import           Cardano.CLI.Types (SigningKeyFile (..))
 import           Cardano.Node.Types
 
@@ -56,7 +56,7 @@ parsePort :: Word16 -> PortNumber
 parsePort = fromIntegral
 
 parseFeePerTx :: String -> String -> Parser Lovelace
-parseFeePerTx opt desc = Lovelace <$> parseIntegral opt desc
+parseFeePerTx opt desc = quantityToLovelace . Quantity <$> parseIntegral opt desc
 
 parseInitialTTL :: String -> String -> Parser SlotNo
 parseInitialTTL opt desc = SlotNo <$> parseIntegral opt desc
@@ -164,7 +164,7 @@ parseAddressAny = do
       Just addr -> pure addr
 
 parseLovelace :: Atto.Parser Lovelace
-parseLovelace = Lovelace <$> Atto.decimal
+parseLovelace = quantityToLovelace . Quantity <$> Atto.decimal
 
 lexPlausibleAddressString :: Atto.Parser Text
 lexPlausibleAddressString =

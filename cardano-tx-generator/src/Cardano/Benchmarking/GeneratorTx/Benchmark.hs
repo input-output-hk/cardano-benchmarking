@@ -47,7 +47,7 @@ import           Data.Time.Clock (NominalDiffTime)
 import           Options.Applicative as Opt
 
 -- Node API imports
-import           Cardano.Api.Typed
+import           Cardano.Api
 import           Cardano.CLI.Types (SigningKeyFile(..))
 
 -- Node imports
