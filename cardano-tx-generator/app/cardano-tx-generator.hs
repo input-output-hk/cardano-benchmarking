@@ -1,5 +1,4 @@
-import           Cardano.Benchmarking.Run (plainOldCliScript)
-import           Cardano.Benchmarking.Run (eraTransitionTest)
+import Cardano.Benchmarking.Command (runCommand)
 
 main :: IO ()
-main = plainOldCliScript
+main = runCommand

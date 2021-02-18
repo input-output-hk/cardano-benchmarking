@@ -22,7 +22,11 @@ library
                         -Wcompat
                         -threaded -rtsopts -with-rtsopts=-N -with-rtsopts=-T
 
-  exposed-modules:     Cardano.Benchmarking.GeneratorTx
+  exposed-modules:
+                       Cardano.Benchmarking.CliArgsScript
+                       Cardano.Benchmarking.Command
+                       Cardano.Benchmarking.DSL
+                       Cardano.Benchmarking.GeneratorTx
                        Cardano.Benchmarking.GeneratorTx.Benchmark
                        Cardano.Benchmarking.GeneratorTx.Error
                        Cardano.Benchmarking.GeneratorTx.Era
@@ -34,9 +38,6 @@ library
                        Cardano.Benchmarking.GeneratorTx.Tx.Byron
                        Cardano.Benchmarking.GeneratorTx.Submission
                        Cardano.Benchmarking.GeneratorTx.CLI.Parsers
-                       Cardano.Benchmarking.DSL
-                       Cardano.Benchmarking.Script
-                       Cardano.Benchmarking.Run
 
   other-modules:       Paths_cardano_tx_generator
 

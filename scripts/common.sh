@@ -130,7 +130,7 @@ setup_nix() {
 
 export scripts="${__COMMON_SRCROOT}/scripts"
 
-export era=${era:-'shelley'}
+export era=${era:-'mary'}
 
 export profile=
 export verbose=

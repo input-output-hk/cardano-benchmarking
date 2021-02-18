@@ -12,7 +12,6 @@ module Cardano.Benchmarking.GeneratorTx.Benchmark
   , PartialBenchmark(..)
   , defaultBenchmark
   , mkBenchmark
-  , parsePartialBenchmark
 
   , NodeIPv4Address
   , InitCooldown(..)
@@ -35,13 +34,8 @@ module Cardano.Benchmarking.GeneratorTx.Benchmark
   , SubmissionSummary(..)
 
   , GeneratorCmd(..)
-  , parseCommand
-  , parserInfo
-
+  , parseGeneratorCmd
   , GeneratorFunds(..)
-  , parseGeneratorFunds
-
-  , runParser
   ) where
 
 import           Cardano.Prelude hiding (TypeError)
@@ -279,24 +273,18 @@ mkBenchmark PartialBenchmark{..} = do
 
 
 data GeneratorCmd =
-  GenerateTxs FilePath
+  GenerateCmd FilePath
               SocketPath
               AnyCardanoEra
               PartialBenchmark
               GeneratorFunds
 
-parserInfo :: String -> Opt.ParserInfo GeneratorCmd
-parserInfo t =
-  Opt.info
-  (parseCommand Opt.<**> Opt.helper)
-  (Opt.fullDesc <> Opt.header t)
-
 defaultEra :: AnyCardanoEra
 defaultEra = AnyCardanoEra ShelleyEra
 
-parseCommand :: Opt.Parser GeneratorCmd
-parseCommand =
-  GenerateTxs
+parseGeneratorCmd :: Opt.Parser GeneratorCmd
+parseGeneratorCmd =
+  GenerateCmd
     <$> parseConfigFile
           "config"
           "Configuration file for the cardano-node"
@@ -343,8 +331,3 @@ parseGeneratorFunds =
     <*> parseFilePath
         "split-utxo"
         "UTxO funds file.")
-
-runParser :: String -> IO GeneratorCmd
-runParser title = Opt.customExecParser
-  (Opt.prefs Opt.showHelpOnEmpty)
-         (parserInfo title)

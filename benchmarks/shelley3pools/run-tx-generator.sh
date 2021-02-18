@@ -12,9 +12,7 @@ TARGETNODES=`for N in $targetnodes; do echo -n "--target-node (\"127.0.0.1\",$((
 
 localsock=$BASEDIR/logs/sockets/1
 
-
-#export era="allegra"
-export era="mary"
+era=${1:-mary}
 echo "--( args: $*"
 echo "--( era:  $era"
 
@@ -39,19 +37,24 @@ shelley )
           --genesis-funds-key ${GENESISDIR_shelley}/utxo-keys/utxo1.skey
           --shelley
         )
-        run 'cardano-tx-generator' "${args[@]}";;
+        run 'cardano-tx-generator' 'cliArguments' "${args[@]}";;
 mary )
         args+=(
           --genesis-funds-key ${GENESISDIR_shelley}/utxo-keys/utxo1.skey
           --mary
         )
-        run 'cardano-tx-generator' "${args[@]}";;
+        run 'cardano-tx-generator' 'cliArguments' "${args[@]}";;
 allegra )
         args+=(
           --genesis-funds-key ${GENESISDIR_shelley}/utxo-keys/utxo1.skey
           --allegra
         )
-        run 'cardano-tx-generator' "${args[@]}";;
+        run 'cardano-tx-generator' 'cliArguments' "${args[@]}";;
+eraTransition )
+        args+=(
+          --genesis-funds-key ${GENESISDIR_shelley}/utxo-keys/utxo1.skey
+        )
+        run 'cardano-tx-generator' 'eraTransition' "${args[@]}";;
 
 *) echo "ERROR:  unknown era '$era'" >&2;;
 esac
