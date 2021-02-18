@@ -1,10 +1,10 @@
 
 -- | Dispatch for running all the CLI commands
 module Cardano.Unlog.Run
-  ( ClientCommand(..)
-  , ClientCommandErrors
-  , renderClientCommandError
-  , runClientCommand
+  ( Command(..)
+  , CommandErrors
+  , renderCommandError
+  , runCommand
   ) where
 
 import           Cardano.Prelude
@@ -21,7 +21,7 @@ import           Data.Version (showVersion)
 import           Paths_locli (version)
 
 -- | Sub-commands of 'locli'.
-data ClientCommand =
+data Command =
 
   -- | Analysis commands
     AnalysisCommand AnalysisCommand
@@ -29,19 +29,19 @@ data ClientCommand =
   | DisplayVersion
   deriving Show
 
-data ClientCommandErrors
+data CommandErrors
   = AnalysisError AnalysisCommand AnalysisCmdError
   deriving Show
 
-runClientCommand :: ClientCommand -> ExceptT ClientCommandErrors IO ()
-runClientCommand (AnalysisCommand c) = firstExceptT (AnalysisError c) $ runAnalysisCommand c
-runClientCommand DisplayVersion = runDisplayVersion
+runCommand :: Command -> ExceptT CommandErrors IO ()
+runCommand (AnalysisCommand c) = firstExceptT (AnalysisError c) $ runAnalysisCommand c
+runCommand DisplayVersion = runDisplayVersion
 
-renderClientCommandError :: ClientCommandErrors -> Text
-renderClientCommandError (AnalysisError cmd err) =
+renderCommandError :: CommandErrors -> Text
+renderCommandError (AnalysisError cmd err) =
   renderAnalysisCmdError cmd err
 
-runDisplayVersion :: ExceptT ClientCommandErrors IO ()
+runDisplayVersion :: ExceptT CommandErrors IO ()
 runDisplayVersion = do
     liftIO . putTextLn $ mconcat
                 [ "locli ", renderVersion version

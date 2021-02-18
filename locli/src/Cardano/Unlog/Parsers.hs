@@ -10,16 +10,16 @@ import           Options.Applicative
 import qualified Options.Applicative as Opt
 
 import           Cardano.Unlog.Commands
-import           Cardano.Unlog.Run (ClientCommand (..))
+import           Cardano.Unlog.Run (Command (..))
 
 command' :: String -> String -> Parser a -> Mod CommandFields a
 command' c descr p =
     command c $ info (p <**> helper)
               $ mconcat [ progDesc descr ]
 
-opts :: ParserInfo ClientCommand
+opts :: ParserInfo Command
 opts =
-  Opt.info (parseClientCommand <**> Opt.helper)
+  Opt.info (parseCommand <**> Opt.helper)
     ( Opt.fullDesc
       <> Opt.header
       "locli - parse JSON log files, as emitted by cardano-node."
@@ -28,14 +28,14 @@ opts =
 pref :: ParserPrefs
 pref = Opt.prefs showHelpOnEmpty
 
-parseClientCommand :: Parser ClientCommand
-parseClientCommand =
+parseCommand :: Parser Command
+parseCommand =
   asum
     [ parseAnalysis
     , parseDisplayVersion
     ]
 
-parseAnalysis :: Parser ClientCommand
+parseAnalysis :: Parser Command
 parseAnalysis =
   fmap AnalysisCommand $
   subparser $ mconcat
@@ -47,7 +47,7 @@ parseAnalysis =
          parseAnalysisCommands
     ]
 
-parseDisplayVersion :: Parser ClientCommand
+parseDisplayVersion :: Parser Command
 parseDisplayVersion =
       subparser
         (mconcat

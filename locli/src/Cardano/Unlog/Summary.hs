@@ -1,8 +1,10 @@
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE ImpredicativeTypes #-}
+{-# LANGUAGE ViewPatterns #-}
 {-# OPTIONS_GHC -Wno-incomplete-patterns -Wno-name-shadowing #-}
 module Cardano.Unlog.Summary
   ( AnalysisCmdError
@@ -72,22 +74,21 @@ renderAnalysisCmdError cmd err =
 --
 
 runAnalysisCommand :: AnalysisCommand -> ExceptT AnalysisCmdError IO ()
-runAnalysisCommand (LeadershipChecks genesisFile metaFile logfiles outputFiles) = do
-  profile :: Profile <-
-    firstExceptT (RunMetaParseError metaFile . Text.pack) $ newExceptT $
-    Aeson.eitherDecode @Profile     <$> LBS.readFile (unJsonRunMetafile metaFile)
-  cParams :: Genesis <-
-    firstExceptT (GenesisParseError genesisFile . Text.pack) $ newExceptT $
-    Aeson.eitherDecode @Genesis <$> LBS.readFile (unJsonGenesisFile genesisFile)
+runAnalysisCommand (PerfTimeline genesisFile metaFile logfiles outputFiles) = do
+  chainInfo <-
+    ChainInfo
+      <$> (firstExceptT (RunMetaParseError metaFile . Text.pack) $ newExceptT $
+             Aeson.eitherDecode @Profile <$> LBS.readFile (unJsonRunMetafile metaFile))
+      <*> (firstExceptT (GenesisParseError genesisFile . Text.pack) $ newExceptT $
+             Aeson.eitherDecode @Genesis <$> LBS.readFile (unJsonGenesisFile genesisFile))
   firstExceptT AnalysisCmdError $
-    runLeadershipCheckCmd
-      (ChainInfo profile cParams) logfiles outputFiles
+    runPerfTimeline chainInfo logfiles outputFiles
 runAnalysisCommand SubstringKeys =
   liftIO $ mapM_ putStrLn logObjectStreamInterpreterKeys
 
-runLeadershipCheckCmd ::
+runPerfTimeline ::
   ChainInfo -> [JsonLogfile] -> AnalysisOutputFiles -> ExceptT Text IO ()
-runLeadershipCheckCmd chainInfo logfiles AnalysisOutputFiles{..} = do
+runPerfTimeline chainInfo logfiles AnalysisOutputFiles{..} = do
   liftIO $ do
     -- 0. Recover LogObjects
     objs :: [LogObject] <- concat <$> mapM readLogObjectStream logfiles
@@ -96,7 +97,7 @@ runLeadershipCheckCmd chainInfo logfiles AnalysisOutputFiles{..} = do
 
     -- 1. Derive the basic scalars and vectors
     let (,) runStats noisySlotStats = analyseLogObjects chainInfo objs
-    forM_ ofLeaderships $
+    forM_ ofSlotStats $
       \(JsonOutputFile f) ->
         withFile f WriteMode $ \hnd ->
           forM_ noisySlotStats $ LBS.hPutStrLn hnd . Aeson.encode
@@ -125,11 +126,11 @@ runLeadershipCheckCmd chainInfo logfiles AnalysisOutputFiles{..} = do
       (renderHistogram "CPU usage spans over 85%" "Span length"
         (toList $ Seq.sort $ sSpanLensCPU85 summary))
 
-    case ofAnalysis of
-      Nothing -> LBS.putStrLn analysisOutput
-      Just (JsonOutputFile f) ->
-        withFile f WriteMode $ \hnd ->
-          LBS.hPutStrLn hnd analysisOutput
+    flip (maybe $ LBS.putStrLn analysisOutput) ofAnalysis $
+      \case
+        JsonOutputFile f ->
+          withFile f WriteMode $ \hnd ->
+            LBS.hPutStrLn hnd analysisOutput
  where
    renderHistogram :: Integral a
      => String -> String -> [a] -> OutputFile -> IO ()
@@ -372,7 +373,8 @@ toDistribLines statsF distPropsF s@Summary{..} =
    <*> ZipList (pctSample <$> dPercentiles sDensityDistrib)
    <*> ZipList (pctSample <$> dPercentiles (rCentiCpu sResourceDistribs))
    <*> ZipList (pctSample <$> dPercentiles (rCentiGC sResourceDistribs))
-   <*> ZipList (pctSample <$> dPercentiles (rCentiMut sResourceDistribs))
+   <*> ZipList (min 999 . -- workaround for ghc-8.10.2
+                pctSample <$> dPercentiles (rCentiMut sResourceDistribs))
    <*> ZipList (pctSample <$> dPercentiles (rGcsMajor sResourceDistribs))
    <*> ZipList (pctSample <$> dPercentiles (rGcsMinor sResourceDistribs))
     -- <*> ZipList (pctSample <$> dPercentiles ( sResourceDistribs))
@@ -384,6 +386,7 @@ toDistribLines statsF distPropsF s@Summary{..} =
    <*> ZipList (pctSample <$> dPercentiles sSpanLensCPU85RwdDistrib)
   & getZipList
   & (<> [ mapSummary distPropsF s "size"    (fromIntegral . dCount)
+        , mapSummary distPropsF s "avg"     dAverage
         ])
  where
    distribLine ::
@@ -394,7 +397,8 @@ toDistribLines statsF distPropsF s@Summary{..} =
      -> Word64 -> Word64 -> Word64
      -> Int -> Int -> Int
      -> Text
-   distribLine ps count miss chkdt' leaddt' blkl dens cpu gc mut majg ming liv alc rss cpu85Sp cpu85SpEBnd cpu85SpRwd = Text.pack $
+   distribLine ps count miss chkdt' leaddt' blkl dens cpu gc mut
+     majg ming liv alc rss cpu85Sp cpu85SpEBnd cpu85SpRwd = Text.pack $
      printf (Text.unpack statsF)
     (renderPercSpec 6 ps) count miss chkdt leaddt blkl dens cpu gc mut majg ming     liv alc rss cpu85Sp cpu85SpEBnd cpu85SpRwd
     where chkdt  = Text.init $ show chkdt' :: Text
@@ -403,7 +407,7 @@ toDistribLines statsF distPropsF s@Summary{..} =
 statsHeadE, statsFormatE, statsFormatEF :: Text
 statsHeadP, statsFormatP, statsFormatPF :: Text
 statsHeadP =
-  "%tile Count MissR  CheckΔt  LeadΔt BlkLess Dens  CPU  GC MUT Maj Min         Live   Alloc   RSS    CPU85%SpanLens/EBnd/Rwd"
+  "%tile Count MissR  CheckΔt  LeadΔt BlkLess Density  CPU  GC MUT Maj Min         Live   Alloc   RSS    CPU85%SpanLens/EBnd/Rwd"
 statsHeadE =
   "%tile,Count,MissR,CheckΔ,LeadΔ,Blockless,ChainDensity,CPU,GC,MUT,GcMaj,GcMin,Live,Alloc,RSS,CPU85%SpanLens,/EpochBoundary,/Rewards"
 statsFormatP =
@@ -411,6 +415,6 @@ statsFormatP =
 statsFormatE =
   "%s,%d,%0.2f,%s,%s,%d,%0.3f,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d"
 statsFormatPF =
-  "%6s %f %f   %f   %f  %f     %f  %f %f %f %f %f      %f %f %f %f %f"
+  "%6s %.2f %.2f   %.2f   %.2f  %.2f     %.2f  %.2f %.2f %.2f %.2f %.2f      %.2f %.2f %.2f %.2f %.2f"
 statsFormatEF =
   "%s,0,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f"

@@ -52,10 +52,10 @@ locli_analyse_cmd_mach_args() {
         echo "$logdir"/genesis.json
         echo --run-metafile
         echo "$logdir"/meta.json
-        # echo --logobjects-json
-        # echo "$logdir"/analysis/logs-"$mach".logobjects.json
-        # echo --leaderships-json
-        # echo "$logdir"/analysis/logs-"$mach".leaderships.json
+        echo --logobjects-json
+        echo "$logdir"/analysis/logs-"$mach".logobjects.json
+        echo --slotstats-json
+        echo "$logdir"/analysis/logs-"$mach".slotstats.json
         echo --timeline-pretty
         echo "$logdir"/analysis/logs-"$mach".timeline.txt
         # echo --timeline-csv
@@ -87,7 +87,7 @@ analyse_mach() {
 
         ## 3. analyse
         oprint "analysing logs of:  $mach  (lines: $(wc -l "$mach_consolidated"))"
-        run locli 'analyse' 'leadership'            \
+        run locli 'analyse' 'perf-timeline'                      \
                 $(locli_analyse_cmd_mach_args "$logdir" "$mach") \
                 "$mach_consolidated"
 }

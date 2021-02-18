@@ -13,6 +13,7 @@ import           Cardano.Prelude
 import           Control.Arrow ((&&&))
 import qualified Data.Sequence as Seq
 import           Data.Vector (Vector)
+import qualified Data.Map.Strict as Map
 
 import           Data.Time.Clock (NominalDiffTime, UTCTime)
 import qualified Data.Time.Clock as Time
@@ -35,6 +36,7 @@ data Analysis
   , aLastBlockSlot :: Word64
   , aSlotStats     :: [SlotStats]
   , aRunScalars    :: RunScalars
+  , aTxsCollectedAt:: Map.Map TId UTCTime
   }
 
 data RunScalars
@@ -58,7 +60,8 @@ analyseLogObjects ci =
      , aBlockNo       = 0
      , aLastBlockSlot = 0
      , aSlotStats     = [zeroSlotStats]
-     , aRunScalars      = zeroRunScalars
+     , aRunScalars    = zeroRunScalars
+     , aTxsCollectedAt= mempty
      }
    zeroRunScalars :: RunScalars
    zeroRunScalars = RunScalars Nothing Nothing Nothing
@@ -133,6 +136,36 @@ analysisStep ci a@Analysis{aSlotStats=cur:rSLs, ..} = \case
         , rsSubmitted     = Just sent
         }
       }
+  LogObject{loBody=LOTxsCollected tid coll, loAt} ->
+    a { aTxsCollectedAt =
+        aTxsCollectedAt &
+        (\case
+            Just{} -> error $ mconcat
+              ["Duplicate LOTxsCollected for tid ", show tid, " at ", show loAt]
+            Nothing -> Just loAt)
+        `Map.alter` tid
+      , aSlotStats      =
+        cur
+        { slTxsCollected = slTxsCollected cur + max 0 (fromIntegral coll)
+        } : rSLs
+      }
+  LogObject{loBody=LOTxsProcessed tid acc rej, loAt} ->
+    a { aTxsCollectedAt = tid `Map.delete` aTxsCollectedAt
+      , aSlotStats      =
+        cur
+        { slTxsMemSpan =
+          case tid `Map.lookup` aTxsCollectedAt of
+            Nothing -> error $ mconcat
+              ["LOTxsProcessed missing LOTxsCollected for tid", show tid, " at ", show loAt]
+            Just base ->
+              Just $
+              (loAt `Time.diffUTCTime` base)
+              +
+              fromMaybe 0 (slTxsMemSpan cur)
+        , slTxsAccepted = slTxsAccepted cur + acc
+        , slTxsRejected = slTxsRejected cur + max 0 (fromIntegral rej)
+        } : rSLs
+      }
   _ -> a
  where
    updateOnNewSlot :: LogObject -> Analysis -> Analysis
@@ -180,6 +213,10 @@ extendAnalysis ci@CInfo{..} slot time checks utxo density a@Analysis{..} =
         , slCountLeads  = 0
         , slSpanCheck   = max 0 $ time `Time.diffUTCTime` slotStart ci slot
         , slSpanLead    = 0
+        , slTxsMemSpan  = Nothing
+        , slTxsCollected= 0
+        , slTxsAccepted = 0
+        , slTxsRejected = 0
         , slMempoolTxs  = aMempoolTxs
         , slUtxoSize    = utxo
         , slDensity     = density

@@ -20,7 +20,7 @@ import           Cardano.Unlog.LogObject hiding (Text)
 -- | All the CLI subcommands under \"analysis\".
 --
 data AnalysisCommand
-  = LeadershipChecks
+  = PerfTimeline
       JsonGenesisFile
       JsonRunMetafile
       [JsonLogfile]
@@ -31,7 +31,7 @@ data AnalysisCommand
 data AnalysisOutputFiles
   = AnalysisOutputFiles
   { ofLogObjects         :: Maybe JsonOutputFile
-  , ofLeaderships        :: Maybe JsonOutputFile
+  , ofSlotStats          :: Maybe JsonOutputFile
   , ofTimelinePretty     :: Maybe TextOutputFile
   , ofTimelineCsv        :: Maybe  CsvOutputFile
   , ofStatsCsv           :: Maybe  CsvOutputFile
@@ -45,8 +45,8 @@ data AnalysisOutputFiles
 renderAnalysisCommand :: AnalysisCommand -> Text
 renderAnalysisCommand sc =
   case sc of
-    LeadershipChecks {} -> "analyse leadership"
-    SubstringKeys {}    -> "analyse substring-keys"
+    PerfTimeline {}  -> "analyse perf-timeline"
+    SubstringKeys {} -> "analyse substring-keys"
 
 parseAnalysisOutputFiles :: Parser AnalysisOutputFiles
 parseAnalysisOutputFiles =
@@ -55,8 +55,8 @@ parseAnalysisOutputFiles =
         (argJsonOutputFile "logobjects-json"
            "Dump the entire input LogObject stream")
     <*> optional
-        (argJsonOutputFile "leaderships-json"
-           "Dump extracted slot leadership summaries, as a side-effect of log analysis")
+        (argJsonOutputFile "slotstats-json"
+           "Dump extracted per-slot summaries, as a side-effect of log analysis")
     <*> optional
         (argTextOutputFile "timeline-pretty"
            "Dump pretty timeline of extracted slot leadership summaries, as a side-effect of log analysis")
@@ -83,8 +83,8 @@ parseAnalysisCommands :: Parser AnalysisCommand
 parseAnalysisCommands =
   Opt.subparser $
     mconcat
-      [ Opt.command "leadership"
-          (Opt.info (LeadershipChecks
+      [ Opt.command "perf-timeline"
+          (Opt.info (PerfTimeline
                        <$> argJsonGenesisFile "genesis"
                               "Genesis file of the run"
                        <*> argJsonRunMetafile "run-metafile"

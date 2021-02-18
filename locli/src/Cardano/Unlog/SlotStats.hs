@@ -6,11 +6,13 @@
 
 module Cardano.Unlog.SlotStats (module Cardano.Unlog.SlotStats) where
 
+import qualified Prelude as P
 import           Cardano.Prelude
 
 import           Data.Aeson
 import qualified Data.Sequence as Seq
 import qualified Data.Text as Text
+import           Data.List.Split (splitOn)
 
 import           Data.Time.Clock (UTCTime, NominalDiffTime)
 import           Text.Printf
@@ -23,24 +25,28 @@ import           Cardano.Unlog.Resources
 
 data SlotStats
   = SlotStats
-    { slSlot        :: !Word64
-    , slEpoch       :: !Word64
-    , slEpochSlot   :: !Word64
-    , slStart       :: !UTCTime
-    , slCountChecks :: !Word64
-    , slCountLeads  :: !Word64
-    , slChainDBSnap :: !Word64
-    , slRejectedTx  :: !Word64
-    , slBlockNo     :: !Word64
-    , slBlockless   :: !Word64
-    , slOrderViol   :: !Word64
-    , slEarliest    :: !UTCTime
-    , slSpanCheck   :: !NominalDiffTime
-    , slSpanLead    :: !NominalDiffTime
-    , slMempoolTxs  :: !Word64
-    , slUtxoSize    :: !Word64
-    , slDensity     :: !Float
-    , slResources   :: !(Resources (Maybe Word64))
+    { slSlot         :: !Word64
+    , slEpoch        :: !Word64
+    , slEpochSlot    :: !Word64
+    , slStart        :: !UTCTime
+    , slCountChecks  :: !Word64
+    , slCountLeads   :: !Word64
+    , slChainDBSnap  :: !Word64
+    , slRejectedTx   :: !Word64
+    , slBlockNo      :: !Word64
+    , slBlockless    :: !Word64
+    , slOrderViol    :: !Word64
+    , slEarliest     :: !UTCTime
+    , slSpanCheck    :: !NominalDiffTime
+    , slSpanLead     :: !NominalDiffTime
+    , slMempoolTxs   :: !Word64
+    , slTxsMemSpan   :: !(Maybe NominalDiffTime)
+    , slTxsCollected :: !Word64
+    , slTxsAccepted  :: !Word64
+    , slTxsRejected  :: !Word64
+    , slUtxoSize     :: !Word64
+    , slDensity      :: !Float
+    , slResources    :: !(Resources (Maybe Word64))
     }
   deriving (Generic, Show)
 
@@ -49,17 +55,17 @@ instance ToJSON SlotStats
 slotHeadE, slotFormatE :: Text
 slotHeadP, slotFormatP :: Text
 slotHeadP =
-  "abs.  slot    block block lead  leader CDB rej  check     lead  chain       %CPU      GCs   Produc-   Memory use, kB    Alloc rate  Mempool  UTxO" <>"\n"<>
-  "slot#   epoch  no. -less checks ships snap txs  span      span  density all/ GC/mut maj/min tivity  Live   Alloc   RSS   / mut sec   txs  entries"
+  "abs.  slot    block block lead  leader CDB rej  check  lead    mempool tx       chain       %CPU      GCs   Produc-   Memory use, kB    Alloc rate  Mempool  UTxO  Absolute" <>"\n"<>
+  "slot#   epoch  no. -less checks ships snap txs  span   span  span col acc rej  density all/ GC/mut maj/min tivity  Live    Alloc   RSS   / mut sec   txs  entries   slot time"
 slotHeadE =
-  "abs.slot#,slot,epoch,block,blockless,leadChecks,leadShips,cdbSnap,rejTx,checkSpan,chainDens,%CPU,%GC,%MUT,Productiv,MemLiveKb,MemAllocKb,MemRSSKb,AllocRate/Mut,MempoolTxs,UTxO"
-slotFormatP = "%5d %4d:%2d %4d    %2d    %2d   %2d    %2d  %2d %8s %8s %0.3f  %3s %3s %3s %2s %3s   %4s %7s %7s %7s % 8s %4d %9d"
-slotFormatE = "%d,%d,%d,%d,%d,%d,%d,%d,%d,%s,%s,%0.3f,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%d,%d"
+  "abs.slot#,slot,epoch,block,blockless,checkSpan,leadSpan,leadShips,cdbSnap,rejTx,checkSpan,mempoolTxSpan,chainDens,%CPU,%GC,%MUT,Productiv,MemLiveKb,MemAllocKb,MemRSSKb,AllocRate/Mut,MempoolTxs,UTxO"
+slotFormatP = "%5d %4d:%2d %4d    %2d    %2d   %2d    %2d  %2d %7s %5s %5s  %2d  %2d  %2d   %0.3f  %3s %3s %3s  %2s %3s  %4s %7s %7s %7s % 8s   %4d %9d %s"
+slotFormatE = "%d,%d,%d,%d,%d,%d,%d,%d,%d,%s,%s,%s,%d,%d%0.3f,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%d,%d,%s"
 
 slotLine :: Bool -> Text -> SlotStats -> Text
 slotLine exportMode leadershipF SlotStats{..} = Text.pack $
   printf (Text.unpack leadershipF)
-         sl epsl epo blk blkl chks  lds cdbsn rejtx spanC spanL dens cpu gc mut majg ming   pro liv alc rss atm mpo utx
+         sl epsl epo blk blkl chks  lds cdbsn rejtx spanC spanL subdt scol sacc srej dens cpu gc mut majg ming   pro liv alc rss atm mpo utx start
  where sl    = slSlot
        epsl  = slEpochSlot
        epo   = slEpoch
@@ -69,15 +75,21 @@ slotLine exportMode leadershipF SlotStats{..} = Text.pack $
        lds   = slCountLeads
        cdbsn = slChainDBSnap
        rejtx = slRejectedTx
-       spanC = show slSpanCheck :: Text
-       spanL = show slSpanLead :: Text
+       subdt = maybe "" (Text.init . show) slTxsMemSpan
+       scol  = slTxsCollected
+       sacc  = slTxsAccepted
+       srej  = slTxsRejected
+       spanC = Text.init $ show slSpanCheck
+       spanL = Text.init $ show slSpanLead
        cpu   = d 3 $ rCentiCpu slResources
        dens  = slDensity
        gc    = d 2 $ rCentiGC  slResources
-       mut   = d 2 $ rCentiMut slResources
+       mut   = d 2 $ min 999 -- workaround for ghc-8.10.2
+                  <$> rCentiMut slResources
        majg  = d 2 $ rGcsMajor slResources
        ming  = d 2 $ rGcsMinor slResources
-       pro   = f 2 $ calcProd <$> (fromIntegral <$> rCentiMut slResources :: Maybe Float)
+       pro   = f 2 $ calcProd <$> (min 9 . -- workaround for ghc-8.10.2
+                                   fromIntegral <$> rCentiMut slResources :: Maybe Float)
                               <*> (fromIntegral <$> rCentiCpu slResources)
        liv   = d 7 (rLive     slResources)
        alc   = d 7 (rAlloc    slResources)
@@ -88,6 +100,7 @@ slotLine exportMode leadershipF SlotStats{..} = Text.pack $
                         <*> (fromIntegral . max 1 . (1024 *) <$> rCentiMut slResources))
        mpo   = slMempoolTxs
        utx   = slUtxoSize
+       start = " " `splitOn` show slStart P.!! 1
 
        calcProd :: Float -> Float -> Float
        calcProd mut' cpu' = if cpu' == 0 then 1 else mut' / cpu'
@@ -117,8 +130,9 @@ renderSlotTimeline leadHead fmt exportMode slotStats hnd = do
 --   On the trailing part, we drop everything since the last leadership check.
 cleanupSlotStats :: Seq SlotStats -> Seq SlotStats
 cleanupSlotStats =
-  Seq.dropWhileL ((== 0) . slDensity) .
-  Seq.dropWhileR ((== 0) . slCountChecks)
+  -- Seq.dropWhileL ((== 0) . slDensity) .
+  Seq.dropWhileL ((/= 500) . slSlot) .
+  Seq.dropWhileR ((== 0)   . slCountChecks)
 
 zeroSlotStats :: SlotStats
 zeroSlotStats =
@@ -134,6 +148,10 @@ zeroSlotStats =
   , slSpanCheck = realToFrac (0 :: Int)
   , slSpanLead = realToFrac (0 :: Int)
   , slMempoolTxs = 0
+  , slTxsMemSpan = Nothing
+  , slTxsCollected = 0
+  , slTxsAccepted = 0
+  , slTxsRejected = 0
   , slUtxoSize = 0
   , slDensity = 0
   , slResources = pure Nothing

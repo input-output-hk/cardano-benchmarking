@@ -77,12 +77,6 @@ SHELLEY3POOLS_NODES=node-1 node-2 node-3
 leads leaderships:
 	./scripts/runs-analyse.sh ${SHELLEY3POOLS_LOGS} ${SHELLEY3POOLS_GENESIS} ${SHELLEY3POOLS_NODES}
 
-run-leads:
-	./scripts/runs-analyse.sh 'runs-last'
-
-run-leads-small:
-	./scripts/runs-analyse.sh 'runs-last' - 'node-0' 'node-1' 'node-3' 'node-10' 'node-20'
-
 ###
 ###
 ###
