@@ -122,6 +122,21 @@ runBenchmarkScriptWith ::
   -> BenchmarkScript a
   -> ExceptT CliError IO a
 runBenchmarkScriptWith iocp logConfigFile socketFile script = do
+  (loggingLayer, ptcl) <- startProtocol logConfigFile
+  let tracers :: BenchTracers
+      tracers = createTracers loggingLayer
+      dslSet :: MonoDSLs
+      dslSet = mangleLocalProtocolDefinition ptcl iocp socketFile tracers
+  res <- firstExceptT BenchmarkRunnerError $ script (tracers, dslSet)
+  liftIO $ do
+          threadDelay (200*1000) -- Let the logging layer print out everything.
+          shutdownLoggingLayer loggingLayer
+  return res
+
+startProtocol
+  :: FilePath
+  -> ExceptT CliError IO (LoggingLayer, Protocol IO CardanoBlock ProtocolCardano)
+startProtocol logConfigFile = do
   nc <- liftIO $ mkNodeConfig logConfigFile
   case ncProtocolConfig nc of
     NodeProtocolConfigurationByron _    -> error "NodeProtocolConfigurationByron not supported"
@@ -130,16 +145,7 @@ runBenchmarkScriptWith iocp logConfigFile socketFile script = do
         ptcl :: Protocol IO CardanoBlock ProtocolCardano <- firstExceptT (ProtocolInstantiationError . pack . show) $
                   mkConsensusProtocolCardano byC shC hfC Nothing
         loggingLayer <- mkLoggingLayer nc ptcl
-        let tracers :: BenchTracers
-            tracers = createTracers loggingLayer
-            dslSet :: MonoDSLs
-            dslSet = mangleLocalProtocolDefinition ptcl iocp socketFile tracers
-        res <- firstExceptT BenchmarkRunnerError $ script (tracers, dslSet)
-        liftIO $ do
-          threadDelay (200*1000) -- Let the logging layer print out everything.
-          shutdownLoggingLayer loggingLayer
-        return res
-
+        return (loggingLayer, ptcl)
   where
     mkLoggingLayer :: NodeConfiguration -> Protocol IO blk (BlockProtocol blk) -> ExceptT CliError IO LoggingLayer
     mkLoggingLayer nc ptcl =
