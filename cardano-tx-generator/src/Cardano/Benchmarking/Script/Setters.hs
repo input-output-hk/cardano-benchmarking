@@ -35,6 +35,7 @@ data Tag v where
   TFee                  :: Tag Lovelace
   TTTL                  :: Tag SlotNo
   TTxAdditionalSize     :: Tag TxAdditionalSize
+  TLocalSocket          :: Tag String
 
 deriving instance Show (Tag v)
 
@@ -52,6 +53,7 @@ data Sum where
   SFee                  :: Lovelace             -> Sum
   STTL                  :: SlotNo               -> Sum
   STxAdditionalSize     :: TxAdditionalSize     -> Sum
+  SLocalSocket          :: String               -> Sum
   deriving (Eq, Ord, Show, Generic)
 
 taggedToSum :: Applicative f => DSum Tag f -> f Sum
@@ -64,6 +66,7 @@ taggedToSum x = case x of
   (TFee                  :=> v) -> SFee                  <$> v
   (TTTL                  :=> v) -> STTL                  <$> v
   (TTxAdditionalSize     :=> v) -> STxAdditionalSize     <$> v
+  (TLocalSocket          :=> v) -> SLocalSocket          <$> v
 
 sumToTaggged :: Applicative f => Sum -> DSum Tag f
 sumToTaggged x = case x of
@@ -75,3 +78,4 @@ sumToTaggged x = case x of
   SFee                  v -> (TFee                  ==> v)
   STTL                  v -> (TTTL                  ==> v)
   STxAdditionalSize     v -> (TTxAdditionalSize     ==> v)
+  SLocalSocket          v -> (TLocalSocket          ==> v)

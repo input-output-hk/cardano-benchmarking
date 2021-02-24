@@ -1,9 +1,11 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE FlexibleInstances #-}
+
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE StandaloneDeriving #-}
@@ -19,6 +21,7 @@ import           Data.Dependent.Sum (DSum(..))
 import           Data.Dependent.Map (DMap)
 import qualified Data.Dependent.Map as DMap
 
+import           Control.Monad.Trans.Class
 import           Control.Monad.Trans.Except
 import           Control.Monad.Trans.RWS.Strict
 
@@ -35,12 +38,21 @@ emptyEnv = DMap.empty
 type SetKeyVal = DSum Setters.Tag Identity
 
 data Error where
-  LookupError :: Error
+  LookupError :: Store v    -> Error
   TxGenError  :: TxGenError -> Error
   CliError    :: CliError   -> Error
-  deriving (Show)
+
+deriving instance Show Error
 
 type ActionM a = RWST () () Env (ExceptT Error IO) a
 
 set :: Store v -> v -> ActionM ()
 set key val = modify $ DMap.insert key (pure val)
+
+get :: Store v -> ActionM v
+get key = do
+  (gets $ DMap.lookup key) >>= \case
+    Just (Identity v) -> return v
+    Nothing -> lift $ throwE $ LookupError key
+
+-- withEra :: (CardanoEra era -> ActionM x) -> ActionM x

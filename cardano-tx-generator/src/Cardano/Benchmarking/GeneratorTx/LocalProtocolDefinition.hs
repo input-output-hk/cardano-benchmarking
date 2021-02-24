@@ -53,7 +53,7 @@ import Cardano.Benchmarking.DSL -- (BenchmarkScript, DSL(..))
 import Cardano.Benchmarking.Tracer
 
 import Cardano.Benchmarking.GeneratorTx.NodeToNode
-import Cardano.Benchmarking.OuroborosImports (CardanoBlock, getGenesis, protocolToTopLevelConfig)
+import Cardano.Benchmarking.OuroborosImports (CardanoBlock, getGenesis, protocolToTopLevelConfig, protocolToNetworkId)
 
 import qualified Cardano.Benchmarking.GeneratorTx as GeneratorTx
 import qualified Cardano.Benchmarking.GeneratorTx.Tx as GeneratorTx
@@ -87,7 +87,7 @@ mangleLocalProtocolDefinition
                        (configCodec topLevelConfig)
                        (getNetworkMagic $ configBlock topLevelConfig)
 
-    networkId = Testnet $ getNetworkMagic $ configBlock topLevelConfig
+    networkId = protocolToNetworkId ptcl
 
     keyAddress :: IsShelleyBasedEra era => KeyAddress era
     keyAddress = GeneratorTx.keyAddress networkId

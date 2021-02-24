@@ -83,7 +83,6 @@ type RunBenchmark era =
 type KeyAddress era = SigningKey PaymentKey -> AddressInEra era
 
 data DSL era = DSL {
---    networkId :: NetworkId
     keyAddress :: KeyAddress era
   , secureGenesisFund :: SecureGenesisFund era
   , splitFunds :: SplitFunds era
