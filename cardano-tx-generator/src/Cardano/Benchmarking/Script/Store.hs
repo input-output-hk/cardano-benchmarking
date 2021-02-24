@@ -20,12 +20,18 @@ import           Data.GADT.Compare.TH (deriveGCompare, deriveGEq)
 import           Data.GADT.Show.TH (deriveGShow)
 
 import           Cardano.Benchmarking.Script.Setters as Setters
-import           Cardano.Benchmarking.OuroborosImports as Cardano (Protocol, CardanoBlock, ProtocolCardano)
+import           Cardano.Benchmarking.OuroborosImports as Cardano
+                    ( Protocol, CardanoBlock, ProtocolCardano, LoggingLayer, ShelleyGenesis, StandardShelley
+                    , NetworkId)
+import           Cardano.Benchmarking.Tracer as Core (BenchTracers)
 
 data Store v where
   User   :: Setters.Tag x -> Store x 
-  LoggingLayer :: Store ()
-  Protocol     :: Store (Cardano.Protocol IO CardanoBlock ProtocolCardano)    
+  LoggingLayer :: Store LoggingLayer
+  Protocol     :: Store (Cardano.Protocol IO CardanoBlock ProtocolCardano)
+  BenchTracers :: Store Core.BenchTracers
+  NetworkId    :: Store Cardano.NetworkId
+  Genesis      :: Store (ShelleyGenesis StandardShelley)
 
 deriveGEq ''Store
 deriveGCompare ''Store

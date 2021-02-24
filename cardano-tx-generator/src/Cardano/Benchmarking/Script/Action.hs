@@ -23,6 +23,7 @@ import           Cardano.Benchmarking.Types
 import           Cardano.Benchmarking.Script.Env
 import           Cardano.Benchmarking.Script.Setters as Setters
 import           Cardano.Benchmarking.Script.Store
+import           Cardano.Benchmarking.Script.Core
 
 data Action where
   Set              :: SetKeyVal -> Action
@@ -42,4 +43,5 @@ defaultSetup = map Set [
 
 action :: Action -> ActionM ()
 action a = case a of
-  Set (key :=> val) -> modify $ DMap.insert (User key) val
+  Set (key :=> (Identity val)) -> set (User key) val
+  StartProtocol filePath -> startProtocol filePath

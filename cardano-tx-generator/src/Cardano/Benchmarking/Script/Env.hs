@@ -25,6 +25,7 @@ import           Control.Monad.Trans.RWS.Strict
 import           Cardano.Benchmarking.Script.Setters as Setters
 import           Cardano.Benchmarking.Script.Store
 import           Cardano.Benchmarking.GeneratorTx.Error (TxGenError)
+import           Cardano.Benchmarking.GeneratorTx.LocalProtocolDefinition (CliError)
 
 type Env = DMap Store Identity
 
@@ -36,6 +37,10 @@ type SetKeyVal = DSum Setters.Tag Identity
 data Error where
   LookupError :: Error
   TxGenError  :: TxGenError -> Error
+  CliError    :: CliError   -> Error
   deriving (Show)
 
 type ActionM a = RWST () () Env (ExceptT Error IO) a
+
+set :: Store v -> v -> ActionM ()
+set key val = modify $ DMap.insert key (pure val)

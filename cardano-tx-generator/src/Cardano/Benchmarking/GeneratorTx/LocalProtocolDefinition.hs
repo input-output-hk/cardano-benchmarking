@@ -12,6 +12,7 @@ module Cardano.Benchmarking.GeneratorTx.LocalProtocolDefinition
   (
     CliError (..)
   , runBenchmarkScriptWith
+  , startProtocol
   ) where
 
 import           Prelude (error, show)
@@ -52,34 +53,30 @@ import Cardano.Benchmarking.DSL -- (BenchmarkScript, DSL(..))
 import Cardano.Benchmarking.Tracer
 
 import Cardano.Benchmarking.GeneratorTx.NodeToNode
-import Cardano.Benchmarking.OuroborosImports (CardanoBlock)
+import Cardano.Benchmarking.OuroborosImports (CardanoBlock, getGenesis, protocolToTopLevelConfig)
 
 import qualified Cardano.Benchmarking.GeneratorTx as GeneratorTx
 import qualified Cardano.Benchmarking.GeneratorTx.Tx as GeneratorTx
 
 mangleLocalProtocolDefinition ::
-     Consensus.Protocol IO blok ptcl
+     Consensus.Protocol IO CardanoBlock ptcl
   -> IOManager
   -> SocketPath
   -> BenchTracers
   -> MonoDSLs
 mangleLocalProtocolDefinition
-  ptcl@(Consensus.ProtocolCardano
-             _
-             Consensus.ProtocolParamsShelleyBased{Consensus.shelleyBasedGenesis}
-              _ _ _ _ _ _
-       )
+  ptcl
   iom
   (SocketPath sock)
   tracers
   = (DSL {..}, DSL {..}, DSL {..})
   where
+    topLevelConfig = protocolToTopLevelConfig ptcl
 
-    ProtocolInfo{pInfoConfig} = Consensus.protocolInfo ptcl
     localConnectInfo :: LocalNodeConnectInfo CardanoMode
     localConnectInfo = LocalNodeConnectInfo
        (CardanoModeParams (EpochSlots 21600))        -- TODO: get this from genesis
-       (Testnet . getNetworkMagic . configBlock $ pInfoConfig)
+       networkId
        sock
 
     connectClient :: ConnectClient
@@ -87,8 +84,10 @@ mangleLocalProtocolDefinition
                        iom
                        (btConnect_ tracers)
                        (btSubmission_ tracers)
-                       (configCodec pInfoConfig)
-                       (getNetworkMagic $ configBlock pInfoConfig)
+                       (configCodec topLevelConfig)
+                       (getNetworkMagic $ configBlock topLevelConfig)
+
+    networkId = Testnet $ getNetworkMagic $ configBlock topLevelConfig
 
     keyAddress :: IsShelleyBasedEra era => KeyAddress era
     keyAddress = GeneratorTx.keyAddress networkId
@@ -98,7 +97,7 @@ mangleLocalProtocolDefinition
                 (btTxSubmit_ tracers)
                 (submitTxToNodeLocal localConnectInfo)
                 networkId
-                shelleyBasedGenesis
+                (getGenesis ptcl)
 
     splitFunds :: IsShelleyBasedEra era => SplitFunds era
     splitFunds = GeneratorTx.splitFunds
@@ -110,10 +109,6 @@ mangleLocalProtocolDefinition
 
     runBenchmark :: IsShelleyBasedEra era => RunBenchmark era
     runBenchmark = GeneratorTx.runBenchmark (btTxSubmit_ tracers) (btN2N_ tracers) connectClient
-
-    networkId = Testnet $ getNetworkMagic $ configBlock pInfoConfig
-
-mangleLocalProtocolDefinition _ _ _ _ = error "mkCallbacks"
 
 runBenchmarkScriptWith ::
      IOManager
