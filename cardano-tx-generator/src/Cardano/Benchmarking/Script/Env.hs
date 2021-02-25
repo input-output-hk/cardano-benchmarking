@@ -46,7 +46,7 @@ data Error where
   TxGenError  :: TxGenError -> Error
   CliError    :: CliError   -> Error
 
-liftTxGenError :: TxGenError -> ActionM ()
+liftTxGenError :: TxGenError -> ActionM a
 liftTxGenError = lift . throwE . TxGenError
 
 deriving instance Show Error

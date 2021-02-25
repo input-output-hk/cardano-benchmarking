@@ -15,14 +15,17 @@ module Cardano.Benchmarking.Script.Core
 where
 
 import           Prelude
+import           Control.Monad
 import           Control.Monad.Trans.Except
 import           Control.Monad.IO.Class
 import           Control.Monad.Trans.Class
+import           Control.Concurrent (threadDelay)
 
 import           Cardano.Api ( AddressInEra, CardanoEra(..), InAnyCardanoEra(..), IsShelleyBasedEra
                              )
 
-import           Cardano.Benchmarking.GeneratorTx as Core (readSigningKey, secureGenesisFund, TxGenError)
+import           Cardano.Benchmarking.GeneratorTx as Core (readSigningKey, secureGenesisFund, splitFunds, TxGenError)
+import           Cardano.Benchmarking.Types as Core (NumberOfTxs(..), InitCooldown(..))
 import           Cardano.Benchmarking.GeneratorTx.Tx as Core (keyAddress, Fund)
 import           Cardano.Benchmarking.GeneratorTx.LocalProtocolDefinition as Core (startProtocol)
 import           Cardano.Benchmarking.OuroborosImports as Core
@@ -89,3 +92,45 @@ secureGenesisFund fundName fundAddr genesisKey = do
   case ret of
     Left err -> liftTxGenError err
     Right fund -> set (NamedFund fundName) fund
+
+
+splitFundN ::
+      NumberOfTxs
+   -> Name
+   -> Name
+   -> Name 
+   -> ActionM [Fund]
+splitFundN count destAddr sourceFund sourceFundKey = do
+  tracer <- btTxSubmit_ <$> get BenchTracers
+  localSubmitTx <- getLocalSubmitTx
+  fee      <- get $ User TFee
+  address  <- get $ NamedAddress destAddr
+  fund     <- get $ NamedFund sourceFund
+  key      <- get $ NamedKey sourceFundKey
+  txIn     <- get $ User TNumberOfInputsPerTx
+  let
+    coreCall :: forall era. IsShelleyBasedEra era => AddressInEra era -> ExceptT TxGenError IO [Fund]
+    coreCall addr = Core.splitFunds tracer localSubmitTx fee count txIn key addr fund
+  ret <- liftIO $ runExceptT $ case address of
+    InAnyCardanoEra MaryEra    a -> coreCall a
+    InAnyCardanoEra AllegraEra a -> coreCall a
+    InAnyCardanoEra ShelleyEra a -> coreCall a
+    InAnyCardanoEra ByronEra   _ -> error "byron not supported"
+  case ret of
+    Left err -> liftTxGenError err
+    Right funds -> return funds
+
+splitFund ::
+      [Name]
+   -> Name
+   -> Name
+   -> Name   
+   -> ActionM ()
+splitFund newFunds destAddr sourceFund sourceFundKey = do
+  funds <- splitFundN (NumberOfTxs $ fromIntegral $ length newFunds) destAddr sourceFund sourceFundKey
+  forM_ (zip newFunds funds) $ \(name, f) -> set (NamedFund name) f
+
+delay :: ActionM ()
+delay = do
+  (InitCooldown t) <- get $ User TInitCooldown
+  liftIO $ threadDelay $ 1000000 * t
