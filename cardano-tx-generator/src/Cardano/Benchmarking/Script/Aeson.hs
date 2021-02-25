@@ -19,7 +19,11 @@ import           Cardano.Benchmarking.Script.Env
 import           Cardano.Benchmarking.Script.Setters
 
 instance ToJSON AnyCardanoEra where
+  toEncoding = error "instance ToJSON AnyCardanoEra"
+  toJSON = error "instance ToJSON AnyCardanoEra"
 instance FromJSON AnyCardanoEra where
+  parseJSON = error "fromJSON"
+
 instance ToJSON Sum where
   toEncoding = genericToEncoding defaultOptions
 instance FromJSON Sum
