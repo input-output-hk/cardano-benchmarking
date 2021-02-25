@@ -12,10 +12,14 @@ import qualified Data.HashMap.Strict as HashMap (toList)
 import           Data.Aeson
 import           Data.Aeson.Types (Pair, Parser, parseEither)
 
+import           Cardano.Api (AnyCardanoEra(..))
+
 import           Cardano.Benchmarking.Script.Action
 import           Cardano.Benchmarking.Script.Env
 import           Cardano.Benchmarking.Script.Setters
 
+instance ToJSON AnyCardanoEra where
+instance FromJSON AnyCardanoEra where
 instance ToJSON Sum where
   toEncoding = genericToEncoding defaultOptions
 instance FromJSON Sum

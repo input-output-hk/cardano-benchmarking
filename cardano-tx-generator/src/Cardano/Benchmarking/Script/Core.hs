@@ -7,6 +7,7 @@
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
 
@@ -18,7 +19,10 @@ import           Control.Monad.Trans.Except
 import           Control.Monad.IO.Class
 import           Control.Monad.Trans.Class
 
+import           Cardano.Api (CardanoEra, InAnyCardanoEra(..), IsShelleyBasedEra)
+
 import           Cardano.Benchmarking.GeneratorTx as Core (readSigningKey)
+import           Cardano.Benchmarking.GeneratorTx.Tx as Core (keyAddress)
 import           Cardano.Benchmarking.GeneratorTx.LocalProtocolDefinition as Core (startProtocol)
 import           Cardano.Benchmarking.OuroborosImports as Core
                    (LocalSubmitTx, SigningKeyFile
@@ -46,12 +50,18 @@ readSigningKey name filePath =
     Left err -> lift $ throwE $ TxGenError err
     Right key -> set (NamedKey name) key
 
+keyAddress :: forall era. IsShelleyBasedEra era => Name -> Name -> CardanoEra era -> ActionM ()
+keyAddress addrName keyName era = do
+  key <- get $ NamedKey keyName
+  networkId <- get NetworkId
+  let addr = Core.keyAddress @ era networkId key
+  set (NamedAddress addrName) (InAnyCardanoEra era addr)
+
 getLocalSubmitTx :: ActionM LocalSubmitTx
 getLocalSubmitTx = do
   networkId <- get NetworkId
   socket    <- get $ User TLocalSocket
   return $ submitTxToNodeLocal $ makeLocalConnectInfo networkId socket
-
 
 {-
 type SecureGenesisFund era =

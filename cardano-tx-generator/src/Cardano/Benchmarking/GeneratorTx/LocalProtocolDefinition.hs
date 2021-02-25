@@ -34,8 +34,6 @@ import           Ouroboros.Consensus.Config
                    ( configBlock, configCodec)
 import           Ouroboros.Consensus.Config.SupportsNode
                    (ConfigSupportsNode(..), getNetworkMagic)
-import           Ouroboros.Consensus.Node.ProtocolInfo
-                   (ProtocolInfo (..))
 import           Ouroboros.Network.NodeToClient (IOManager)
 import           Ouroboros.Network.Block (MaxSlotNo(..))
 

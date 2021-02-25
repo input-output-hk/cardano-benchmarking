@@ -16,14 +16,17 @@ import           Prelude
 
 import           Data.Constraint.Extras.TH (deriveArgDict)
 import           Data.GADT.Compare.TH (deriveGCompare, deriveGEq)
-
 import           Data.GADT.Show.TH (deriveGShow)
+
+import           Cardano.Api as Cardano (AddressInEra, CardanoEra, InAnyCardanoEra(..))
 
 import           Cardano.Benchmarking.Script.Setters as Setters
 import           Cardano.Benchmarking.OuroborosImports as Cardano
                     ( Protocol, CardanoBlock, ProtocolCardano, LoggingLayer, ShelleyGenesis, StandardShelley
                     , NetworkId, SigningKey, PaymentKey)
+
 import           Cardano.Benchmarking.Tracer as Core (BenchTracers)
+import           Cardano.Benchmarking.GeneratorTx.Tx as Core (Fund)
 
 type Name = String
 
@@ -35,6 +38,8 @@ data Store v where
   NetworkId    :: Store Cardano.NetworkId -- could be in Setters (just need JSON instance)
   Genesis      :: Store (ShelleyGenesis StandardShelley)
   NamedKey     :: Name -> Store (SigningKey PaymentKey)
+  NamedFund    :: Name -> Store Fund
+  NamedAddress :: Name -> Store (InAnyCardanoEra AddressInEra)
 
 deriveGEq ''Store
 deriveGCompare ''Store
