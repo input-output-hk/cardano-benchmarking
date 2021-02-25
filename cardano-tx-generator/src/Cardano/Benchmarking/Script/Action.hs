@@ -27,8 +27,10 @@ data Action where
   Set                :: SetKeyVal   -> Action
 --  Declare            :: SetKeyVal   -> Action --declare (once): error if key was set before
   StartProtocol      :: FilePath    -> Action
+  Delay              :: Action
   ReadSigningKey     :: Name -> SigningKeyFile -> Action
   KeyAddress         :: Name -> Name -> Action
+  SecureGenesisFund  :: Name -> Name -> Name -> Action
   deriving (Show)
 
 action :: Action -> ActionM ()
@@ -37,3 +39,4 @@ action a = case a of
   StartProtocol filePath -> startProtocol filePath
   ReadSigningKey name filePath -> readSigningKey name filePath
   KeyAddress     addrName keyName -> withEra $ keyAddress addrName keyName
+  SecureGenesisFund fundName fundAddr genesisKey -> secureGenesisFund fundName fundAddr genesisKey

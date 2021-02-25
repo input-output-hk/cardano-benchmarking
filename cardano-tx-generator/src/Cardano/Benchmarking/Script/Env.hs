@@ -46,6 +46,9 @@ data Error where
   TxGenError  :: TxGenError -> Error
   CliError    :: CliError   -> Error
 
+liftTxGenError :: TxGenError -> ActionM ()
+liftTxGenError = lift . throwE . TxGenError
+
 deriving instance Show Error
 
 type ActionM a = RWST () () Env (ExceptT Error IO) a

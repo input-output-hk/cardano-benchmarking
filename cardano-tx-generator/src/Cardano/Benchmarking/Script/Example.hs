@@ -17,8 +17,9 @@ defaultScript =
     StartProtocol "configuration-generator.yaml"
   , Set $ TEra ==> AnyCardanoEra MaryEra
   , Set $ TLocalSocket ==> "localSocket"
-  , ReadSigningKey "mySigningKey1" "utxo-keys/utxo1.skey"
-  , KeyAddress "addr1" "mySigningKey1"
+  , ReadSigningKey "utxoKey" "utxo-keys/utxo1.skey"
+  , KeyAddress "addr1" "utxoKey"
+  , SecureGenesisFund "genFund" "addr1" "utxoKey"
   ]
 
 txConfig :: [Action]
