@@ -56,13 +56,17 @@ type ActionM a = RWST () () Env (ExceptT Error IO) a
 set :: Store v -> v -> ActionM ()
 set key val = RWS.modify $ DMap.insert key (pure val)
 
+setName :: Name v -> v -> ActionM ()
+setName = set . Named
+
 get :: Store v -> ActionM v
 get key = do
   (RWS.gets $ DMap.lookup key) >>= \case
     Just (Identity v) -> return v
     Nothing -> lift $ throwE $ LookupError key
 
--- withEra :: (CardanoEra era -> ActionM x) -> ActionM x
+getName :: Name v -> ActionM v
+getName = get . Named
 
 withEra :: (forall era. IsShelleyBasedEra era => CardanoEra era -> ActionM ()) -> ActionM ()
 withEra action = do

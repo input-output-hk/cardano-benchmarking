@@ -11,6 +11,7 @@ import           Control.Monad.Trans.Except
 import           Cardano.Benchmarking.Types
 import           Cardano.Benchmarking.Script.Action
 import           Cardano.Benchmarking.Script.Env
+import           Cardano.Benchmarking.Script.Store
 import           Cardano.Benchmarking.Script.Setters
 
 import           Cardano.Api (AnyCardanoEra(..), CardanoEra(..), Quantity(..), SlotNo(..), quantityToLovelace )
@@ -38,9 +39,14 @@ testScript =
     StartProtocol "/work/b1/json/benchmarks/shelley3pools/configuration/configuration-generator.yaml"
   , Set $ TEra ==> AnyCardanoEra MaryEra
   , Set $ TLocalSocket ==> "/work/b1/json/benchmarks/shelley3pools/logs/sockets/1"
-  , ReadSigningKey "passe-partout" "/work/b1/json/benchmarks/shelley3pools/configuration/genesis-shelley/utxo-keys/utxo1.skey"
-  , KeyAddress "addr1" "passe-partout"
-  , SecureGenesisFund "genFund" "addr1" "passe-partout"
+  , ReadSigningKey passPartout "/work/b1/json/benchmarks/shelley3pools/configuration/genesis-shelley/utxo-keys/utxo1.skey"
+  , KeyAddress addr1 passPartout
+  , SecureGenesisFund genFund addr1 passPartout
   , Delay
-  , SplitFund ["fund1", "fund2", "fund3", "fund4"] "addr1" "genFund" "passe-partout"
+  , SplitFund outputFunds addr1 genFund passPartout
   ]
+  where
+    passPartout = KeyName "pass-partout"
+    addr1 = AddressName "addr1"
+    genFund = FundName "genFund"
+    outputFunds = map FundName ["fund1", "fund2", "fund3", "fund4"]

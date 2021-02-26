@@ -28,7 +28,7 @@ import           Cardano.Benchmarking.OuroborosImports as Cardano
 import           Cardano.Benchmarking.Tracer as Core (BenchTracers)
 import           Cardano.Benchmarking.GeneratorTx.Tx as Core (Fund)
 
-type Name = String
+type NameX = String
 
 data Store v where
   User   :: Setters.Tag x -> Store x 
@@ -37,9 +37,27 @@ data Store v where
   BenchTracers :: Store Core.BenchTracers
   NetworkId    :: Store Cardano.NetworkId -- could be in Setters (just need JSON instance)
   Genesis      :: Store (ShelleyGenesis StandardShelley)
-  NamedKey     :: Name -> Store (SigningKey PaymentKey)
-  NamedFund    :: Name -> Store Fund
-  NamedAddress :: Name -> Store (InAnyCardanoEra AddressInEra)
+  Named        :: Name x -> Store x
+
+data Name x where
+  KeyName      :: String -> Name (SigningKey PaymentKey)
+  FundName     :: String -> Name Fund
+  AddressName  :: String -> Name (InAnyCardanoEra AddressInEra)
+
+type KeyName     = Name (SigningKey PaymentKey)
+type FundName    = Name Fund
+type AddressName = Name (InAnyCardanoEra AddressInEra)
+
+-- Remember when debugging at 4:00AM :
+-- TH-Haskell is imperative: It breaks up Main into smaller binding groups!
+-- This means declarations below a splice are not visible above.
+-- The order of splices & declarations matters.
+
+deriveGEq ''Name
+deriveGCompare ''Name
+deriveGShow ''Name
+deriveArgDict ''Name
+deriving instance Show (Name x)
 
 deriveGEq ''Store
 deriveGCompare ''Store

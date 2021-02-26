@@ -28,10 +28,10 @@ data Action where
 --  Declare            :: SetKeyVal   -> Action --declare (once): error if key was set before
   StartProtocol      :: FilePath    -> Action
   Delay              :: Action
-  ReadSigningKey     :: Name -> SigningKeyFile -> Action
-  KeyAddress         :: Name -> Name -> Action
-  SecureGenesisFund  :: Name -> Name -> Name -> Action
-  SplitFund          :: [Name] -> Name -> Name -> Name -> Action
+  ReadSigningKey     :: KeyName -> SigningKeyFile -> Action
+  KeyAddress         :: AddressName -> KeyName -> Action
+  SecureGenesisFund  :: FundName -> AddressName -> KeyName -> Action
+  SplitFund          :: [FundName] -> AddressName -> FundName -> KeyName -> Action
   deriving (Show)
 
 action :: Action -> ActionM ()

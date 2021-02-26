@@ -48,18 +48,18 @@ startProtocol filePath = do
       set Genesis $ Core.getGenesis protocol
       set NetworkId $ protocolToNetworkId protocol
 
-readSigningKey :: Name -> SigningKeyFile -> ActionM ()
+readSigningKey :: KeyName -> SigningKeyFile -> ActionM ()
 readSigningKey name filePath =
   (liftIO $ runExceptT $ Core.readSigningKey filePath) >>= \case
     Left err -> liftTxGenError err
-    Right key -> set (NamedKey name) key
+    Right key -> setName name key
 
-keyAddress :: forall era. IsShelleyBasedEra era => Name -> Name -> CardanoEra era -> ActionM ()
+keyAddress :: forall era. IsShelleyBasedEra era => AddressName -> KeyName -> CardanoEra era -> ActionM ()
 keyAddress addrName keyName era = do
-  key <- get $ NamedKey keyName
+  key <- getName keyName
   networkId <- get NetworkId
   let addr = Core.keyAddress @ era networkId key
-  set (NamedAddress addrName) (InAnyCardanoEra era addr)
+  setName addrName (InAnyCardanoEra era addr)
 
 getLocalSubmitTx :: ActionM LocalSubmitTx
 getLocalSubmitTx = do
@@ -68,9 +68,9 @@ getLocalSubmitTx = do
   return $ submitTxToNodeLocal $ makeLocalConnectInfo networkId socket
 
 secureGenesisFund ::
-      Name
-   -> Name
-   -> Name
+      FundName
+   -> AddressName
+   -> KeyName
    -> ActionM ()
 secureGenesisFund fundName fundAddr genesisKey = do
   tracer <- btTxSubmit_ <$> get BenchTracers
@@ -79,8 +79,8 @@ secureGenesisFund fundName fundAddr genesisKey = do
   genesis  <- get Genesis
   fee      <- get $ User TFee
   ttl      <- get $ User TTTL
-  addr <- get $ NamedAddress fundAddr
-  key  <- get $ NamedKey genesisKey
+  addr <- getName fundAddr
+  key  <- getName genesisKey
   let
     coreCall :: forall era. IsShelleyBasedEra era => AddressInEra era -> ExceptT TxGenError IO Fund
     coreCall = Core.secureGenesisFund tracer localSubmitTx networkId genesis fee ttl key
@@ -91,22 +91,21 @@ secureGenesisFund fundName fundAddr genesisKey = do
     InAnyCardanoEra ByronEra   _ -> error "byron not supported"
   case ret of
     Left err -> liftTxGenError err
-    Right fund -> set (NamedFund fundName) fund
-
+    Right fund -> setName fundName fund
 
 splitFundN ::
       NumberOfTxs
-   -> Name
-   -> Name
-   -> Name 
+   -> AddressName
+   -> FundName
+   -> KeyName
    -> ActionM [Fund]
 splitFundN count destAddr sourceFund sourceFundKey = do
   tracer <- btTxSubmit_ <$> get BenchTracers
   localSubmitTx <- getLocalSubmitTx
   fee      <- get $ User TFee
-  address  <- get $ NamedAddress destAddr
-  fund     <- get $ NamedFund sourceFund
-  key      <- get $ NamedKey sourceFundKey
+  address  <- getName destAddr
+  fund     <- getName sourceFund
+  key      <- getName sourceFundKey
   txIn     <- get $ User TNumberOfInputsPerTx
   let
     coreCall :: forall era. IsShelleyBasedEra era => AddressInEra era -> ExceptT TxGenError IO [Fund]
@@ -121,14 +120,14 @@ splitFundN count destAddr sourceFund sourceFundKey = do
     Right funds -> return funds
 
 splitFund ::
-      [Name]
-   -> Name
-   -> Name
-   -> Name   
+      [FundName]
+   -> AddressName
+   -> FundName
+   -> KeyName
    -> ActionM ()
 splitFund newFunds destAddr sourceFund sourceFundKey = do
   funds <- splitFundN (NumberOfTxs $ fromIntegral $ length newFunds) destAddr sourceFund sourceFundKey
-  forM_ (zip newFunds funds) $ \(name, f) -> set (NamedFund name) f
+  forM_ (zip newFunds funds) $ \(name, f) -> setName name f
 
 delay :: ActionM ()
 delay = do
