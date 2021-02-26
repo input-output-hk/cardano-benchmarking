@@ -32,6 +32,9 @@ data Action where
   KeyAddress         :: AddressName -> KeyName -> Action
   SecureGenesisFund  :: FundName -> AddressName -> KeyName -> Action
   SplitFund          :: [FundName] -> AddressName -> FundName -> KeyName -> Action
+  SplitFundToList    :: FundListName -> AddressName -> FundName -> KeyName -> Action
+  PrepareTxList      :: TxListName -> AddressName -> FundListName -> KeyName -> Action
+  RunBenchmark       :: TxListName -> Action
   deriving (Show)
 
 action :: Action -> ActionM ()
@@ -42,4 +45,7 @@ action a = case a of
   KeyAddress     addrName keyName -> withEra $ keyAddress addrName keyName
   SecureGenesisFund fundName fundAddr genesisKey -> secureGenesisFund fundName fundAddr genesisKey
   SplitFund newFunds destAddr sourceFund sourceFundKey -> splitFund newFunds destAddr sourceFund sourceFundKey
+  SplitFundToList fundList destAddr sourceFund sourceFundKey -> splitFundToList fundList destAddr sourceFund sourceFundKey
   Delay -> delay
+  PrepareTxList name addr fund key -> prepareTxList name addr fund key
+  RunBenchmark txs -> runBenchmark txs

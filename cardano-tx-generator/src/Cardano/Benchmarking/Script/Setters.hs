@@ -15,6 +15,7 @@ import           Prelude
 
 import GHC.Generics
 
+import           Data.List.NonEmpty
 import           Data.Dependent.Sum (DSum(..) , (==>) )
 
 import           Data.Constraint.Extras.TH (deriveArgDict)
@@ -37,6 +38,7 @@ data Tag v where
   TTxAdditionalSize     :: Tag TxAdditionalSize
   TLocalSocket          :: Tag String
   TEra                  :: Tag AnyCardanoEra
+  TTargets              :: Tag (NonEmpty NodeIPv4Address)
 
 deriving instance Show (Tag v)
 
@@ -56,6 +58,7 @@ data Sum where
   STxAdditionalSize     :: TxAdditionalSize     -> Sum
   SLocalSocket          :: String               -> Sum
   SEra                  :: AnyCardanoEra        -> Sum
+  STargets              :: NonEmpty NodeIPv4Address -> Sum
   deriving (Eq, Show, Generic)
 
 taggedToSum :: Applicative f => DSum Tag f -> f Sum
@@ -70,6 +73,7 @@ taggedToSum x = case x of
   (TTxAdditionalSize     :=> v) -> STxAdditionalSize     <$> v
   (TLocalSocket          :=> v) -> SLocalSocket          <$> v
   (TEra                  :=> v) -> SEra                  <$> v
+  (TTargets              :=> v) -> STargets              <$> v
 
 sumToTaggged :: Applicative f => Sum -> DSum Tag f
 sumToTaggged x = case x of
@@ -83,3 +87,4 @@ sumToTaggged x = case x of
   STxAdditionalSize     v -> (TTxAdditionalSize     ==> v)
   SLocalSocket          v -> (TLocalSocket          ==> v)
   SEra                  v -> (TEra                  ==> v)
+  STargets              v -> (TTargets              ==> v)

@@ -28,6 +28,7 @@ import           Control.Monad.Trans.RWS.Strict (RWST)
 import qualified Control.Monad.Trans.RWS.Strict as RWS
 
 import           Cardano.Api (CardanoEra(..), AnyCardanoEra(..), IsShelleyBasedEra)
+import           Ouroboros.Network.NodeToClient (IOManager)
 
 import           Cardano.Benchmarking.Script.Setters as Setters
 import           Cardano.Benchmarking.Script.Store
@@ -51,7 +52,10 @@ liftTxGenError = lift . throwE . TxGenError
 
 deriving instance Show Error
 
-type ActionM a = RWST () () Env (ExceptT Error IO) a
+type ActionM a = RWST IOManager () Env (ExceptT Error IO) a
+
+askIOManager :: ActionM IOManager
+askIOManager = RWS.ask
 
 set :: Store v -> v -> ActionM ()
 set key val = RWS.modify $ DMap.insert key (pure val)
@@ -68,6 +72,15 @@ get key = do
 getName :: Name v -> ActionM v
 getName = get . Named
 
+getUser :: Tag v -> ActionM v
+getUser = get . User
+
+--Todo:
+consume :: Name v -> ActionM v
+consume n = do
+  getName n
+  -- unset n
+  
 withEra :: (forall era. IsShelleyBasedEra era => CardanoEra era -> ActionM ()) -> ActionM ()
 withEra action = do
   era <- get $ User TEra

@@ -18,7 +18,7 @@ import           Data.Constraint.Extras.TH (deriveArgDict)
 import           Data.GADT.Compare.TH (deriveGCompare, deriveGEq)
 import           Data.GADT.Show.TH (deriveGShow)
 
-import           Cardano.Api as Cardano (AddressInEra, CardanoEra, InAnyCardanoEra(..))
+import           Cardano.Api as Cardano (AddressInEra, CardanoEra, InAnyCardanoEra(..), Tx)
 
 import           Cardano.Benchmarking.Script.Setters as Setters
 import           Cardano.Benchmarking.OuroborosImports as Cardano
@@ -41,12 +41,18 @@ data Store v where
 
 data Name x where
   KeyName      :: String -> Name (SigningKey PaymentKey)
-  FundName     :: String -> Name Fund
   AddressName  :: String -> Name (InAnyCardanoEra AddressInEra)
+  FundName     :: String -> Name Fund
+  FundListName :: String -> Name [Fund]
+  TxListName   :: String -> Name (InAnyCardanoEra TxList)
 
-type KeyName     = Name (SigningKey PaymentKey)
-type FundName    = Name Fund
-type AddressName = Name (InAnyCardanoEra AddressInEra)
+type KeyName      = Name (SigningKey PaymentKey)
+type AddressName  = Name (InAnyCardanoEra AddressInEra)
+type FundName     = Name Fund
+type FundListName = Name [Fund]
+type TxListName   = Name (InAnyCardanoEra TxList)
+
+newtype TxList era = TxList [Tx era]
 
 -- Remember when debugging at 4:00AM :
 -- TH-Haskell is imperative: It breaks up Main into smaller binding groups!

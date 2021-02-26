@@ -18,6 +18,7 @@ module Cardano.Benchmarking.OuroborosImports
   , makeLocalConnectInfo
   , protocolToTopLevelConfig
   , protocolToNetworkId
+  , protocolToCodecConfig
   , submitTxToNodeLocal
   ) where
 import           Prelude
@@ -28,7 +29,7 @@ import qualified Ouroboros.Consensus.Cardano as Consensus (CardanoBlock, Protoco
 import qualified Ouroboros.Consensus.Cardano as Consensus
 
 
-import           Ouroboros.Consensus.Config (TopLevelConfig, configBlock)
+import           Ouroboros.Consensus.Config (TopLevelConfig, configBlock, configCodec)
 import           Ouroboros.Consensus.Config.SupportsNode
                  (ConfigSupportsNode(..), getNetworkMagic)
 import           Ouroboros.Consensus.Ledger.SupportsMempool (GenTxId)
@@ -82,6 +83,9 @@ getGenesis
 protocolToTopLevelConfig :: Consensus.Protocol IO CardanoBlock ptcl -> TopLevelConfig CardanoBlock
 protocolToTopLevelConfig ptcl = pInfoConfig
   where ProtocolInfo{pInfoConfig} = Consensus.protocolInfo ptcl
+
+protocolToCodecConfig :: Consensus.Protocol IO CardanoBlock ptcl -> CodecConfig CardanoBlock
+protocolToCodecConfig = configCodec . protocolToTopLevelConfig
 
 protocolToNetworkId :: Consensus.Protocol IO CardanoBlock ptcl -> NetworkId
 protocolToNetworkId ptcl =
