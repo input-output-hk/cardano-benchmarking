@@ -13,31 +13,10 @@
 {-# OPTIONS_GHC -Wno-unticked-promoted-constructors #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
-module Cardano.Benchmarking.GeneratorTx.Era
+module Cardano.Benchmarking.Tracer
   (
-    ConfigSupportsTxGen
-  , GenTxOf
-  , GenTxIdOf
-  , CardanoBlock
+    SubmissionSummary(..)
 
-  , InitCooldown(..)
-  , NumberOfInputsPerTx(..)
-  , NumberOfOutputsPerTx(..)
-  , NumberOfTxs(..)
-  , TPSRate(..)
-
-  , Ack(..)
-  , Acked(..)
-  , ToAnnce(..)
-  , Req(..)
-  , Sent(..)
-  , UnAcked(..)
-  , Unav(..)
-  , UnReqd(..)
-
-  , SubmissionSummary(..)
-
-  , BenchTraceConstraints
   , BenchTracers(..)
   , NodeToNodeSubmissionTrace(..)
   , TraceBenchTxSubmit(..)
@@ -46,10 +25,11 @@ module Cardano.Benchmarking.GeneratorTx.Era
 
   , SendRecvConnect
   , SendRecvTxSubmission
---  , CardanoMode
   ) where
 
 import           Prelude (Show(..), String)
+import           Data.Time.Clock (NominalDiffTime)
+
 import           Cardano.Prelude hiding (TypeError, show)
 
 import qualified Codec.CBOR.Term as CBOR
@@ -64,20 +44,8 @@ import           Data.Time.Clock (DiffTime, getCurrentTime)
 import           Cardano.BM.Data.Tracer
                    (emptyObject, mkObject, trStructured)
 import           Network.Mux (WithMuxBearer(..))
-import qualified Ouroboros.Consensus.Cardano as Consensus
-import           Ouroboros.Consensus.Ledger.SupportsMempool hiding (TxId)
-import qualified Ouroboros.Consensus.Ledger.SupportsMempool as Mempool
-import           Ouroboros.Consensus.Node.Run (RunNode)
-import           Ouroboros.Consensus.Shelley.Protocol
-                   (StandardCrypto)
-import           Ouroboros.Network.Driver (TraceSendRecv (..))
-import           Ouroboros.Network.Protocol.TxSubmission.Type (TxSubmission)
-import           Ouroboros.Network.NodeToClient (Handshake)
-import qualified Ouroboros.Network.NodeToNode as NtN
-
 -- Node API imports
 import           Cardano.Api
---import           Cardano.Api.TxSubmit
 
 -- Node imports
 import           Cardano.Node.Configuration.Logging (LOContent(..), LoggingLayer (..))
@@ -87,77 +55,27 @@ import           Cardano.Tracing.OrphanInstances.Consensus()
 import           Cardano.Tracing.OrphanInstances.Network()
 import           Cardano.Tracing.OrphanInstances.Shelley()
 
-import Cardano.Benchmarking.GeneratorTx.Benchmark
-{-------------------------------------------------------------------------------
-  Era abstraction
--------------------------------------------------------------------------------}
 
+import           Cardano.Benchmarking.OuroborosImports
+import           Ouroboros.Network.Driver (TraceSendRecv (..))
+import           Ouroboros.Network.Protocol.TxSubmission.Type (TxSubmission)
+import           Ouroboros.Consensus.Ledger.SupportsMempool (GenTx, GenTxId)
+import           Ouroboros.Network.NodeToNode (RemoteConnectionId, NodeToNodeVersion)
+import           Ouroboros.Network.Protocol.Handshake.Type (Handshake)
 
-type ModeSupportsTxGen mode =
-  ( BenchTraceConstraints CardanoBlock
-  , Mempool.HasTxId (GenTx CardanoBlock)
-  , Mempool.LedgerSupportsMempool CardanoBlock
---  , Show (TxSubmitResultForMode mode)
-  , RunNode CardanoBlock)
+import           Cardano.Benchmarking.Types
 
-type EraSupportsTxGen era =
-  ( IsCardanoEra era
-  , Eq (Address era)
-  , FromJSON (TxOut era)
-  , Key PaymentKey
-  , Show (TxOut era)
-  , Show (Tx era))
-
-type ConfigSupportsTxGen mode era =
-  (ModeSupportsTxGen mode, EraSupportsTxGen era)
-
--- https://github.com/input-output-hk/cardano-node/issues/1855 would be the proper solution.
-{-
-deriving stock instance (Generic TxIn)
-instance ToJSON TxIn
-instance ToJSON TxId where
-  toJSON (TxId x) = toJSON x
-instance ToJSON TxIx where
-  toJSON (TxIx x) = toJSON x
--}
-
-type CardanoBlock    = Consensus.CardanoBlock  StandardCrypto
-
-type GenTxOf   mode = GenTx   CardanoBlock
-type GenTxIdOf mode = GenTxId CardanoBlock
-
-
-instance Show (Consensus.Protocol m blk p) where
-  show Consensus.ProtocolByron{}   = "ProtocolByron"
-  show Consensus.ProtocolShelley{} = "ProtocolShelley"
-  show Consensus.ProtocolCardano{} = "ProtocolCardano"
-
-{-------------------------------------------------------------------------------
-  Tracers
--------------------------------------------------------------------------------}
-type BenchTraceConstraints blk =
-  ( Show TxId
-  , Show (GenTx blk)
-  , ToJSON TxId
-  , Transformable Text IO (TraceBenchTxSubmit TxId)
-  , Transformable Text IO (SendRecvTxSubmission blk)
-  )
-
-data BenchTracers m blk =
+data BenchTracers =
   BenchTracers
-  { btBase_       :: Trace  m Text
-  , btTxSubmit_   :: Tracer m (TraceBenchTxSubmit TxId)
-  , btConnect_    :: Tracer m SendRecvConnect
-  , btSubmission_ :: Tracer m (SendRecvTxSubmission blk)
-  , btLowLevel_   :: Tracer m TraceLowLevelSubmit
-  , btN2N_        :: Tracer m NodeToNodeSubmissionTrace
+  { btBase_       :: Trace  IO Text
+  , btTxSubmit_   :: Tracer IO (TraceBenchTxSubmit TxId)
+  , btConnect_    :: Tracer IO SendRecvConnect
+  , btSubmission_ :: Tracer IO SendRecvTxSubmission
+  , btLowLevel_   :: Tracer IO TraceLowLevelSubmit
+  , btN2N_        :: Tracer IO NodeToNodeSubmissionTrace
   }
 
-createTracers
-  :: forall blk
-  .  BenchTraceConstraints blk
-  => LoggingLayer
-  -> BenchTracers IO blk
+createTracers :: LoggingLayer -> BenchTracers
 createTracers loggingLayer =
   BenchTracers
     baseTrace
@@ -182,7 +100,7 @@ createTracers loggingLayer =
   connectTracer :: Tracer IO SendRecvConnect
   connectTracer = toLogObjectVerbose (appendName "connect" tr')
 
-  submitTracer :: Tracer IO (SendRecvTxSubmission blk)
+  submitTracer :: Tracer IO SendRecvTxSubmission
   submitTracer = toLogObjectVerbose (appendName "submit" tr')
 
   lowLevelSubmitTracer :: Tracer IO TraceLowLevelSubmit
@@ -235,6 +153,19 @@ instance Transformable Text IO (TraceBenchTxSubmit TxId) where
 
 instance HasSeverityAnnotation (TraceBenchTxSubmit TxId)
 instance HasPrivacyAnnotation  (TraceBenchTxSubmit TxId)
+
+-- | Summary of a tx submission run.
+data SubmissionSummary
+  = SubmissionSummary
+      { ssTxSent        :: !Sent
+      , ssTxUnavailable :: !Unav
+      , ssElapsed       :: !NominalDiffTime
+      , ssEffectiveTps  :: !TPSRate
+      , ssThreadwiseTps :: ![TPSRate]
+      , ssFailures      :: ![String]
+      }
+  deriving stock (Show, Generic)
+instance ToJSON SubmissionSummary
 
 {-------------------------------------------------------------------------------
   N2N submission trace
@@ -324,11 +255,9 @@ instance (MonadIO m) => Transformable Text m TraceLowLevelSubmit where
 {-------------------------------------------------------------------------------
   SendRecvTxSubmission
 -------------------------------------------------------------------------------}
-type SendRecvTxSubmission blk = TraceSendRecv (TxSubmission (GenTxId blk) (GenTx blk))
+type SendRecvTxSubmission = TraceSendRecv (TxSubmission (GenTxId CardanoBlock) (GenTx CardanoBlock))
 
-instance ( Show (GenTx blk)
-         , Show (GenTxId blk))
- => Transformable Text IO (SendRecvTxSubmission blk) where
+instance Transformable Text IO SendRecvTxSubmission where
   -- transform to JSON Object
   trTransformer verb tr = Tracer $ \arg -> do
     currentTime <- getCurrentTime
@@ -361,9 +290,9 @@ instance Transformable Text IO TxId where
   trTransformer = trStructured
 
 type SendRecvConnect = WithMuxBearer
-                         NtN.RemoteConnectionId
+                         RemoteConnectionId
                          (TraceSendRecv (Handshake
-                                           NtN.NodeToNodeVersion
+                                           NodeToNodeVersion
                                            CBOR.Term))
 
 -- instance {-# OVERLAPS #-} Show (GenTxId blk)

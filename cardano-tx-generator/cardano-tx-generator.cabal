@@ -26,10 +26,19 @@ library
                        Cardano.Benchmarking.CliArgsScript
                        Cardano.Benchmarking.Command
                        Cardano.Benchmarking.DSL
+                       Cardano.Benchmarking.OuroborosImports
+                       Cardano.Benchmarking.Script.Action
+                       Cardano.Benchmarking.Script.Aeson
+                       Cardano.Benchmarking.Script.Core
+                       Cardano.Benchmarking.Script.Env
+                       Cardano.Benchmarking.Script.Example
+                       Cardano.Benchmarking.Script.Setters
+                       Cardano.Benchmarking.Script.Store
+                       Cardano.Benchmarking.Tracer
+                       Cardano.Benchmarking.Types
                        Cardano.Benchmarking.GeneratorTx
                        Cardano.Benchmarking.GeneratorTx.Benchmark
                        Cardano.Benchmarking.GeneratorTx.Error
-                       Cardano.Benchmarking.GeneratorTx.Era
                        Cardano.Benchmarking.GeneratorTx.LocalProtocolDefinition
                        Cardano.Benchmarking.GeneratorTx.Genesis
                        Cardano.Benchmarking.GeneratorTx.NodeToNode
@@ -57,6 +66,10 @@ library
                      , contra-tracer
                      , cborg >= 0.2.2 && < 0.3
                      , containers
+                     , constraints-extras
+                     , dependent-map
+                     , dependent-sum
+                     , dependent-sum-template
                      , extra
                      , formatting
                      , generic-monoid
@@ -78,6 +91,7 @@ library
                      , stm
                      , text
                      , time
+                     , transformers
                      , transformers-except
                      , unordered-containers
 

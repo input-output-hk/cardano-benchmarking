@@ -24,10 +24,9 @@ import Ouroboros.Network.NodeToClient (IOManager)
 import Cardano.Benchmarking.GeneratorTx.Benchmark
 import Cardano.Benchmarking.GeneratorTx (readSigningKey)
 import Cardano.Benchmarking.DSL
-import Cardano.Benchmarking.GeneratorTx.Era
+import Cardano.Benchmarking.Tracer
 import Cardano.Benchmarking.GeneratorTx.Error (TxGenError(..))
 
-import Cardano.Benchmarking.GeneratorTx.Benchmark (GeneratorCmd (..), parseGeneratorCmd)
 import Cardano.Benchmarking.GeneratorTx.LocalProtocolDefinition (CliError(..), runBenchmarkScriptWith)
 
 runPlainOldCliScript :: IOManager -> GeneratorCmd -> IO (Either CliError ())
@@ -94,7 +93,8 @@ plainOldCliScript cliPartialBenchmark benchmarkEra (FundsGenesis keyFile) (trace
       coolDown coolDownDelay
 
       myTracer "POScript: pre-computing transactions"
-      finalTransactions <- txGenerator b globalOutAddr key (fromIntegral $ NE.length $ bTargets b) funds
+      finalTransactions <- txGenerator (bTxFee b) (bTxCount b) (bTxFanIn b) (bTxFanOut b) (bTxExtraPayload b)
+        globalOutAddr key (fromIntegral $ NE.length $ bTargets b) funds
 
       myTracer "POScript: sending transactions"
       runBenchmark (bTargets b) (bTps b) (bErrorPolicy b) finalTransactions
@@ -130,12 +130,14 @@ eraTransitionTest cliPartialBenchmark (FundsGenesis keyFile) (tracers, dslSet) =
       coolDown coolDownDelay
 
       myTracer "POScript: pre-computing transactions Shelley"
-      tx1 <- txGenerator b addr_shelley key (fromIntegral $ NE.length $ bTargets b) funds_shelley
+      tx1 <- txGenerator (bTxFee b) (bTxCount b) (bTxFanIn b) (bTxFanOut b) (bTxExtraPayload b)
+                 addr_shelley key (fromIntegral $ NE.length $ bTargets b) funds_shelley
       myTracer "POScript: sending transactions Shelley"
       runBenchmark (bTargets b) (bTps b) (bErrorPolicy b) tx1
 
       myTracer "POScript: pre-computing transactions Mary"
-      (tx2 :: [Tx MaryEra]) <- txGenerator_mary b addr_mary key (fromIntegral $ NE.length $ bTargets b) funds_mary
+      (tx2 :: [Tx MaryEra]) <- txGenerator_mary  (bTxFee b) (bTxCount b) (bTxFanIn b) (bTxFanOut b) (bTxExtraPayload b)
+                                  addr_mary key (fromIntegral $ NE.length $ bTargets b) funds_mary
       myTracer "POScript: sending transactions Mary"
       runBenchmark_mary (bTargets b) (bTps b) (bErrorPolicy b) tx2
   where

@@ -11,8 +11,8 @@
 module Cardano.Benchmarking.GeneratorTx.LocalProtocolDefinition
   (
     CliError (..)
---  , mangleLocalProtocolDefinition
   , runBenchmarkScriptWith
+  , startProtocol
   ) where
 
 import           Prelude (error, show)
@@ -34,15 +34,12 @@ import           Ouroboros.Consensus.Config
                    ( configBlock, configCodec)
 import           Ouroboros.Consensus.Config.SupportsNode
                    (ConfigSupportsNode(..), getNetworkMagic)
-import           Ouroboros.Consensus.Node.ProtocolInfo
-                   (ProtocolInfo (..))
 import           Ouroboros.Network.NodeToClient (IOManager)
 import           Ouroboros.Network.Block (MaxSlotNo(..))
 
 import           Cardano.Api
 import           Cardano.Api.Shelley (CardanoMode)
 
-import           Cardano.Chain.Slotting
 import qualified Cardano.Chain.Genesis as Genesis
 
 import           Cardano.Node.Configuration.Logging
@@ -51,34 +48,33 @@ import           Cardano.Node.Protocol.Cardano
 import           Cardano.Node.Types
 
 import Cardano.Benchmarking.DSL -- (BenchmarkScript, DSL(..))
-import Cardano.Benchmarking.GeneratorTx.Era
+import Cardano.Benchmarking.Tracer
+
 import Cardano.Benchmarking.GeneratorTx.NodeToNode
+import Cardano.Benchmarking.OuroborosImports (CardanoBlock, getGenesis, protocolToTopLevelConfig, protocolToNetworkId)
+
 import qualified Cardano.Benchmarking.GeneratorTx as GeneratorTx
 import qualified Cardano.Benchmarking.GeneratorTx.Tx as GeneratorTx
 
 mangleLocalProtocolDefinition ::
-     Consensus.Protocol IO blok ptcl
+     Consensus.Protocol IO CardanoBlock ptcl
   -> IOManager
   -> SocketPath
-  -> BenchTracers IO CardanoBlock
+  -> BenchTracers
   -> MonoDSLs
 mangleLocalProtocolDefinition
-  ptcl@(Consensus.ProtocolCardano
-             _
-             Consensus.ProtocolParamsShelleyBased{Consensus.shelleyBasedGenesis}
-              _ _ _ _ _ _
-       )
+  ptcl
   iom
   (SocketPath sock)
   tracers
   = (DSL {..}, DSL {..}, DSL {..})
   where
+    topLevelConfig = protocolToTopLevelConfig ptcl
 
-    ProtocolInfo{pInfoConfig} = Consensus.protocolInfo ptcl
     localConnectInfo :: LocalNodeConnectInfo CardanoMode
     localConnectInfo = LocalNodeConnectInfo
        (CardanoModeParams (EpochSlots 21600))        -- TODO: get this from genesis
-       (Testnet . getNetworkMagic . configBlock $ pInfoConfig)
+       networkId
        sock
 
     connectClient :: ConnectClient
@@ -86,8 +82,10 @@ mangleLocalProtocolDefinition
                        iom
                        (btConnect_ tracers)
                        (btSubmission_ tracers)
-                       (configCodec pInfoConfig)
-                       (getNetworkMagic $ configBlock pInfoConfig)
+                       (configCodec topLevelConfig)
+                       (getNetworkMagic $ configBlock topLevelConfig)
+
+    networkId = protocolToNetworkId ptcl
 
     keyAddress :: IsShelleyBasedEra era => KeyAddress era
     keyAddress = GeneratorTx.keyAddress networkId
@@ -95,24 +93,20 @@ mangleLocalProtocolDefinition
     secureGenesisFund :: IsShelleyBasedEra era => SecureGenesisFund era
     secureGenesisFund = GeneratorTx.secureGenesisFund
                 (btTxSubmit_ tracers)
-                localConnectInfo
+                (submitTxToNodeLocal localConnectInfo)
                 networkId
-                shelleyBasedGenesis
+                (getGenesis ptcl)
 
     splitFunds :: IsShelleyBasedEra era => SplitFunds era
     splitFunds = GeneratorTx.splitFunds
                 (btTxSubmit_ tracers)
-                localConnectInfo
+                (submitTxToNodeLocal localConnectInfo)
 
     txGenerator :: IsShelleyBasedEra era => TxGenerator era
     txGenerator = GeneratorTx.txGenerator (btTxSubmit_ tracers)
 
     runBenchmark :: IsShelleyBasedEra era => RunBenchmark era
     runBenchmark = GeneratorTx.runBenchmark (btTxSubmit_ tracers) (btN2N_ tracers) connectClient
-
-    networkId = Testnet $ getNetworkMagic $ configBlock pInfoConfig
-
-mangleLocalProtocolDefinition _ _ _ _ = error "mkCallbacks"
 
 runBenchmarkScriptWith ::
      IOManager
@@ -121,6 +115,21 @@ runBenchmarkScriptWith ::
   -> BenchmarkScript a
   -> ExceptT CliError IO a
 runBenchmarkScriptWith iocp logConfigFile socketFile script = do
+  (loggingLayer, ptcl) <- startProtocol logConfigFile
+  let tracers :: BenchTracers
+      tracers = createTracers loggingLayer
+      dslSet :: MonoDSLs
+      dslSet = mangleLocalProtocolDefinition ptcl iocp socketFile tracers
+  res <- firstExceptT BenchmarkRunnerError $ script (tracers, dslSet)
+  liftIO $ do
+          threadDelay (200*1000) -- Let the logging layer print out everything.
+          shutdownLoggingLayer loggingLayer
+  return res
+
+startProtocol
+  :: FilePath
+  -> ExceptT CliError IO (LoggingLayer, Protocol IO CardanoBlock ProtocolCardano)
+startProtocol logConfigFile = do
   nc <- liftIO $ mkNodeConfig logConfigFile
   case ncProtocolConfig nc of
     NodeProtocolConfigurationByron _    -> error "NodeProtocolConfigurationByron not supported"
@@ -129,16 +138,7 @@ runBenchmarkScriptWith iocp logConfigFile socketFile script = do
         ptcl :: Protocol IO CardanoBlock ProtocolCardano <- firstExceptT (ProtocolInstantiationError . pack . show) $
                   mkConsensusProtocolCardano byC shC hfC Nothing
         loggingLayer <- mkLoggingLayer nc ptcl
-        let tracers :: BenchTracers IO CardanoBlock
-            tracers = createTracers loggingLayer
-            dslSet :: MonoDSLs
-            dslSet = mangleLocalProtocolDefinition ptcl iocp socketFile tracers
-        res <- firstExceptT BenchmarkRunnerError $ script (tracers, dslSet)
-        liftIO $ do
-          threadDelay (200*1000) -- Let the logging layer print out everything.
-          shutdownLoggingLayer loggingLayer
-        return res
-
+        return (loggingLayer, ptcl)
   where
     mkLoggingLayer :: NodeConfiguration -> Protocol IO blk (BlockProtocol blk) -> ExceptT CliError IO LoggingLayer
     mkLoggingLayer nc ptcl =
