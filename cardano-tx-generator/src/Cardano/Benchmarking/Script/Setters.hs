@@ -40,12 +40,13 @@ data Tag v where
   TEra                  :: Tag AnyCardanoEra
   TTargets              :: Tag (NonEmpty NodeIPv4Address)
 
-deriving instance Show (Tag v)
-
 deriveGEq ''Tag
 deriveGCompare ''Tag
 deriveGShow ''Tag
 deriveArgDict ''Tag
+
+deriving instance Show (Tag v)
+deriving instance Eq (Tag v)
 
 data Sum where
   SInitCooldown         :: InitCooldown         -> Sum

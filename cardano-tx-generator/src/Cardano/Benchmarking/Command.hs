@@ -15,12 +15,14 @@ where
 import Prelude
 import System.Exit
 
+import Data.Aeson (eitherDecodeFileStrict)
 import Options.Applicative as Opt
 
 import Ouroboros.Network.NodeToClient (withIOManager)
 
 import Cardano.Benchmarking.CliArgsScript
   (GeneratorCmd, parseGeneratorCmd, runPlainOldCliScript, runEraTransitionTest)
+import Cardano.Benchmarking.Script.Example (runScript)
 
 data Command
   = CliArguments  GeneratorCmd
@@ -32,20 +34,24 @@ runCommand = withIOManager $ \iocp -> do
   cmd <- customExecParser
            (prefs showHelpOnEmpty)
            (info commandParser mempty)
-  ret <- case cmd of
-    CliArguments   args -> runPlainOldCliScript iocp args
-    EraTransition args -> runEraTransitionTest iocp args
-    Json _file     -> die "Todo:Json config"
-  case ret of
-    Right _  -> exitSuccess
-    Left err -> die $ show err
+  case cmd of
+    CliArguments   args -> runPlainOldCliScript iocp args >>= handleError
+    EraTransition args -> runEraTransitionTest iocp args >>= handleError
+    Json file     -> eitherDecodeFileStrict file >>= \case
+      Left err -> die err
+      Right script -> runScript script iocp >>= handleError
+  where
+    handleError :: Show a => Either a b -> IO ()
+    handleError = \case
+      Right _  -> exitSuccess
+      Left err -> die $ show err
 
 commandParser :: Parser Command
 commandParser
   = subparser
     (  cliArgumentsCmd
     <> eraTransitionCmd
---    <> jsonCmd
+    <> jsonCmd
     )
   where
     cliArgumentsCmd = command "cliArguments"
@@ -61,5 +67,13 @@ commandParser
         (  progDesc "tx-generator demo era transition"
         <> fullDesc
         <> header "cardano-tx-generator - load Cardano clusters with parametrised transaction flow (era transition)"
+        )
+      )
+
+    jsonCmd = command "json"
+      (Json <$> info (strArgument (metavar "FILEPATH"))
+        (  progDesc "tx-generator run JsonScript"
+        <> fullDesc
+        <> header "cardano-tx-generator - run a generic benchmarking script"
         )
       )

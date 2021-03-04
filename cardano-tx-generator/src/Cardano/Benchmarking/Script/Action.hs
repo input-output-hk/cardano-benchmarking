@@ -13,7 +13,7 @@ module Cardano.Benchmarking.Script.Action
 where
 
 import           Prelude
-
+import           GHC.Generics
 import           Data.Functor.Identity
 import           Data.Dependent.Sum (DSum(..))
 
@@ -29,23 +29,24 @@ data Action where
   StartProtocol      :: FilePath    -> Action
   Delay              :: Action
   ReadSigningKey     :: KeyName -> SigningKeyFile -> Action
-  KeyAddress         :: AddressName -> KeyName -> Action
-  SecureGenesisFund  :: FundName -> AddressName -> KeyName -> Action
-  SplitFund          :: [FundName] -> AddressName -> FundName -> KeyName -> Action
-  SplitFundToList    :: FundListName -> AddressName -> FundName -> KeyName -> Action
-  PrepareTxList      :: TxListName -> AddressName -> FundListName -> KeyName -> Action
+--  KeyAddress         :: AddressName -> KeyName -> Action
+  SecureGenesisFund  :: FundName -> KeyName -> KeyName -> Action
+  SplitFund          :: [FundName] -> KeyName -> FundName -> Action
+  SplitFundToList    :: FundListName -> KeyName -> FundName -> Action
+  PrepareTxList      :: TxListName -> KeyName -> FundListName -> Action
   RunBenchmark       :: TxListName -> Action
-  deriving (Show)
+  deriving (Show, Eq)
+
+deriving instance Generic Action
 
 action :: Action -> ActionM ()
 action a = case a of
   Set (key :=> (Identity val)) -> set (User key) val
   StartProtocol filePath -> startProtocol filePath
   ReadSigningKey name filePath -> readSigningKey name filePath
-  KeyAddress     addrName keyName -> withEra $ keyAddress addrName keyName
-  SecureGenesisFund fundName fundAddr genesisKey -> secureGenesisFund fundName fundAddr genesisKey
-  SplitFund newFunds destAddr sourceFund sourceFundKey -> splitFund newFunds destAddr sourceFund sourceFundKey
-  SplitFundToList fundList destAddr sourceFund sourceFundKey -> splitFundToList fundList destAddr sourceFund sourceFundKey
+  SecureGenesisFund fundName fundKey genesisKey -> secureGenesisFund fundName fundKey genesisKey
+  SplitFund newFunds newKey sourceFund -> splitFund  newFunds newKey sourceFund
+  SplitFundToList fundList destKey sourceFund -> splitFundToList fundList destKey sourceFund
   Delay -> delay
-  PrepareTxList name addr fund key -> prepareTxList name addr fund key
+  PrepareTxList name key fund -> prepareTxList name key fund
   RunBenchmark txs -> runBenchmark txs

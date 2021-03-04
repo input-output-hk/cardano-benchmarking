@@ -86,6 +86,9 @@ eraTransition )
         )
         run 'cardano-tx-generator' 'eraTransition' "${args[@]}";;
 
+json )
+        run 'cardano-tx-generator' 'json' ./tx-generator-script.json;;
+
 *) echo "ERROR:  unknown era '$era'" >&2;;
 esac
 

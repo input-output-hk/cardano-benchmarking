@@ -27,7 +27,6 @@ import           Control.Monad.Trans.Except
 import           Control.Monad.Trans.RWS.Strict (RWST)
 import qualified Control.Monad.Trans.RWS.Strict as RWS
 
-import           Cardano.Api (CardanoEra(..), AnyCardanoEra(..), IsShelleyBasedEra)
 import           Ouroboros.Network.NodeToClient (IOManager)
 
 import           Cardano.Benchmarking.Script.Setters as Setters
@@ -60,6 +59,9 @@ askIOManager = RWS.ask
 set :: Store v -> v -> ActionM ()
 set key val = RWS.modify $ DMap.insert key (pure val)
 
+unSet :: Store v -> ActionM ()
+unSet key = RWS.modify $ DMap.delete key
+
 setName :: Name v -> v -> ActionM ()
 setName = set . Named
 
@@ -75,17 +77,8 @@ getName = get . Named
 getUser :: Tag v -> ActionM v
 getUser = get . User
 
---Todo:
-consume :: Name v -> ActionM v
-consume n = do
-  getName n
-  -- unset n
-  
-withEra :: (forall era. IsShelleyBasedEra era => CardanoEra era -> ActionM ()) -> ActionM ()
-withEra action = do
-  era <- get $ User TEra
-  case era of
-    AnyCardanoEra (e @ MaryEra    ) -> action e
-    AnyCardanoEra (e @ AllegraEra ) -> action e
-    AnyCardanoEra (e @ ShelleyEra ) -> action e
-    AnyCardanoEra ByronEra -> error "BronEra not supported"
+consumeName :: Name v -> ActionM v
+consumeName n = do
+  v <- getName n
+  unSet $ Named n
+  return v
