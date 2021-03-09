@@ -51,6 +51,7 @@ library
   other-modules:       Paths_cardano_tx_generator
 
   build-depends:       aeson
+                     , aeson-pretty
                      , async
                      , attoparsec
                      , base >=4.12 && <5

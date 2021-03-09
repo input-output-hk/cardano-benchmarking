@@ -18,7 +18,7 @@ import           Data.Constraint.Extras.TH (deriveArgDict)
 import           Data.GADT.Compare.TH (deriveGCompare, deriveGEq)
 import           Data.GADT.Show.TH (deriveGShow)
 
-import           Cardano.Api as Cardano (AddressInEra, CardanoEra, InAnyCardanoEra(..), Tx)
+import           Cardano.Api as Cardano (InAnyCardanoEra(..), Tx)
 
 import           Cardano.Benchmarking.Script.Setters as Setters
 import           Cardano.Benchmarking.OuroborosImports as Cardano
@@ -26,9 +26,9 @@ import           Cardano.Benchmarking.OuroborosImports as Cardano
                     , NetworkId, SigningKey, PaymentKey)
 
 import           Cardano.Benchmarking.Tracer as Core (BenchTracers)
-import           Cardano.Benchmarking.GeneratorTx.Tx as Core (Fund)
+import qualified Cardano.Benchmarking.GeneratorTx.Tx as Core (Fund)
 
-type NameX = String
+type Fund = (Core.Fund, SigningKey PaymentKey)
 
 data Store v where
   User   :: Setters.Tag x -> Store x 
@@ -41,13 +41,13 @@ data Store v where
 
 data Name x where
   KeyName      :: String -> Name (SigningKey PaymentKey)
-  AddressName  :: String -> Name (InAnyCardanoEra AddressInEra)
+--  AddressName  :: String -> Name (InAnyCardanoEra AddressInEra)
   FundName     :: String -> Name Fund
   FundListName :: String -> Name [Fund]
   TxListName   :: String -> Name (InAnyCardanoEra TxList)
 
 type KeyName      = Name (SigningKey PaymentKey)
-type AddressName  = Name (InAnyCardanoEra AddressInEra)
+--type AddressName  = Name (InAnyCardanoEra AddressInEra)
 type FundName     = Name Fund
 type FundListName = Name [Fund]
 type TxListName   = Name (InAnyCardanoEra TxList)
@@ -64,6 +64,7 @@ deriveGCompare ''Name
 deriveGShow ''Name
 deriveArgDict ''Name
 deriving instance Show (Name x)
+deriving instance Eq (Name x)
 
 deriveGEq ''Store
 deriveGCompare ''Store
@@ -71,3 +72,4 @@ deriveGShow ''Store
 deriveArgDict ''Store
 
 deriving instance Show (Store v)
+deriving instance Eq (Store x)

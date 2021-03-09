@@ -6,6 +6,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE RankNTypes #-} --
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -21,13 +22,13 @@ import           Control.Monad.IO.Class
 import           Control.Monad.Trans.Class
 import           Control.Concurrent (threadDelay)
 
-import           Cardano.Api ( AddressInEra, CardanoEra(..), InAnyCardanoEra(..), IsShelleyBasedEra, Tx
+import           Cardano.Api ( AsType(..), CardanoEra(..), InAnyCardanoEra(..), AnyCardanoEra(..), IsShelleyBasedEra, Tx
                              , NetworkId(..), cardanoEra)
 
 import           Cardano.Benchmarking.GeneratorTx as Core
                    (readSigningKey, runBenchmark, secureGenesisFund, splitFunds, txGenerator, TxGenError)
 import           Cardano.Benchmarking.Types as Core (NumberOfTxs(..), InitCooldown(..), SubmissionErrorPolicy(..))
-import           Cardano.Benchmarking.GeneratorTx.Tx as Core (keyAddress, Fund)
+import           Cardano.Benchmarking.GeneratorTx.Tx as Core (keyAddress)
 import           Cardano.Benchmarking.GeneratorTx.LocalProtocolDefinition as Core (startProtocol)
 import           Cardano.Benchmarking.GeneratorTx.NodeToNode (ConnectClient, benchmarkConnectTxSubmit)
 import           Cardano.Benchmarking.OuroborosImports as Core
@@ -37,7 +38,19 @@ import           Cardano.Benchmarking.Tracer as Core (createTracers, btTxSubmit_
 
 import           Cardano.Benchmarking.Script.Env
 import           Cardano.Benchmarking.Script.Setters
-import           Cardano.Benchmarking.Script.Store
+import           Cardano.Benchmarking.Script.Store as Store
+
+liftCoreWithEra :: (forall era. IsShelleyBasedEra era => AsType era -> ExceptT TxGenError IO x) -> ActionM (Either TxGenError x)
+liftCoreWithEra coreCall = withEra ( liftIO . runExceptT . coreCall)
+
+withEra :: (forall era. IsShelleyBasedEra era => AsType era -> ActionM x) -> ActionM x
+withEra action = do
+  era <- get $ User TEra
+  case era of
+    AnyCardanoEra MaryEra    -> action AsMaryEra
+    AnyCardanoEra AllegraEra -> action AsAllegraEra
+    AnyCardanoEra ShelleyEra -> action AsShelleyEra
+    AnyCardanoEra ByronEra   -> error "byron not supported"
 
 startProtocol :: FilePath -> ActionM ()
 startProtocol filePath = do
@@ -56,13 +69,6 @@ readSigningKey name filePath =
     Left err -> liftTxGenError err
     Right key -> setName name key
 
-keyAddress :: forall era. IsShelleyBasedEra era => AddressName -> KeyName -> CardanoEra era -> ActionM ()
-keyAddress addrName keyName era = do
-  key <- getName keyName
-  networkId <- get NetworkId
-  let addr = Core.keyAddress @ era networkId key
-  setName addrName (InAnyCardanoEra era addr)
-
 getLocalSubmitTx :: ActionM LocalSubmitTx
 getLocalSubmitTx = do
   networkId <- get NetworkId
@@ -71,75 +77,68 @@ getLocalSubmitTx = do
 
 secureGenesisFund ::
       FundName
-   -> AddressName
+   -> KeyName
    -> KeyName
    -> ActionM ()
-secureGenesisFund fundName fundAddr genesisKey = do
+secureGenesisFund fundName destKey genesisKeyName = do
   tracer <- btTxSubmit_ <$> get BenchTracers
   localSubmitTx <- getLocalSubmitTx
   networkId <- get NetworkId
   genesis  <- get Genesis
   fee      <- getUser TFee
   ttl      <- getUser TTTL
-  addr <- getName fundAddr
-  key  <- getName genesisKey
+  fundKey  <- getName destKey
+  genesisKey  <- getName genesisKeyName
   let
-    coreCall :: forall era. IsShelleyBasedEra era => AddressInEra era -> ExceptT TxGenError IO Fund
-    coreCall = Core.secureGenesisFund tracer localSubmitTx networkId genesis fee ttl key
-  ret <- liftIO $ runExceptT $ case addr of
-    InAnyCardanoEra MaryEra    a -> coreCall a
-    InAnyCardanoEra AllegraEra a -> coreCall a
-    InAnyCardanoEra ShelleyEra a -> coreCall a
-    InAnyCardanoEra ByronEra   _ -> error "byron not supported"
-  case ret of
+    coreCall :: forall era. IsShelleyBasedEra era => AsType era -> ExceptT TxGenError IO Store.Fund
+    coreCall _proxy = do
+      let addr = Core.keyAddress @ era networkId fundKey
+      f <- Core.secureGenesisFund tracer localSubmitTx networkId genesis fee ttl genesisKey addr
+      return (f, fundKey)
+  liftCoreWithEra coreCall >>= \case
     Left err -> liftTxGenError err
     Right fund -> setName fundName fund
 
 splitFundN ::
       NumberOfTxs
-   -> AddressName
-   -> FundName
    -> KeyName
-   -> ActionM [Fund]
-splitFundN count destAddr sourceFund sourceFundKey = do
+   -> FundName
+   -> ActionM [Store.Fund]
+splitFundN count destKeyName sourceFund = do
   tracer <- btTxSubmit_ <$> get BenchTracers
   localSubmitTx <- getLocalSubmitTx
+  networkId <- get NetworkId
   fee      <- getUser TFee
-  address  <- getName destAddr
-  fund     <- getName sourceFund
-  key      <- getName sourceFundKey
+  destKey  <- getName destKeyName
+  (fund, fundKey) <- consumeName sourceFund
   txIn     <- getUser TNumberOfInputsPerTx
   let
-    coreCall :: forall era. IsShelleyBasedEra era => AddressInEra era -> ExceptT TxGenError IO [Fund]
-    coreCall addr = Core.splitFunds tracer localSubmitTx fee count txIn key addr fund
-  ret <- liftIO $ runExceptT $ case address of
-    InAnyCardanoEra MaryEra    a -> coreCall a
-    InAnyCardanoEra AllegraEra a -> coreCall a
-    InAnyCardanoEra ShelleyEra a -> coreCall a
-    InAnyCardanoEra ByronEra   _ -> error "byron not supported"
-  case ret of
+    coreCall :: forall era. IsShelleyBasedEra era => AsType era -> ExceptT TxGenError IO [Store.Fund]
+    coreCall _proxy = do
+      let addr = Core.keyAddress @ era networkId fundKey
+      f <- Core.splitFunds tracer localSubmitTx fee count txIn fundKey addr fund
+      return $ zip f $ repeat destKey
+  liftCoreWithEra coreCall >>= \case
     Left err -> liftTxGenError err
     Right funds -> return funds
 
 splitFund ::
       [FundName]
-   -> AddressName
-   -> FundName
    -> KeyName
+   -> FundName
    -> ActionM ()
-splitFund newFunds destAddr sourceFund sourceFundKey = do
-  funds <- splitFundN (NumberOfTxs $ fromIntegral $ length newFunds) destAddr sourceFund sourceFundKey
+splitFund newFunds destKey sourceFund = do
+  funds <- splitFundN (NumberOfTxs $ fromIntegral $ length newFunds) destKey sourceFund
   forM_ (zip newFunds funds) $ \(name, f) -> setName name f
 
 splitFundToList ::
       FundListName
-   -> AddressName
-   -> FundName
    -> KeyName
+   -> FundName
    -> ActionM ()
-splitFundToList newFunds destAddr sourceFund sourceFundKey = do
+splitFundToList newFunds destKey sourceFund = do
   count <- getUser TNumberOfTxs
-  funds <- splitFundN count destAddr sourceFund sourceFundKey
+  funds <- splitFundN count destKey sourceFund
   setName newFunds funds
 
 delay :: ActionM ()
@@ -149,44 +148,35 @@ delay = do
 
 prepareTxList ::
       TxListName
-   -> AddressName
-   -> FundListName
    -> KeyName
+   -> FundListName
    -> ActionM ()
-prepareTxList name destAddr srcFund fundKey = do
-  tracer <- btTxSubmit_ <$> get BenchTracers
+prepareTxList name destKey srcFundName = do
+  tracer   <- btTxSubmit_ <$> get BenchTracers
+  networkId <- get NetworkId
   fee      <- getUser TFee
-  address  <- getName destAddr
-  fund     <- getName srcFund
-  key      <- getName fundKey
+  fundList <- consumeName srcFundName
+  key      <- getName destKey
   txIn     <- getUser TNumberOfInputsPerTx
   txOut    <- getUser TNumberOfOutputsPerTx
   count    <- getUser TNumberOfTxs
   payload  <- getUser TTxAdditionalSize
   let
-    coreCall :: forall era. IsShelleyBasedEra era => AddressInEra era -> ExceptT TxGenError IO (InAnyCardanoEra TxList)
-    coreCall addr = do
+    coreCall :: forall era. IsShelleyBasedEra era => AsType era -> ExceptT TxGenError IO (InAnyCardanoEra TxList)
+    coreCall _proxy = do
+      let addr = Core.keyAddress @ era networkId key
       ----------------------------------------------------TODO : constant 1
-      l <- Core.txGenerator tracer fee count txIn txOut payload addr key 1 fund
+      l <- Core.txGenerator tracer fee count txIn txOut payload addr (snd $ head fundList) 1 (map fst fundList)
       return $ InAnyCardanoEra cardanoEra $ TxList l
-  ret <- liftIO $ runExceptT $ case address of
-    InAnyCardanoEra MaryEra    a -> coreCall a
-    InAnyCardanoEra AllegraEra a -> coreCall a
-    InAnyCardanoEra ShelleyEra a -> coreCall a
-    InAnyCardanoEra ByronEra   _ -> error "byron not supported"
-  case ret of
+  liftCoreWithEra coreCall >>= \case
     Left err -> liftTxGenError err
     Right l -> setName name l
-
 
 runBenchmark ::
       TxListName
    -> ActionM ()
 runBenchmark transactions = do
   tracers  <- get BenchTracers
-  let
-    tr1 =  btTxSubmit_ tracers
-    tr2 =  btN2N_ tracers
   targets  <- getUser TTargets
   tps      <- getUser TTPSRate
   txs      <- getName transactions
@@ -203,7 +193,7 @@ runBenchmark transactions = do
                        networkMagic
 
     coreCall :: forall era. IsShelleyBasedEra era => [Tx era] -> ExceptT TxGenError IO ()
-    coreCall l = Core.runBenchmark tr1 tr2 connectClient targets tps LogErrors l
+    coreCall l = Core.runBenchmark (btTxSubmit_ tracers) (btN2N_ tracers) connectClient targets tps LogErrors l
   ret <- liftIO $ runExceptT $ case txs of
     InAnyCardanoEra MaryEra    (TxList l) -> coreCall l
     InAnyCardanoEra AllegraEra (TxList l) -> coreCall l
