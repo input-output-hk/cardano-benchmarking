@@ -49,7 +49,8 @@
 
       configExeArgsFn =
         cfg: with cfg;
-          [
+          [ "cliArguments"
+
             "--config" (__toFile "config-tx-generator.json"
                          (__toJSON (nodeConfigDefault cfg // nodeConfig)))
 
