@@ -140,8 +140,9 @@ analysisStep ci a@Analysis{aSlotStats=cur:rSLs, ..} = \case
     a { aTxsCollectedAt =
         aTxsCollectedAt &
         (\case
-            Just{} -> error $ mconcat
-              ["Duplicate LOTxsCollected for tid ", show tid, " at ", show loAt]
+            Just{} -> Just loAt
+            --   error $ mconcat
+            --   ["Duplicate LOTxsCollected for tid ", show tid, " at ", show loAt]
             Nothing -> Just loAt)
         `Map.alter` tid
       , aSlotStats      =
@@ -155,8 +156,13 @@ analysisStep ci a@Analysis{aSlotStats=cur:rSLs, ..} = \case
         cur
         { slTxsMemSpan =
           case tid `Map.lookup` aTxsCollectedAt of
-            Nothing -> error $ mconcat
-              ["LOTxsProcessed missing LOTxsCollected for tid", show tid, " at ", show loAt]
+            Nothing ->
+              -- error $ mconcat
+              -- ["LOTxsProcessed missing LOTxsCollected for tid", show tid, " at ", show loAt]
+              Just $
+              1.0
+              +
+              fromMaybe 0 (slTxsMemSpan cur)
             Just base ->
               Just $
               (loAt `Time.diffUTCTime` base)
