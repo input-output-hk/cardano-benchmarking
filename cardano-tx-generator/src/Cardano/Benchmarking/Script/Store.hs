@@ -14,6 +14,7 @@ where
 
 import           Prelude
 
+import           Control.Concurrent.Async
 import           Data.Constraint.Extras.TH (deriveArgDict)
 import           Data.GADT.Compare.TH (deriveGCompare, deriveGEq)
 import           Data.GADT.Show.TH (deriveGShow)
@@ -26,6 +27,7 @@ import           Cardano.Benchmarking.OuroborosImports as Cardano
                     , NetworkId, SigningKey, PaymentKey)
 
 import           Cardano.Benchmarking.Tracer as Core (BenchTracers)
+import           Cardano.Benchmarking.GeneratorTx as Core (AsyncBenchmarkControl)
 import qualified Cardano.Benchmarking.GeneratorTx.Tx as Core (Fund)
 
 type Fund = (Core.Fund, SigningKey PaymentKey)
@@ -45,12 +47,15 @@ data Name x where
   FundName     :: String -> Name Fund
   FundListName :: String -> Name [Fund]
   TxListName   :: String -> Name (InAnyCardanoEra TxList)
+  ThreadName   :: String -> Name AsyncBenchmarkControl
 
+-- Maybe better avoid those aliases ?
 type KeyName      = Name (SigningKey PaymentKey)
 --type AddressName  = Name (InAnyCardanoEra AddressInEra)
 type FundName     = Name Fund
 type FundListName = Name [Fund]
 type TxListName   = Name (InAnyCardanoEra TxList)
+type ThreadName   = Name AsyncBenchmarkControl
 
 newtype TxList era = TxList [Tx era]
 

@@ -42,7 +42,7 @@ prettyPrint = encodePretty' conf
     actionNames :: [Text]
     actionNames =
       [ "startProtocol", "readSigningKey", "secureGenesisFund", "splitFund"
-      , "splitFundToList", "delay", "prepareTxList", "runBenchmark"]
+      , "splitFundToList", "delay", "prepareTxList", "runBenchmark", "asyncBenchmark"]
 
 instance ToJSON AnyCardanoEra where
   toJSON era = case era of
@@ -89,7 +89,11 @@ actionToJSON a = case a of
   PrepareTxList (TxListName name) (KeyName key) (FundListName fund)
     -> object ["prepareTxList" .= name, "newKey" .= key, "fundList" .= fund ]
   RunBenchmark (TxListName txs)
-    ->  object ["runBenchmark" .= txs]
+    -> object ["runBenchmark" .= txs]
+  AsyncBenchmark (ThreadName t) (TxListName txs)
+    -> object ["asyncBenchmark" .= t, "txList" .= txs]
+  WaitBenchmark (ThreadName t)
+    -> object ["waitBenchmark" .= t]
 
 keyValToJSONCompact :: SetKeyVal -> Value
 keyValToJSONCompact keyVal = case parseEither (withObject "internal Error" parseSum) v of
@@ -118,6 +122,8 @@ objectToAction obj = case obj of
   (HashMap.lookup "delay"             -> Just v) -> parseDelay v
   (HashMap.lookup "prepareTxList"     -> Just v) -> parsePrepareTxList v
   (HashMap.lookup "runBenchmark"      -> Just v) -> parseRunBenchmark v
+  (HashMap.lookup "asyncBenchmark"    -> Just v) -> parseAsyncBenchmark v
+  (HashMap.lookup "waitBenchmark"     -> Just v) -> parseWaitBenchmark v
   (HashMap.toList -> [(k, v) ]                 ) -> parseSetter k v
   _ -> fail "Error: cannot parse action Object."
   where
@@ -162,4 +168,11 @@ objectToAction obj = case obj of
 
     parseRunBenchmark
       = withText "Error parsing runBenchmark" $ \t -> return $ RunBenchmark $ TxListName $ Text.unpack t
+
+    parseWaitBenchmark
+      = withText "Error parsing waitBenchmark" $ \t -> return $ WaitBenchmark $ ThreadName $ Text.unpack t
+
+    parseAsyncBenchmark v = AsyncBenchmark
+      <$> ( ThreadName <$> parseJSON v )
+      <*> ( TxListName <$> parseField obj "txList" )
 

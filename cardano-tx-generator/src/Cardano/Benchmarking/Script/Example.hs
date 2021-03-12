@@ -59,7 +59,8 @@ testScript =
   , SplitFundToList fundList passPartout f1
   , PrepareTxList txList passPartout fundList
   , Set $ TTargets ==> makeTargets [ 3000, 3001, 3002]
-  , RunBenchmark txList
+  , AsyncBenchmark threadName txList
+  , WaitBenchmark threadName
   ]
   where
     passPartout = KeyName "pass-partout"
@@ -68,7 +69,7 @@ testScript =
     f1= head outputFunds
     fundList = FundListName "fundList"
     txList = TxListName "txlist"
-
+    threadName = ThreadName "thread1"
     makeTargets = NonEmpty.fromList . map (\p -> makeAddr ("127.0.0.1", p))
 
     makeAddr :: (String, Word16) -> NodeIPv4Address

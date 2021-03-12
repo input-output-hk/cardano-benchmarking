@@ -21,12 +21,13 @@ import           Control.Monad.Trans.Except
 import           Control.Monad.IO.Class
 import           Control.Monad.Trans.Class
 import           Control.Concurrent (threadDelay)
+--import           Control.Concurrent.Async (wait)
 
 import           Cardano.Api ( AsType(..), CardanoEra(..), InAnyCardanoEra(..), AnyCardanoEra(..), IsShelleyBasedEra, Tx
                              , NetworkId(..), cardanoEra)
 
 import           Cardano.Benchmarking.GeneratorTx as Core
-                   (readSigningKey, runBenchmark, secureGenesisFund, splitFunds, txGenerator, TxGenError)
+                   (AsyncBenchmarkControl, asyncBenchmark, waitBenchmark, readSigningKey, secureGenesisFund, splitFunds, txGenerator, TxGenError)
 import           Cardano.Benchmarking.Types as Core (NumberOfTxs(..), InitCooldown(..), SubmissionErrorPolicy(..))
 import           Cardano.Benchmarking.GeneratorTx.Tx as Core (keyAddress)
 import           Cardano.Benchmarking.GeneratorTx.LocalProtocolDefinition as Core (startProtocol)
@@ -172,10 +173,14 @@ prepareTxList name destKey srcFundName = do
     Left err -> liftTxGenError err
     Right l -> setName name l
 
-runBenchmark ::
-      TxListName
-   -> ActionM ()
-runBenchmark transactions = do
+waitBenchmarkCore :: AsyncBenchmarkControl ->  ActionM ()
+waitBenchmarkCore ctl = do
+  tracers  <- get BenchTracers
+  liftIO $ runExceptT $ Core.waitBenchmark (btTxSubmit_ tracers) ctl
+  return ()
+
+asyncBenchmarkCore :: TxListName -> ActionM AsyncBenchmarkControl
+asyncBenchmarkCore transactions = do
   tracers  <- get BenchTracers
   targets  <- getUser TTargets
   tps      <- getUser TTPSRate
@@ -192,8 +197,8 @@ runBenchmark transactions = do
                        (protocolToCodecConfig protocol)
                        networkMagic
 
-    coreCall :: forall era. IsShelleyBasedEra era => [Tx era] -> ExceptT TxGenError IO ()
-    coreCall l = Core.runBenchmark (btTxSubmit_ tracers) (btN2N_ tracers) connectClient targets tps LogErrors l
+    coreCall :: forall era. IsShelleyBasedEra era => [Tx era] -> ExceptT TxGenError IO AsyncBenchmarkControl
+    coreCall l = Core.asyncBenchmark (btTxSubmit_ tracers) (btN2N_ tracers) connectClient targets tps LogErrors l
   ret <- liftIO $ runExceptT $ case txs of
     InAnyCardanoEra MaryEra    (TxList l) -> coreCall l
     InAnyCardanoEra AllegraEra (TxList l) -> coreCall l
@@ -201,4 +206,15 @@ runBenchmark transactions = do
     InAnyCardanoEra ByronEra   _ -> error "byron not supported"
   case ret of
     Left err -> liftTxGenError err
-    Right () -> return ()
+    Right ctl -> return ctl
+
+
+{-# DEPRECATED runBenchmark "to be removed: use asynBenchmark" #-}
+runBenchmark :: TxListName -> ActionM ()
+runBenchmark transactions = asyncBenchmarkCore transactions >>= waitBenchmarkCore
+
+asyncBenchmark :: ThreadName -> TxListName -> ActionM ()
+asyncBenchmark controlName txList = asyncBenchmarkCore txList >>= setName controlName
+
+waitBenchmark :: ThreadName ->  ActionM ()
+waitBenchmark n = getName n >>= waitBenchmarkCore
