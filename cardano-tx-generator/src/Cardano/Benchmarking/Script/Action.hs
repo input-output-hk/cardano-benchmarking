@@ -36,6 +36,7 @@ data Action where
   RunBenchmark       :: TxListName -> Action --obsolete
   AsyncBenchmark     :: ThreadName -> TxListName -> Action
   WaitBenchmark      :: ThreadName -> Action
+  CancelBenchmark    :: ThreadName -> Action
   Reserved           :: [String] -> Action
   deriving (Show, Eq)
 
@@ -54,4 +55,5 @@ action a = case a of
   RunBenchmark txs -> runBenchmark txs --obsolete use AsyncBenchmark
   AsyncBenchmark thread txs -> asyncBenchmark thread txs
   WaitBenchmark thread -> waitBenchmark thread
+  CancelBenchmark thread -> cancelBenchmark thread
   Reserved options -> reserved options

@@ -42,7 +42,8 @@ prettyPrint = encodePretty' conf
     actionNames :: [Text]
     actionNames =
       [ "startProtocol", "readSigningKey", "secureGenesisFund", "splitFund"
-      , "splitFundToList", "delay", "prepareTxList", "runBenchmark", "asyncBenchmark"
+      , "splitFundToList", "delay", "prepareTxList"
+      , "runBenchmark", "asyncBenchmark", "waitBenchmark", "cancelBenchmark"
       , "reserved" ]
 
 instance ToJSON AnyCardanoEra where
@@ -74,8 +75,7 @@ instance FromJSON Sum
 actionToJSON :: Action -> Value
 actionToJSON a = case a of
   Set keyVal -> keyValToJSONCompact keyVal -- Remove the inner/ nested Object and add "set" -prefix.
-  StartProtocol filePath
-    -> object ["startProtocol" .= filePath]
+  StartProtocol filePath -> singleton "startProtocol" filePath
   ReadSigningKey (KeyName name) (SigningKeyFile filePath)
     -> object ["readSigningKey" .= name, "filePath" .= filePath]
   SecureGenesisFund (FundName fundName) (KeyName fundKey) (KeyName genesisKey)
@@ -85,18 +85,17 @@ actionToJSON a = case a of
     where names = [n | FundName n <- newFunds]
   SplitFundToList (FundListName fundList) (KeyName destKey) (FundName sourceFund)
     -> object ["splitFundToList" .= fundList, "newKey" .= destKey, "sourceFund" .= sourceFund ]
-  Delay
-    -> object ["delay" .= Null ]
+  Delay -> singleton "delay" Null
   PrepareTxList (TxListName name) (KeyName key) (FundListName fund)
     -> object ["prepareTxList" .= name, "newKey" .= key, "fundList" .= fund ]
-  RunBenchmark (TxListName txs)
-    -> object ["runBenchmark" .= txs]
+  RunBenchmark (TxListName txs) -> singleton "runBenchmark" txs
   AsyncBenchmark (ThreadName t) (TxListName txs)
     -> object ["asyncBenchmark" .= t, "txList" .= txs]
-  WaitBenchmark (ThreadName t)
-    -> object ["waitBenchmark" .= t]
-  Reserved l
-    -> object ["reserved" .= l]
+  WaitBenchmark (ThreadName t) ->  singleton "waitBenchmark" t
+  CancelBenchmark (ThreadName t) ->  singleton "cancelBenchmark" t
+  Reserved l -> singleton "reserved" l
+  where
+    singleton k v = object [ k .= v ]
 
 keyValToJSONCompact :: SetKeyVal -> Value
 keyValToJSONCompact keyVal = case parseEither (withObject "internal Error" parseSum) v of
@@ -117,17 +116,22 @@ jsonToAction = withObject "Error: Action is not a JSON object." objectToAction
 
 objectToAction :: Object -> Parser Action
 objectToAction obj = case obj of
-  (HashMap.lookup "startProtocol"     -> Just v) -> parseStartProtocol v
+  (HashMap.lookup "startProtocol"     -> Just v)
+    -> (withText "Error parsing startProtocol" $ \t -> return $ StartProtocol $ Text.unpack t) v
   (HashMap.lookup "readSigningKey"    -> Just v) -> parseReadSigningKey v
   (HashMap.lookup "secureGenesisFund" -> Just v) -> parseSecureGenesisFund v
   (HashMap.lookup "splitFund"         -> Just v) -> parseSplitFund v
   (HashMap.lookup "splitFundToList"   -> Just v) -> parseSplitFundToList v
-  (HashMap.lookup "delay"             -> Just v) -> parseDelay v
+  (HashMap.lookup "delay"             -> Just v) -> case v of
+    Null -> return Delay
+    _ -> typeMismatch "Delay" v
   (HashMap.lookup "prepareTxList"     -> Just v) -> parsePrepareTxList v
-  (HashMap.lookup "runBenchmark"      -> Just v) -> parseRunBenchmark v
+  (HashMap.lookup "runBenchmark"      -> Just v)
+    -> (withText "Error parsing runBenchmark" $ \t -> return $ RunBenchmark $ TxListName $ Text.unpack t) v
   (HashMap.lookup "asyncBenchmark"    -> Just v) -> parseAsyncBenchmark v
-  (HashMap.lookup "waitBenchmark"     -> Just v) -> parseWaitBenchmark v
-  (HashMap.lookup "reserved"          -> Just v) -> parseReserved v
+  (HashMap.lookup "waitBenchmark"     -> Just v) -> WaitBenchmark <$> parseThreadName v
+  (HashMap.lookup "CancelBenchmark"   -> Just v) -> CancelBenchmark <$> parseThreadName v
+  (HashMap.lookup "reserved"          -> Just v) -> Reserved <$> parseJSON v
   (HashMap.toList -> [(k, v) ]                 ) -> parseSetter k v
   _ -> fail "Error: cannot parse action Object."
   where
@@ -137,10 +141,10 @@ objectToAction obj = case obj of
           return $ Set $ sumToTaggged s
       _ -> fail "Failed to parse Setter"
 
-    parseStartProtocol = withText "Error parsing startProtocol" $ \t -> return $ StartProtocol $ Text.unpack t
-
     parseKey f = KeyName <$> parseField obj f
     parseFund f = FundName <$> parseField obj f
+    parseThreadName
+      = withText "Error parsing ThreadName" $ \t -> return $ ThreadName $ Text.unpack t
 
     parseReadSigningKey v = ReadSigningKey
       <$> ( KeyName <$> parseJSON v )
@@ -162,22 +166,11 @@ objectToAction obj = case obj of
       <*> parseKey "newKey"
       <*> parseFund "sourceFund"
 
-    parseDelay Null = return Delay
-    parseDelay v = typeMismatch "Delay" v
-
     parsePrepareTxList v = PrepareTxList
       <$> ( TxListName <$> parseJSON v )
       <*> parseKey "newKey"
       <*> ( FundListName <$>parseField obj "fundList" )
 
-    parseRunBenchmark
-      = withText "Error parsing runBenchmark" $ \t -> return $ RunBenchmark $ TxListName $ Text.unpack t
-
-    parseWaitBenchmark
-      = withText "Error parsing waitBenchmark" $ \t -> return $ WaitBenchmark $ ThreadName $ Text.unpack t
-
     parseAsyncBenchmark v = AsyncBenchmark
       <$> ( ThreadName <$> parseJSON v )
       <*> ( TxListName <$> parseField obj "txList" )
-
-    parseReserved v = Reserved <$> parseJSON v

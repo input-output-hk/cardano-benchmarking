@@ -21,7 +21,7 @@ import           Control.Monad.Trans.Except
 import           Control.Monad.IO.Class
 import           Control.Monad.Trans.Class
 import           Control.Concurrent (threadDelay)
---import           Control.Concurrent.Async (wait)
+import           Control.Concurrent.Async as Async ( cancel )
 
 import           Cardano.Api ( AsType(..), CardanoEra(..), InAnyCardanoEra(..), AnyCardanoEra(..), IsShelleyBasedEra, Tx
                              , NetworkId(..), cardanoEra)
@@ -216,13 +216,19 @@ runBenchmark transactions = asyncBenchmarkCore transactions >>= waitBenchmarkCor
 asyncBenchmark :: ThreadName -> TxListName -> ActionM ()
 asyncBenchmark controlName txList = asyncBenchmarkCore txList >>= setName controlName
 
-waitBenchmark :: ThreadName ->  ActionM ()
+waitBenchmark :: ThreadName -> ActionM ()
 waitBenchmark n = getName n >>= waitBenchmarkCore
+
+cancelBenchmark :: ThreadName -> ActionM ()
+cancelBenchmark n = do
+  ctl@(feeder, workers, _ ) <- getName n
+  _<- liftIO $ forM_ (feeder : workers) Async.cancel
+  waitBenchmarkCore ctl
 
 {-
 This is for dirty hacking and testing and quick-fixes.
 Its a function that can be called from the JSON scripts
 and for which the JSON encoding is "reserved".
 -}
-reserved :: [String] -> Action
+reserved :: [String] -> ActionM ()
 reserved _ = error "no dirty hack is implemented"
