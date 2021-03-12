@@ -218,3 +218,11 @@ asyncBenchmark controlName txList = asyncBenchmarkCore txList >>= setName contro
 
 waitBenchmark :: ThreadName ->  ActionM ()
 waitBenchmark n = getName n >>= waitBenchmarkCore
+
+{-
+This is for dirty hacking and testing and quick-fixes.
+Its a function that can be called from the JSON scripts
+and for which the JSON encoding is "reserved".
+-}
+reserved :: [String] -> Action
+reserved _ = error "no dirty hack is implemented"

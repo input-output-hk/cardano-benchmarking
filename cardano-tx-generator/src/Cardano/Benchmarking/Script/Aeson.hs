@@ -42,7 +42,8 @@ prettyPrint = encodePretty' conf
     actionNames :: [Text]
     actionNames =
       [ "startProtocol", "readSigningKey", "secureGenesisFund", "splitFund"
-      , "splitFundToList", "delay", "prepareTxList", "runBenchmark", "asyncBenchmark"]
+      , "splitFundToList", "delay", "prepareTxList", "runBenchmark", "asyncBenchmark"
+      , "reserved" ]
 
 instance ToJSON AnyCardanoEra where
   toJSON era = case era of
@@ -94,6 +95,8 @@ actionToJSON a = case a of
     -> object ["asyncBenchmark" .= t, "txList" .= txs]
   WaitBenchmark (ThreadName t)
     -> object ["waitBenchmark" .= t]
+  Reserved l
+    -> object ["reserved" .= l]
 
 keyValToJSONCompact :: SetKeyVal -> Value
 keyValToJSONCompact keyVal = case parseEither (withObject "internal Error" parseSum) v of
@@ -124,6 +127,7 @@ objectToAction obj = case obj of
   (HashMap.lookup "runBenchmark"      -> Just v) -> parseRunBenchmark v
   (HashMap.lookup "asyncBenchmark"    -> Just v) -> parseAsyncBenchmark v
   (HashMap.lookup "waitBenchmark"     -> Just v) -> parseWaitBenchmark v
+  (HashMap.lookup "reserved"          -> Just v) -> parseReserved v
   (HashMap.toList -> [(k, v) ]                 ) -> parseSetter k v
   _ -> fail "Error: cannot parse action Object."
   where
@@ -176,3 +180,4 @@ objectToAction obj = case obj of
       <$> ( ThreadName <$> parseJSON v )
       <*> ( TxListName <$> parseField obj "txList" )
 
+    parseReserved v = Reserved <$> parseJSON v

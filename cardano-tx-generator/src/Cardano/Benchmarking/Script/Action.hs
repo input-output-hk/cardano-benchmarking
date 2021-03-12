@@ -36,6 +36,7 @@ data Action where
   RunBenchmark       :: TxListName -> Action --obsolete
   AsyncBenchmark     :: ThreadName -> TxListName -> Action
   WaitBenchmark      :: ThreadName -> Action
+  Reserved           :: [String] -> Action
   deriving (Show, Eq)
 
 deriving instance Generic Action
@@ -53,3 +54,4 @@ action a = case a of
   RunBenchmark txs -> runBenchmark txs --obsolete use AsyncBenchmark
   AsyncBenchmark thread txs -> asyncBenchmark thread txs
   WaitBenchmark thread -> waitBenchmark thread
+  Reserved options -> reserved options
