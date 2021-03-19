@@ -27,6 +27,7 @@ library
                        Cardano.Benchmarking.Command
                        Cardano.Benchmarking.DSL
                        Cardano.Benchmarking.OuroborosImports
+                       Cardano.Benchmarking.Script
                        Cardano.Benchmarking.Script.Action
                        Cardano.Benchmarking.Script.Aeson
                        Cardano.Benchmarking.Script.Core

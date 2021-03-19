@@ -18,6 +18,7 @@ import           Data.Functor.Identity
 import           Data.Dependent.Sum (DSum(..))
 
 import           Cardano.Benchmarking.OuroborosImports (SigningKeyFile)
+import           Cardano.Api (AnyCardanoEra)
 
 import           Cardano.Benchmarking.Script.Env
 import           Cardano.Benchmarking.Script.Store
@@ -38,6 +39,7 @@ data Action where
   WaitBenchmark      :: ThreadName -> Action
   CancelBenchmark    :: ThreadName -> Action
   Reserved           :: [String] -> Action
+  WaitForEra         :: AnyCardanoEra -> Action
   deriving (Show, Eq)
 
 deriving instance Generic Action
@@ -56,4 +58,5 @@ action a = case a of
   AsyncBenchmark thread txs -> asyncBenchmark thread txs
   WaitBenchmark thread -> waitBenchmark thread
   CancelBenchmark thread -> cancelBenchmark thread
+  WaitForEra era -> waitForEra era
   Reserved options -> reserved options

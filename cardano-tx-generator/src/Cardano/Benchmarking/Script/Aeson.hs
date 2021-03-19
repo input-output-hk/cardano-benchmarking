@@ -93,6 +93,7 @@ actionToJSON a = case a of
     -> object ["asyncBenchmark" .= t, "txList" .= txs]
   WaitBenchmark (ThreadName t) ->  singleton "waitBenchmark" t
   CancelBenchmark (ThreadName t) ->  singleton "cancelBenchmark" t
+  WaitForEra era -> singleton "waitForEra" era
   Reserved l -> singleton "reserved" l
   where
     singleton k v = object [ k .= v ]
@@ -130,7 +131,8 @@ objectToAction obj = case obj of
     -> (withText "Error parsing runBenchmark" $ \t -> return $ RunBenchmark $ TxListName $ Text.unpack t) v
   (HashMap.lookup "asyncBenchmark"    -> Just v) -> parseAsyncBenchmark v
   (HashMap.lookup "waitBenchmark"     -> Just v) -> WaitBenchmark <$> parseThreadName v
-  (HashMap.lookup "CancelBenchmark"   -> Just v) -> CancelBenchmark <$> parseThreadName v
+  (HashMap.lookup "cancelBenchmark"   -> Just v) -> CancelBenchmark <$> parseThreadName v
+  (HashMap.lookup "waitForEra"        -> Just v) -> WaitForEra <$> parseJSON v
   (HashMap.lookup "reserved"          -> Just v) -> Reserved <$> parseJSON v
   (HashMap.toList -> [(k, v) ]                 ) -> parseSetter k v
   _ -> fail "Error: cannot parse action Object."

@@ -22,7 +22,7 @@ import Ouroboros.Network.NodeToClient (withIOManager)
 
 import Cardano.Benchmarking.CliArgsScript
   (GeneratorCmd, parseGeneratorCmd, runPlainOldCliScript, runEraTransitionTest)
-import Cardano.Benchmarking.Script.Example (runScript)
+import Cardano.Benchmarking.Script (runScript)
 
 data Command
   = CliArguments  GeneratorCmd

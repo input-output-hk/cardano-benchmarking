@@ -4,6 +4,7 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE NumericUnderscores #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE RankNTypes #-} --
@@ -19,13 +20,14 @@ import           Prelude
 import           Control.Monad
 import           Control.Monad.Trans.Except
 import           Control.Monad.IO.Class
-import           Control.Monad.Trans.Class
 import           Control.Concurrent (threadDelay)
 import           Control.Concurrent.Async as Async ( cancel )
 
 import           Cardano.Api ( AsType(..), CardanoEra(..), InAnyCardanoEra(..), AnyCardanoEra(..), IsShelleyBasedEra, Tx
-                             , NetworkId(..), cardanoEra)
-
+                             , NetworkId(..), cardanoEra
+                             , CardanoMode, LocalNodeConnectInfo
+                             , getLocalChainTip, queryNodeLocalState, QueryInMode( QueryCurrentEra), ConsensusModeIsMultiEra( CardanoModeIsMultiEra )
+                             , chainTipToChainPoint )
 import           Cardano.Benchmarking.GeneratorTx as Core
                    (AsyncBenchmarkControl, asyncBenchmark, waitBenchmark, readSigningKey, secureGenesisFund, splitFunds, txGenerator, TxGenError)
 import           Cardano.Benchmarking.Types as Core (NumberOfTxs(..), InitCooldown(..), SubmissionErrorPolicy(..))
@@ -56,7 +58,7 @@ withEra action = do
 startProtocol :: FilePath -> ActionM ()
 startProtocol filePath = do
   (liftIO $ runExceptT $ Core.startProtocol filePath) >>= \case
-    Left err -> lift $ throwE $ CliError err     
+    Left err -> throwE $ CliError err
     Right (loggingLayer, protocol) -> do
       set LoggingLayer loggingLayer
       set Protocol protocol
@@ -71,10 +73,7 @@ readSigningKey name filePath =
     Right key -> setName name key
 
 getLocalSubmitTx :: ActionM LocalSubmitTx
-getLocalSubmitTx = do
-  networkId <- get NetworkId
-  socket    <- getUser TLocalSocket
-  return $ submitTxToNodeLocal $ makeLocalConnectInfo networkId socket
+getLocalSubmitTx = submitTxToNodeLocal <$> getLocalConnectInfo
 
 secureGenesisFund ::
       FundName
@@ -176,7 +175,7 @@ prepareTxList name destKey srcFundName = do
 waitBenchmarkCore :: AsyncBenchmarkControl ->  ActionM ()
 waitBenchmarkCore ctl = do
   tracers  <- get BenchTracers
-  liftIO $ runExceptT $ Core.waitBenchmark (btTxSubmit_ tracers) ctl
+  _ <- liftIO $ runExceptT $ Core.waitBenchmark (btTxSubmit_ tracers) ctl
   return ()
 
 asyncBenchmarkCore :: TxListName -> ActionM AsyncBenchmarkControl
@@ -225,10 +224,32 @@ cancelBenchmark n = do
   _<- liftIO $ forM_ (feeder : workers) Async.cancel
   waitBenchmarkCore ctl
 
+getLocalConnectInfo :: ActionM  (LocalNodeConnectInfo CardanoMode)
+getLocalConnectInfo = makeLocalConnectInfo <$> get NetworkId <*> getUser TLocalSocket
+
+queryEra :: ActionM AnyCardanoEra
+queryEra = do
+  localNodeConnectInfo <- getLocalConnectInfo
+  chainTip  <- liftIO $ getLocalChainTip localNodeConnectInfo
+  ret <- liftIO $ queryNodeLocalState localNodeConnectInfo (Just $ chainTipToChainPoint chainTip) $ QueryCurrentEra CardanoModeIsMultiEra
+  case ret of
+    Right era -> return era
+    Left err -> throwE $ ApiError $ show err
+
+waitForEra :: AnyCardanoEra -> ActionM ()
+waitForEra era = do
+  currentEra <- queryEra
+  if currentEra == era
+    then return ()
+    else do
+      traceError $ "Current era: " ++ show currentEra ++ " Waiting for: " ++ show era
+      liftIO $ threadDelay 1_000_000
+      waitForEra era
 {-
 This is for dirty hacking and testing and quick-fixes.
 Its a function that can be called from the JSON scripts
 and for which the JSON encoding is "reserved".
 -}
 reserved :: [String] -> ActionM ()
-reserved _ = error "no dirty hack is implemented"
+reserved _ = do
+  throwE $ UserError "no dirty hack is implemented"
