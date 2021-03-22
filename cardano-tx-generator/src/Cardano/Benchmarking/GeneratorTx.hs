@@ -257,7 +257,7 @@ type AsyncBenchmarkControl = (Async (), [Async ()], IO SubmissionSummary)
 
 waitBenchmark :: Tracer IO (TraceBenchTxSubmit TxId) -> AsyncBenchmarkControl -> ExceptT TxGenError IO ()
 waitBenchmark traceSubmit (feeder, workers, mkSummary) = liftIO $ do
-  mapM_ wait (feeder : workers)
+  mapM_ waitCatch (feeder : workers)
   traceWith traceSubmit =<< TraceBenchTxSubSummary <$> mkSummary
 
 asyncBenchmark :: forall era. IsShelleyBasedEra era
