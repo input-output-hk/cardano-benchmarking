@@ -141,16 +141,15 @@ data SubmissionThreadReport
       , strEndOfProtocol :: !UTCTime
       }
 
-mkSubmissionSummary
-  :: MonadIO m
-  => Submission m tx
-  -> m SubmissionSummary
+mkSubmissionSummary ::
+     Submission IO tx
+  -> IO SubmissionSummary
 mkSubmissionSummary
   Submission{ sStartTime, sReportsRefs}
  = do
-  results <- sequence (liftIO . STM.atomically . STM.readTMVar <$> sReportsRefs)
+  results <- sequence (STM.atomically . STM.readTMVar <$> sReportsRefs)
   let (failures, reports) = partitionEithers results
-  now <- liftIO Clock.getCurrentTime
+  now <- Clock.getCurrentTime
   let ssElapsed = Clock.diffUTCTime now sStartTime
       ssTxSent@(Sent sent) = sum $ stsSent . strStats <$> reports
       ssTxUnavailable = sum $ stsUnavailable . strStats <$> reports

@@ -13,7 +13,8 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
 
 module Cardano.Benchmarking.GeneratorTx
-  ( NumberOfTxs(..)
+  ( AsyncBenchmarkControl
+  , NumberOfTxs(..)
   , NumberOfInputsPerTx(..)
   , NumberOfOutputsPerTx(..)
   , InitCooldown(..)
@@ -23,6 +24,8 @@ module Cardano.Benchmarking.GeneratorTx
   , secureGenesisFund
   , splitFunds
   , runBenchmark
+  , asyncBenchmark
+  , waitBenchmark
   , readSigningKey
   , txGenerator
   ) where
@@ -220,11 +223,8 @@ splitFunds
 -- | Run benchmark using top level tracers..
 -----------------------------------------------------------------------------------------
 
--- | Please note that there's a difference between Cardano tx and fiscal tx:
---   1. Cardano tx is a transaction from Cardano blockchain's point of view.
---   2. Fiscal tx is a transaction from recipient's point of view.
---   So if one Cardano tx contains 10 outputs (with addresses of 10 recipients),
---   we have 1 Cardano tx and 10 fiscal txs.
+-- This is the entry point for the CLI args tx-generator
+{-# DEPRECATED runBenchmark "to be removed: use asyncBenchmark instead" #-}
 runBenchmark :: forall era. IsShelleyBasedEra era
   => Tracer IO (TraceBenchTxSubmit TxId)
   -> Tracer IO NodeToNodeSubmissionTrace
@@ -235,6 +235,41 @@ runBenchmark :: forall era. IsShelleyBasedEra era
   -> [Tx era]
   -> ExceptT TxGenError IO ()
 runBenchmark
+  traceSubmit
+  traceN2N
+  connectClient
+  targets
+  tpsRate
+  errorPolicy
+  finalTransactions
+  = do
+    ctl <- asyncBenchmark
+                       traceSubmit
+                       traceN2N
+                       connectClient
+                       targets
+                       tpsRate
+                       errorPolicy
+                       finalTransactions
+    waitBenchmark traceSubmit ctl
+
+type AsyncBenchmarkControl = (Async (), [Async ()], IO SubmissionSummary)
+
+waitBenchmark :: Tracer IO (TraceBenchTxSubmit TxId) -> AsyncBenchmarkControl -> ExceptT TxGenError IO ()
+waitBenchmark traceSubmit (feeder, workers, mkSummary) = liftIO $ do
+  mapM_ wait (feeder : workers)
+  traceWith traceSubmit =<< TraceBenchTxSubSummary <$> mkSummary
+
+asyncBenchmark :: forall era. IsShelleyBasedEra era
+  => Tracer IO (TraceBenchTxSubmit TxId)
+  -> Tracer IO NodeToNodeSubmissionTrace
+  -> ConnectClient
+  -> NonEmpty NodeIPv4Address
+  -> TPSRate
+  -> SubmissionErrorPolicy
+  -> [Tx era]
+  -> ExceptT TxGenError IO AsyncBenchmarkControl
+asyncBenchmark
   traceSubmit
   traceN2N
   connectClient
@@ -287,10 +322,7 @@ runBenchmark
               submission
               i
     tpsFeeder <- async $ tpsLimitedTxFeeder submission finalTransactions
-    -- Wait for all threads to complete.
-    mapM_ wait (tpsFeeder : allAsyncs)
-    traceWith traceSubmit =<<
-       TraceBenchTxSubSummary <$> mkSubmissionSummary submission
+    return (tpsFeeder, allAsyncs, mkSubmissionSummary submission)
 
 -- | At this moment 'sourceAddress' contains a huge amount of money (lets call it A).
 --   Now we have to split this amount to N equal parts, as a result we'll have
