@@ -84,7 +84,13 @@ secureGenesisFund submitTracer localSubmitTx networkId genesis txFee ttl key out
     let (_inAddr, lovelace) = genesisFundForKey @ era networkId genesis key
         (tx, fund) =
            genesisExpenditure networkId key outAddr lovelace txFee ttl
-    r <- liftIO $ localSubmitTx $ txInModeCardano tx
+    r <- liftIO $
+      catches (localSubmitTx $ txInModeCardano tx)
+        [ Handler $ \e@SomeException{} ->
+            fail $ mconcat
+              [ "Exception while moving genesis funds via local socket: "
+              , show e
+              ]]
     case r of
       SubmitSuccess ->
         liftIO . traceWith submitTracer . TraceBenchTxSubDebug
