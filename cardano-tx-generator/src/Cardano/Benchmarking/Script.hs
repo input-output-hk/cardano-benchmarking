@@ -1,6 +1,11 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NumericUnderscores #-}
 module Cardano.Benchmarking.Script
+(
+    Script
+  , runScript
+  , parseScriptFile
+  )
 where
 
 import           Prelude
@@ -11,9 +16,8 @@ import           Control.Monad
 import           Ouroboros.Network.NodeToClient (IOManager)
 
 import           Cardano.Benchmarking.Script.Action
-import           Cardano.Benchmarking.Script.Aeson ()
+import           Cardano.Benchmarking.Script.Aeson (parseScriptFile)
 import           Cardano.Benchmarking.Script.Env
-
 
 type Script = [Action]
 

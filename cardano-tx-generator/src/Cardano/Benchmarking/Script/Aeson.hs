@@ -9,6 +9,8 @@ where
 
 import           Prelude
 
+import           System.Exit
+
 import           Data.Functor.Identity
 
 import           Data.Text (Text)
@@ -18,9 +20,14 @@ import           Data.Dependent.Sum
 import qualified Data.HashMap.Strict as HashMap (toList, lookup)
 
 import qualified Data.ByteString.Lazy as BSL
+
+import qualified Data.ByteString as BS
+import qualified Data.ByteString.Char8 as BS (lines)
+
 import           Data.Aeson
 import           Data.Aeson.Types
 import           Data.Aeson.Encode.Pretty
+import qualified Data.Attoparsec.ByteString as Atto
 
 import           Cardano.Api (AnyCardanoEra(..), CardanoEra(..))
 import           Cardano.CLI.Types (SigningKeyFile(..))
@@ -176,3 +183,31 @@ objectToAction obj = case obj of
     parseAsyncBenchmark v = AsyncBenchmark
       <$> ( ThreadName <$> parseJSON v )
       <*> ( TxListName <$> parseField obj "txList" )
+
+parseScriptFile :: FilePath -> IO [Action]
+parseScriptFile filePath = do
+  input <- BS.readFile filePath
+  case Atto.parse Data.Aeson.json input of
+    Atto.Fail rest _context msg -> die errorMsg
+      where
+        consumed = BS.take (BS.length input - BS.length rest) input
+        lineNumber = length $ BS.lines consumed
+        errorMsg = concat [
+            "error while parsing json value :\n"
+          , "file :" , filePath , "\n"
+          , "line number ", show lineNumber ,"\n"
+          , "message : ", msg, "\n"
+          ]
+    Atto.Partial _ -> die $ concat [
+            "error while parsing json value :\n"
+          , "file :" , filePath , "\n"
+          , "truncated input file\n"
+          ]
+    Atto.Done extra _ | (not $ BS.null extra) -> die $ concat [
+            "error while parsing json value :\n"
+          , "file :" , filePath , "\n"
+          , "leftover data"
+          ]
+    Atto.Done _ value -> case fromJSON value of
+      Error err -> die err
+      Success script -> return script

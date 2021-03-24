@@ -15,14 +15,13 @@ where
 import Prelude
 import System.Exit
 
-import Data.Aeson (eitherDecodeFileStrict)
 import Options.Applicative as Opt
 
 import Ouroboros.Network.NodeToClient (withIOManager)
 
 import Cardano.Benchmarking.CliArgsScript
   (GeneratorCmd, parseGeneratorCmd, runPlainOldCliScript, runEraTransitionTest)
-import Cardano.Benchmarking.Script (runScript)
+import Cardano.Benchmarking.Script (runScript, parseScriptFile)
 
 data Command
   = CliArguments  GeneratorCmd
@@ -37,9 +36,9 @@ runCommand = withIOManager $ \iocp -> do
   case cmd of
     CliArguments   args -> runPlainOldCliScript iocp args >>= handleError
     EraTransition args -> runEraTransitionTest iocp args >>= handleError
-    Json file     -> eitherDecodeFileStrict file >>= \case
-      Left err -> die err
-      Right script -> runScript script iocp >>= handleError
+    Json file     -> do
+      script <- parseScriptFile file
+      runScript script iocp >>= handleError
   where
     handleError :: Show a => Either a b -> IO ()
     handleError = \case
