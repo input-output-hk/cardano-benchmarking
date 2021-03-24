@@ -26,13 +26,16 @@ type Script = [Action]
 
 runScript :: Script -> IOManager -> IO (Either Error ())
 runScript script iom = runActionM (forM_ script action) iom >>= \case
-    (Right a , _s ,  ()) -> return $ Right a
-    (Left err , s  , ())  -> do
-       _ <- flip (runActionMEnv s) iom $ do
-            traceError $ show err
-            shutDownLogging
+    (Right a  , s ,  ()) -> do
+      cleanup s shutDownLogging
+      threadDelay $ 10_000_000
+      return $ Right a
+    (Left err , s  , ()) -> do
+       cleanup s (traceError (show err) >> shutDownLogging)
        threadDelay $ 10_000_000
        return $ Left err
+    where
+      cleanup s = flip (runActionMEnv s) iom
 
 shutDownLogging :: ActionM ()
 shutDownLogging = do
