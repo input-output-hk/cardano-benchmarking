@@ -247,6 +247,7 @@ runBenchmark
                        traceSubmit
                        traceN2N
                        connectClient
+                       "UnknownThreadLabel"
                        targets
                        tpsRate
                        errorPolicy
@@ -264,6 +265,7 @@ asyncBenchmark :: forall era. IsShelleyBasedEra era
   => Tracer IO (TraceBenchTxSubmit TxId)
   -> Tracer IO NodeToNodeSubmissionTrace
   -> ConnectClient
+  -> String
   -> NonEmpty NodeIPv4Address
   -> TPSRate
   -> SubmissionErrorPolicy
@@ -273,6 +275,7 @@ asyncBenchmark
   traceSubmit
   traceN2N
   connectClient
+  threadName
   targets
   tpsRate
   errorPolicy
@@ -322,7 +325,7 @@ asyncBenchmark
               submission
               i
     tpsFeeder <- async $ tpsLimitedTxFeeder submission finalTransactions
-    return (tpsFeeder, allAsyncs, mkSubmissionSummary submission)
+    return (tpsFeeder, allAsyncs, mkSubmissionSummary threadName submission)
 
 -- | At this moment 'sourceAddress' contains a huge amount of money (lets call it A).
 --   Now we have to split this amount to N equal parts, as a result we'll have

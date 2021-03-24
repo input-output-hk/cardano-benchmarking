@@ -142,10 +142,10 @@ data SubmissionThreadReport
       }
 
 mkSubmissionSummary ::
-     Submission IO tx
+     String
+  -> Submission IO tx
   -> IO SubmissionSummary
-mkSubmissionSummary
-  Submission{ sStartTime, sReportsRefs}
+mkSubmissionSummary ssThreadName Submission{ sStartTime, sReportsRefs}
  = do
   results <- sequence (STM.atomically . STM.readTMVar <$> sReportsRefs)
   let (failures, reports) = partitionEithers results

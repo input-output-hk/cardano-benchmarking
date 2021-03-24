@@ -178,8 +178,8 @@ waitBenchmarkCore ctl = do
   _ <- liftIO $ runExceptT $ Core.waitBenchmark (btTxSubmit_ tracers) ctl
   return ()
 
-asyncBenchmarkCore :: TxListName -> ActionM AsyncBenchmarkControl
-asyncBenchmarkCore transactions = do
+asyncBenchmarkCore :: ThreadName -> TxListName -> ActionM AsyncBenchmarkControl
+asyncBenchmarkCore (ThreadName threadName) transactions = do
   tracers  <- get BenchTracers
   targets  <- getUser TTargets
   tps      <- getUser TTPSRate
@@ -197,7 +197,7 @@ asyncBenchmarkCore transactions = do
                        networkMagic
 
     coreCall :: forall era. IsShelleyBasedEra era => [Tx era] -> ExceptT TxGenError IO AsyncBenchmarkControl
-    coreCall l = Core.asyncBenchmark (btTxSubmit_ tracers) (btN2N_ tracers) connectClient targets tps LogErrors l
+    coreCall l = Core.asyncBenchmark (btTxSubmit_ tracers) (btN2N_ tracers) connectClient threadName targets tps LogErrors l
   ret <- liftIO $ runExceptT $ case txs of
     InAnyCardanoEra MaryEra    (TxList l) -> coreCall l
     InAnyCardanoEra AllegraEra (TxList l) -> coreCall l
@@ -210,10 +210,10 @@ asyncBenchmarkCore transactions = do
 
 {-# DEPRECATED runBenchmark "to be removed: use asynBenchmark" #-}
 runBenchmark :: TxListName -> ActionM ()
-runBenchmark transactions = asyncBenchmarkCore transactions >>= waitBenchmarkCore
+runBenchmark transactions = asyncBenchmarkCore (ThreadName "UnlabeledThread") transactions >>= waitBenchmarkCore
 
 asyncBenchmark :: ThreadName -> TxListName -> ActionM ()
-asyncBenchmark controlName txList = asyncBenchmarkCore txList >>= setName controlName
+asyncBenchmark controlName txList = asyncBenchmarkCore controlName txList >>= setName controlName
 
 waitBenchmark :: ThreadName -> ActionM ()
 waitBenchmark n = getName n >>= waitBenchmarkCore
