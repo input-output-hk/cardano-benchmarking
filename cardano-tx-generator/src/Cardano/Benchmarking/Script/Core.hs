@@ -220,8 +220,8 @@ waitBenchmark n = getName n >>= waitBenchmarkCore
 
 cancelBenchmark :: ThreadName -> ActionM ()
 cancelBenchmark n = do
-  ctl@(feeder, workers, _ ) <- getName n
-  _<- liftIO $ forM_ (feeder : workers) Async.cancel
+  ctl@(_, _ , _ , shutdownAction) <- getName n
+  _<- liftIO shutdownAction
   waitBenchmarkCore ctl
 
 getLocalConnectInfo :: ActionM  (LocalNodeConnectInfo CardanoMode)

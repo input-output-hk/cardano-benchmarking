@@ -254,10 +254,10 @@ runBenchmark
                        finalTransactions
     waitBenchmark traceSubmit ctl
 
-type AsyncBenchmarkControl = (Async (), [Async ()], IO SubmissionSummary)
+type AsyncBenchmarkControl = (Async (), [Async ()], IO SubmissionSummary, IO ())
 
 waitBenchmark :: Tracer IO (TraceBenchTxSubmit TxId) -> AsyncBenchmarkControl -> ExceptT TxGenError IO ()
-waitBenchmark traceSubmit (feeder, workers, mkSummary) = liftIO $ do
+waitBenchmark traceSubmit (feeder, workers, mkSummary, _) = liftIO $ do
   mapM_ waitCatch (feeder : workers)
   traceWith traceSubmit =<< TraceBenchTxSubSummary <$> mkSummary
 
@@ -325,7 +325,11 @@ asyncBenchmark
               submission
               i
     tpsFeeder <- async $ tpsLimitedTxFeeder submission finalTransactions
-    return (tpsFeeder, allAsyncs, mkSubmissionSummary threadName submission)
+    let tpsFeederShutdown = do
+          cancel tpsFeeder
+          liftIO $ tpsLimitedTxFeederShutdown submission
+
+    return (tpsFeeder, allAsyncs, mkSubmissionSummary threadName submission, tpsFeederShutdown)
 
 -- | At this moment 'sourceAddress' contains a huge amount of money (lets call it A).
 --   Now we have to split this amount to N equal parts, as a result we'll have

@@ -32,6 +32,7 @@ module Cardano.Benchmarking.GeneratorTx.Submission
   , txSubmissionClient
   , simpleTxFeeder
   , tpsLimitedTxFeeder
+  , tpsLimitedTxFeederShutdown
   ) where
 
 import           Prelude (error)
@@ -42,6 +43,7 @@ import           Control.Arrow ((&&&))
 import           Control.Concurrent (threadDelay)
 import qualified Control.Concurrent.STM as STM
 import           Control.Concurrent.STM.TBQueue (TBQueue)
+import           Control.Exception (AsyncException(ThreadKilled))
 
 import qualified Data.List as L
 import qualified Data.List.Extra as L
@@ -187,21 +189,41 @@ simpleTxFeeder
      liftIO $ STM.atomically $ STM.writeTBQueue sTxSendQueue (Just tx)
      traceWith sTrace $ TraceBenchTxSubServFed [getTxId $ getTxBody tx] ix
 
-tpsLimitedTxFeeder
-  :: forall m era
-  . (MonadIO m)
-  => Submission m era -> [Tx era] -> m ()
-tpsLimitedTxFeeder
+tpsLimitedTxFeederShutdown
+  :: forall m era . MonadIO m => Submission m era -> IO ()
+tpsLimitedTxFeederShutdown
  Submission{ sParams=SubmissionParams{spTps=TPSRate rate}
            , sThreads
            , sTrace
-           , sTxSendQueue } txs = do
-  now <- liftIO Clock.getCurrentTime
-  foldM_ feedTx (now, 0) (zip txs [0..])
-  -- Issue the termination notifications.
-  replicateM_ (fromIntegral sThreads) .
-    liftIO . STM.atomically $ STM.writeTBQueue sTxSendQueue Nothing
+           , sTxSendQueue }
+   = do
+     replicateM_ (fromIntegral sThreads)
+        . STM.atomically $ STM.writeTBQueue sTxSendQueue Nothing
+
+tpsLimitedTxFeeder
+  :: forall m era . MonadIO m => Submission m era -> [Tx era] -> m ()
+tpsLimitedTxFeeder submission txs = do
+  -- It would be nice to catch an AsyncException here and do a clean shutdown.
+  -- However this would require extra machineries because we are in MonadIO m not in IO ().
+  -- TODO: Move everything to IO () and avoid problems from over-polymorphism.
+  feederBody
+  liftIO $ tpsLimitedTxFeederShutdown submission
  where
+   Submission{ sParams=SubmissionParams{spTps=TPSRate rate}
+             , sThreads
+             , sTrace
+             , sTxSendQueue } = submission
+
+   feederBody :: m ()
+   feederBody = do
+       now <- liftIO Clock.getCurrentTime
+       foldM_ feedTx (now, 0) (zip txs [0..])
+  -- Issue the termination notifications.
+   feederShutdown :: m ()
+   feederShutdown = do
+     replicateM_ (fromIntegral sThreads) .
+        liftIO . STM.atomically $ STM.writeTBQueue sTxSendQueue Nothing
+
    feedTx :: (UTCTime, NominalDiffTime)
           -> (Tx era, Int)
           -> m (UTCTime, NominalDiffTime)
