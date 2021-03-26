@@ -203,11 +203,11 @@ parseScriptFile filePath = do
           , "file :" , filePath , "\n"
           , "truncated input file\n"
           ]
-    Atto.Done extra _ | (not $ BS.null extra) -> die $ concat [
-            "error while parsing json value :\n"
-          , "file :" , filePath , "\n"
-          , "leftover data"
-          ]
+--    Atto.Done extra _ | (not $ BS.null extra) -> die $ concat [
+--            "error while parsing json value :\n"
+--          , "file :" , filePath , "\n"
+--          , "leftover data"
+--          ]
     Atto.Done _ value -> case fromJSON value of
       Error err -> die err
       Success script -> return script
