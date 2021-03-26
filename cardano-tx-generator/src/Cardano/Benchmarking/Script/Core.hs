@@ -222,6 +222,7 @@ cancelBenchmark :: ThreadName -> ActionM ()
 cancelBenchmark n = do
   ctl@(_, _ , _ , shutdownAction) <- getName n
   liftIO shutdownAction
+  waitBenchmarkCore ctl
 
 getLocalConnectInfo :: ActionM  (LocalNodeConnectInfo CardanoMode)
 getLocalConnectInfo = makeLocalConnectInfo <$> get NetworkId <*> getUser TLocalSocket
