@@ -206,23 +206,14 @@ tpsLimitedTxFeeder submission txs = do
   -- It would be nice to catch an AsyncException here and do a clean shutdown.
   -- However this would require extra machineries because we are in MonadIO m not in IO ().
   -- TODO: Move everything to IO () and avoid problems from over-polymorphism.
-  feederBody
+  now <- liftIO Clock.getCurrentTime
+  foldM_ feedTx (now, 0) (zip txs [0..])
   liftIO $ tpsLimitedTxFeederShutdown submission
  where
    Submission{ sParams=SubmissionParams{spTps=TPSRate rate}
              , sThreads
              , sTrace
              , sTxSendQueue } = submission
-
-   feederBody :: m ()
-   feederBody = do
-       now <- liftIO Clock.getCurrentTime
-       foldM_ feedTx (now, 0) (zip txs [0..])
-  -- Issue the termination notifications.
-   feederShutdown :: m ()
-   feederShutdown = do
-     replicateM_ (fromIntegral sThreads) .
-        liftIO . STM.atomically $ STM.writeTBQueue sTxSendQueue Nothing
 
    feedTx :: (UTCTime, NominalDiffTime)
           -> (Tx era, Int)
