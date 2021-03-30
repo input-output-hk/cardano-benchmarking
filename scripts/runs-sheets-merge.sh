@@ -8,36 +8,42 @@ set -e
 
 mach=node-1
 
+presheet=runs/$1; shift
+
+test -f "$presheet" ||
+    fail "Pre-sheet $presheet doesn't exit."
+
 if test -z "$*"
 then runs=($(ls runs))
 else runs=("$@")
 fi
 
-spreadsheets_mach() {
-        local kind=$1
-        local mach=$2
-        shift 2
-        local runs=($*)
+spreadsheets() {
+    batch_tag=$1
 
-        for r in ${runs[*]}
-        do if test ! -f runs/"$r"/analysis/"$kind"-"$mach".ods
-           then continue; fi
-           echo runs/"$r"/analysis/"$kind"-"$mach".ods
-        done
+    pushd runs >/dev/null
+
+    for r in ${runs[*]}
+    do if test ! -f "$r"/analysis/*.ods
+       then fail "bad run id: $r"; fi
+
+       rtag=$(cut -d. -f3 <<<$r)
+       ln -sf $(eval ls "$r"/analysis/*.ods) ${batch_tag}-${rtag}.ods
+       echo runs/${batch_tag}-${rtag}.ods
+    done
+
+    popd >/dev/null
 }
 
-pre_sheets_list=(
-        runs/Pre-summary.ods
-)
-
-target=runs/stats-"$mach".ods
+batch_tag=$(date +%Y-%m-%d)
+target=runs/$batch_tag.ods
 rm -f "$target"
 ssconvert --merge-to "$target" \
-          ${pre_sheets_list[*]} \
-          $(spreadsheets_mach 'stats' "$mach" ${runs[*]})
+          ${presheet} \
+          $(spreadsheets $batch_tag)
 
-target=runs/drv-"$mach".ods
-rm -f "$target"
-ssconvert --merge-to "$target" \
-          ${pre_sheets_list[*]} \
-          $(spreadsheets_mach 'drv' "$mach" ${runs[*]})
+# target=runs/drv-"$mach".ods
+# rm -f "$target"
+# ssconvert --merge-to "$target" \
+#           ${pre_sheets_list[*]} \
+#           $(spreadsheets_mach 'drv' "$mach" ${runs[*]})
