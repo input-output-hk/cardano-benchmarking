@@ -136,10 +136,7 @@ splitFunds
 
   let -- Split the funds to 'numRequiredTxOuts' equal parts, subtracting the possible fees.
       -- a safe number for fees is numRequiredTxOuts' * feePerTx.
-      outputSliceWithFees = ceiling $
-        (fromIntegral rawCoin :: Double)
-        /
-        (fromIntegral numRequiredTxOuts :: Double)
+      outputSliceWithFees = rawCoin `div` fromIntegral numRequiredTxOuts
       outputSlice = outputSliceWithFees - feeRaw
       splitValue = mkTxOutValueAdaOnly $ quantityToLovelace $ Quantity outputSlice
       -- The same output for all splitting transaction: send the same 'splitValue'
@@ -158,9 +155,9 @@ splitFunds
      , "total funds: ", show rawCoin, ", "
      , "txouts needed: ", show numRequiredTxOuts, ", "
      , "txout slice with fees: ", show outputSliceWithFees, ", "
-     , "fees: ", show feeRaw
-     , "txout slice: ", show outputSlice
-     , "splitting fanout: ", show splitFanout
+     , "fees: ", show feeRaw, ", "
+     , "txout slice: ", show outputSlice, ", "
+     , "splitting fanout: ", show splitFanout, ", "
      , "splitting tx count: ", show (length splittingTxs)
      ]
   forM_ (zip splittingTxs [0::Int ..]) $ \((tx, _), i) ->
