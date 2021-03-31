@@ -2,7 +2,7 @@
     { "setInitCooldown": 10 },
     { "setNumberOfInputsPerTx": 1 },
     { "setNumberOfOutputsPerTx": 1 },
-    { "setNumberOfTxs": 5000 },
+    { "setNumberOfTxs": 3000 },
     { "setTPSRate": 10 },
     { "setTxAdditionalSize": 0 },
     { "setFee": 0 },
