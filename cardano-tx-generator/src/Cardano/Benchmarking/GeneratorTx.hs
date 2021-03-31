@@ -247,23 +247,25 @@ runBenchmark
                        traceSubmit
                        traceN2N
                        connectClient
+                       "UnknownThreadLabel"
                        targets
                        tpsRate
                        errorPolicy
                        finalTransactions
     waitBenchmark traceSubmit ctl
 
-type AsyncBenchmarkControl = (Async (), [Async ()], IO SubmissionSummary)
+type AsyncBenchmarkControl = (Async (), [Async ()], IO SubmissionSummary, IO ())
 
 waitBenchmark :: Tracer IO (TraceBenchTxSubmit TxId) -> AsyncBenchmarkControl -> ExceptT TxGenError IO ()
-waitBenchmark traceSubmit (feeder, workers, mkSummary) = liftIO $ do
-  mapM_ wait (feeder : workers)
+waitBenchmark traceSubmit (feeder, workers, mkSummary, _) = liftIO $ do
+  mapM_ waitCatch (feeder : workers)
   traceWith traceSubmit =<< TraceBenchTxSubSummary <$> mkSummary
 
 asyncBenchmark :: forall era. IsShelleyBasedEra era
   => Tracer IO (TraceBenchTxSubmit TxId)
   -> Tracer IO NodeToNodeSubmissionTrace
   -> ConnectClient
+  -> String
   -> NonEmpty NodeIPv4Address
   -> TPSRate
   -> SubmissionErrorPolicy
@@ -273,6 +275,7 @@ asyncBenchmark
   traceSubmit
   traceN2N
   connectClient
+  threadName
   targets
   tpsRate
   errorPolicy
@@ -322,7 +325,11 @@ asyncBenchmark
               submission
               i
     tpsFeeder <- async $ tpsLimitedTxFeeder submission finalTransactions
-    return (tpsFeeder, allAsyncs, mkSubmissionSummary submission)
+    let tpsFeederShutdown = do
+          cancel tpsFeeder
+          liftIO $ tpsLimitedTxFeederShutdown submission
+
+    return (tpsFeeder, allAsyncs, mkSubmissionSummary threadName submission, tpsFeederShutdown)
 
 -- | At this moment 'sourceAddress' contains a huge amount of money (lets call it A).
 --   Now we have to split this amount to N equal parts, as a result we'll have

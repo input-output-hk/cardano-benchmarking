@@ -142,8 +142,6 @@ mkTransactionGen :: forall era .
      IsShelleyBasedEra era
   => SigningKey PaymentKey
   -> NonEmpty Fund
-  -- ^ Non-empty list of (TxIn, TxOut) that will be used as
-  -- inputs and the key to spend the associated value
   -> AddressInEra era
   -> [(Int, TxOut era)]
   -- ^ Each recipient and their payment details
@@ -171,17 +169,17 @@ mkTransactionGen signingKey inputs address payments metadata fee =
   changeValue = totalInpValue - totalOutValue - fee
       -- change the order of comparisons first check emptyness of txouts AND remove appendr after
 
-  (txOutputs, mChange) =
-    if changeValue > 0
-    then
+  (txOutputs, mChange) = case compare changeValue 0 of
+    GT ->
       let changeTxOut   = TxOut address $ mkTxOutValueAdaOnly changeValue
           changeIndex   = TxIx $ fromIntegral $ length payTxOuts -- 0-based index
       in
           (appendr payTxOuts (changeTxOut :| []), Just (changeIndex, changeValue))
-    else
+    EQ ->
       case payTxOuts of
         []                 -> error "change is zero and txouts is empty"
         txout0: txoutsRest -> (txout0 :| txoutsRest, Nothing)
+    LT -> error "Bad transaction: insufficient funds"
 
   -- TxOuts of recipients are placed at the first positions
   offsetMap = Map.fromList $ zipWith (\payment index -> (fst payment, TxIx index))

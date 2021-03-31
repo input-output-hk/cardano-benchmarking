@@ -157,7 +157,8 @@ instance HasPrivacyAnnotation  (TraceBenchTxSubmit TxId)
 -- | Summary of a tx submission run.
 data SubmissionSummary
   = SubmissionSummary
-      { ssTxSent        :: !Sent
+      { ssThreadName    :: !String
+      , ssTxSent        :: !Sent
       , ssTxUnavailable :: !Unav
       , ssElapsed       :: !NominalDiffTime
       , ssEffectiveTps  :: !TPSRate
