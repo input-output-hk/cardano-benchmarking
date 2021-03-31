@@ -281,8 +281,10 @@ slotStatsSummary CInfo{} slots =
    pctiles = sortBy (compare `on` psFrac)
      [ Perc 0.01, Perc 0.05
      , Perc 0.1, Perc 0.2, Perc 0.3, Perc 0.4
-     , Perc 0.5, Perc 0.6, Perc 0.7, Perc 0.8, Perc 0.9
-     , Perc 0.95, Perc 0.97, Perc 0.98, Perc 0.99
+     , Perc 0.5, Perc 0.6
+     , Perc 0.7, Perc 0.75
+     , Perc 0.8, Perc 0.85, Perc 0.875
+     , Perc 0.9, Perc 0.925, Perc 0.95, Perc 0.97, Perc 0.98, Perc 0.99
      , Perc 0.995, Perc 0.997, Perc 0.998, Perc 0.999
      , Perc 0.9995, Perc 0.9997, Perc 0.9998, Perc 0.9999
      ]
