@@ -49,7 +49,6 @@ import           Cardano.Node.Types
 import           Ouroboros.Consensus.Shelley.Eras (StandardShelley)
 
 import           Cardano.Api
-import           Cardano.Api.Shelley (CardanoMode)
 
 import           Cardano.Benchmarking.Types
 import           Cardano.Benchmarking.GeneratorTx.Error

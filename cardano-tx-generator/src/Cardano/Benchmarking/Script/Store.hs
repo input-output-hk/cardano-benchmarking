@@ -14,7 +14,6 @@ where
 
 import           Prelude
 
-import           Control.Concurrent.Async
 import           Data.Constraint.Extras.TH (deriveArgDict)
 import           Data.GADT.Compare.TH (deriveGCompare, deriveGEq)
 import           Data.GADT.Show.TH (deriveGShow)

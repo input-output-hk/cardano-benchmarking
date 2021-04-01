@@ -35,7 +35,7 @@ runScript script iom = runActionM (forM_ script action) iom >>= \case
        threadDelay $ 10_000_000
        return $ Left err
     where
-      cleanup s = flip (runActionMEnv s) iom
+      cleanup s a = flip (runActionMEnv s) iom a >> return ()
 
 shutDownLogging :: ActionM ()
 shutDownLogging = do
