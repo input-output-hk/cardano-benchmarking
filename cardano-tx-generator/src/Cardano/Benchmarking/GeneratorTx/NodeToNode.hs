@@ -61,7 +61,7 @@ benchmarkConnectTxSubmit
   -> Tracer IO SendRecvConnect
   -> Tracer IO SendRecvTxSubmission
   -> CodecConfig CardanoBlock
-  -> NetworkMagic 
+  -> NetworkMagic
   -> AddrInfo
   -- ^ remote address information
   -> TxSubmissionClient (GenTxId blk) (GenTx blk) IO ()

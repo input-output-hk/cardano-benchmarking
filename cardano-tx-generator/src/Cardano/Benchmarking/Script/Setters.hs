@@ -28,7 +28,7 @@ import           Cardano.Benchmarking.Types
 
 -- Some boiler plate; ToDo may generate this.
 data Tag v where
-  TInitCooldown         :: Tag InitCooldown  
+  TInitCooldown         :: Tag InitCooldown
   TNumberOfInputsPerTx  :: Tag NumberOfInputsPerTx
   TNumberOfOutputsPerTx :: Tag NumberOfOutputsPerTx
   TNumberOfTxs          :: Tag NumberOfTxs

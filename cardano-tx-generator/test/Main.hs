@@ -7,7 +7,7 @@ import           Test.Tasty
 import           Test.Tasty.HUnit
 import           Text.Heredoc
 import           Options.Applicative
-  
+
 import           Cardano.Benchmarking.Command (commandParser)
 import           Cardano.Benchmarking.CliArgsScript (parseGeneratorCmd)
 import           Cardano.Benchmarking.GeneratorTx.SizedMetadata
@@ -25,7 +25,7 @@ tests =  testGroup "cardano-tx-generator"
   , sizedMetadata
   , mockServer
   ]
-  
+
 mockServer = testGroup "direct/pure client-server connect"
   [ testCase "tx-send == tx-received" $ assertBool "tx-send == tx-received" True -- TODO !
   ]
@@ -58,12 +58,12 @@ cliArgs = testGroup "cli arguments"
                         $ getParseResult $ execParserPure defaultPrefs (info commandParser fullDesc)
                            $ words l
 
-pinnedHelpMessage = [here|ParserFailure(Usage: <program> --config FILEPATH --socket-path FILEPATH 
-                 [--shelley | --mary | --allegra] [(--target-node (HOST,PORT))] 
-                 [--init-cooldown INT] [--initial-ttl INT] [--num-of-txs INT] 
-                 [--tps DOUBLE] [--inputs-per-tx INT] [--outputs-per-tx INT] 
-                 [--tx-fee INT] [--add-tx-size INT] 
-                 [--fail-on-submission-errors] 
+pinnedHelpMessage = [here|ParserFailure(Usage: <program> --config FILEPATH --socket-path FILEPATH
+                 [--shelley | --mary | --allegra] [(--target-node (HOST,PORT))]
+                 [--init-cooldown INT] [--initial-ttl INT] [--num-of-txs INT]
+                 [--tps DOUBLE] [--inputs-per-tx INT] [--outputs-per-tx INT]
+                 [--tx-fee INT] [--add-tx-size INT]
+                 [--fail-on-submission-errors]
                  (--genesis-funds-key FILEPATH | --utxo-funds-key FILEPATH
                    --tx-in TX-IN --tx-out TX-OUT |
                    --split-utxo-funds-key FILEPATH --split-utxo FILEPATH)
