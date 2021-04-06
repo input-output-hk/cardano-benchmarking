@@ -88,8 +88,6 @@ benchmarkConnectTxSubmit ioManager handshakeTracer submissionTracer codecConfig 
   myCodecs :: Codecs blk DeserialiseFailure IO
                 ByteString ByteString ByteString ByteString ByteString ByteString ByteString
   myCodecs  = defaultCodecs codecConfig blkN2nVer
-  -- peerMultiplex :: Versions NtN.NodeToNodeVersion NtN.DictVersion
-  --                    (OuroborosApplication InitiatorMode SockAddr ByteString IO () Void)
   peerMultiplex =
     simpleSingletonVersions
       n2nVer

@@ -150,8 +150,6 @@ eraTransitionTest cliPartialBenchmark (FundsGenesis keyFile) (tracers, dslSet) =
       runBenchmark = runBenchmark_mary
      , txGenerator  = txGenerator_mary
      , keyAddress   = keyAddress_mary
---     , secureGenesisFund = secureGenesisFund_mary
---     , splitFunds        = splitFunds_mary
      } =getDSL dslSet MaryEra
 
     myTracer msg = liftIO $ traceWith (btTxSubmit_ tracers) $ TraceBenchTxSubDebug msg

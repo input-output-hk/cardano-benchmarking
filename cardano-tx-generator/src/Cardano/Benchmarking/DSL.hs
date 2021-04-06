@@ -8,15 +8,6 @@
 {-# LANGUAGE NamedFieldPuns #-}
 
 module Cardano.Benchmarking.DSL
-{-
-(
-  BenchmarkScript
-, ScriptM
-, DSL(..)
-, getDSL
-, MonoDSLs
-)
--}
 
 where
 

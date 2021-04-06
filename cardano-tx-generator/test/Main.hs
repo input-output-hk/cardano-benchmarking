@@ -13,8 +13,6 @@ import           Cardano.Benchmarking.CliArgsScript (parseGeneratorCmd)
 import           Cardano.Benchmarking.GeneratorTx.SizedMetadata
 
 
---import           Cardano.Benchmarking.MockServer as MockServer
-
 main :: IO ()
 main = defaultMain tests
 

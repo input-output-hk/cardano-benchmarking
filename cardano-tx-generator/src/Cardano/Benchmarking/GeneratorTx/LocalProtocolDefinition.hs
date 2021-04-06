@@ -45,7 +45,7 @@ import           Cardano.Node.Configuration.POM
 import           Cardano.Node.Protocol.Cardano
 import           Cardano.Node.Types
 
-import Cardano.Benchmarking.DSL -- (BenchmarkScript, DSL(..))
+import Cardano.Benchmarking.DSL
 import Cardano.Benchmarking.Tracer
 
 import Cardano.Benchmarking.GeneratorTx.NodeToNode
