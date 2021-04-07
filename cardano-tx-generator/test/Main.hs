@@ -55,13 +55,12 @@ cliArgs = testGroup "cli arguments"
     testCmdLine l = testCase "check that example cmd line parses" $ assertBool l $ isJust
                         $ getParseResult $ execParserPure defaultPrefs (info commandParser fullDesc)
                            $ words l
-
-pinnedHelpMessage = [here|ParserFailure(Usage: <program> --config FILEPATH --socket-path FILEPATH
-                 [--shelley | --mary | --allegra] [(--target-node (HOST,PORT))]
-                 [--init-cooldown INT] [--initial-ttl INT] [--num-of-txs INT]
-                 [--tps DOUBLE] [--inputs-per-tx INT] [--outputs-per-tx INT]
-                 [--tx-fee INT] [--add-tx-size INT]
-                 [--fail-on-submission-errors]
+pinnedHelpMessage = [here|ParserFailure(Usage: <program> --config FILEPATH --socket-path FILEPATH 
+                 [--shelley | --mary | --allegra] [(--target-node (HOST,PORT))] 
+                 [--init-cooldown INT] [--initial-ttl INT] [--num-of-txs INT] 
+                 [--tps DOUBLE] [--inputs-per-tx INT] [--outputs-per-tx INT] 
+                 [--tx-fee INT] [--add-tx-size INT] 
+                 [--fail-on-submission-errors] 
                  (--genesis-funds-key FILEPATH | --utxo-funds-key FILEPATH
                    --tx-in TX-IN --tx-out TX-OUT |
                    --split-utxo-funds-key FILEPATH --split-utxo FILEPATH)
