@@ -14,7 +14,6 @@ where
 
 import           Prelude
 
-import           Control.Concurrent.Async
 import           Data.Constraint.Extras.TH (deriveArgDict)
 import           Data.GADT.Compare.TH (deriveGCompare, deriveGEq)
 import           Data.GADT.Show.TH (deriveGShow)
@@ -33,7 +32,7 @@ import qualified Cardano.Benchmarking.GeneratorTx.Tx as Core (Fund)
 type Fund = (Core.Fund, SigningKey PaymentKey)
 
 data Store v where
-  User   :: Setters.Tag x -> Store x 
+  User   :: Setters.Tag x -> Store x
   LoggingLayer :: Store LoggingLayer
   Protocol     :: Store (Cardano.Protocol IO CardanoBlock ProtocolCardano)
   BenchTracers :: Store Core.BenchTracers

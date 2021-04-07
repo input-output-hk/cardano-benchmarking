@@ -61,7 +61,7 @@ benchmarkConnectTxSubmit
   -> Tracer IO SendRecvConnect
   -> Tracer IO SendRecvTxSubmission
   -> CodecConfig CardanoBlock
-  -> NetworkMagic 
+  -> NetworkMagic
   -> AddrInfo
   -- ^ remote address information
   -> TxSubmissionClient (GenTxId blk) (GenTx blk) IO ()
@@ -88,8 +88,6 @@ benchmarkConnectTxSubmit ioManager handshakeTracer submissionTracer codecConfig 
   myCodecs :: Codecs blk DeserialiseFailure IO
                 ByteString ByteString ByteString ByteString ByteString ByteString ByteString
   myCodecs  = defaultCodecs codecConfig blkN2nVer
-  -- peerMultiplex :: Versions NtN.NodeToNodeVersion NtN.DictVersion
-  --                    (OuroborosApplication InitiatorMode SockAddr ByteString IO () Void)
   peerMultiplex =
     simpleSingletonVersions
       n2nVer

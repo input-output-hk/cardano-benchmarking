@@ -43,7 +43,6 @@ import           Control.Arrow ((&&&))
 import           Control.Concurrent (threadDelay)
 import qualified Control.Concurrent.STM as STM
 import           Control.Concurrent.STM.TBQueue (TBQueue)
-import           Control.Exception (AsyncException(ThreadKilled))
 
 import qualified Data.List as L
 import qualified Data.List.Extra as L
@@ -189,13 +188,8 @@ simpleTxFeeder
      liftIO $ STM.atomically $ STM.writeTBQueue sTxSendQueue (Just tx)
      traceWith sTrace $ TraceBenchTxSubServFed [getTxId $ getTxBody tx] ix
 
-tpsLimitedTxFeederShutdown
-  :: forall m era . MonadIO m => Submission m era -> IO ()
-tpsLimitedTxFeederShutdown
- Submission{ sParams=SubmissionParams{spTps=TPSRate rate}
-           , sThreads
-           , sTrace
-           , sTxSendQueue }
+tpsLimitedTxFeederShutdown :: Submission m era -> IO ()
+tpsLimitedTxFeederShutdown Submission{sThreads, sTxSendQueue }
    = do
      replicateM_ (fromIntegral sThreads)
         . STM.atomically $ STM.writeTBQueue sTxSendQueue Nothing
@@ -211,7 +205,6 @@ tpsLimitedTxFeeder submission txs = do
   liftIO $ tpsLimitedTxFeederShutdown submission
  where
    Submission{ sParams=SubmissionParams{spTps=TPSRate rate}
-             , sThreads
              , sTrace
              , sTxSendQueue } = submission
 

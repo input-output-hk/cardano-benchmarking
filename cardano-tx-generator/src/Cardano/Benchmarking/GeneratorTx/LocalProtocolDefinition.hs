@@ -23,7 +23,6 @@ import Data.Text (pack)
 
 import           Cardano.Prelude hiding (TypeError, show)
 import Control.Monad.Trans.Except.Extra (firstExceptT)
-import Control.Tracer (traceWith)
 
 import           Ouroboros.Consensus.Block.Abstract (BlockProtocol)
 
@@ -38,7 +37,6 @@ import           Ouroboros.Network.NodeToClient (IOManager)
 import           Ouroboros.Network.Block (MaxSlotNo(..))
 
 import           Cardano.Api
-import           Cardano.Api.Shelley (CardanoMode)
 
 import qualified Cardano.Chain.Genesis as Genesis
 
@@ -47,7 +45,7 @@ import           Cardano.Node.Configuration.POM
 import           Cardano.Node.Protocol.Cardano
 import           Cardano.Node.Types
 
-import Cardano.Benchmarking.DSL -- (BenchmarkScript, DSL(..))
+import Cardano.Benchmarking.DSL
 import Cardano.Benchmarking.Tracer
 
 import Cardano.Benchmarking.GeneratorTx.NodeToNode

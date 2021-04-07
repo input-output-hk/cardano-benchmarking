@@ -56,6 +56,8 @@ runEraTransitionTest
       $ eraTransitionTest cliPartialBenchmark fundOptions
 
 plainOldCliScript :: PartialBenchmark -> AnyCardanoEra -> GeneratorFunds -> BenchmarkScript ()
+plainOldCliScript _ _ (FundsUtxo _ _ _) _ = error "plainOldCliScript FundsUtxo not supported"
+plainOldCliScript _ _ (FundsSplitUtxo _ _) _ = error "plainOldCliScript FundsSplitUtxo not supported"
 plainOldCliScript cliPartialBenchmark benchmarkEra (FundsGenesis keyFile) (tracers, dslSet) = do
   case benchmarkEra of
       AnyCardanoEra ByronEra   -> error "ByronEra not supported"
@@ -100,6 +102,8 @@ plainOldCliScript cliPartialBenchmark benchmarkEra (FundsGenesis keyFile) (trace
       runBenchmark (bTargets b) (bTps b) (bErrorPolicy b) finalTransactions
 
 eraTransitionTest :: PartialBenchmark -> GeneratorFunds -> BenchmarkScript ()
+eraTransitionTest _ (FundsUtxo _ _ _) _ = error "eraTransitionTest FundsUtxo not supported"
+eraTransitionTest _ (FundsSplitUtxo _ _) _ = error "eraTransitionTest FundsSplitUtxo not supported"
 eraTransitionTest cliPartialBenchmark (FundsGenesis keyFile) (tracers, dslSet) = do
       b <- case mkBenchmark (defaultBenchmark <> cliPartialBenchmark) of
          Left e -> error $ "Incomplete benchmark spec (is defaultBenchmark complete?):  " <> unpack e
@@ -146,8 +150,6 @@ eraTransitionTest cliPartialBenchmark (FundsGenesis keyFile) (tracers, dslSet) =
       runBenchmark = runBenchmark_mary
      , txGenerator  = txGenerator_mary
      , keyAddress   = keyAddress_mary
---     , secureGenesisFund = secureGenesisFund_mary
---     , splitFunds        = splitFunds_mary
      } =getDSL dslSet MaryEra
 
     myTracer msg = liftIO $ traceWith (btTxSubmit_ tracers) $ TraceBenchTxSubDebug msg

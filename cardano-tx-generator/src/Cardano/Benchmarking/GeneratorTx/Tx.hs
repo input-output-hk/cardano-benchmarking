@@ -34,7 +34,6 @@ import           Data.Map.Strict (Map)
 import           Cardano.Benchmarking.Types (TxAdditionalSize(..))
 
 import           Cardano.Api
-import           Cardano.Api.Shelley (CardanoMode)
 
 type Fund = (TxIn, InAnyCardanoEra TxOutValue)
 

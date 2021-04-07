@@ -7,13 +7,11 @@ import           Test.Tasty
 import           Test.Tasty.HUnit
 import           Text.Heredoc
 import           Options.Applicative
-  
+
 import           Cardano.Benchmarking.Command (commandParser)
 import           Cardano.Benchmarking.CliArgsScript (parseGeneratorCmd)
 import           Cardano.Benchmarking.GeneratorTx.SizedMetadata
 
-
---import           Cardano.Benchmarking.MockServer as MockServer
 
 main :: IO ()
 main = defaultMain tests
@@ -25,7 +23,7 @@ tests =  testGroup "cardano-tx-generator"
   , sizedMetadata
   , mockServer
   ]
-  
+
 mockServer = testGroup "direct/pure client-server connect"
   [ testCase "tx-send == tx-received" $ assertBool "tx-send == tx-received" True -- TODO !
   ]
@@ -57,7 +55,6 @@ cliArgs = testGroup "cli arguments"
     testCmdLine l = testCase "check that example cmd line parses" $ assertBool l $ isJust
                         $ getParseResult $ execParserPure defaultPrefs (info commandParser fullDesc)
                            $ words l
-
 pinnedHelpMessage = [here|ParserFailure(Usage: <program> --config FILEPATH --socket-path FILEPATH 
                  [--shelley | --mary | --allegra] [(--target-node (HOST,PORT))] 
                  [--init-cooldown INT] [--initial-ttl INT] [--num-of-txs INT] 

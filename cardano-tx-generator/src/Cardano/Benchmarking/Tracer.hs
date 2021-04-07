@@ -296,10 +296,6 @@ type SendRecvConnect = WithMuxBearer
                                            NodeToNodeVersion
                                            CBOR.Term))
 
--- instance {-# OVERLAPS #-} Show (GenTxId blk)
---  => ToJSON (Mempool.GenTxId blk) where
---   toJSON txid = A.String (T.pack $ show txid)
-
 instance ToObject (TraceBenchTxSubmit TxId) where
   toObject MinimalVerbosity _ = emptyObject -- do not log
   toObject NormalVerbosity t =

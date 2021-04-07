@@ -21,7 +21,6 @@ import           Control.Monad
 import           Control.Monad.Trans.Except
 import           Control.Monad.IO.Class
 import           Control.Concurrent (threadDelay)
-import           Control.Concurrent.Async as Async ( cancel )
 
 import           Cardano.Api ( AsType(..), CardanoEra(..), InAnyCardanoEra(..), AnyCardanoEra(..), IsShelleyBasedEra, Tx
                              , NetworkId(..), cardanoEra
