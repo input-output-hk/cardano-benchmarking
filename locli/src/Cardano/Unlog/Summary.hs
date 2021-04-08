@@ -236,6 +236,8 @@ instance ToJSON Summary where
     , extendObject "kind" "misses"    $ toJSON sMissDistrib
     , extendObject "kind" "blockless" $ toJSON sBlocklessDistrib
     , extendObject "kind" "rss"       $ toJSON (rRSS      sResourceDistribs)
+    , extendObject "kind" "heap"      $ toJSON (rHeap     sResourceDistribs)
+    , extendObject "kind" "live"      $ toJSON (rLive     sResourceDistribs)
     , extendObject "kind" "spanLensCPU85Distrib"  $
                                         toJSON sSpanLensCPU85Distrib
     , extendObject "kind" "spanLensCPU85EBndDistrib"  $
@@ -313,9 +315,10 @@ slotStatsSummary CInfo{} slots =
      , rCentiMut    = rCentiMut   . slResources
      , rGcsMajor    = rGcsMajor   . slResources
      , rGcsMinor    = rGcsMinor   . slResources
-     , rAlloc       = rAlloc      . slResources
-     , rLive        = rLive       . slResources
      , rRSS         = rRSS        . slResources
+     , rHeap        = rHeap       . slResources
+     , rLive        = rLive       . slResources
+     , rAlloc       = rAlloc      . slResources
      , rCentiBlkIO  = rCentiBlkIO . slResources
      , rThreads     = rThreads    . slResources
      }
@@ -341,9 +344,10 @@ mapSummary statsF Summary{..} desc f =
     (f (rCentiMut sResourceDistribs))
     (f (rGcsMajor sResourceDistribs))
     (f (rGcsMinor sResourceDistribs))
+    (f (rRSS sResourceDistribs))
+    (f (rHeap sResourceDistribs))
     (f (rLive sResourceDistribs))
     (f (rAlloc sResourceDistribs))
-    (f (rRSS sResourceDistribs))
     (f sSpanLensCPU85Distrib)
     (f sSpanLensCPU85EBndDistrib)
     (f sSpanLensCPU85RwdDistrib)
@@ -353,13 +357,13 @@ mapSummary statsF Summary{..} desc f =
      -> Float -> Float -> Float -> Float
      -> Float -> Float -> Float
      -> Float -> Float
-     -> Float -> Float -> Float
+     -> Float -> Float -> Float -> Float
      -> Float -> Float -> Float
      -> Float
      -> Text
-   distribPropertyLine descr miss chkdt leaddt blkl dens cpu gc mut majg ming liv alc rss cpu85Sp cpu85SpEBnd cpu85SpRwd = Text.pack $
+   distribPropertyLine descr miss chkdt leaddt blkl dens cpu gc mut majg ming rss hea liv alc cpu85Sp cpu85SpEBnd cpu85SpRwd = Text.pack $
      printf (Text.unpack statsF)
-    descr miss chkdt leaddt blkl dens cpu gc mut majg ming     liv alc rss cpu85Sp cpu85SpEBnd cpu85SpRwd
+    descr miss chkdt leaddt blkl dens cpu gc mut majg ming     rss hea liv alc cpu85Sp cpu85SpEBnd cpu85SpRwd
 
 toDistribLines :: Text -> Text -> Summary -> [Text]
 toDistribLines statsF distPropsF s@Summary{..} =
@@ -374,15 +378,17 @@ toDistribLines statsF distPropsF s@Summary{..} =
    <*> ZipList (pctSample <$> dPercentiles sBlocklessDistrib)
    <*> ZipList (pctSample <$> dPercentiles sDensityDistrib)
    <*> ZipList (pctSample <$> dPercentiles (rCentiCpu sResourceDistribs))
-   <*> ZipList (pctSample <$> dPercentiles (rCentiGC sResourceDistribs))
-   <*> ZipList (min 999 . -- workaround for ghc-8.10.2
+   <*> ZipList (min 999 . -- workaround for ghc-8.10.x
+                pctSample <$> dPercentiles (rCentiGC sResourceDistribs))
+   <*> ZipList (min 999 . -- workaround for ghc-8.10.x
                 pctSample <$> dPercentiles (rCentiMut sResourceDistribs))
    <*> ZipList (pctSample <$> dPercentiles (rGcsMajor sResourceDistribs))
    <*> ZipList (pctSample <$> dPercentiles (rGcsMinor sResourceDistribs))
     -- <*> ZipList (pctSample <$> dPercentiles ( sResourceDistribs))
+   <*> ZipList (pctSample <$> dPercentiles (rRSS sResourceDistribs))
+   <*> ZipList (pctSample <$> dPercentiles (rHeap sResourceDistribs))
    <*> ZipList (pctSample <$> dPercentiles (rLive sResourceDistribs))
    <*> ZipList (pctSample <$> dPercentiles (rAlloc sResourceDistribs))
-   <*> ZipList (pctSample <$> dPercentiles (rRSS sResourceDistribs))
    <*> ZipList (pctSample <$> dPercentiles sSpanLensCPU85Distrib)
    <*> ZipList (pctSample <$> dPercentiles sSpanLensCPU85EBndDistrib)
    <*> ZipList (pctSample <$> dPercentiles sSpanLensCPU85RwdDistrib)
@@ -396,27 +402,27 @@ toDistribLines statsF distPropsF s@Summary{..} =
      -> Float -> NominalDiffTime -> NominalDiffTime -> Word64 -> Float
      -> Word64 -> Word64 -> Word64
      -> Word64 -> Word64
-     -> Word64 -> Word64 -> Word64
+     -> Word64 -> Word64 -> Word64 -> Word64
      -> Int -> Int -> Int
      -> Text
    distribLine ps count miss chkdt' leaddt' blkl dens cpu gc mut
-     majg ming liv alc rss cpu85Sp cpu85SpEBnd cpu85SpRwd = Text.pack $
+     majg ming rss hea liv alc cpu85Sp cpu85SpEBnd cpu85SpRwd = Text.pack $
      printf (Text.unpack statsF)
-    (renderPercSpec 6 ps) count miss chkdt leaddt blkl dens cpu gc mut majg ming     liv alc rss cpu85Sp cpu85SpEBnd cpu85SpRwd
+    (renderPercSpec 6 ps) count miss chkdt leaddt blkl dens cpu gc mut majg ming     rss hea liv alc cpu85Sp cpu85SpEBnd cpu85SpRwd
     where chkdt  = Text.init $ show chkdt' :: Text
           leaddt = Text.init $ show leaddt' :: Text
 
 statsHeadE, statsFormatE, statsFormatEF :: Text
 statsHeadP, statsFormatP, statsFormatPF :: Text
 statsHeadP =
-  "%tile Count MissR  CheckΔt  LeadΔt BlkLess Density  CPU  GC MUT Maj Min         Live   Alloc   RSS    CPU85%SpanLens/EBnd/Rwd"
+  "%tile Count MissR  CheckΔt  LeadΔt BlkLess Density  CPU  GC MUT Maj Min   RSS  Heap  Live Alloc CPU85%Lens/EBnd/Rwd"
 statsHeadE =
-  "%tile,Count,MissR,CheckΔ,LeadΔ,Blockless,ChainDensity,CPU,GC,MUT,GcMaj,GcMin,Live,Alloc,RSS,CPU85%SpanLens,/EpochBoundary,/Rewards"
+  "%tile,Count,MissR,CheckΔ,LeadΔ,Blockless,ChainDensity,CPU,GC,MUT,GcMaj,GcMin,RSS,Heap,Live,Alloc,CPU85%Lens,/EpochBoundary,/Rewards"
 statsFormatP =
-  "%6s %5d %0.2f   %6s   %6s  %3d     %0.3f  %3d %3d %3d %2d %3d      %8d %8d %7d %4d %4d %4d"
+  "%6s %5d %0.2f   %6s   %6s  %3d     %0.3f  %3d %3d %3d  %2d %3d %5d %5d %5d %5d    %4d   %4d %4d"
 statsFormatE =
-  "%s,%d,%0.2f,%s,%s,%d,%0.3f,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d"
+  "%s,%d,%0.2f,%s,%s,%d,%0.3f,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d"
 statsFormatPF =
-  "%6s %.2f %.2f   %.2f   %.2f  %.2f     %.2f  %.2f %.2f %.2f %.2f %.2f      %.2f %.2f %.2f %.2f %.2f"
+  "%6s %.2f %.2f   %.2f   %.2f  %.2f     %.2f  %.2f %.2f %.2f %.2f %.2f %.2f      %.2f %.2f %.2f %.2f %.2f"
 statsFormatEF =
-  "%s,0,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f"
+  "%s,0,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f"

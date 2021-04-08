@@ -34,9 +34,10 @@ mkResAccums =
   , rCentiMut    = mkAccumTicksShare
   , rGcsMajor    = mkAccumDelta
   , rGcsMinor    = mkAccumDelta
-  , rAlloc       = mkAccumDelta `divAccum` 1024
-  , rLive        = mkAccumNew   `divAccum` 1024
-  , rRSS         = mkAccumNew   `divAccum` 1024
+  , rRSS         = mkAccumNew   `divAccum` 1048576
+  , rHeap        = mkAccumNew   `divAccum` 1048576
+  , rLive        = mkAccumNew   `divAccum` 1048576
+  , rAlloc       = mkAccumDelta `divAccum` 1048576
   , rCentiBlkIO  = mkAccumTicksShare
   , rThreads     = mkAccumNew
   }
@@ -74,9 +75,10 @@ discardObsoleteValues =
   , rCentiMut    = Just
   , rGcsMajor    = const Nothing
   , rGcsMinor    = const Nothing
-  , rAlloc       = const Nothing
-  , rLive        = Just
   , rRSS         = Just
+  , rHeap        = Just
+  , rLive        = Just
+  , rAlloc       = const Nothing
   , rCentiBlkIO  = Just
   , rThreads     = Just
   }
