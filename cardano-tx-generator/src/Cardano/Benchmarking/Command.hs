@@ -24,9 +24,9 @@ import Cardano.Benchmarking.CliArgsScript
 import Cardano.Benchmarking.Script (runScript, parseScriptFile)
 
 data Command
-  = CliArguments  GeneratorCmd
-  | EraTransition GeneratorCmd
-  | Json FilePath
+  = CliArguments !GeneratorCmd
+  | EraTransition !GeneratorCmd
+  | Json !FilePath
 
 runCommand :: IO ()
 runCommand = withIOManager $ \iocp -> do
@@ -39,11 +39,11 @@ runCommand = withIOManager $ \iocp -> do
     Json file     -> do
       script <- parseScriptFile file
       runScript script iocp >>= handleError
-  where
-    handleError :: Show a => Either a b -> IO ()
-    handleError = \case
-      Right _  -> exitSuccess
-      Left err -> die $ show err
+ where
+  handleError :: Show a => Either a b -> IO ()
+  handleError = \case
+    Right _  -> exitSuccess
+    Left err -> die $ show err
 
 commandParser :: Parser Command
 commandParser
@@ -52,27 +52,27 @@ commandParser
     <> eraTransitionCmd
     <> jsonCmd
     )
-  where
-    cliArgumentsCmd = command "cliArguments"
-      (CliArguments <$> info parseGeneratorCmd
-        (  progDesc "tx-generator with CLI arguments"
-        <> fullDesc
-        <> header "cardano-tx-generator - load Cardano clusters with parametrised transaction flow (CLI version)"
-        )
+ where
+  cliArgumentsCmd = command "cliArguments"
+    (CliArguments <$> info parseGeneratorCmd
+      (  progDesc "tx-generator with CLI arguments"
+      <> fullDesc
+      <> header "cardano-tx-generator - load Cardano clusters with parametrised transaction flow (CLI version)"
       )
+    )
 
-    eraTransitionCmd = command "eraTransition"
-      (EraTransition <$> info parseGeneratorCmd
-        (  progDesc "tx-generator demo era transition"
-        <> fullDesc
-        <> header "cardano-tx-generator - load Cardano clusters with parametrised transaction flow (era transition)"
-        )
+  eraTransitionCmd = command "eraTransition"
+    (EraTransition <$> info parseGeneratorCmd
+      (  progDesc "tx-generator demo era transition"
+      <> fullDesc
+      <> header "cardano-tx-generator - load Cardano clusters with parametrised transaction flow (era transition)"
       )
+    )
 
-    jsonCmd = command "json"
-      (Json <$> info (strArgument (metavar "FILEPATH"))
-        (  progDesc "tx-generator run JsonScript"
-        <> fullDesc
-        <> header "cardano-tx-generator - run a generic benchmarking script"
-        )
+  jsonCmd = command "json"
+    (Json <$> info (strArgument (metavar "FILEPATH"))
+      (  progDesc "tx-generator run JsonScript"
+      <> fullDesc
+      <> header "cardano-tx-generator - run a generic benchmarking script"
       )
+    )

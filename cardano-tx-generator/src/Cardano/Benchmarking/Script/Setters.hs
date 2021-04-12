@@ -12,16 +12,13 @@ module Cardano.Benchmarking.Script.Setters
 where
 
 import           Prelude
-
-import GHC.Generics
-
-import           Data.List.NonEmpty
-import           Data.Dependent.Sum (DSum(..) , (==>) )
-
+import           GHC.Generics
 import           Data.Constraint.Extras.TH (deriveArgDict)
+import           Data.Dependent.Sum (DSum(..) , (==>) )
 import           Data.GADT.Compare.TH (deriveGCompare, deriveGEq)
-
 import           Data.GADT.Show.TH (deriveGShow)
+import           Data.List.NonEmpty
+
 import           Cardano.Api (Lovelace, SlotNo, AnyCardanoEra(..))
 
 import           Cardano.Benchmarking.Types
@@ -49,17 +46,17 @@ deriving instance Show (Tag v)
 deriving instance Eq (Tag v)
 
 data Sum where
-  SInitCooldown         :: InitCooldown         -> Sum
-  SNumberOfInputsPerTx  :: NumberOfInputsPerTx  -> Sum
-  SNumberOfOutputsPerTx :: NumberOfOutputsPerTx -> Sum
-  SNumberOfTxs          :: NumberOfTxs          -> Sum
-  STPSRate              :: TPSRate              -> Sum
-  SFee                  :: Lovelace             -> Sum
-  STTL                  :: SlotNo               -> Sum
-  STxAdditionalSize     :: TxAdditionalSize     -> Sum
-  SLocalSocket          :: String               -> Sum
-  SEra                  :: AnyCardanoEra        -> Sum
-  STargets              :: NonEmpty NodeIPv4Address -> Sum
+  SInitCooldown         :: !InitCooldown         -> Sum
+  SNumberOfInputsPerTx  :: !NumberOfInputsPerTx  -> Sum
+  SNumberOfOutputsPerTx :: !NumberOfOutputsPerTx -> Sum
+  SNumberOfTxs          :: !NumberOfTxs          -> Sum
+  STPSRate              :: !TPSRate              -> Sum
+  SFee                  :: !Lovelace             -> Sum
+  STTL                  :: !SlotNo               -> Sum
+  STxAdditionalSize     :: !TxAdditionalSize     -> Sum
+  SLocalSocket          :: !String               -> Sum
+  SEra                  :: !AnyCardanoEra        -> Sum
+  STargets              :: !(NonEmpty NodeIPv4Address) -> Sum
   deriving (Eq, Show, Generic)
 
 taggedToSum :: Applicative f => DSum Tag f -> f Sum

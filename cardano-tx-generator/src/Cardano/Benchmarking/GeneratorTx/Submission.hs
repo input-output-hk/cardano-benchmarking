@@ -159,15 +159,15 @@ mkSubmissionSummary ssThreadName Submission{ sStartTime, sReportsRefs}
       ssFailures = failures
   pure SubmissionSummary{..}
  where
-   txDiffTimeTPS :: Int -> NominalDiffTime -> TPSRate
-   txDiffTimeTPS n delta =
-     TPSRate $ realToFrac $ fromIntegral n / delta
+  txDiffTimeTPS :: Int -> NominalDiffTime -> TPSRate
+  txDiffTimeTPS n delta =
+    TPSRate $ realToFrac $ fromIntegral n / delta
 
-   threadReportTps :: SubmissionThreadReport -> TPSRate
-   threadReportTps
-     SubmissionThreadReport
-       { strStats=SubmissionThreadStats{stsAcked=Ack ack}, strEndOfProtocol } =
-         txDiffTimeTPS ack (Clock.diffUTCTime strEndOfProtocol sStartTime)
+  threadReportTps :: SubmissionThreadReport -> TPSRate
+  threadReportTps
+    SubmissionThreadReport
+      { strStats=SubmissionThreadStats{stsAcked=Ack ack}, strEndOfProtocol } =
+        txDiffTimeTPS ack (Clock.diffUTCTime strEndOfProtocol sStartTime)
 
 {-------------------------------------------------------------------------------
   Submission queue:  feeding and consumption
@@ -183,10 +183,10 @@ simpleTxFeeder
   replicateM_ (fromIntegral sThreads) $
     liftIO $ STM.atomically $ STM.writeTBQueue sTxSendQueue Nothing
  where
-   feedTx :: (Tx era, Int) -> m ()
-   feedTx (tx, ix) = do
-     liftIO $ STM.atomically $ STM.writeTBQueue sTxSendQueue (Just tx)
-     traceWith sTrace $ TraceBenchTxSubServFed [getTxId $ getTxBody tx] ix
+  feedTx :: (Tx era, Int) -> m ()
+  feedTx (tx, ix) = do
+    liftIO $ STM.atomically $ STM.writeTBQueue sTxSendQueue (Just tx)
+    traceWith sTrace $ TraceBenchTxSubServFed [getTxId $ getTxBody tx] ix
 
 tpsLimitedTxFeederShutdown :: Submission m era -> IO ()
 tpsLimitedTxFeederShutdown Submission{sThreads, sTxSendQueue }
@@ -204,22 +204,22 @@ tpsLimitedTxFeeder submission txs = do
   foldM_ feedTx (now, 0) (zip txs [0..])
   liftIO $ tpsLimitedTxFeederShutdown submission
  where
-   Submission{ sParams=SubmissionParams{spTps=TPSRate rate}
-             , sTrace
-             , sTxSendQueue } = submission
+  Submission{ sParams=SubmissionParams{spTps=TPSRate rate}
+            , sTrace
+            , sTxSendQueue } = submission
 
-   feedTx :: (UTCTime, NominalDiffTime)
-          -> (Tx era, Int)
-          -> m (UTCTime, NominalDiffTime)
-   feedTx (lastPreDelay, lastDelay) (tx, ix) = do
-     liftIO . STM.atomically $ STM.writeTBQueue sTxSendQueue (Just tx)
-     traceWith sTrace $ TraceBenchTxSubServFed [getTxId $ getTxBody tx] ix
-     now <- liftIO Clock.getCurrentTime
-     let targetDelay = realToFrac $ 1.0 / rate
-         loopCost = (now `Clock.diffUTCTime` lastPreDelay) - lastDelay
-         delay = targetDelay - loopCost
-     liftIO . threadDelay . ceiling $ (realToFrac delay * 1000000.0 :: Double)
-     pure (now, delay)
+  feedTx :: (UTCTime, NominalDiffTime)
+         -> (Tx era, Int)
+         -> m (UTCTime, NominalDiffTime)
+  feedTx (lastPreDelay, lastDelay) (tx, ix) = do
+    liftIO . STM.atomically $ STM.writeTBQueue sTxSendQueue (Just tx)
+    traceWith sTrace $ TraceBenchTxSubServFed [getTxId $ getTxBody tx] ix
+    now <- liftIO Clock.getCurrentTime
+    let targetDelay = realToFrac $ 1.0 / rate
+        loopCost = (now `Clock.diffUTCTime` lastPreDelay) - lastDelay
+        delay = targetDelay - loopCost
+    liftIO . threadDelay . ceiling $ (realToFrac delay * 1000000.0 :: Double)
+    pure (now, delay)
 
 consumeTxs
   :: forall m blk era
@@ -228,17 +228,17 @@ consumeTxs
 consumeTxs Submission{sTxSendQueue} blk req
   = liftIO . STM.atomically $ go blk req []
  where
-   go :: TokBlockingStyle a -> Req -> [Tx era] -> STM (Bool, UnReqd (Tx era))
-   go _ 0 acc = pure (False, UnReqd acc)
-   go TokBlocking n acc = STM.readTBQueue sTxSendQueue >>=
-     \case
-       Nothing -> pure (True, UnReqd acc)
-       Just tx -> go TokBlocking (n - 1) (tx:acc)
-   go TokNonBlocking _ _ = STM.tryReadTBQueue sTxSendQueue >>=
-     \case
-       Nothing -> pure (False, UnReqd [])
-       Just Nothing -> pure (True, UnReqd [])
-       Just (Just tx) -> pure (False, UnReqd [tx])
+  go :: TokBlockingStyle a -> Req -> [Tx era] -> STM (Bool, UnReqd (Tx era))
+  go _ 0 acc = pure (False, UnReqd acc)
+  go TokBlocking n acc = STM.readTBQueue sTxSendQueue >>=
+    \case
+      Nothing -> pure (True, UnReqd acc)
+      Just tx -> go TokBlocking (n - 1) (tx:acc)
+  go TokNonBlocking _ _ = STM.tryReadTBQueue sTxSendQueue >>=
+    \case
+      Nothing -> pure (False, UnReqd [])
+      Just Nothing -> pure (True, UnReqd [])
+      Just (Just tx) -> pure (False, UnReqd [tx])
 
 txSubmissionClient
   :: forall m era tx txid gentx gentxid .
@@ -259,132 +259,132 @@ txSubmissionClient tr bmtr sub threadIx =
   TxSubmissionClient $
     pure $ client False (UnAcked []) (SubmissionThreadStats 0 0 0)
  where
-   -- Nothing means we've ran out of things to either announce or send.
-   decideAnnouncement :: TokBlockingStyle a
-                      -> Ack -> UnReqd tx -> UnAcked tx
-                      -> m (Either Text (ToAnnce tx, UnAcked tx, Acked tx))
-   decideAnnouncement b (Ack ack) (UnReqd annNow) (UnAcked unAcked) =
-     if   tokIsBlocking b && ack /= length unAcked
-     then pure $ Left "decideAnnouncement: TokBlocking, but length unAcked != ack"
-     else pure $ Right (ToAnnce annNow, UnAcked newUnacked, Acked acked)
-       where
-         stillUnacked, newUnacked, acked :: [tx]
-         (stillUnacked, acked) = L.splitAtEnd ack unAcked
-         newUnacked = annNow <> stillUnacked
+  -- Nothing means we've ran out of things to either announce or send.
+  decideAnnouncement :: TokBlockingStyle a
+                     -> Ack -> UnReqd tx -> UnAcked tx
+                     -> m (Either Text (ToAnnce tx, UnAcked tx, Acked tx))
+  decideAnnouncement b (Ack ack) (UnReqd annNow) (UnAcked unAcked) =
+    if   tokIsBlocking b && ack /= length unAcked
+    then pure $ Left "decideAnnouncement: TokBlocking, but length unAcked != ack"
+    else pure $ Right (ToAnnce annNow, UnAcked newUnacked, Acked acked)
+      where
+        stillUnacked, newUnacked, acked :: [tx]
+        (stillUnacked, acked) = L.splitAtEnd ack unAcked
+        newUnacked = annNow <> stillUnacked
 
-   -- Sadly, we can't just return what we want, we instead have to
-   -- communicate via IORefs, because..
-   client :: Bool -> UnAcked tx -> SubmissionThreadStats
-          -- The () return type is forced by Ouroboros.Network.NodeToNode.connectTo
-          -> ClientStIdle gentxid gentx m ()
-   client done unAcked (!stats) = ClientStIdle
-    { recvMsgRequestTxIds = \blocking ackNum reqNum
-       -> do
-        let ack = Ack $ fromIntegral ackNum
-            req = Req $ fromIntegral reqNum
-        traceWith tr $ reqIdsTrace ack req blocking
+  -- Sadly, we can't just return what we want, we instead have to
+  -- communicate via IORefs, because..
+  client :: Bool -> UnAcked tx -> SubmissionThreadStats
+         -- The () return type is forced by Ouroboros.Network.NodeToNode.connectTo
+         -> ClientStIdle gentxid gentx m ()
+  client done unAcked (!stats) = ClientStIdle
+   { recvMsgRequestTxIds = \blocking ackNum reqNum
+      -> do
+       let ack = Ack $ fromIntegral ackNum
+           req = Req $ fromIntegral reqNum
+       traceWith tr $ reqIdsTrace ack req blocking
 
-        (exhausted, unReqd) <-
-          if done then pure (True, UnReqd [])
-          else consumeTxs sub blocking req
+       (exhausted, unReqd) <-
+         if done then pure (True, UnReqd [])
+         else consumeTxs sub blocking req
 
-        r' <- decideAnnouncement blocking ack unReqd unAcked
-        (ann@(ToAnnce annNow), newUnacked@(UnAcked outs), Acked acked)
-          <- case r' of
-            Left e -> traceWith bmtr (TraceBenchTxSubError e)
-                      >> fail (T.unpack e)
-            Right x -> pure x
+       r' <- decideAnnouncement blocking ack unReqd unAcked
+       (ann@(ToAnnce annNow), newUnacked@(UnAcked outs), Acked acked)
+         <- case r' of
+           Left e -> traceWith bmtr (TraceBenchTxSubError e)
+                     >> fail (T.unpack e)
+           Right x -> pure x
 
-        traceWith tr $ idListTrace ann blocking
-        traceWith bmtr $ TraceBenchTxSubServAnn  (getTxId . getTxBody <$> annNow)
-        traceWith bmtr $ TraceBenchTxSubServAck  (getTxId . getTxBody <$> acked)
-        traceWith bmtr $ TraceBenchTxSubServOuts (getTxId . getTxBody <$> outs)
+       traceWith tr $ idListTrace ann blocking
+       traceWith bmtr $ TraceBenchTxSubServAnn  (getTxId . getTxBody <$> annNow)
+       traceWith bmtr $ TraceBenchTxSubServAck  (getTxId . getTxBody <$> acked)
+       traceWith bmtr $ TraceBenchTxSubServOuts (getTxId . getTxBody <$> outs)
 
-        let newStats = stats { stsAcked =
-                               stsAcked stats + ack }
+       let newStats = stats { stsAcked =
+                              stsAcked stats + ack }
 
-        case (exhausted, NE.nonEmpty annNow, blocking) of
-          (_, Nothing, TokBlocking) -> do
-            traceWith tr EndOfProtocol
-            SendMsgDone <$> (submitReport newStats
-                             -- The () return type is forced by
-                             --   Ouroboros.Network.NodeToNode.connectTo
-                             >> pure ())
+       case (exhausted, NE.nonEmpty annNow, blocking) of
+         (_, Nothing, TokBlocking) -> do
+           traceWith tr EndOfProtocol
+           SendMsgDone <$> (submitReport newStats
+                            -- The () return type is forced by
+                            --   Ouroboros.Network.NodeToNode.connectTo
+                            >> pure ())
 
-          (_, Just neAnnNow, TokBlocking) ->
-            pure $ SendMsgReplyTxIds
-                     (BlockingReply $ txToIdSize <$> neAnnNow)
-                     (client exhausted newUnacked newStats)
+         (_, Just neAnnNow, TokBlocking) ->
+           pure $ SendMsgReplyTxIds
+                    (BlockingReply $ txToIdSize <$> neAnnNow)
+                    (client exhausted newUnacked newStats)
 
-          (False, Nothing, TokNonBlocking) -> do
-            pure $ SendMsgReplyTxIds
-                     (NonBlockingReply [])
-                     (client exhausted newUnacked newStats)
+         (False, Nothing, TokNonBlocking) -> do
+           pure $ SendMsgReplyTxIds
+                    (NonBlockingReply [])
+                    (client exhausted newUnacked newStats)
 
-          (_, _, TokNonBlocking) ->
-            pure $ SendMsgReplyTxIds
-                     (NonBlockingReply $ txToIdSize <$> annNow)
-                     (client exhausted newUnacked newStats)
+         (_, _, TokNonBlocking) ->
+           pure $ SendMsgReplyTxIds
+                    (NonBlockingReply $ txToIdSize <$> annNow)
+                    (client exhausted newUnacked newStats)
 
-    , recvMsgRequestTxs = \txIds -> do
-        let  reqTxIds :: [txid]
-             reqTxIds = fmap fromGenTxId txIds
-        traceWith tr $ ReqTxs (length reqTxIds)
-        let UnAcked ua = unAcked
-            uaIds = getTxId . getTxBody <$> ua
-            (toSend, _retained) = L.partition ((`L.elem` reqTxIds) . getTxId . getTxBody) ua
-            missIds = reqTxIds L.\\ uaIds
+   , recvMsgRequestTxs = \txIds -> do
+       let  reqTxIds :: [txid]
+            reqTxIds = fmap fromGenTxId txIds
+       traceWith tr $ ReqTxs (length reqTxIds)
+       let UnAcked ua = unAcked
+           uaIds = getTxId . getTxBody <$> ua
+           (toSend, _retained) = L.partition ((`L.elem` reqTxIds) . getTxId . getTxBody) ua
+           missIds = reqTxIds L.\\ uaIds
 
-        traceWith tr $ TxList (length toSend)
-        traceWith bmtr $ TraceBenchTxSubServReq reqTxIds
-        traceWith bmtr $ TraceBenchTxSubServOuts (getTxId . getTxBody <$> ua)
-        unless (L.null missIds) $
-          traceWith bmtr $ TraceBenchTxSubServUnav missIds
-        pure $ SendMsgReplyTxs (toGenTx <$> toSend)
-          (client done unAcked $
-            stats { stsSent =
-                    stsSent stats + Sent (length toSend)
-                  , stsUnavailable =
-                    stsUnavailable stats + Unav (length missIds)})
-    , recvMsgKThxBye = do
-        traceWith tr KThxBye
-        void $ submitReport stats
-    }
+       traceWith tr $ TxList (length toSend)
+       traceWith bmtr $ TraceBenchTxSubServReq reqTxIds
+       traceWith bmtr $ TraceBenchTxSubServOuts (getTxId . getTxBody <$> ua)
+       unless (L.null missIds) $
+         traceWith bmtr $ TraceBenchTxSubServUnav missIds
+       pure $ SendMsgReplyTxs (toGenTx <$> toSend)
+         (client done unAcked $
+           stats { stsSent =
+                   stsSent stats + Sent (length toSend)
+                 , stsUnavailable =
+                   stsUnavailable stats + Unav (length missIds)})
+   , recvMsgKThxBye = do
+       traceWith tr KThxBye
+       void $ submitReport stats
+   }
 
-   submitReport :: SubmissionThreadStats -> m SubmissionThreadReport
-   submitReport strStats = do
-     strEndOfProtocol <- liftIO Clock.getCurrentTime
-     let strThreadIndex = threadIx
-         report = SubmissionThreadReport{..}
-     submitThreadReport sub threadIx (Right report)
-     pure report
+  submitReport :: SubmissionThreadStats -> m SubmissionThreadReport
+  submitReport strStats = do
+    strEndOfProtocol <- liftIO Clock.getCurrentTime
+    let strThreadIndex = threadIx
+        report = SubmissionThreadReport{..}
+    submitThreadReport sub threadIx (Right report)
+    pure report
 
-   txToIdSize :: tx -> (gentxid, TxSizeInBytes)
-   txToIdSize = (Mempool.txId &&& txInBlockSize) . toGenTx
+  txToIdSize :: tx -> (gentxid, TxSizeInBytes)
+  txToIdSize = (Mempool.txId &&& txInBlockSize) . toGenTx
 
-   toGenTx :: tx -> gentx
-   toGenTx tx = case (shelleyBasedEra @ era , tx) of
-     (ShelleyBasedEraShelley, ShelleyTx _ tx') -> GenTxShelley (mkShelleyTx tx')
-     (ShelleyBasedEraAllegra, ShelleyTx _ tx') -> GenTxAllegra (mkShelleyTx tx')
-     (ShelleyBasedEraMary, ShelleyTx _ tx') -> GenTxMary (mkShelleyTx tx')
+  toGenTx :: tx -> gentx
+  toGenTx tx = case (shelleyBasedEra @ era , tx) of
+    (ShelleyBasedEraShelley, ShelleyTx _ tx') -> GenTxShelley (mkShelleyTx tx')
+    (ShelleyBasedEraAllegra, ShelleyTx _ tx') -> GenTxAllegra (mkShelleyTx tx')
+    (ShelleyBasedEraMary, ShelleyTx _ tx') -> GenTxMary (mkShelleyTx tx')
 
-   fromGenTxId :: gentxid -> txid
-   fromGenTxId (Block.GenTxIdShelley (Mempool.ShelleyTxId i)) = fromShelleyTxId i
-   fromGenTxId (Block.GenTxIdAllegra (Mempool.ShelleyTxId i)) = fromShelleyTxId i
-   fromGenTxId (Block.GenTxIdMary    (Mempool.ShelleyTxId i)) = fromShelleyTxId i
-   fromGenTxId _ = error "submission.hs: fromGenTxId"
+  fromGenTxId :: gentxid -> txid
+  fromGenTxId (Block.GenTxIdShelley (Mempool.ShelleyTxId i)) = fromShelleyTxId i
+  fromGenTxId (Block.GenTxIdAllegra (Mempool.ShelleyTxId i)) = fromShelleyTxId i
+  fromGenTxId (Block.GenTxIdMary    (Mempool.ShelleyTxId i)) = fromShelleyTxId i
+  fromGenTxId _ = error "submission.hs: fromGenTxId"
 
-   tokIsBlocking :: TokBlockingStyle a -> Bool
-   tokIsBlocking = \case
-     TokBlocking    -> True
-     TokNonBlocking -> False
+  tokIsBlocking :: TokBlockingStyle a -> Bool
+  tokIsBlocking = \case
+    TokBlocking    -> True
+    TokNonBlocking -> False
 
-   reqIdsTrace :: Ack -> Req -> TokBlockingStyle a -> NodeToNodeSubmissionTrace
-   reqIdsTrace ack req = \case
-      TokBlocking    -> ReqIdsBlocking ack req
-      TokNonBlocking -> ReqIdsPrompt   ack req
+  reqIdsTrace :: Ack -> Req -> TokBlockingStyle a -> NodeToNodeSubmissionTrace
+  reqIdsTrace ack req = \case
+     TokBlocking    -> ReqIdsBlocking ack req
+     TokNonBlocking -> ReqIdsPrompt   ack req
 
-   idListTrace :: ToAnnce tx -> TokBlockingStyle a -> NodeToNodeSubmissionTrace
-   idListTrace (ToAnnce toAnn) = \case
-      TokBlocking    -> IdsListBlocking $ length toAnn
-      TokNonBlocking -> IdsListPrompt   $ length toAnn
+  idListTrace :: ToAnnce tx -> TokBlockingStyle a -> NodeToNodeSubmissionTrace
+  idListTrace (ToAnnce toAnn) = \case
+     TokBlocking    -> IdsListBlocking $ length toAnn
+     TokNonBlocking -> IdsListPrompt   $ length toAnn

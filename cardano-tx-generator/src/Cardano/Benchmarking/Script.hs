@@ -1,8 +1,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NumericUnderscores #-}
 module Cardano.Benchmarking.Script
-(
-    Script
+  ( Script
   , runScript
   , parseScriptFile
   )
@@ -26,16 +25,16 @@ type Script = [Action]
 
 runScript :: Script -> IOManager -> IO (Either Error ())
 runScript script iom = runActionM (forM_ script action) iom >>= \case
-    (Right a  , s ,  ()) -> do
-      cleanup s shutDownLogging
-      threadDelay $ 10_000_000
-      return $ Right a
-    (Left err , s  , ()) -> do
-       cleanup s (traceError (show err) >> shutDownLogging)
-       threadDelay $ 10_000_000
-       return $ Left err
-    where
-      cleanup s a = flip (runActionMEnv s) iom a >> return ()
+  (Right a  , s ,  ()) -> do
+    cleanup s shutDownLogging
+    threadDelay $ 10_000_000
+    return $ Right a
+  (Left err , s  , ()) -> do
+    cleanup s (traceError (show err) >> shutDownLogging)
+    threadDelay $ 10_000_000
+    return $ Left err
+ where
+  cleanup s a = flip (runActionMEnv s) iom a >> return ()
 
 shutDownLogging :: ActionM ()
 shutDownLogging = do

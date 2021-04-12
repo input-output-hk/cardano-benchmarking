@@ -74,8 +74,8 @@ readSigningKey name filePath =
 getLocalSubmitTx :: ActionM LocalSubmitTx
 getLocalSubmitTx = submitTxToNodeLocal <$> getLocalConnectInfo
 
-secureGenesisFund ::
-      FundName
+secureGenesisFund
+   :: FundName
    -> KeyName
    -> KeyName
    -> ActionM ()
@@ -98,8 +98,8 @@ secureGenesisFund fundName destKey genesisKeyName = do
     Left err -> liftTxGenError err
     Right fund -> setName fundName fund
 
-splitFundN ::
-      NumberOfTxs
+splitFundN
+   :: NumberOfTxs
    -> KeyName
    -> FundName
    -> ActionM [Store.Fund]
@@ -121,8 +121,8 @@ splitFundN count destKeyName sourceFund = do
     Left err -> liftTxGenError err
     Right funds -> return funds
 
-splitFund ::
-      [FundName]
+splitFund
+   :: [FundName]
    -> KeyName
    -> FundName
    -> ActionM ()
@@ -130,8 +130,8 @@ splitFund newFunds destKey sourceFund = do
   funds <- splitFundN (NumberOfTxs $ fromIntegral $ length newFunds) destKey sourceFund
   forM_ (zip newFunds funds) $ \(name, f) -> setName name f
 
-splitFundToList ::
-      FundListName
+splitFundToList
+   :: FundListName
    -> KeyName
    -> FundName
    -> ActionM ()
@@ -145,8 +145,8 @@ delay = do
   (InitCooldown t) <- getUser TInitCooldown
   liftIO $ threadDelay $ 1000000 * t
 
-prepareTxList ::
-      TxListName
+prepareTxList
+   :: TxListName
    -> KeyName
    -> FundListName
    -> ActionM ()
@@ -164,7 +164,7 @@ prepareTxList name destKey srcFundName = do
     coreCall :: forall era. IsShelleyBasedEra era => AsType era -> ExceptT TxGenError IO (InAnyCardanoEra TxList)
     coreCall _proxy = do
       let addr = Core.keyAddress @ era networkId key
-      ----------------------------------------------------TODO : constant 1
+      ----------------------------------------------------TODO : Constant 1 ???
       l <- Core.txGenerator tracer fee count txIn txOut payload addr (snd $ head fundList) 1 (map fst fundList)
       return $ InAnyCardanoEra cardanoEra $ TxList l
   liftCoreWithEra coreCall >>= \case

@@ -8,17 +8,16 @@
 {-# LANGUAGE NamedFieldPuns #-}
 
 module Cardano.Benchmarking.DSL
-
 where
 
 import           Prelude (error)
 import           Cardano.Prelude
 
 import           Cardano.Api
-import Cardano.Benchmarking.Tracer
-import Cardano.Benchmarking.Types (SubmissionErrorPolicy, NodeIPv4Address)
-import Cardano.Benchmarking.GeneratorTx
-import Cardano.Benchmarking.GeneratorTx.Tx
+import           Cardano.Benchmarking.Tracer
+import           Cardano.Benchmarking.Types (SubmissionErrorPolicy, NodeIPv4Address)
+import           Cardano.Benchmarking.GeneratorTx
+import           Cardano.Benchmarking.GeneratorTx.Tx
 
 type ScriptM a = ExceptT TxGenError IO a
 type BenchmarkScript a = (BenchTracers, MonoDSLs) ->  ScriptM a
@@ -51,7 +50,7 @@ type SplitFunds era =
   -> Fund
   -> ScriptM [Fund]
 
--- txGenerator is basically pure except for logging
+-- txGenerator is basically pure except for logging.
 type TxGenerator era =
      Lovelace
   -> NumberOfTxs
@@ -74,11 +73,11 @@ type RunBenchmark era =
 type KeyAddress era = SigningKey PaymentKey -> AddressInEra era
 
 data DSL era = DSL {
-    keyAddress :: KeyAddress era
-  , secureGenesisFund :: SecureGenesisFund era
-  , splitFunds :: SplitFunds era
-  , txGenerator :: TxGenerator era
-  , runBenchmark :: RunBenchmark era
+    keyAddress :: !(KeyAddress era)
+  , secureGenesisFund :: !(SecureGenesisFund era)
+  , splitFunds :: !(SplitFunds era)
+  , txGenerator :: !(TxGenerator era)
+  , runBenchmark :: !(RunBenchmark era)
   }
 
 coolDown :: InitCooldown -> ScriptM ()

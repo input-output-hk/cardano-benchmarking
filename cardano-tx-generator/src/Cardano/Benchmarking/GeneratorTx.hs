@@ -21,13 +21,13 @@ module Cardano.Benchmarking.GeneratorTx
   , TPSRate(..)
   , TxAdditionalSize(..)
   , TxGenError
+  , asyncBenchmark
+  , readSigningKey
+  , runBenchmark
   , secureGenesisFund
   , splitFunds
-  , runBenchmark
-  , asyncBenchmark
-  , waitBenchmark
-  , readSigningKey
   , txGenerator
+  , waitBenchmark
   ) where
 
 import           Cardano.Prelude
@@ -66,11 +66,11 @@ readSigningKey :: SigningKeyFile -> ExceptT TxGenError IO (SigningKey PaymentKey
 readSigningKey =
   withExceptT TxFileError . newExceptT . readKey . unSigningKeyFile
  where
-   readKey :: FilePath -> IO (Either (FileError TextEnvelopeError) (SigningKey PaymentKey))
-   readKey f = flip readFileTextEnvelopeAnyOf f
-     [ FromSomeType (AsSigningKey AsGenesisUTxOKey) castSigningKey
-     , FromSomeType (AsSigningKey AsPaymentKey) id
-     ]
+  readKey :: FilePath -> IO (Either (FileError TextEnvelopeError) (SigningKey PaymentKey))
+  readKey f = flip readFileTextEnvelopeAnyOf f
+    [ FromSomeType (AsSigningKey AsGenesisUTxOKey) castSigningKey
+    , FromSomeType (AsSigningKey AsPaymentKey) id
+    ]
 
 secureGenesisFund :: forall era. IsShelleyBasedEra era
   => Tracer IO (TraceBenchTxSubmit TxId)
@@ -83,25 +83,25 @@ secureGenesisFund :: forall era. IsShelleyBasedEra era
   -> AddressInEra era
   -> ExceptT TxGenError IO Fund
 secureGenesisFund submitTracer localSubmitTx networkId genesis txFee ttl key outAddr = do
-    let (_inAddr, lovelace) = genesisFundForKey @ era networkId genesis key
-        (tx, fund) =
-           genesisExpenditure networkId key outAddr lovelace txFee ttl
-    r <- liftIO $
-      catches (localSubmitTx $ txInModeCardano tx)
-        [ Handler $ \e@SomeException{} ->
-            fail $ mconcat
-              [ "Exception while moving genesis funds via local socket: "
-              , show e
-              ]]
-    case r of
-      SubmitSuccess ->
-        liftIO . traceWith submitTracer . TraceBenchTxSubDebug
-        $ mconcat
-        [ "******* Funding secured ("
-        , show $ fundTxIn fund, " -> ", show $ fundAdaValue fund
-        , ")"]
-      SubmitFail e -> fail $ show e
-    return fund
+  let (_inAddr, lovelace) = genesisFundForKey @ era networkId genesis key
+      (tx, fund) =
+         genesisExpenditure networkId key outAddr lovelace txFee ttl
+  r <- liftIO $
+    catches (localSubmitTx $ txInModeCardano tx)
+      [ Handler $ \e@SomeException{} ->
+          fail $ mconcat
+            [ "Exception while moving genesis funds via local socket: "
+            , show e
+            ]]
+  case r of
+    SubmitSuccess ->
+      liftIO . traceWith submitTracer . TraceBenchTxSubDebug
+      $ mconcat
+      [ "******* Funding secured ("
+      , show $ fundTxIn fund, " -> ", show $ fundAdaValue fund
+      , ")"]
+    SubmitFail e -> fail $ show e
+  return fund
 
 -----------------------------------------------------------------------------------------
 -- Obtain initial funds.

@@ -16,36 +16,32 @@ module Cardano.Benchmarking.Script.Env
 where
 
 import           Prelude
-
 import           Data.Functor.Identity
 import qualified Data.Text as Text
-
 import           Data.Dependent.Sum (DSum(..))
 import           Data.Dependent.Map (DMap)
 import qualified Data.Dependent.Map as DMap
-
 import           Control.Monad.IO.Class
 import           Control.Monad.Trans.Class
 import           Control.Monad.Trans.Except
 import           Control.Monad.Trans.RWS.Strict (RWST)
 import qualified Control.Monad.Trans.RWS.Strict as RWS
-
-import           Ouroboros.Network.NodeToClient (IOManager)
 import           Control.Tracer (traceWith)
 
 import qualified Cardano.Benchmarking.Tracer as Tracer
+import           Ouroboros.Network.NodeToClient (IOManager)
 
-import           Cardano.Benchmarking.Script.Setters as Setters
-import           Cardano.Benchmarking.Script.Store
 import           Cardano.Benchmarking.GeneratorTx.Error (TxGenError)
 import           Cardano.Benchmarking.GeneratorTx.LocalProtocolDefinition (CliError)
+import           Cardano.Benchmarking.Script.Setters as Setters
+import           Cardano.Benchmarking.Script.Store
 
 type Env = DMap Store Identity
 
 emptyEnv :: Env
 emptyEnv = DMap.empty
 
-type ActionM a =  ExceptT Error (RWST IOManager () Env IO) a
+type ActionM a = ExceptT Error (RWST IOManager () Env IO) a
 
 runActionM :: ActionM ret -> IOManager -> IO (Either Error ret, Env, ())
 runActionM = runActionMEnv emptyEnv
@@ -56,11 +52,11 @@ runActionMEnv env action iom = RWS.runRWST (runExceptT action) iom env
 type SetKeyVal = DSum Setters.Tag Identity
 
 data Error where
-  LookupError :: Store v    -> Error
-  TxGenError  :: TxGenError -> Error
-  CliError    :: CliError   -> Error
-  ApiError    :: String     -> Error
-  UserError   :: String     -> Error
+  LookupError :: !(Store v)    -> Error
+  TxGenError  :: !TxGenError -> Error
+  CliError    :: !CliError   -> Error
+  ApiError    :: !String     -> Error
+  UserError   :: !String     -> Error
 
 deriving instance Show Error
 

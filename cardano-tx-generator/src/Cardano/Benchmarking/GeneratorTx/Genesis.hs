@@ -22,27 +22,27 @@ import           Ouroboros.Consensus.Shelley.Eras (StandardShelley)
 
 genesisFunds :: forall era. IsShelleyBasedEra era
   => NetworkId -> ShelleyGenesis StandardShelley -> [(AddressInEra era, Lovelace)]
-genesisFunds networkId g =
-    map (castAddr *** fromShelleyLovelace)
+genesisFunds networkId g
+ = map (castAddr *** fromShelleyLovelace)
      $ Map.toList
      $ sgInitialFunds g
-  where
-    castAddr (Addr _ pcr stref)
-      = shelleyAddressInEra $ makeShelleyAddress networkId (fromShelleyPaymentCredential pcr) (fromShelleyStakeReference stref)
-    castAddr _ = error "castAddr:  unhandled Shelley.Addr case"
+ where
+  castAddr (Addr _ pcr stref)
+    = shelleyAddressInEra $ makeShelleyAddress networkId (fromShelleyPaymentCredential pcr) (fromShelleyStakeReference stref)
+  castAddr _ = error "castAddr:  unhandled Shelley.Addr case"
 
 genesisFundForKey :: forall era. IsShelleyBasedEra era
   => NetworkId
   -> ShelleyGenesis StandardShelley
   -> SigningKey PaymentKey
   -> (AddressInEra era, Lovelace)
-genesisFundForKey networkId genesis key =
-    fromMaybe (error "No genesis funds for signing key.")
-  . head
-  . filter (isTxOutForKey . fst)
-  $ genesisFunds networkId genesis
-  where
-    isTxOutForKey addr = keyAddress networkId key == addr
+genesisFundForKey networkId genesis key
+  = fromMaybe (error "No genesis funds for signing key.")
+    . head
+    . filter (isTxOutForKey . fst)
+    $ genesisFunds networkId genesis
+ where
+  isTxOutForKey addr = keyAddress networkId key == addr
 
 genesisExpenditure ::
      IsShelleyBasedEra era
@@ -53,17 +53,17 @@ genesisExpenditure ::
   -> Lovelace
   -> SlotNo
   -> (Tx era, Fund)
-genesisExpenditure networkId key addr coin fee ttl =  (tx, fund)
+genesisExpenditure networkId key addr coin fee ttl = (tx, fund)
  where
-   tx = mkGenesisTransaction (castKey key) 0 ttl fee [ pseudoTxIn ] [ txout ]
+  tx = mkGenesisTransaction (castKey key) 0 ttl fee [ pseudoTxIn ] [ txout ]
 
-   value = mkTxOutValueAdaOnly $ coin - fee
-   txout = TxOut addr value
+  value = mkTxOutValueAdaOnly $ coin - fee
+  txout = TxOut addr value
 
-   pseudoTxIn = genesisUTxOPseudoTxIn networkId
-                  (verificationKeyHash $ getVerificationKey $ castKey key)
+  pseudoTxIn = genesisUTxOPseudoTxIn networkId
+                 (verificationKeyHash $ getVerificationKey $ castKey key)
 
-   castKey :: SigningKey PaymentKey -> SigningKey GenesisUTxOKey
-   castKey(PaymentSigningKey skey) = GenesisUTxOSigningKey skey
+  castKey :: SigningKey PaymentKey -> SigningKey GenesisUTxOKey
+  castKey(PaymentSigningKey skey) = GenesisUTxOSigningKey skey
 
-   fund = mkFund (TxIn (getTxId $ getTxBody tx) (TxIx 0)) value
+  fund = mkFund (TxIn (getTxId $ getTxBody tx) (TxIx 0)) value

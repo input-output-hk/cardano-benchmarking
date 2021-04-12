@@ -19,7 +19,6 @@ import           Data.GADT.Compare.TH (deriveGCompare, deriveGEq)
 import           Data.GADT.Show.TH (deriveGShow)
 
 import           Cardano.Api as Cardano (InAnyCardanoEra(..), Tx)
-
 import           Cardano.Benchmarking.Script.Setters as Setters
 import           Cardano.Benchmarking.OuroborosImports as Cardano
                     ( Protocol, CardanoBlock, ProtocolCardano, LoggingLayer, ShelleyGenesis, StandardShelley
@@ -32,7 +31,7 @@ import qualified Cardano.Benchmarking.GeneratorTx.Tx as Core (Fund)
 type Fund = (Core.Fund, SigningKey PaymentKey)
 
 data Store v where
-  User   :: Setters.Tag x -> Store x
+  User         :: Setters.Tag x -> Store x
   LoggingLayer :: Store LoggingLayer
   Protocol     :: Store (Cardano.Protocol IO CardanoBlock ProtocolCardano)
   BenchTracers :: Store Core.BenchTracers
@@ -41,16 +40,13 @@ data Store v where
   Named        :: Name x -> Store x
 
 data Name x where
-  KeyName      :: String -> Name (SigningKey PaymentKey)
---  AddressName  :: String -> Name (InAnyCardanoEra AddressInEra)
-  FundName     :: String -> Name Fund
-  FundListName :: String -> Name [Fund]
-  TxListName   :: String -> Name (InAnyCardanoEra TxList)
-  ThreadName   :: String -> Name AsyncBenchmarkControl
+  KeyName      :: !String -> Name (SigningKey PaymentKey)
+  FundName     :: !String -> Name Fund
+  FundListName :: !String -> Name [Fund]
+  TxListName   :: !String -> Name (InAnyCardanoEra TxList)
+  ThreadName   :: !String -> Name AsyncBenchmarkControl
 
--- Maybe better avoid those aliases ?
 type KeyName      = Name (SigningKey PaymentKey)
---type AddressName  = Name (InAnyCardanoEra AddressInEra)
 type FundName     = Name Fund
 type FundListName = Name [Fund]
 type TxListName   = Name (InAnyCardanoEra TxList)
