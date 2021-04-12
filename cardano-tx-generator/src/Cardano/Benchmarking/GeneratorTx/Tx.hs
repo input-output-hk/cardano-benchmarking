@@ -8,19 +8,18 @@
 {-# OPTIONS_GHC -Wno-all-missed-specialisations #-}
 
 module Cardano.Benchmarking.GeneratorTx.Tx
-  (
-    Fund
-  , mkFund
+  ( Fund
   , fundTxIn
   , fundAdaValue
   , keyAddress
   , mkGenesisTransaction -- ? needed ??
+  , mkFund
+  , mkFee
   , mkTransactionGen
   , mkTxOutValueAdaOnly
+  , mkValidityUpperBound
   , txOutValueToLovelace
   , txInModeCardano
-  , mkFee
-  , mkValidityUpperBound
   )
 where
 
@@ -67,28 +66,27 @@ mkGenesisTransaction key _payloadSize ttl fee txins txouts
   = case makeTransactionBody txBodyContent of
     Right b -> signShelleyTransaction b [WitnessGenesisUTxOKey key]
     Left err -> error $ show err
-  where
-    txBodyContent = TxBodyContent {
-        txIns = txins
-      , txOuts = txouts
-      , txFee = fees
-      , txValidityRange = (TxValidityNoLowerBound, validityUpperBound)
-      , txMetadata = TxMetadataNone
-      , txAuxScripts = TxAuxScriptsNone
-      , txWithdrawals = TxWithdrawalsNone
-      , txCertificates = TxCertificatesNone
-      , txUpdateProposal = TxUpdateProposalNone
-      , txMintValue = TxMintNone
-      }
-    fees = case shelleyBasedEra @ era of
-      ShelleyBasedEraShelley -> TxFeeExplicit TxFeesExplicitInShelleyEra fee
-      ShelleyBasedEraAllegra -> TxFeeExplicit TxFeesExplicitInAllegraEra fee
-      ShelleyBasedEraMary    -> TxFeeExplicit TxFeesExplicitInMaryEra fee
-
-    validityUpperBound = case shelleyBasedEra @ era of
-      ShelleyBasedEraShelley -> TxValidityUpperBound ValidityUpperBoundInShelleyEra ttl
-      ShelleyBasedEraAllegra -> TxValidityUpperBound ValidityUpperBoundInAllegraEra ttl
-      ShelleyBasedEraMary    -> TxValidityUpperBound ValidityUpperBoundInMaryEra ttl
+ where
+  txBodyContent = TxBodyContent {
+      txIns = txins
+    , txOuts = txouts
+    , txFee = fees
+    , txValidityRange = (TxValidityNoLowerBound, validityUpperBound)
+    , txMetadata = TxMetadataNone
+    , txAuxScripts = TxAuxScriptsNone
+    , txWithdrawals = TxWithdrawalsNone
+    , txCertificates = TxCertificatesNone
+    , txUpdateProposal = TxUpdateProposalNone
+    , txMintValue = TxMintNone
+    }
+  fees = case shelleyBasedEra @ era of
+    ShelleyBasedEraShelley -> TxFeeExplicit TxFeesExplicitInShelleyEra fee
+    ShelleyBasedEraAllegra -> TxFeeExplicit TxFeesExplicitInAllegraEra fee
+    ShelleyBasedEraMary    -> TxFeeExplicit TxFeesExplicitInMaryEra fee
+  validityUpperBound = case shelleyBasedEra @ era of
+    ShelleyBasedEraShelley -> TxValidityUpperBound ValidityUpperBoundInShelleyEra ttl
+    ShelleyBasedEraAllegra -> TxValidityUpperBound ValidityUpperBoundInAllegraEra ttl
+    ShelleyBasedEraMary    -> TxValidityUpperBound ValidityUpperBoundInMaryEra ttl
 
 mkTransaction :: forall era .
      IsShelleyBasedEra era
@@ -103,19 +101,19 @@ mkTransaction key metadata ttl fee txins txouts
   = case makeTransactionBody txBodyContent of
     Right b -> signShelleyTransaction b [WitnessPaymentKey key]
     Left err -> error $ show err
-  where
-    txBodyContent = TxBodyContent {
-        txIns = txins
-      , txOuts = txouts
-      , txFee = mkFee fee
-      , txValidityRange = (TxValidityNoLowerBound, mkValidityUpperBound ttl)
-      , txMetadata = metadata
-      , txAuxScripts = TxAuxScriptsNone
-      , txWithdrawals = TxWithdrawalsNone
-      , txCertificates = TxCertificatesNone
-      , txUpdateProposal = TxUpdateProposalNone
-      , txMintValue = TxMintNone
-      }
+ where
+  txBodyContent = TxBodyContent {
+      txIns = txins
+    , txOuts = txouts
+    , txFee = mkFee fee
+    , txValidityRange = (TxValidityNoLowerBound, mkValidityUpperBound ttl)
+    , txMetadata = metadata
+    , txAuxScripts = TxAuxScriptsNone
+    , txWithdrawals = TxWithdrawalsNone
+    , txCertificates = TxCertificatesNone
+    , txUpdateProposal = TxUpdateProposalNone
+    , txMintValue = TxMintNone
+    }
 
 mkFee :: forall era .
      IsShelleyBasedEra era
@@ -208,7 +206,6 @@ txOutValueToLovelace = \case
   TxOutValue _ v -> case valueToLovelace v of
     Just c -> c
     Nothing -> error "txOutValueLovelace  TxOut contains no ADA"
-
 
 txInModeCardano :: forall era . IsShelleyBasedEra era => Tx era -> TxInMode CardanoMode
 txInModeCardano tx = case shelleyBasedEra @ era of

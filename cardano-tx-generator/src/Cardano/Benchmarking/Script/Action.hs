@@ -25,21 +25,21 @@ import           Cardano.Benchmarking.Script.Store
 import           Cardano.Benchmarking.Script.Core
 
 data Action where
-  Set                :: SetKeyVal   -> Action
+  Set                :: !SetKeyVal -> Action
 --  Declare            :: SetKeyVal   -> Action --declare (once): error if key was set before
-  StartProtocol      :: FilePath    -> Action
+  StartProtocol      :: !FilePath -> Action
   Delay              :: Action
-  ReadSigningKey     :: KeyName -> SigningKeyFile -> Action
-  SecureGenesisFund  :: FundName -> KeyName -> KeyName -> Action
-  SplitFund          :: [FundName] -> KeyName -> FundName -> Action
-  SplitFundToList    :: FundListName -> KeyName -> FundName -> Action
-  PrepareTxList      :: TxListName -> KeyName -> FundListName -> Action
-  RunBenchmark       :: TxListName -> Action --obsolete
-  AsyncBenchmark     :: ThreadName -> TxListName -> Action
-  WaitBenchmark      :: ThreadName -> Action
-  CancelBenchmark    :: ThreadName -> Action
+  ReadSigningKey     :: !KeyName -> !SigningKeyFile -> Action
+  SecureGenesisFund  :: !FundName -> !KeyName -> !KeyName -> Action
+  SplitFund          :: [FundName] -> !KeyName -> !FundName -> Action
+  SplitFundToList    :: !FundListName -> !KeyName -> !FundName -> Action
+  PrepareTxList      :: !TxListName -> !KeyName -> !FundListName -> Action
+  RunBenchmark       :: !TxListName -> Action --Obsolete
+  AsyncBenchmark     :: !ThreadName -> !TxListName -> Action
+  WaitBenchmark      :: !ThreadName -> Action
+  CancelBenchmark    :: !ThreadName -> Action
   Reserved           :: [String] -> Action
-  WaitForEra         :: AnyCardanoEra -> Action
+  WaitForEra         :: !AnyCardanoEra -> Action
   deriving (Show, Eq)
 
 deriving instance Generic Action
@@ -54,7 +54,7 @@ action a = case a of
   SplitFundToList fundList destKey sourceFund -> splitFundToList fundList destKey sourceFund
   Delay -> delay
   PrepareTxList name key fund -> prepareTxList name key fund
-  RunBenchmark txs -> runBenchmark txs --obsolete use AsyncBenchmark
+  RunBenchmark txs -> runBenchmark txs -- Obsolete. Use AsyncBenchmark.
   AsyncBenchmark thread txs -> asyncBenchmark thread txs
   WaitBenchmark thread -> waitBenchmark thread
   CancelBenchmark thread -> cancelBenchmark thread

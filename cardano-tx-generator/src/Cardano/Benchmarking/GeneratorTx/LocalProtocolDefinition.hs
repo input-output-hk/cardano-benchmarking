@@ -9,8 +9,7 @@
 {-# LANGUAGE NamedFieldPuns #-}
 
 module Cardano.Benchmarking.GeneratorTx.LocalProtocolDefinition
-  (
-    CliError (..)
+  ( CliError (..)
   , runBenchmarkScriptWith
   , startProtocol
   ) where
@@ -66,45 +65,45 @@ mangleLocalProtocolDefinition
   (SocketPath sock)
   tracers
   = (DSL {..}, DSL {..}, DSL {..})
-  where
-    topLevelConfig = protocolToTopLevelConfig ptcl
+ where
+  topLevelConfig = protocolToTopLevelConfig ptcl
 
-    localConnectInfo :: LocalNodeConnectInfo CardanoMode
-    localConnectInfo = LocalNodeConnectInfo
-       (CardanoModeParams (EpochSlots 21600))        -- TODO: get this from genesis
-       networkId
-       sock
+  localConnectInfo :: LocalNodeConnectInfo CardanoMode
+  localConnectInfo = LocalNodeConnectInfo
+     (CardanoModeParams (EpochSlots 21600))        -- TODO: get this from genesis
+     networkId
+     sock
 
-    connectClient :: ConnectClient
-    connectClient  = benchmarkConnectTxSubmit
-                       iom
-                       (btConnect_ tracers)
-                       (btSubmission_ tracers)
-                       (configCodec topLevelConfig)
-                       (getNetworkMagic $ configBlock topLevelConfig)
+  connectClient :: ConnectClient
+  connectClient  = benchmarkConnectTxSubmit
+                     iom
+                     (btConnect_ tracers)
+                     (btSubmission_ tracers)
+                     (configCodec topLevelConfig)
+                     (getNetworkMagic $ configBlock topLevelConfig)
 
-    networkId = protocolToNetworkId ptcl
+  networkId = protocolToNetworkId ptcl
 
-    keyAddress :: IsShelleyBasedEra era => KeyAddress era
-    keyAddress = GeneratorTx.keyAddress networkId
+  keyAddress :: IsShelleyBasedEra era => KeyAddress era
+  keyAddress = GeneratorTx.keyAddress networkId
 
-    secureGenesisFund :: IsShelleyBasedEra era => SecureGenesisFund era
-    secureGenesisFund = GeneratorTx.secureGenesisFund
-                (btTxSubmit_ tracers)
-                (submitTxToNodeLocal localConnectInfo)
-                networkId
-                (getGenesis ptcl)
+  secureGenesisFund :: IsShelleyBasedEra era => SecureGenesisFund era
+  secureGenesisFund = GeneratorTx.secureGenesisFund
+              (btTxSubmit_ tracers)
+              (submitTxToNodeLocal localConnectInfo)
+              networkId
+              (getGenesis ptcl)
 
-    splitFunds :: IsShelleyBasedEra era => SplitFunds era
-    splitFunds = GeneratorTx.splitFunds
-                (btTxSubmit_ tracers)
-                (submitTxToNodeLocal localConnectInfo)
+  splitFunds :: IsShelleyBasedEra era => SplitFunds era
+  splitFunds = GeneratorTx.splitFunds
+              (btTxSubmit_ tracers)
+              (submitTxToNodeLocal localConnectInfo)
 
-    txGenerator :: IsShelleyBasedEra era => TxGenerator era
-    txGenerator = GeneratorTx.txGenerator (btTxSubmit_ tracers)
+  txGenerator :: IsShelleyBasedEra era => TxGenerator era
+  txGenerator = GeneratorTx.txGenerator (btTxSubmit_ tracers)
 
-    runBenchmark :: IsShelleyBasedEra era => RunBenchmark era
-    runBenchmark = GeneratorTx.runBenchmark (btTxSubmit_ tracers) (btN2N_ tracers) connectClient
+  runBenchmark :: IsShelleyBasedEra era => RunBenchmark era
+  runBenchmark = GeneratorTx.runBenchmark (btTxSubmit_ tracers) (btN2N_ tracers) connectClient
 
 runBenchmarkScriptWith ::
      IOManager
@@ -137,39 +136,39 @@ startProtocol logConfigFile = do
                   mkConsensusProtocolCardano byC shC hfC Nothing
         loggingLayer <- mkLoggingLayer nc ptcl
         return (loggingLayer, ptcl)
-  where
-    mkLoggingLayer :: NodeConfiguration -> Protocol IO blk (BlockProtocol blk) -> ExceptT CliError IO LoggingLayer
-    mkLoggingLayer nc ptcl =
-      firstExceptT (\(ConfigErrorFileNotFound fp) -> ConfigNotFoundError fp) $
-        createLoggingLayer (pack $ showVersion version) nc ptcl
+ where
+  mkLoggingLayer :: NodeConfiguration -> Protocol IO blk (BlockProtocol blk) -> ExceptT CliError IO LoggingLayer
+  mkLoggingLayer nc ptcl =
+    firstExceptT (\(ConfigErrorFileNotFound fp) -> ConfigNotFoundError fp) $
+      createLoggingLayer (pack $ showVersion version) nc ptcl
 
-    mkNodeConfig :: FilePath -> IO NodeConfiguration
-    mkNodeConfig logConfig = do
-     let configFp = ConfigYamlFilePath logConfig
-         filesPc = defaultPartialNodeConfiguration
-                   { pncProtocolFiles = Last . Just $
-                     ProtocolFilepaths
-                     { byronCertFile = Just ""
-                     , byronKeyFile = Just ""
-                     , shelleyKESFile = Just ""
-                     , shelleyVRFFile = Just ""
-                     , shelleyCertFile = Just ""
-                     , shelleyBulkCredsFile = Just ""
-                     }
-                   , pncValidateDB = Last $ Just False
-                   , pncShutdownIPC = Last $ Just Nothing
-                   , pncShutdownOnSlotSynced = Last $ Just NoMaxSlotNo
-                   , pncConfigFile = Last $ Just configFp
+  mkNodeConfig :: FilePath -> IO NodeConfiguration
+  mkNodeConfig logConfig = do
+   let configFp = ConfigYamlFilePath logConfig
+       filesPc = defaultPartialNodeConfiguration
+                 { pncProtocolFiles = Last . Just $
+                   ProtocolFilepaths
+                   { byronCertFile = Just ""
+                   , byronKeyFile = Just ""
+                   , shelleyKESFile = Just ""
+                   , shelleyVRFFile = Just ""
+                   , shelleyCertFile = Just ""
+                   , shelleyBulkCredsFile = Just ""
                    }
-     configYamlPc <- parseNodeConfigurationFP . Just $ configFp
-     case makeNodeConfiguration $ configYamlPc <> filesPc of
-        Left err -> panic $ "Error in creating the NodeConfiguration: " <> pack err
-        Right nc' -> return nc'
+                 , pncValidateDB = Last $ Just False
+                 , pncShutdownIPC = Last $ Just Nothing
+                 , pncShutdownOnSlotSynced = Last $ Just NoMaxSlotNo
+                 , pncConfigFile = Last $ Just configFp
+                 }
+   configYamlPc <- parseNodeConfigurationFP . Just $ configFp
+   case makeNodeConfiguration $ configYamlPc <> filesPc of
+      Left err -> panic $ "Error in creating the NodeConfiguration: " <> pack err
+      Right nc' -> return nc'
 
 data CliError  =
     GenesisReadError !FilePath !Genesis.GenesisDataError
   | FileNotFoundError !FilePath
-  | ConfigNotFoundError         !FilePath
-  | ProtocolInstantiationError  !Text
+  | ConfigNotFoundError !FilePath
+  | ProtocolInstantiationError !Text
   | BenchmarkRunnerError !GeneratorTx.TxGenError
   deriving stock Show

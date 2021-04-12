@@ -27,7 +27,6 @@ import qualified Cardano.Crypto.Signing as Crypto
 import           Ouroboros.Consensus.Byron.Ledger (ByronBlock, GenTx (..))
 import qualified Ouroboros.Consensus.Byron.Ledger as Byron
 
-
 -- | The 'GenTx' is all the kinds of transactions that can be submitted
 -- and \"normal\" Byron transactions are just one of the kinds.
 normalByronTxToGenTx :: UTxO.ATxAux ByteString -> GenTx ByronBlock
@@ -38,36 +37,36 @@ normalByronTxToGenTx tx' = Byron.ByronTx (Byron.byronIdTx tx') tx'
 byronGenesisUTxOTxIn :: Genesis.Config -> Crypto.VerificationKey -> Common.Address -> UTxO.TxIn
 byronGenesisUTxOTxIn gc vk genAddr =
   handleMissingAddr $ fst <$> Map.lookup genAddr initialUtxo
-  where
-    initialUtxo :: Map Common.Address (UTxO.TxIn, UTxO.TxOut)
-    initialUtxo =
-          Map.fromList
-        . mapMaybe (\(inp, out) -> mkEntry inp genAddr <$> keyMatchesUTxO vk out)
-        . map (bimap UTxO.fromCompactTxIn UTxO.fromCompactTxOut)
-        . Map.toList
-        . UTxO.unUTxO
-        . UTxO.genesisUtxo
-        $ gc
-      where
-        mkEntry :: UTxO.TxIn
-                -> Address
-                -> UTxO.TxOut
-                -> (Address, (UTxO.TxIn, UTxO.TxOut))
-        mkEntry inp addr out = (addr, (inp, out))
+ where
+  initialUtxo :: Map Common.Address (UTxO.TxIn, UTxO.TxOut)
+  initialUtxo =
+        Map.fromList
+      . mapMaybe (\(inp, out) -> mkEntry inp genAddr <$> keyMatchesUTxO vk out)
+      . map (bimap UTxO.fromCompactTxIn UTxO.fromCompactTxOut)
+      . Map.toList
+      . UTxO.unUTxO
+      . UTxO.genesisUtxo
+      $ gc
 
-    keyMatchesUTxO :: Crypto.VerificationKey -> UTxO.TxOut -> Maybe UTxO.TxOut
-    keyMatchesUTxO key out =
-      if Common.checkVerKeyAddress key (UTxO.txOutAddress out)
-      then Just out else Nothing
+  mkEntry :: UTxO.TxIn
+          -> Address
+          -> UTxO.TxOut
+          -> (Address, (UTxO.TxIn, UTxO.TxOut))
+  mkEntry inp addr out = (addr, (inp, out))
 
-    handleMissingAddr :: Maybe UTxO.TxIn -> UTxO.TxIn
-    handleMissingAddr  = fromMaybe . error
-      $  "\nGenesis UTxO has no address\n"
-      <> T.unpack (prettyAddress genAddr)
-      <> "\n\nIt has the following, though:\n\n"
-      <> Cardano.Prelude.concat (T.unpack . prettyAddress <$> Map.keys initialUtxo)
+  keyMatchesUTxO :: Crypto.VerificationKey -> UTxO.TxOut -> Maybe UTxO.TxOut
+  keyMatchesUTxO key out =
+    if Common.checkVerKeyAddress key (UTxO.txOutAddress out)
+    then Just out else Nothing
 
-    prettyAddress :: Common.Address -> Text
-    prettyAddress addr = sformat
-      (Common.addressF %"\n"%Common.addressDetailedF)
-      addr addr
+  handleMissingAddr :: Maybe UTxO.TxIn -> UTxO.TxIn
+  handleMissingAddr  = fromMaybe . error
+    $  "\nGenesis UTxO has no address\n"
+    <> T.unpack (prettyAddress genAddr)
+    <> "\n\nIt has the following, though:\n\n"
+    <> Cardano.Prelude.concat (T.unpack . prettyAddress <$> Map.keys initialUtxo)
+
+  prettyAddress :: Common.Address -> Text
+  prettyAddress addr = sformat
+    (Common.addressF %"\n"%Common.addressDetailedF)
+    addr addr

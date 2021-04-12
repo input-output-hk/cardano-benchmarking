@@ -9,13 +9,12 @@
 
 module Cardano.Benchmarking.GeneratorTx.Benchmark
   ( Benchmark(..)
+  , GeneratorCmd(..)
+  , GeneratorFunds(..)
   , PartialBenchmark(..)
   , defaultBenchmark
   , mkBenchmark
-
-  , GeneratorCmd(..)
   , parseGeneratorCmd
-  , GeneratorFunds(..)
   ) where
 
 import           Cardano.Prelude hiding (TypeError)

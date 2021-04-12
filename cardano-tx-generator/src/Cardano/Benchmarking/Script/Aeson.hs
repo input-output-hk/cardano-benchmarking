@@ -8,22 +8,15 @@ module Cardano.Benchmarking.Script.Aeson
 where
 
 import           Prelude
-
 import           System.Exit
-
 import           Data.Functor.Identity
-
 import           Data.Text (Text)
 import qualified Data.Text as Text
-
 import           Data.Dependent.Sum
 import qualified Data.HashMap.Strict as HashMap (toList, lookup)
-
 import qualified Data.ByteString.Lazy as BSL
-
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as BS (lines)
-
 import           Data.Aeson
 import           Data.Aeson.Types
 import           Data.Aeson.Encode.Pretty
@@ -44,14 +37,14 @@ testJSONRoundTrip l = case fromJSON $ toJSON l of
 
 prettyPrint :: [Action] -> BSL.ByteString
 prettyPrint = encodePretty' conf
-  where
-    conf = defConfig {confCompare = keyOrder actionNames }
-    actionNames :: [Text]
-    actionNames =
-      [ "startProtocol", "readSigningKey", "secureGenesisFund", "splitFund"
-      , "splitFundToList", "delay", "prepareTxList"
-      , "runBenchmark", "asyncBenchmark", "waitBenchmark", "cancelBenchmark"
-      , "reserved" ]
+ where
+  conf = defConfig {confCompare = keyOrder actionNames }
+  actionNames :: [Text]
+  actionNames =
+    [ "startProtocol", "readSigningKey", "secureGenesisFund", "splitFund"
+    , "splitFundToList", "delay", "prepareTxList"
+    , "runBenchmark", "asyncBenchmark", "waitBenchmark", "cancelBenchmark"
+    , "reserved" ]
 
 instance ToJSON AnyCardanoEra where
   toJSON era = case era of
@@ -102,19 +95,19 @@ actionToJSON a = case a of
   CancelBenchmark (ThreadName t) ->  singleton "cancelBenchmark" t
   WaitForEra era -> singleton "waitForEra" era
   Reserved l -> singleton "reserved" l
-  where
-    singleton k v = object [ k .= v ]
+ where
+  singleton k v = object [ k .= v ]
 
 keyValToJSONCompact :: SetKeyVal -> Value
 keyValToJSONCompact keyVal = case parseEither (withObject "internal Error" parseSum) v of
   Right c  -> c
   Left err -> error err
-  where
-    v = toJSON $ runIdentity $ taggedToSum keyVal
-    parseSum obj = do
-      key <- obj .: "tag"
-      (val :: Value)  <- obj .: "contents"
-      return $ object [("set" <> Text.tail key) .= val]
+ where
+  v = toJSON $ runIdentity $ taggedToSum keyVal
+  parseSum obj = do
+    key <- obj .: "tag"
+    (val :: Value)  <- obj .: "contents"
+    return $ object [("set" <> Text.tail key) .= val]
 
 instance ToJSON Action where toJSON = actionToJSON
 instance FromJSON Action where parseJSON = jsonToAction
@@ -143,46 +136,46 @@ objectToAction obj = case obj of
   (HashMap.lookup "reserved"          -> Just v) -> Reserved <$> parseJSON v
   (HashMap.toList -> [(k, v) ]                 ) -> parseSetter k v
   _ -> fail "Error: cannot parse action Object."
-  where
-    parseSetter t v = case t of
-      (Text.stripPrefix "set" -> Just tag) -> do
-          s <- parseJSON $ object [ "tag" .= ("S" <> tag), "contents" .= v]
-          return $ Set $ sumToTaggged s
-      _ -> fail "Failed to parse Setter"
+ where
+  parseSetter t v = case t of
+    (Text.stripPrefix "set" -> Just tag) -> do
+        s <- parseJSON $ object [ "tag" .= ("S" <> tag), "contents" .= v]
+        return $ Set $ sumToTaggged s
+    _ -> fail "Failed to parse Setter"
 
-    parseKey f = KeyName <$> parseField obj f
-    parseFund f = FundName <$> parseField obj f
-    parseThreadName
-      = withText "Error parsing ThreadName" $ \t -> return $ ThreadName $ Text.unpack t
+  parseKey f = KeyName <$> parseField obj f
+  parseFund f = FundName <$> parseField obj f
+  parseThreadName
+    = withText "Error parsing ThreadName" $ \t -> return $ ThreadName $ Text.unpack t
 
-    parseReadSigningKey v = ReadSigningKey
-      <$> ( KeyName <$> parseJSON v )
-      <*> ( SigningKeyFile <$> parseField obj "filePath" )
+  parseReadSigningKey v = ReadSigningKey
+    <$> ( KeyName <$> parseJSON v )
+    <*> ( SigningKeyFile <$> parseField obj "filePath" )
 
-    parseSecureGenesisFund v = SecureGenesisFund
-      <$> ( FundName <$> parseJSON v )
-      <*> parseKey "fundKey"
-      <*> parseKey "genesisKey"
+  parseSecureGenesisFund v = SecureGenesisFund
+    <$> ( FundName <$> parseJSON v )
+    <*> parseKey "fundKey"
+    <*> parseKey "genesisKey"
 
-    parseSplitFund v  = do
-      l <- parseJSON v
-      k <- parseKey "newKey"
-      f <- parseFund "sourceFund"
-      return $ SplitFund (map FundName l) k f
+  parseSplitFund v  = do
+    l <- parseJSON v
+    k <- parseKey "newKey"
+    f <- parseFund "sourceFund"
+    return $ SplitFund (map FundName l) k f
 
-    parseSplitFundToList v = SplitFundToList
-      <$> ( FundListName <$> parseJSON v )
-      <*> parseKey "newKey"
-      <*> parseFund "sourceFund"
+  parseSplitFundToList v = SplitFundToList
+    <$> ( FundListName <$> parseJSON v )
+    <*> parseKey "newKey"
+    <*> parseFund "sourceFund"
 
-    parsePrepareTxList v = PrepareTxList
-      <$> ( TxListName <$> parseJSON v )
-      <*> parseKey "newKey"
-      <*> ( FundListName <$>parseField obj "fundList" )
+  parsePrepareTxList v = PrepareTxList
+    <$> ( TxListName <$> parseJSON v )
+    <*> parseKey "newKey"
+    <*> ( FundListName <$>parseField obj "fundList" )
 
-    parseAsyncBenchmark v = AsyncBenchmark
-      <$> ( ThreadName <$> parseJSON v )
-      <*> ( TxListName <$> parseField obj "txList" )
+  parseAsyncBenchmark v = AsyncBenchmark
+    <$> ( ThreadName <$> parseJSON v )
+    <*> ( TxListName <$> parseField obj "txList" )
 
 parseScriptFile :: FilePath -> IO [Action]
 parseScriptFile filePath = do

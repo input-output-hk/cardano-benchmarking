@@ -61,16 +61,15 @@ prop_bsCostsMary    = measureBSCosts AsMaryEra    == [39..62] ++ [64..104]
 
 stepFunction :: [(Int, Int)] -> [Int]
 stepFunction f = scanl1 (+) steps
-  where
-    steps = concatMap (\(count,step) -> replicate count step) f
+ where steps = concatMap (\(count,step) -> replicate count step) f
 
 -- Measure the cost of metadata map entries.
 -- This is the cost of the index with an empty BS as payload.
 measureMapCosts :: forall era . IsShelleyBasedEra era => AsType era -> [Int]
 measureMapCosts era = map (metadataSize era . Just . replicateEmptyBS) [0..maxMapSize]
-  where
-    replicateEmptyBS :: Int -> TxMetadata
-    replicateEmptyBS n = listMetadata $ replicate n $ TxMetaBytes $ BS.empty
+ where
+  replicateEmptyBS :: Int -> TxMetadata
+  replicateEmptyBS n = listMetadata $ replicate n $ TxMetaBytes $ BS.empty
 
 listMetadata :: [TxMetadataValue] -> TxMetadata
 listMetadata l = makeTransactionMetadata $ Map.fromList $ zip [0..] l
@@ -78,29 +77,29 @@ listMetadata l = makeTransactionMetadata $ Map.fromList $ zip [0..] l
 -- Cost of metadata with a single BS of size [0..maxBSSize].
 measureBSCosts :: forall era . IsShelleyBasedEra era => AsType era -> [Int]
 measureBSCosts era = map (metadataSize era . Just . bsMetadata) [0..maxBSSize]
-  where bsMetadata s = listMetadata [TxMetaBytes $ BS.replicate s 0]
+ where bsMetadata s = listMetadata [TxMetaBytes $ BS.replicate s 0]
 
 metadataSize :: forall era . IsShelleyBasedEra era => AsType era -> Maybe TxMetadata -> Int
 metadataSize p m = dummyTxSize p m - dummyTxSize p Nothing
 
 dummyTxSizeInEra :: forall era . IsShelleyBasedEra era => TxMetadataInEra era -> Int
 dummyTxSizeInEra metadata = case makeTransactionBody dummyTx of
-    Right b -> BS.length $ serialiseToCBOR b
-    Left err -> error $ "metaDataSize " ++ show err
-  where
-    dummyTx :: TxBodyContent era
-    dummyTx = TxBodyContent {
-        txIns = [ TxIn "dbaff4e270cfb55612d9e2ac4658a27c79da4a5271c6f90853042d1403733810" (TxIx 0) ]
-      , txOuts = []
-      , txFee = mkFee $ fromInteger 0
-      , txValidityRange = (TxValidityNoLowerBound, mkValidityUpperBound $ fromInteger 0)
-      , txMetadata = metadata
-      , txAuxScripts = TxAuxScriptsNone
-      , txWithdrawals = TxWithdrawalsNone
-      , txCertificates = TxCertificatesNone
-      , txUpdateProposal = TxUpdateProposalNone
-      , txMintValue = TxMintNone
-      }
+  Right b -> BS.length $ serialiseToCBOR b
+  Left err -> error $ "metaDataSize " ++ show err
+ where
+  dummyTx :: TxBodyContent era
+  dummyTx = TxBodyContent {
+      txIns = [ TxIn "dbaff4e270cfb55612d9e2ac4658a27c79da4a5271c6f90853042d1403733810" (TxIx 0) ]
+    , txOuts = []
+    , txFee = mkFee $ fromInteger 0
+    , txValidityRange = (TxValidityNoLowerBound, mkValidityUpperBound $ fromInteger 0)
+    , txMetadata = metadata
+    , txAuxScripts = TxAuxScriptsNone
+    , txWithdrawals = TxWithdrawalsNone
+    , txCertificates = TxCertificatesNone
+    , txUpdateProposal = TxUpdateProposalNone
+    , txMintValue = TxMintNone
+    }
 
 dummyTxSize :: forall era . IsShelleyBasedEra era => AsType era -> Maybe TxMetadata -> Int
 dummyTxSize _p m = (dummyTxSizeInEra @ era) $ metadataInEra m
@@ -118,33 +117,33 @@ mkMetadata size
   = if size < minSize
       then Left $ "Error : metadata must be 0 or at least " ++ show minSize ++ " bytes in this era."
       else Right $ metadataInEra $ Just metadata
-  where
-    minSize = case shelleyBasedEra @ era of
-      ShelleyBasedEraShelley -> 37
-      ShelleyBasedEraAllegra -> 39
-      ShelleyBasedEraMary    -> 39
-    nettoSize = size - minSize
+ where
+  minSize = case shelleyBasedEra @ era of
+    ShelleyBasedEraShelley -> 37
+    ShelleyBasedEraAllegra -> 39
+    ShelleyBasedEraMary    -> 39
+  nettoSize = size - minSize
 
-    -- At 24 the CBOR representation changes.
-    maxLinearByteStringSize = 23
-    fullChunkSize = maxLinearByteStringSize + 1
+  -- At 24 the CBOR representation changes.
+  maxLinearByteStringSize = 23
+  fullChunkSize = maxLinearByteStringSize + 1
 
-    -- A full chunk consists of 4 bytes for the index and 20 bytes for the bytestring.
-    -- Each full chunk adds exactly `fullChunkSize` (== 24) bytes.
-    -- The remainder is added in the first chunk.
-    mkFullChunk ix = (ix, TxMetaBytes $ BS.replicate (fullChunkSize - 4) 0)
+  -- A full chunk consists of 4 bytes for the index and 20 bytes for the bytestring.
+  -- Each full chunk adds exactly `fullChunkSize` (== 24) bytes.
+  -- The remainder is added in the first chunk.
+  mkFullChunk ix = (ix, TxMetaBytes $ BS.replicate (fullChunkSize - 4) 0)
 
-    fullChunkCount :: Word64
-    fullChunkCount = fromIntegral $ nettoSize `div` fullChunkSize
+  fullChunkCount :: Word64
+  fullChunkCount = fromIntegral $ nettoSize `div` fullChunkSize
 
-    -- Full chunks use indices starting at 1000, to enforce 4-byte encoding of the index.
-    -- At some index the encoding will change to 5 bytes and this will break.
-    fullChunks = map mkFullChunk [1000 .. 1000 + fullChunkCount -1]
+  -- Full chunks use indices starting at 1000, to enforce 4-byte encoding of the index.
+  -- At some index the encoding will change to 5 bytes and this will break.
+  fullChunks = map mkFullChunk [1000 .. 1000 + fullChunkCount -1]
 
-    -- The first chunk has a variable size.
-    firstChunk =
-      ( 0  -- the first chunk uses index 0
-      , TxMetaBytes $ BS.replicate (nettoSize `mod` fullChunkSize) 0
-      )
+  -- The first chunk has a variable size.
+  firstChunk =
+    ( 0  -- the first chunk uses index 0
+    , TxMetaBytes $ BS.replicate (nettoSize `mod` fullChunkSize) 0
+    )
 
-    metadata = makeTransactionMetadata $ Map.fromList (firstChunk : fullChunks)
+  metadata = makeTransactionMetadata $ Map.fromList (firstChunk : fullChunks)

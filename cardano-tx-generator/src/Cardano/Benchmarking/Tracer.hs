@@ -1,30 +1,27 @@
+{-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE ConstraintKinds #-}
 
 {-# OPTIONS_GHC -Wno-all-missed-specialisations #-}
 {-# OPTIONS_GHC -Wno-unticked-promoted-constructors #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Cardano.Benchmarking.Tracer
-  (
-    SubmissionSummary(..)
-
-  , BenchTracers(..)
+  ( BenchTracers(..)
   , NodeToNodeSubmissionTrace(..)
+  , SendRecvConnect
+  , SendRecvTxSubmission
+  , SubmissionSummary(..)
   , TraceBenchTxSubmit(..)
   , TraceLowLevelSubmit(..)
   , createTracers
-
-  , SendRecvConnect
-  , SendRecvTxSubmission
   ) where
 
 import           Prelude (Show(..), String)
@@ -40,14 +37,14 @@ import qualified Data.HashMap.Strict as HM
 import qualified Data.Text as T
 import           Data.Time.Clock (DiffTime, getCurrentTime)
 
--- Mode-agnostic imports
+-- Mode-agnostic imports.
 import           Cardano.BM.Data.Tracer
                    (emptyObject, mkObject, trStructured)
 import           Network.Mux (WithMuxBearer(..))
--- Node API imports
+-- Node API imports.
 import           Cardano.Api
 
--- Node imports
+-- Node imports.
 import           Cardano.Node.Configuration.Logging (LOContent(..), LoggingLayer (..))
 import           Cardano.Tracing.OrphanInstances.Byron()
 import           Cardano.Tracing.OrphanInstances.Common()

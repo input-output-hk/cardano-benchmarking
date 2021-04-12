@@ -8,24 +8,22 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Cardano.Benchmarking.Types
-  (
-    NodeIPv4Address
-  , InitCooldown(..)
+  ( Ack(..)
+  , Acked(..)
+  , InitCooldown(..)   
+  , NodeIPv4Address
   , NumberOfInputsPerTx(..)
   , NumberOfOutputsPerTx(..)
   , NumberOfTxs(..)
-  , TxAdditionalSize(..)
-  , TPSRate(..)
-
-  , Ack(..)
-  , Acked(..)
-  , ToAnnce(..)
   , Req(..)
   , Sent(..)
+  , SubmissionErrorPolicy(..)
+  , ToAnnce(..)
+  , TxAdditionalSize(..)
+  , TPSRate(..)
   , UnAcked(..)
   , Unav(..)
   , UnReqd(..)
-  , SubmissionErrorPolicy(..)
   ) where
 
 

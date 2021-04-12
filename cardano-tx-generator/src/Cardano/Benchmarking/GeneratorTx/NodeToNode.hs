@@ -5,8 +5,7 @@
 {-# OPTIONS_GHC -fno-warn-orphans -Wno-unticked-promoted-constructors -Wno-all-missed-specialisations #-}
 
 module Cardano.Benchmarking.GeneratorTx.NodeToNode
-  (
-    ConnectClient
+  ( ConnectClient
   , benchmarkConnectTxSubmit
   ) where
 
