@@ -46,19 +46,12 @@ prettyPrint = encodePretty' conf
     , "runBenchmark", "asyncBenchmark", "waitBenchmark", "cancelBenchmark"
     , "reserved" ]
 
-instance ToJSON AnyCardanoEra where
-  toJSON era = case era of
-    AnyCardanoEra ByronEra   -> String "ByronEra"
-    AnyCardanoEra ShelleyEra -> String "ShelleyEra"
-    AnyCardanoEra AllegraEra -> String "AllegraEra"
-    AnyCardanoEra MaryEra    -> String "MaryEra"
-
 instance FromJSON AnyCardanoEra where
   parseJSON = withText "AnyCardanoEra" $ \case
-    "ByronEra"   -> return $ AnyCardanoEra ByronEra
-    "ShelleyEra" -> return $ AnyCardanoEra ShelleyEra
-    "AllegraEra" -> return $ AnyCardanoEra AllegraEra
-    "MaryEra"    -> return $ AnyCardanoEra MaryEra
+    "Byron"   -> return $ AnyCardanoEra ByronEra
+    "Shelley" -> return $ AnyCardanoEra ShelleyEra
+    "Allegra" -> return $ AnyCardanoEra AllegraEra
+    "Mary"    -> return $ AnyCardanoEra MaryEra
     era -> fail $ Text.unpack era
 
 instance ToJSON (DSum Tag Identity) where
