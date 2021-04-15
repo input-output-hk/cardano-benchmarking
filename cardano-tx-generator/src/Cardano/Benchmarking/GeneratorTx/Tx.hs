@@ -1,10 +1,8 @@
-{-# LANGUAGE EmptyCase #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE ViewPatterns #-}
 {-# OPTIONS_GHC -Wno-all-missed-specialisations #-}
 
 module Cardano.Benchmarking.GeneratorTx.Tx
@@ -52,7 +50,7 @@ keyAddress networkId k
       (PaymentCredentialByKey $ verificationKeyHash $ getVerificationKey k)
       NoStakeAddress
 
-{-# DEPRECATED mkGenesisTransaction "to be removed" #-}
+--{-# DEPRECATED mkGenesisTransaction "to be removed" #-}
 mkGenesisTransaction :: forall era .
      IsShelleyBasedEra era
   => SigningKey GenesisUTxOKey
@@ -182,7 +180,7 @@ mkTransactionGen signingKey inputs address payments metadata fee =
   offsetMap = Map.fromList $ zipWith (\payment index -> (fst payment, TxIx index))
                                      payments
                                      [0..]
-  txOutSum :: [(TxOut era)] -> Lovelace
+  txOutSum :: [ TxOut era ] -> Lovelace
   txOutSum l = sum $ map toVal l
 
   toVal (TxOut _ val) = txOutValueToLovelace val

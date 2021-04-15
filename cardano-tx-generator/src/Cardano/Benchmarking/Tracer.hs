@@ -7,7 +7,6 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE StandaloneDeriving #-}
 
 {-# OPTIONS_GHC -Wno-all-missed-specialisations #-}
 {-# OPTIONS_GHC -Wno-unticked-promoted-constructors #-}
@@ -25,7 +24,6 @@ module Cardano.Benchmarking.Tracer
   ) where
 
 import           Prelude (Show(..), String)
-import           Data.Time.Clock (NominalDiffTime)
 
 import           Cardano.Prelude hiding (TypeError, show)
 
@@ -35,7 +33,7 @@ import           Data.Aeson (ToJSON (..), (.=))
 import qualified Data.Aeson as A
 import qualified Data.HashMap.Strict as HM
 import qualified Data.Text as T
-import           Data.Time.Clock (DiffTime, getCurrentTime)
+import           Data.Time.Clock (DiffTime, NominalDiffTime, getCurrentTime)
 
 -- Mode-agnostic imports.
 import           Cardano.BM.Data.Tracer

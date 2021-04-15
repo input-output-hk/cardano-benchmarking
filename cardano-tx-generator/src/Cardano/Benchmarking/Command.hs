@@ -2,7 +2,6 @@
 {-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeApplications #-}
 {-# OPTIONS_GHC -Wno-all-missed-specialisations -Wno-orphans #-}
 
 module Cardano.Benchmarking.Command

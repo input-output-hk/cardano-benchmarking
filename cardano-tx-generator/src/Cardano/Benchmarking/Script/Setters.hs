@@ -75,14 +75,14 @@ taggedToSum x = case x of
 
 sumToTaggged :: Applicative f => Sum -> DSum Tag f
 sumToTaggged x = case x of
-  SInitCooldown         v -> (TInitCooldown         ==> v)
-  SNumberOfInputsPerTx  v -> (TNumberOfInputsPerTx  ==> v)
-  SNumberOfOutputsPerTx v -> (TNumberOfOutputsPerTx ==> v)
-  SNumberOfTxs          v -> (TNumberOfTxs          ==> v)
-  STPSRate              v -> (TTPSRate              ==> v)
-  SFee                  v -> (TFee                  ==> v)
-  STTL                  v -> (TTTL                  ==> v)
-  STxAdditionalSize     v -> (TTxAdditionalSize     ==> v)
-  SLocalSocket          v -> (TLocalSocket          ==> v)
-  SEra                  v -> (TEra                  ==> v)
-  STargets              v -> (TTargets              ==> v)
+  SInitCooldown         v -> TInitCooldown         ==> v
+  SNumberOfInputsPerTx  v -> TNumberOfInputsPerTx  ==> v
+  SNumberOfOutputsPerTx v -> TNumberOfOutputsPerTx ==> v
+  SNumberOfTxs          v -> TNumberOfTxs          ==> v
+  STPSRate              v -> TTPSRate              ==> v
+  SFee                  v -> TFee                  ==> v
+  STTL                  v -> TTTL                  ==> v
+  STxAdditionalSize     v -> TTxAdditionalSize     ==> v
+  SLocalSocket          v -> TLocalSocket          ==> v
+  SEra                  v -> TEra                  ==> v
+  STargets              v -> TTargets              ==> v

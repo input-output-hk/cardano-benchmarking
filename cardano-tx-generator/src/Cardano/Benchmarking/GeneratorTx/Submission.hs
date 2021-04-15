@@ -4,13 +4,11 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
-{-# LANGUAGE GeneralisedNewtypeDeriving #-}
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
-{-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -35,9 +33,8 @@ module Cardano.Benchmarking.GeneratorTx.Submission
   , tpsLimitedTxFeederShutdown
   ) where
 
-import           Prelude (error)
+import           Prelude (String, error, fail)
 import           Cardano.Prelude hiding (ByteString, atomically, retry, threadDelay)
-import           Prelude (String, fail)
 
 import           Control.Arrow ((&&&))
 import           Control.Concurrent (threadDelay)
