@@ -27,7 +27,7 @@
         "startProtocol": "configuration/configuration-generator.yaml"
     },
     {
-        "setEra": "MaryEra"
+        "setEra": "Mary"
     },
     {
         "setLocalSocket": "logs/sockets/1"
@@ -84,6 +84,13 @@
         ]
     },
     {
-        "runBenchmark": "txlist"
-    }
+        "asyncBenchmark": "thread1",
+        "txList": "txlist"
+    },
+    {
+        "waitForEra": "Byron"
+    },
+    {
+        "cancelBenchmark": "thread1"
+    },
 ]

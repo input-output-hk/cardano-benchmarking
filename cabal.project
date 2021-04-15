@@ -84,17 +84,22 @@ package small-steps-test
 source-repository-package
   type: git
   location: https://github.com/input-output-hk/cardano-node
-  tag: d1f52161a736e0e0cf42bfc23ad5d94a5a530942
-  --sha256: 19diqm96v4cj2lsa92wgsdiyzk74jwkkd5y3sajdgxm85khk8lnk
+  tag: e5910dbb1023798ec96b00ccc93ce1f5122ac1cd
+  --sha256: 0180jga2m4yjg5k1421kf94l5pm4wzlnnvidi0kw5c1wfz7pfalm
   subdir:
     cardano-api
     cardano-api/test
     cardano-cli
     cardano-config
     cardano-node
-    hedgehog-extras
 
 ---------- >8 -----------
+
+source-repository-package
+  type: git
+  location: https://github.com/input-output-hk/hedgehog-extras
+  tag: 8bcd3c9dc22cc44f9fcfe161f4638a384fc7a187
+  --sha256: 12viwpahjdfvlqpnzdgjp40nw31rvyznnab1hml9afpaxd6ixh70
 
 source-repository-package
   type: git
@@ -152,8 +157,8 @@ source-repository-package
 source-repository-package
   type: git
   location: https://github.com/input-output-hk/iohk-monitoring-framework
-  tag: 60b13d80afa266f02f363672950e896ed735e807
-  --sha256: 0gci6r4c6ldrgracbr4fni4hbrl62lmm5p70cafkwk21a0kqs8cz
+  tag: bf3b4336dfd202fe0b5e765cdaa97788674e456c
+  --sha256: 1ilq7yq8a3mpy21fiqharx7vs2b555n78gf7m48kkd0pl58vq759
   subdir:
     contra-tracer
     iohk-monitoring
@@ -166,9 +171,15 @@ source-repository-package
 
 source-repository-package
   type: git
+  location: https://github.com/input-output-hk/Win32-network
+  tag: 94153b676617f8f33abe8d8182c37377d2784bd1
+  --sha256: 0pb7bg0936fldaa5r08nqbxvi2g8pcy4w3c7kdcg7pdgmimr30ss
+
+source-repository-package
+  type: git
   location: https://github.com/input-output-hk/ouroboros-network
-  tag: 1ab4ded9eb5a6e7dec9bdd1869506f6a6eb73f42
-  --sha256: 1h1hwpww6b8c8hggr9x70417bs432glzhdfzdd7bvzhlc32lb30m
+  tag: 7f90c8c59ffc7d61a4e161e886d8962a9c26787a
+  --sha256: 0hnw6hvbyny3wniaqw8d37l4ysgp8xrq5d84fapxfm525a4hfs0x
   subdir:
     io-sim
     io-sim-classes
@@ -181,7 +192,6 @@ source-repository-package
     ouroboros-network-framework
     typed-protocols
     typed-protocols-examples
-    Win32-network
 
 constraints:
     hedgehog >= 1.0

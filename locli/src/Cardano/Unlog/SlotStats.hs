@@ -55,17 +55,17 @@ instance ToJSON SlotStats
 slotHeadE, slotFormatE :: Text
 slotHeadP, slotFormatP :: Text
 slotHeadP =
-  "abs.  slot    block block lead  leader CDB rej  check  lead    mempool tx       chain       %CPU      GCs   Produc-   Memory use, kB    Alloc rate  Mempool  UTxO  Absolute" <>"\n"<>
-  "slot#   epoch  no. -less checks ships snap txs  span   span  span col acc rej  density all/ GC/mut maj/min tivity  Live    Alloc   RSS   / mut sec   txs  entries   slot time"
+  "abs.  slot    block block lead  leader CDB rej  check  lead    mempool tx       chain      %CPU      GCs   Produc-    Memory use, kB      Alloc rate  Mempool  UTxO  Absolute" <>"\n"<>
+  "slot#   epoch  no. -less checks ships snap txs  span   span  span col acc rej  density all/ GC/mut maj/min tivity   RSS  Heap  Live Alloc /mut sec,kB  txs   entries  slot time"
 slotHeadE =
   "abs.slot#,slot,epoch,block,blockless,checkSpan,leadSpan,leadShips,cdbSnap,rejTx,checkSpan,mempoolTxSpan,chainDens,%CPU,%GC,%MUT,Productiv,MemLiveKb,MemAllocKb,MemRSSKb,AllocRate/Mut,MempoolTxs,UTxO"
-slotFormatP = "%5d %4d:%2d %4d    %2d    %2d   %2d    %2d  %2d %7s %5s %5s  %2d  %2d  %2d   %0.3f  %3s %3s %3s  %2s %3s  %4s %7s %7s %7s % 8s   %4d %9d %s"
-slotFormatE = "%d,%d,%d,%d,%d,%d,%d,%d,%d,%s,%s,%s,%d,%d%0.3f,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%d,%d,%s"
+slotFormatP = "%5d %4d:%2d %4d    %2d    %2d   %2d    %2d  %2d %7s %5s %5s  %2d  %2d  %2d   %0.3f  %3s %3s %3s  %2s %4s %5s %5s %5s %5s %4s  %8s   %4d %9d %s"
+slotFormatE = "%d,%d,%d,%d,%d,%d,%d,%d,%d,%s,%s,%s,%d,%d%0.3f,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%d,%d,%s"
 
 slotLine :: Bool -> Text -> SlotStats -> Text
 slotLine exportMode leadershipF SlotStats{..} = Text.pack $
   printf (Text.unpack leadershipF)
-         sl epsl epo blk blkl chks  lds cdbsn rejtx spanC spanL subdt scol sacc srej dens cpu gc mut majg ming   pro liv alc rss atm mpo utx start
+         sl epsl epo blk blkl chks  lds cdbsn rejtx spanC spanL subdt scol sacc srej dens cpu gc mut majg ming   pro rss hea liv alc atm mpo utx start
  where sl    = slSlot
        epsl  = slEpochSlot
        epo   = slEpoch
@@ -83,17 +83,19 @@ slotLine exportMode leadershipF SlotStats{..} = Text.pack $
        spanL = Text.init $ show slSpanLead
        cpu   = d 3 $ rCentiCpu slResources
        dens  = slDensity
-       gc    = d 2 $ rCentiGC  slResources
-       mut   = d 2 $ min 999 -- workaround for ghc-8.10.2
+       gc    = d 2 $ min 999 -- workaround for ghc-8.10.x
+                  <$> rCentiGC  slResources
+       mut   = d 2 $ min 999 -- workaround for ghc-8.10.x
                   <$> rCentiMut slResources
        majg  = d 2 $ rGcsMajor slResources
        ming  = d 2 $ rGcsMinor slResources
-       pro   = f 2 $ calcProd <$> (min 9 . -- workaround for ghc-8.10.2
+       pro   = f 2 $ calcProd <$> (min 6 . -- workaround for ghc-8.10.2
                                    fromIntegral <$> rCentiMut slResources :: Maybe Float)
                               <*> (fromIntegral <$> rCentiCpu slResources)
-       liv   = d 7 (rLive     slResources)
-       alc   = d 7 (rAlloc    slResources)
-       rss   = d 7 (rRSS      slResources)
+       rss   = d 5 (rRSS      slResources)
+       hea   = d 5 (rHeap     slResources)
+       liv   = d 5 (rLive     slResources)
+       alc   = d 5 (rAlloc    slResources)
        atm   = d 8 $
                (ceiling :: Float -> Int)
                <$> ((/) <$> (fromIntegral . (100 *) <$> rAlloc slResources)
