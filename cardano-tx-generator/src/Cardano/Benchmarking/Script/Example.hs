@@ -1,4 +1,3 @@
-{-# LANGUAGE LambdaCase #-}
 module Cardano.Benchmarking.Script.Example
 where
 
@@ -34,7 +33,7 @@ txConfig = map Set [
   , TNumberOfTxs          ==> NumberOfTxs 500
   , TTPSRate              ==> TPSRate 10
   , TTxAdditionalSize     ==> TxAdditionalSize 0
-  , TFee                  ==> (quantityToLovelace $ Quantity 0)
+  , TFee                  ==> quantityToLovelace (Quantity 0)
   , TTTL                  ==> SlotNo 1000000
   ]
 

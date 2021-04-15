@@ -1,3 +1,5 @@
+{- HLINT ignore "Use camelCase" -}
+{- HLINT ignore "Use uncurry" -}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE GADTs #-}
@@ -69,7 +71,7 @@ measureMapCosts :: forall era . IsShelleyBasedEra era => AsType era -> [Int]
 measureMapCosts era = map (metadataSize era . Just . replicateEmptyBS) [0..maxMapSize]
  where
   replicateEmptyBS :: Int -> TxMetadata
-  replicateEmptyBS n = listMetadata $ replicate n $ TxMetaBytes $ BS.empty
+  replicateEmptyBS n = listMetadata $ replicate n $ TxMetaBytes BS.empty
 
 listMetadata :: [TxMetadataValue] -> TxMetadata
 listMetadata l = makeTransactionMetadata $ Map.fromList $ zip [0..] l
@@ -91,8 +93,8 @@ dummyTxSizeInEra metadata = case makeTransactionBody dummyTx of
   dummyTx = TxBodyContent {
       txIns = [ TxIn "dbaff4e270cfb55612d9e2ac4658a27c79da4a5271c6f90853042d1403733810" (TxIx 0) ]
     , txOuts = []
-    , txFee = mkFee $ fromInteger 0
-    , txValidityRange = (TxValidityNoLowerBound, mkValidityUpperBound $ fromInteger 0)
+    , txFee = mkFee 0
+    , txValidityRange = (TxValidityNoLowerBound, mkValidityUpperBound 0)
     , txMetadata = metadata
     , txAuxScripts = TxAuxScriptsNone
     , txWithdrawals = TxWithdrawalsNone

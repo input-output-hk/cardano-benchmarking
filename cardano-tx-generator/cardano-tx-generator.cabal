@@ -21,7 +21,7 @@ library
                         -Wno-unticked-promoted-constructors
                         -Wpartial-fields
                         -Wredundant-constraints
-                        -threaded -rtsopts -with-rtsopts=-N -with-rtsopts=-T
+                        -Wwarn=deprecations
 
   exposed-modules:
                        Cardano.Benchmarking.CliArgsScript

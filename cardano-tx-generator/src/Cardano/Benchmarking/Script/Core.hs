@@ -1,14 +1,13 @@
-{-# LANGUAGE DeriveGeneric #-}
+{- HLINT ignore "Reduce duplication" -}
+{- HLINT ignore "Use uncurry" -}
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE NumericUnderscores #-}
-{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE RankNTypes #-} --
-{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -56,7 +55,7 @@ withEra action = do
 
 startProtocol :: FilePath -> ActionM ()
 startProtocol filePath = do
-  (liftIO $ runExceptT $ Core.startProtocol filePath) >>= \case
+  liftIO (runExceptT $ Core.startProtocol filePath) >>= \case
     Left err -> throwE $ CliError err
     Right (loggingLayer, protocol) -> do
       set LoggingLayer loggingLayer
@@ -67,7 +66,7 @@ startProtocol filePath = do
 
 readSigningKey :: KeyName -> SigningKeyFile -> ActionM ()
 readSigningKey name filePath =
-  (liftIO $ runExceptT $ Core.readSigningKey filePath) >>= \case
+  liftIO ( runExceptT $ Core.readSigningKey filePath) >>= \case
     Left err -> liftTxGenError err
     Right key -> setName name key
 
@@ -207,7 +206,7 @@ asyncBenchmarkCore (ThreadName threadName) transactions = do
     Right ctl -> return ctl
 
 
-{-# DEPRECATED runBenchmark "to be removed: use asynBenchmark" #-}
+--{-# DEPRECATED runBenchmark "to be removed: use asynBenchmark" #-}
 runBenchmark :: TxListName -> ActionM ()
 runBenchmark transactions = asyncBenchmarkCore (ThreadName "UnlabeledThread") transactions >>= waitBenchmarkCore
 

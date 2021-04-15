@@ -1,10 +1,8 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE UndecidableInstances #-}
 
@@ -48,7 +46,7 @@ import           Cardano.Node.Types
 
 import           Ouroboros.Consensus.Shelley.Eras (StandardShelley)
 
-import           Cardano.Api
+import           Cardano.Api hiding (txFee)
 
 import           Cardano.Benchmarking.Types
 import           Cardano.Benchmarking.GeneratorTx.Error
@@ -112,7 +110,7 @@ splitFunds  :: forall era. IsShelleyBasedEra era
   -> Lovelace
   -> NumberOfTxs
   -> NumberOfInputsPerTx
-  -> (SigningKey PaymentKey)
+  -> SigningKey PaymentKey
   -> AddressInEra era
   -> Fund
   -> ExceptT TxGenError IO [Fund]
@@ -220,7 +218,7 @@ splitFunds
 -----------------------------------------------------------------------------------------
 
 -- This is the entry point for the CLI args tx-generator
-{-# DEPRECATED runBenchmark "to be removed: use asyncBenchmark instead" #-}
+-- {-# DEPRECATED runBenchmark "to be removed: use asyncBenchmark instead" #-}
 runBenchmark :: forall era. IsShelleyBasedEra era
   => Tracer IO (TraceBenchTxSubmit TxId)
   -> Tracer IO NodeToNodeSubmissionTrace

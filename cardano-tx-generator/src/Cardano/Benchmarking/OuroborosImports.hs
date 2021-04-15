@@ -1,3 +1,4 @@
+{- HLINT ignore "Eta reduce" -}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE NamedFieldPuns #-}
 

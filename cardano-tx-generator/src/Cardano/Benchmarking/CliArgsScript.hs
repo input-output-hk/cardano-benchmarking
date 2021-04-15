@@ -1,3 +1,6 @@
+{- HLINT ignore "Use record patterns" -}
+{- HLINT ignore "Redundant bracket" -}
+{- HLINT ignore "Reduce duplication" -}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}

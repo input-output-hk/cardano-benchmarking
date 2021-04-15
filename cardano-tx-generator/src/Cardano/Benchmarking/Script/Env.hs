@@ -1,10 +1,8 @@
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
 
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -64,7 +62,7 @@ liftTxGenError :: TxGenError -> ActionM a
 liftTxGenError = throwE . TxGenError
 
 askIOManager :: ActionM IOManager
-askIOManager = lift $ RWS.ask
+askIOManager = lift RWS.ask
 
 set :: Store v -> v -> ActionM ()
 set key val = lift $ RWS.modify $ DMap.insert key (pure val)
@@ -77,7 +75,7 @@ setName = set . Named
 
 get :: Store v -> ActionM v
 get key = do
-  (lift $ RWS.gets $ DMap.lookup key) >>= \case
+  lift (RWS.gets $ DMap.lookup key) >>= \case
     Just (Identity v) -> return v
     Nothing -> throwE $ LookupError key
 
