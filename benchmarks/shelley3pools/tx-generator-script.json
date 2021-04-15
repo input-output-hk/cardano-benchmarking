@@ -25,8 +25,8 @@
             { "addr": "127.0.0.1", "port": 3002 }
         ] },
     { "asyncBenchmark": "allegraThread", "txList": "allegraTxs" },
-    { "waitForEra": "MaryEra" },
-    { "setEra": "MaryEra" },
+    { "waitForEra": "Mary" },
+    { "setEra": "Mary" },
     { "prepareTxList": "maryTxs", "newKey": "pass-partout", "fundList": "maryFunds" },
     { "cancelBenchmark": "allegraThread" },
     { "asyncBenchmark": "maryThread", "txList": "maryTxs" },
