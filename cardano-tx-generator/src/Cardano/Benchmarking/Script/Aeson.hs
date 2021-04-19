@@ -52,7 +52,7 @@ instance FromJSON AnyCardanoEra where
     "Shelley" -> return $ AnyCardanoEra ShelleyEra
     "Allegra" -> return $ AnyCardanoEra AllegraEra
     "Mary"    -> return $ AnyCardanoEra MaryEra
-    era -> fail $ Text.unpack era
+    era -> parseFail ("Error: Cannot parse JSON value '" <> Text.unpack era <> "' to AnyCardanoEra.")
 
 instance ToJSON (DSum Tag Identity) where
   toEncoding = error "DSum Tag Identity"
@@ -127,14 +127,14 @@ objectToAction obj = case obj of
   (HashMap.lookup "cancelBenchmark"   -> Just v) -> CancelBenchmark <$> parseThreadName v
   (HashMap.lookup "waitForEra"        -> Just v) -> WaitForEra <$> parseJSON v
   (HashMap.lookup "reserved"          -> Just v) -> Reserved <$> parseJSON v
-  (HashMap.toList -> [(k, v) ]                 ) -> parseSetter k v
-  _ -> fail "Error: cannot parse action Object."
+  (HashMap.toList -> [(k, v)]                  ) -> parseSetter k v
+  _ -> parseFail "Error: cannot parse action Object."
  where
-  parseSetter t v = case t of
+  parseSetter k v = case k of
     (Text.stripPrefix "set" -> Just tag) -> do
         s <- parseJSON $ object [ "tag" .= ("S" <> tag), "contents" .= v]
         return $ Set $ sumToTaggged s
-    _ -> fail "Failed to parse Setter"
+    _ -> parseFail $ "Error: cannot parse action Object with key " <> Text.unpack k
 
   parseKey f = KeyName <$> parseField obj f
   parseFund f = FundName <$> parseField obj f

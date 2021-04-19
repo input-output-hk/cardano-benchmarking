@@ -8,7 +8,7 @@
     { "setFee": 0 },
     { "setTTL": 1000000 },
     { "startProtocol": "configuration/configuration-generator.yaml" },
-    { "setEra": "AllegraEra" },
+    { "setEra": "Allegra" },
     { "setLocalSocket": "logs/sockets/1" },
     { "readSigningKey": "pass-partout", "filePath": "configuration/genesis-shelley/utxo-keys/utxo1.skey" },
     { "secureGenesisFund": "genFund", "genesisKey": "pass-partout", "fundKey": "pass-partout" },
