@@ -135,7 +135,7 @@ interpreters = Map.fromList
     \v _ -> LOTxsAcked <$> v .: "txIds"
 
   , (,) "Resources" $
-    \v _ -> LOResources <$> parseJSON (Object v)
+    \v _ -> LOResources <$> parsePartialResourceStates (Object v)
 
   , (,) "TraceTxSubmissionCollected" $
     \v tid -> LOTxsCollected
@@ -197,3 +197,20 @@ instance FromJSON LogObject where
 extendObject :: Text -> Value -> Value -> Value
 extendObject k v (Object hm) = Object $ hm <> HM.singleton (toText k) v
 extendObject k _ _ = error . Text.unpack $ "Summary key '" <> k <> "' does not serialise to an Object."
+
+parsePartialResourceStates :: Value -> Parser (Resources Word64)
+parsePartialResourceStates =
+  AE.withObject "NodeSetup" $
+    \o ->
+      Resources
+      <$> o .: "CentiCpu"
+      <*> o .: "CentiGC"
+      <*> o .: "CentiMut"
+      <*> o .: "GcsMajor"
+      <*> o .: "GcsMinor"
+      <*> o .: "Alloc"
+      <*> o .: "Live"
+      <*> (o AE..:? "Heap" & fmap (fromMaybe 0))
+      <*> o .: "RSS"
+      <*> o .: "CentiBlkIO"
+      <*> o .: "Threads"
