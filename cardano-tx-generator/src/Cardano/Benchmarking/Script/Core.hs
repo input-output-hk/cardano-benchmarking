@@ -28,7 +28,7 @@ import           Cardano.Api ( AsType(..), CardanoEra(..), InAnyCardanoEra(..), 
                              , chainTipToChainPoint )
 import           Cardano.Benchmarking.GeneratorTx as Core
                    (AsyncBenchmarkControl, asyncBenchmark, waitBenchmark, readSigningKey, secureGenesisFund, splitFunds, txGenerator, TxGenError)
-import           Cardano.Benchmarking.Types as Core (NumberOfTxs(..), SubmissionErrorPolicy(..))
+import           Cardano.Benchmarking.Types as Core (NumberOfTxs(..), SubmissionErrorPolicy(..), TPSRate)
 import           Cardano.Benchmarking.GeneratorTx.Tx as Core (keyAddress)
 import           Cardano.Benchmarking.GeneratorTx.LocalProtocolDefinition as Core (startProtocol)
 import           Cardano.Benchmarking.GeneratorTx.NodeToNode (ConnectClient, benchmarkConnectTxSubmit)
@@ -174,11 +174,10 @@ waitBenchmarkCore ctl = do
   _ <- liftIO $ runExceptT $ Core.waitBenchmark (btTxSubmit_ tracers) ctl
   return ()
 
-asyncBenchmarkCore :: ThreadName -> TxListName -> ActionM AsyncBenchmarkControl
-asyncBenchmarkCore (ThreadName threadName) transactions = do
+asyncBenchmarkCore :: ThreadName -> TxListName -> TPSRate -> ActionM AsyncBenchmarkControl
+asyncBenchmarkCore (ThreadName threadName) transactions tps = do
   tracers  <- get BenchTracers
   targets  <- getUser TTargets
-  tps      <- getUser TTPSRate
   txs      <- getName transactions
   (Testnet networkMagic) <- get NetworkId
   protocol <- get Protocol
@@ -203,13 +202,8 @@ asyncBenchmarkCore (ThreadName threadName) transactions = do
     Left err -> liftTxGenError err
     Right ctl -> return ctl
 
-
---{-# DEPRECATED runBenchmark "to be removed: use asynBenchmark" #-}
-runBenchmark :: TxListName -> ActionM ()
-runBenchmark transactions = asyncBenchmarkCore (ThreadName "UnlabeledThread") transactions >>= waitBenchmarkCore
-
-asyncBenchmark :: ThreadName -> TxListName -> ActionM ()
-asyncBenchmark controlName txList = asyncBenchmarkCore controlName txList >>= setName controlName
+asyncBenchmark :: ThreadName -> TxListName -> TPSRate -> ActionM ()
+asyncBenchmark controlName txList tps = asyncBenchmarkCore controlName txList tps >>= setName controlName
 
 waitBenchmark :: ThreadName -> ActionM ()
 waitBenchmark n = getName n >>= waitBenchmarkCore

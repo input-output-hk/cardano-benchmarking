@@ -28,7 +28,6 @@ data Tag v where
   TNumberOfInputsPerTx  :: Tag NumberOfInputsPerTx
   TNumberOfOutputsPerTx :: Tag NumberOfOutputsPerTx
   TNumberOfTxs          :: Tag NumberOfTxs
-  TTPSRate              :: Tag TPSRate
   TFee                  :: Tag Lovelace
   TTTL                  :: Tag SlotNo
   TTxAdditionalSize     :: Tag TxAdditionalSize
@@ -48,7 +47,6 @@ data Sum where
   SNumberOfInputsPerTx  :: !NumberOfInputsPerTx  -> Sum
   SNumberOfOutputsPerTx :: !NumberOfOutputsPerTx -> Sum
   SNumberOfTxs          :: !NumberOfTxs          -> Sum
-  STPSRate              :: !TPSRate              -> Sum
   SFee                  :: !Lovelace             -> Sum
   STTL                  :: !SlotNo               -> Sum
   STxAdditionalSize     :: !TxAdditionalSize     -> Sum
@@ -62,7 +60,6 @@ taggedToSum x = case x of
   (TNumberOfInputsPerTx  :=> v) -> SNumberOfInputsPerTx  <$> v
   (TNumberOfOutputsPerTx :=> v) -> SNumberOfOutputsPerTx <$> v
   (TNumberOfTxs          :=> v) -> SNumberOfTxs          <$> v
-  (TTPSRate              :=> v) -> STPSRate              <$> v
   (TFee                  :=> v) -> SFee                  <$> v
   (TTTL                  :=> v) -> STTL                  <$> v
   (TTxAdditionalSize     :=> v) -> STxAdditionalSize     <$> v
@@ -75,7 +72,6 @@ sumToTaggged x = case x of
   SNumberOfInputsPerTx  v -> TNumberOfInputsPerTx  ==> v
   SNumberOfOutputsPerTx v -> TNumberOfOutputsPerTx ==> v
   SNumberOfTxs          v -> TNumberOfTxs          ==> v
-  STPSRate              v -> TTPSRate              ==> v
   SFee                  v -> TFee                  ==> v
   STTL                  v -> TTTL                  ==> v
   STxAdditionalSize     v -> TTxAdditionalSize     ==> v

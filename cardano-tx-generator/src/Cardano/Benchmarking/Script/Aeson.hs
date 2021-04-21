@@ -29,6 +29,7 @@ import           Cardano.Benchmarking.Script.Action
 import           Cardano.Benchmarking.Script.Env
 import           Cardano.Benchmarking.Script.Setters
 import           Cardano.Benchmarking.Script.Store
+import           Cardano.Benchmarking.Types (TPSRate(..))
 
 testJSONRoundTrip :: [Action] -> Maybe String
 testJSONRoundTrip l = case fromJSON $ toJSON l of
@@ -81,9 +82,8 @@ actionToJSON a = case a of
   Delay t -> object ["delay" .= t ]
   PrepareTxList (TxListName name) (KeyName key) (FundListName fund)
     -> object ["prepareTxList" .= name, "newKey" .= key, "fundList" .= fund ]
-  RunBenchmark (TxListName txs) -> singleton "runBenchmark" txs
-  AsyncBenchmark (ThreadName t) (TxListName txs)
-    -> object ["asyncBenchmark" .= t, "txList" .= txs]
+  AsyncBenchmark (ThreadName t) (TxListName txs) (TPSRate tps) 
+    -> object ["asyncBenchmark" .= t, "txList" .= txs, "tps" .= tps]
   WaitBenchmark (ThreadName t) ->  singleton "waitBenchmark" t
   CancelBenchmark (ThreadName t) ->  singleton "cancelBenchmark" t
   WaitForEra era -> singleton "waitForEra" era
@@ -118,8 +118,6 @@ objectToAction obj = case obj of
   (HashMap.lookup "splitFundToList"   -> Just v) -> parseSplitFundToList v
   (HashMap.lookup "delay"             -> Just v) -> Delay <$> parseJSON v
   (HashMap.lookup "prepareTxList"     -> Just v) -> parsePrepareTxList v
-  (HashMap.lookup "runBenchmark"      -> Just v)
-    -> (withText "Error parsing runBenchmark" $ \t -> return $ RunBenchmark $ TxListName $ Text.unpack t) v
   (HashMap.lookup "asyncBenchmark"    -> Just v) -> parseAsyncBenchmark v
   (HashMap.lookup "waitBenchmark"     -> Just v) -> WaitBenchmark <$> parseThreadName v
   (HashMap.lookup "cancelBenchmark"   -> Just v) -> CancelBenchmark <$> parseThreadName v
@@ -167,6 +165,7 @@ objectToAction obj = case obj of
   parseAsyncBenchmark v = AsyncBenchmark
     <$> ( ThreadName <$> parseJSON v )
     <*> ( TxListName <$> parseField obj "txList" )
+    <*> ( TPSRate <$> parseField obj "tps" )   
 
 parseScriptFile :: FilePath -> IO [Action]
 parseScriptFile filePath = do

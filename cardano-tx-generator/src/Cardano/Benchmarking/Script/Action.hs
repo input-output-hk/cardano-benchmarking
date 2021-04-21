@@ -22,19 +22,19 @@ import           Cardano.Api (AnyCardanoEra)
 import           Cardano.Benchmarking.Script.Env
 import           Cardano.Benchmarking.Script.Store
 import           Cardano.Benchmarking.Script.Core
+import           Cardano.Benchmarking.Types (TPSRate)
 
 data Action where
   Set                :: !SetKeyVal -> Action
 --  Declare            :: SetKeyVal   -> Action --declare (once): error if key was set before
   StartProtocol      :: !FilePath -> Action
-  Delay              :: !Double ->Action
+  Delay              :: !Double -> Action
   ReadSigningKey     :: !KeyName -> !SigningKeyFile -> Action
   SecureGenesisFund  :: !FundName -> !KeyName -> !KeyName -> Action
   SplitFund          :: [FundName] -> !KeyName -> !FundName -> Action
   SplitFundToList    :: !FundListName -> !KeyName -> !FundName -> Action
   PrepareTxList      :: !TxListName -> !KeyName -> !FundListName -> Action
-  RunBenchmark       :: !TxListName -> Action --Obsolete
-  AsyncBenchmark     :: !ThreadName -> !TxListName -> Action
+  AsyncBenchmark     :: !ThreadName -> !TxListName -> TPSRate -> Action
   WaitBenchmark      :: !ThreadName -> Action
   CancelBenchmark    :: !ThreadName -> Action
   Reserved           :: [String] -> Action
@@ -53,8 +53,7 @@ action a = case a of
   SplitFundToList fundList destKey sourceFund -> splitFundToList fundList destKey sourceFund
   Delay t -> delay t
   PrepareTxList name key fund -> prepareTxList name key fund
-  RunBenchmark txs -> runBenchmark txs -- Obsolete. Use AsyncBenchmark.
-  AsyncBenchmark thread txs -> asyncBenchmark thread txs
+  AsyncBenchmark thread txs tps -> asyncBenchmark thread txs tps
   WaitBenchmark thread -> waitBenchmark thread
   CancelBenchmark thread -> cancelBenchmark thread
   WaitForEra era -> waitForEra era

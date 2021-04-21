@@ -9,9 +9,6 @@
         "setNumberOfTxs": 500
     },
     {
-        "setTPSRate": 10
-    },
-    {
         "setTxAdditionalSize": 0
     },
     {
@@ -82,7 +79,8 @@
     },
     {
         "asyncBenchmark": "thread1",
-        "txList": "txlist"
+        "txList": "txlist",
+        "tps": 10
     },
     {
         "waitForEra": "Byron"
