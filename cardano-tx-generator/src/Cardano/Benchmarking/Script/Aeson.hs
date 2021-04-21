@@ -78,7 +78,7 @@ actionToJSON a = case a of
     where names = [n | FundName n <- newFunds]
   SplitFundToList (FundListName fundList) (KeyName destKey) (FundName sourceFund)
     -> object ["splitFundToList" .= fundList, "newKey" .= destKey, "sourceFund" .= sourceFund ]
-  Delay -> singleton "delay" Null
+  Delay t -> object ["delay" .= t ]
   PrepareTxList (TxListName name) (KeyName key) (FundListName fund)
     -> object ["prepareTxList" .= name, "newKey" .= key, "fundList" .= fund ]
   RunBenchmark (TxListName txs) -> singleton "runBenchmark" txs
@@ -116,9 +116,7 @@ objectToAction obj = case obj of
   (HashMap.lookup "secureGenesisFund" -> Just v) -> parseSecureGenesisFund v
   (HashMap.lookup "splitFund"         -> Just v) -> parseSplitFund v
   (HashMap.lookup "splitFundToList"   -> Just v) -> parseSplitFundToList v
-  (HashMap.lookup "delay"             -> Just v) -> case v of
-    Null -> return Delay
-    _ -> typeMismatch "Delay" v
+  (HashMap.lookup "delay"             -> Just v) -> Delay <$> parseJSON v
   (HashMap.lookup "prepareTxList"     -> Just v) -> parsePrepareTxList v
   (HashMap.lookup "runBenchmark"      -> Just v)
     -> (withText "Error parsing runBenchmark" $ \t -> return $ RunBenchmark $ TxListName $ Text.unpack t) v

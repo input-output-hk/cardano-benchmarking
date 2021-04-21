@@ -27,8 +27,7 @@ printJSON = BSL.putStrLn $ prettyPrint testScript
 
 txConfig :: [Action]
 txConfig = map Set [
-    TInitCooldown         ==> InitCooldown 10
-  , TNumberOfInputsPerTx  ==> NumberOfInputsPerTx 1
+    TNumberOfInputsPerTx  ==> NumberOfInputsPerTx 1
   , TNumberOfOutputsPerTx ==> NumberOfOutputsPerTx 1
   , TNumberOfTxs          ==> NumberOfTxs 500
   , TTPSRate              ==> TPSRate 10
@@ -47,9 +46,9 @@ testScript =
   , Set $ TLocalSocket ==> "logs/sockets/1"
   , ReadSigningKey passPartout "configuration/genesis-shelley/utxo-keys/utxo1.skey"
   , SecureGenesisFund genFund passPartout passPartout
-  , Delay
+  , Delay 10
   , SplitFund outputFunds passPartout genFund
-  , Delay
+  , Delay 10
   , SplitFundToList fundList passPartout f1
   , PrepareTxList txList passPartout fundList
   , Set $ TTargets ==> makeTargets [ 3000, 3001, 3002]

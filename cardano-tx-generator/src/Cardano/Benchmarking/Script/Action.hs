@@ -27,7 +27,7 @@ data Action where
   Set                :: !SetKeyVal -> Action
 --  Declare            :: SetKeyVal   -> Action --declare (once): error if key was set before
   StartProtocol      :: !FilePath -> Action
-  Delay              :: Action
+  Delay              :: !Double ->Action
   ReadSigningKey     :: !KeyName -> !SigningKeyFile -> Action
   SecureGenesisFund  :: !FundName -> !KeyName -> !KeyName -> Action
   SplitFund          :: [FundName] -> !KeyName -> !FundName -> Action
@@ -51,7 +51,7 @@ action a = case a of
   SecureGenesisFund fundName fundKey genesisKey -> secureGenesisFund fundName fundKey genesisKey
   SplitFund newFunds newKey sourceFund -> splitFund  newFunds newKey sourceFund
   SplitFundToList fundList destKey sourceFund -> splitFundToList fundList destKey sourceFund
-  Delay -> delay
+  Delay t -> delay t
   PrepareTxList name key fund -> prepareTxList name key fund
   RunBenchmark txs -> runBenchmark txs -- Obsolete. Use AsyncBenchmark.
   AsyncBenchmark thread txs -> asyncBenchmark thread txs

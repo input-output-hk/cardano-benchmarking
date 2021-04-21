@@ -28,7 +28,7 @@ import           Cardano.Api ( AsType(..), CardanoEra(..), InAnyCardanoEra(..), 
                              , chainTipToChainPoint )
 import           Cardano.Benchmarking.GeneratorTx as Core
                    (AsyncBenchmarkControl, asyncBenchmark, waitBenchmark, readSigningKey, secureGenesisFund, splitFunds, txGenerator, TxGenError)
-import           Cardano.Benchmarking.Types as Core (NumberOfTxs(..), InitCooldown(..), SubmissionErrorPolicy(..))
+import           Cardano.Benchmarking.Types as Core (NumberOfTxs(..), SubmissionErrorPolicy(..))
 import           Cardano.Benchmarking.GeneratorTx.Tx as Core (keyAddress)
 import           Cardano.Benchmarking.GeneratorTx.LocalProtocolDefinition as Core (startProtocol)
 import           Cardano.Benchmarking.GeneratorTx.NodeToNode (ConnectClient, benchmarkConnectTxSubmit)
@@ -139,10 +139,8 @@ splitFundToList newFunds destKey sourceFund = do
   funds <- splitFundN count destKey sourceFund
   setName newFunds funds
 
-delay :: ActionM ()
-delay = do
-  (InitCooldown t) <- getUser TInitCooldown
-  liftIO $ threadDelay $ 1000000 * t
+delay :: Double -> ActionM ()
+delay t = liftIO $ threadDelay $ floor $ 1000000 * t
 
 prepareTxList
    :: TxListName

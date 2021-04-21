@@ -1,8 +1,5 @@
 [
     {
-        "setInitCooldown": 10
-    },
-    {
         "setNumberOfInputsPerTx": 1
     },
     {
@@ -42,7 +39,7 @@
         "fundKey": "pass-partout"
     },
     {
-        "delay": null
+        "delay": 10
     },
     {
         "splitFund": [
@@ -55,7 +52,7 @@
         "newKey": "pass-partout"
     },
     {
-        "delay": null
+        "delay": 10
     },
     {
         "splitFundToList": "fundList",
@@ -93,4 +90,7 @@
     {
         "cancelBenchmark": "thread1"
     },
+    {
+        "reserved": []
+    }
 ]
