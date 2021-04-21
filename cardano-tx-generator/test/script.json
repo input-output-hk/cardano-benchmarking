@@ -1,8 +1,5 @@
 [
     {
-        "setInitCooldown": 10
-    },
-    {
         "setNumberOfInputsPerTx": 1
     },
     {
@@ -10,9 +7,6 @@
     },
     {
         "setNumberOfTxs": 500
-    },
-    {
-        "setTPSRate": 10
     },
     {
         "setTxAdditionalSize": 0
@@ -42,7 +36,7 @@
         "fundKey": "pass-partout"
     },
     {
-        "delay": null
+        "delay": 10
     },
     {
         "splitFund": [
@@ -55,7 +49,7 @@
         "newKey": "pass-partout"
     },
     {
-        "delay": null
+        "delay": 10
     },
     {
         "splitFundToList": "fundList",
@@ -85,7 +79,8 @@
     },
     {
         "asyncBenchmark": "thread1",
-        "txList": "txlist"
+        "txList": "txlist",
+        "tps": 10
     },
     {
         "waitForEra": "Byron"
@@ -93,4 +88,7 @@
     {
         "cancelBenchmark": "thread1"
     },
+    {
+        "reserved": []
+    }
 ]
